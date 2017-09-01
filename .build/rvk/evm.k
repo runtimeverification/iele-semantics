@@ -316,16 +316,17 @@ module EVM
 
 
     syntax KItem ::= Exception
-    syntax Exception ::= "#exception" | "#end"
+    syntax Exception ::= "#exception" | "#end" | "#revert"
  // ------------------------------------------
     rule <k> EX:Exception ~> (_:Int    => .) ... </k>
     rule <k> EX:Exception ~> (_:OpCode => .) ... </k>
 
     syntax KItem ::= "#?" K ":" K "?#"
  // ----------------------------------
-    rule <k>                #? K : _ ?#  => K         ... </k>
-    rule <k> #exception ~>  #? _ : K ?#  => K         ... </k>
-    rule <k> #end       ~> (#? K : _ ?#) => K ~> #end ... </k>
+    rule <k>                #? K : _ ?#  => K               ... </k>
+    rule <k> #exception ~>  #? _ : K ?#  => K ~> #exception ... </k>
+    rule <k> #revert    ~>  #? K : _ ?#  => K ~> #revert    ... </k>
+    rule <k> #end       ~> (#? K : _ ?#) => K ~> #end       ... </k>
 
 
 // OpCode Execution Cycle
@@ -397,7 +398,7 @@ module EVM
          <k> #next
           => #pushCallStack
           ~> #exceptional? [ OP ] ~> #exec [ OP ] ~> #pc [ OP ]
-          ~> #? #dropCallStack : #popCallStack ~> #exception ?#
+          ~> #? #dropCallStack : #popCallStack ?#
          ...
          </k>
          <pc> PCOUNT </pc>
@@ -474,6 +475,7 @@ module EVM
     rule #stackAdded(JUMPDEST)     => 0
     rule #stackAdded(STOP)         => 0
     rule #stackAdded(RETURN)       => 0
+    rule #stackAdded(REVERT)       => 0
     rule #stackAdded(SELFDESTRUCT) => 0
     rule #stackAdded(PUSH(_,_))    => 1
     rule #stackAdded(LOG(_))       => 0
@@ -1032,7 +1034,7 @@ module EVM
     rule <k> JUMPI DEST 0 => . ... </k> <pc> PCOUNT => PCOUNT +Int 1 </pc>
 
 
-// ### `STOP` and `RETURN`
+// ### `STOP`, `REVERT`, and `RETURN`
 
 
     syntax NullStackOp ::= "STOP"
@@ -1041,8 +1043,13 @@ module EVM
 
     syntax BinStackOp ::= "RETURN"
  // ------------------------------
-    rule <mode> EXECMODE </mode>
-         <k> RETURN RETSTART RETWIDTH => #end ... </k>
+    rule <k> RETURN RETSTART RETWIDTH => #end ... </k>
+         <output> _ => #range(LM, RETSTART, RETWIDTH) </output>
+         <localMem> LM </localMem>
+
+    syntax BinStackOp ::= "REVERT"
+ // ------------------------------
+    rule <k> REVERT RETSTART RETWIDTH => #revert ... </k>
          <output> _ => #range(LM, RETSTART, RETWIDTH) </output>
          <localMem> LM </localMem>
 
@@ -1296,6 +1303,16 @@ module EVM
          ...
          </k>
 
+    rule <k> #revert ~> #return RETSTART RETWIDTH
+           => #popCallStack
+           ~> #popWorldState
+           ~> #popSubstate
+           ~> 0 ~> #push ~> #refund GAVAIL ~> #setLocalMem RETSTART RETWIDTH OUT
+          ...
+         </k>
+         <output> OUT </output>
+         <gas> GAVAIL </gas>
+
     rule <mode> EXECMODE </mode>
          <k> #end ~> #return RETSTART RETWIDTH
           => #popCallStack
@@ -1431,6 +1448,8 @@ module EVM
                    | "#finishCodeDeposit" Int WordStack
  // ---------------------------------------------
     rule <k> #exception ~> #codeDeposit _ => #popCallStack ~> #popWorldState ~> #popSubstate ~> 0 ~> #push ... </k>
+    rule <k> #revert ~> #codeDeposit _ => #popCallStack ~> #popWorldState ~> #popSubstate ~> #refund GAVAIL ~> 0 ~> #push ... </k>
+         <gas> GAVAIL </gas>
 
     rule <mode> EXECMODE </mode>
          <k> #end ~> #codeDeposit ACCT => #mkCodeDeposit ACCT ... </k>
@@ -1447,7 +1466,7 @@ module EVM
 
     rule <k> #mkCodeDeposit ACCT => #popCallStack ~> #popWorldState ~> #popSubstate ~> 0 ~> #push ... </k>
          <schedule> SCHED </schedule>
-         <output> OUT => .WordStack </output>
+         <output> OUT </output>
       requires #sizeWordStack(OUT) >Int maxCodeSize < SCHED >
 
     rule <k> #finishCodeDeposit ACCT OUT
@@ -1622,6 +1641,7 @@ module EVM
 
     rule #memory ( CREATE _ START WIDTH , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
     rule #memory ( RETURN START WIDTH   , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
+    rule #memory ( REVERT START WIDTH   , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
 
     rule #memory ( COP:CallOp     _ _ _ ARGSTART ARGWIDTH RETSTART RETWIDTH , MU ) => #memoryUsageUpdate(#memoryUsageUpdate(MU, ARGSTART, ARGWIDTH), RETSTART, RETWIDTH)
     rule #memory ( CSOP:CallSixOp _ _   ARGSTART ARGWIDTH RETSTART RETWIDTH , MU ) => #memoryUsageUpdate(#memoryUsageUpdate(MU, ARGSTART, ARGWIDTH), RETSTART, RETWIDTH)
@@ -1760,6 +1780,7 @@ module EVM
     // Wzero
     rule <k> #gasExec(SCHED, STOP)       => Gzero < SCHED > ... </k>
     rule <k> #gasExec(SCHED, RETURN _ _) => Gzero < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, REVERT _ _) => Gzero < SCHED > ... </k>
 
     // Wbase
     rule <k> #gasExec(SCHED, ADDRESS)      => Gbase < SCHED > ... </k>
@@ -1915,6 +1936,7 @@ module EVM
  // ----------------------------------------------------------
 
     syntax ScheduleFlag ::= "Gselfdestructnewaccount" | "Gstaticcalldepth" | "Gemptyisnonexistent" | "Gzerovaluenewaccountgas"
+                          | "hasRevert"
  // --------------------------------------------------------------------------------------------------------------------------
 
 
@@ -1991,6 +2013,7 @@ module EVM
     rule Gstaticcalldepth        << DEFAULT >> => true
     rule Gemptyisnonexistent     << DEFAULT >> => false
     rule Gzerovaluenewaccountgas << DEFAULT >> => true
+    rule hasRevert               << DEFAULT >> => false
 
 
 // ### Frontier Schedule
@@ -2060,7 +2083,9 @@ module EVM
  // -------------------------------
     rule SCHEDCONST < BYZANTIUM > => SCHEDCONST < EIP158 >
 
+    rule hasRevert << BYZANTIUM >> => true
     rule SCHEDFLAG << BYZANTIUM >> => SCHEDFLAG << EIP158 >>
+      requires notBool (  SCHEDFLAG ==K hasRevert )
 
 
 // ### Constantinople Schedule
@@ -2186,6 +2211,7 @@ module EVM
     rule #dasmOpCode( 242,     _ ) => CALLCODE
     rule #dasmOpCode( 243,     _ ) => RETURN
     rule #dasmOpCode( 244, SCHED ) => DELEGATECALL requires SCHED =/=K FRONTIER
+    rule #dasmOpCode( 253, SCHED ) => REVERT requires hasRevert << SCHED >>
     rule #dasmOpCode( 255,     _ ) => SELFDESTRUCT
     rule #dasmOpCode(   W,     _ ) => INVALID [owise]
 endmodule
