@@ -68,6 +68,8 @@ module EVM
                         <pc>          0          </pc>                  // \mu_pc
                         <gas>         0          </gas>                 // \mu_g
                         <previousGas> 0          </previousGas>
+ 
+                        <static> false </static>
                       </txExecState>
 
                       // A_* (execution substate)
@@ -201,13 +203,13 @@ module EVM
 // -   `#dropCallStack` removes the top element of the `callStack`.
 
 
-    syntax State ::= "{" Int "|" Int "|" Map "|" WordStack "|" Int "|" WordStack "|" Int "|" WordStack "|" Map "|" Int "|" Int "|" Int "}"
- // ------------------------------------------------------------------------------------------------------------------------
+    syntax State ::= "{" Int "|" Int "|" Map "|" WordStack "|" Int "|" WordStack "|" Int "|" WordStack "|" Map "|" Int "|" Int "|" Int "|" Bool "}"
+ // -----------------------------------------------------------------------------------------------------------------------------------------------
 
     syntax InternalOp ::= "#pushCallStack"
  // --------------------------------------
     rule <k> #pushCallStack => . ... </k>
-         <callStack>  (.List => ListItem({ ACCT | GAVAIL | PGM | BYTES | CR | CD | CV | WS | LM | MUSED | PCOUNT | DEPTH })) ... </callStack>
+         <callStack>  (.List => ListItem({ ACCT | GAVAIL | PGM | BYTES | CR | CD | CV | WS | LM | MUSED | PCOUNT | DEPTH | STATIC })) ... </callStack>
          <id>           ACCT   </id>
          <gas>          GAVAIL </gas>
          <program>      PGM    </program>
@@ -220,11 +222,12 @@ module EVM
          <memoryUsed>   MUSED  </memoryUsed>
          <pc>           PCOUNT </pc>
          <callDepth>    DEPTH  </callDepth>
+         <static>       STATIC </static>
 
     syntax InternalOp ::= "#popCallStack"
  // -------------------------------------
     rule <k> #popCallStack => . ... </k>
-         <callStack>  (ListItem({ ACCT | GAVAIL | PGM | BYTES | CR | CD | CV | WS | LM | MUSED | PCOUNT | DEPTH }) => .List) ... </callStack>
+         <callStack>  (ListItem({ ACCT | GAVAIL | PGM | BYTES | CR | CD | CV | WS | LM | MUSED | PCOUNT | DEPTH | STATIC }) => .List) ... </callStack>
          <id>           _ => ACCT   </id>
          <gas>          _ => GAVAIL </gas>
          <program>      _ => PGM    </program>
@@ -237,6 +240,7 @@ module EVM
          <memoryUsed>   _ => MUSED  </memoryUsed>
          <pc>           _ => PCOUNT </pc>
          <callDepth>    _ => DEPTH  </callDepth>
+         <static>       _ => STATIC </static>
 
     syntax InternalOp ::= "#dropCallStack"
  // --------------------------------------
@@ -418,7 +422,7 @@ module EVM
 
     syntax InternalOp ::= "#exceptional?" "[" OpCode "]"
  // ----------------------------------------------------
-    rule <k> #exceptional? [ OP ] => #invalid? [ OP ] ~> #stackNeeded? [ OP ] ~> #badJumpDest? [ OP ] ... </k>
+    rule <k> #exceptional? [ OP ] => #invalid? [ OP ] ~> #stackNeeded? [ OP ] ~> #badJumpDest? [ OP ] ~> #static? [ OP ] ... </k>
 
 
 // -   `#invalid?` checks if it's the designated invalid opcode.
@@ -458,8 +462,8 @@ module EVM
     rule #stackNeeded(DUP(N))          => N
     rule #stackNeeded(SWAP(N))         => N +Int 1
     rule #stackNeeded(LOG(N))          => N +Int 2
-    rule #stackNeeded(DELEGATECALL)    => 6
-    rule #stackNeeded(COP:CallOp)      => 7 requires COP =/=K DELEGATECALL
+    rule #stackNeeded(CSOP:CallSixOp)  => 6
+    rule #stackNeeded(COP:CallOp)      => 7 requires notBool isCallSixOp(COP)
 
     syntax Int ::= #stackAdded ( OpCode ) [function]
  // ------------------------------------------------
@@ -504,6 +508,26 @@ module EVM
 
     rule <k> #badJumpDest? [ JUMP  ] => #exception ... </k> <wordStack> DEST :     WS </wordStack> <program> PGM </program> requires notBool (DEST in_keys(PGM))
     rule <k> #badJumpDest? [ JUMPI ] => #exception ... </k> <wordStack> DEST : W : WS </wordStack> <program> PGM </program> requires (notBool (DEST in_keys(PGM))) andBool W =/=K 0
+
+
+// -   `#static?` determines if the opcode should throw an exception due to the
+//     static flag.
+
+
+    syntax InternalOp ::= "#static?" "[" OpCode "]"
+ // -----------------------------------------------
+    rule <k> #static? [ OP ] => .          ... </k>                             <static> false </static>
+    rule <k> #static? [ OP ] => .          ... </k> <wordStack> WS </wordStack> <static> true  </static> requires notBool #changesState(OP, WS)
+    rule <k> #static? [ OP ] => #exception ... </k> <wordStack> WS </wordStack> <static> true  </static> requires         #changesState(OP, WS)
+
+    syntax Bool ::= #changesState ( OpCode , WordStack ) [function]
+ // ---------------------------------------------------------------
+    rule #changesState(LOG(_), _) => true
+    rule #changesState(SSTORE, _) => true
+    rule #changesState(CALL, _ : _ : VALUE : _) => true requires VALUE =/=Int 0
+    rule #changesState(CREATE, _) => true
+    rule #changesState(SELFDESTRUCT, _) => true
+    rule #changesState(_, _) => false [owise]
 
 
 // ### Execution Step
@@ -1246,11 +1270,11 @@ module EVM
 
 
     syntax InternalOp ::= "#checkCall" Int Int
-                        | "#call" Int Int Int Int Int Int WordStack
-                        | "#callWithCode" Int Int Map WordStack Int Int Int WordStack
-                        | "#mkCall" Int Int Map WordStack Int Int Int WordStack
+                        | "#call" Int Int Int Int Int Int WordStack Bool
+                        | "#callWithCode" Int Int Map WordStack Int Int Int WordStack Bool
+                        | "#mkCall" Int Int Map WordStack Int Int Int WordStack Bool
  // ------------------------------------------
-    rule <k> #checkCall ACCT VALUE ~> #call _ _ _ GLIMIT _ _ _ => #refund GLIMIT ~> #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception ... </k>
+    rule <k> #checkCall ACCT VALUE ~> #call _ _ _ GLIMIT _ _ _ _ => #refund GLIMIT ~> #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception ... </k>
          <callDepth> CD </callDepth>
          <output> _ => .WordStack </output>
          <account>
@@ -1269,14 +1293,14 @@ module EVM
          </account>
       requires notBool (VALUE >Int BAL orBool CD >=Int 1024)
 
-    rule <k> #call ACCTFROM ACCTTO ACCTCODE GLIMIT VALUE APPVALUE ARGS
-          => #callWithCode ACCTFROM ACCTTO (0 |-> #precompiled(ACCTCODE)) .WordStack GLIMIT VALUE APPVALUE ARGS
+    rule <k> #call ACCTFROM ACCTTO ACCTCODE GLIMIT VALUE APPVALUE ARGS STATIC
+          => #callWithCode ACCTFROM ACCTTO (0 |-> #precompiled(ACCTCODE)) .WordStack GLIMIT VALUE APPVALUE ARGS STATIC
          ...
          </k>
       requires ACCTCODE >Int 0 andBool ACCTCODE <=Int 4
 
-    rule <k> #call ACCTFROM ACCTTO ACCTCODE GLIMIT VALUE APPVALUE ARGS
-          => #callWithCode ACCTFROM ACCTTO #asMapOpCodes(#dasmOpCodes(CODE, SCHED)) CODE GLIMIT VALUE APPVALUE ARGS
+    rule <k> #call ACCTFROM ACCTTO ACCTCODE GLIMIT VALUE APPVALUE ARGS STATIC
+          => #callWithCode ACCTFROM ACCTTO #asMapOpCodes(#dasmOpCodes(CODE, SCHED)) CODE GLIMIT VALUE APPVALUE ARGS STATIC
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -1284,20 +1308,20 @@ module EVM
          <code> CODE </code>
       requires notBool (ACCTCODE >Int 0 andBool ACCTCODE <=Int 4)
 
-    rule <k> #call ACCTFROM ACCTTO ACCTCODE GLIMIT VALUE APPVALUE ARGS
-           => #callWithCode ACCTFROM ACCTTO .Map .WordStack GLIMIT VALUE APPVALUE ARGS
+    rule <k> #call ACCTFROM ACCTTO ACCTCODE GLIMIT VALUE APPVALUE ARGS STATIC
+           => #callWithCode ACCTFROM ACCTTO .Map .WordStack GLIMIT VALUE APPVALUE ARGS STATIC
           ...
          </k>
          <activeAccounts> ACCTS </activeAccounts>
       requires notBool (ACCTCODE >Int 0 andBool ACCTCODE <=Int 4) andBool notBool ACCTCODE in_keys(ACCTS)
 
-    rule #callWithCode ACCTFROM ACCTTO CODE BYTES GLIMIT VALUE APPVALUE ARGS
+    rule #callWithCode ACCTFROM ACCTTO CODE BYTES GLIMIT VALUE APPVALUE ARGS STATIC
       => #pushCallStack ~> #pushWorldState ~> #pushSubstate
       ~> #transferFunds ACCTFROM ACCTTO VALUE
-      ~> #mkCall ACCTFROM ACCTTO CODE BYTES GLIMIT VALUE APPVALUE ARGS
+      ~> #mkCall ACCTFROM ACCTTO CODE BYTES GLIMIT VALUE APPVALUE ARGS STATIC
 
     rule <mode> EXECMODE </mode>
-         <k> #mkCall ACCTFROM ACCTTO CODE BYTES GLIMIT VALUE APPVALUE ARGS
+         <k> #mkCall ACCTFROM ACCTTO CODE BYTES GLIMIT VALUE APPVALUE ARGS STATIC:Bool
           => #initVM ~> #if EXECMODE ==K VMTESTS #then #end #else #execute #fi
          ...
          </k>
@@ -1310,6 +1334,7 @@ module EVM
          <caller> _ => ACCTFROM </caller>
          <program> _ => CODE </program>
          <programBytes> _ => BYTES </programBytes>
+         <static> OLDSTATIC:Bool => OLDSTATIC orBool STATIC </static>
 
     syntax KItem ::= "#initVM"
  // --------------------------
@@ -1365,7 +1390,7 @@ module EVM
  // ------------------------
     rule <k> CALL GCAP ACCTTO VALUE ARGSTART ARGWIDTH RETSTART RETWIDTH
           => #checkCall ACCTFROM VALUE
-          ~> #call ACCTFROM ACCTTO ACCTTO Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, VALUE) VALUE VALUE #range(LM, ARGSTART, ARGWIDTH)
+          ~> #call ACCTFROM ACCTTO ACCTTO Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, VALUE) VALUE VALUE #range(LM, ARGSTART, ARGWIDTH) false
           ~> #return RETSTART RETWIDTH
          ...
          </k>
@@ -1379,7 +1404,7 @@ module EVM
  // ----------------------------
     rule <k> CALLCODE GCAP ACCTTO VALUE ARGSTART ARGWIDTH RETSTART RETWIDTH
           => #checkCall ACCTFROM VALUE
-          ~> #call ACCTFROM ACCTFROM ACCTTO Ccallgas(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, VALUE) VALUE VALUE #range(LM, ARGSTART, ARGWIDTH)
+          ~> #call ACCTFROM ACCTFROM ACCTTO Ccallgas(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, VALUE) VALUE VALUE #range(LM, ARGSTART, ARGWIDTH) false
           ~> #return RETSTART RETWIDTH
          ...
          </k>
@@ -1393,7 +1418,7 @@ module EVM
  // -----------------------------------
     rule <k> DELEGATECALL GCAP ACCTTO ARGSTART ARGWIDTH RETSTART RETWIDTH
           => #checkCall ACCTFROM 0
-          ~> #call ACCTAPPFROM ACCTFROM ACCTTO Ccallgas(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, 0) 0 VALUE #range(LM, ARGSTART, ARGWIDTH)
+          ~> #call ACCTAPPFROM ACCTFROM ACCTTO Ccallgas(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, 0) 0 VALUE #range(LM, ARGSTART, ARGWIDTH) false
           ~> #return RETSTART RETWIDTH
          ...
          </k>
@@ -1401,6 +1426,20 @@ module EVM
          <id> ACCTFROM </id>
          <caller> ACCTAPPFROM </caller>
          <callValue> VALUE </callValue>
+         <localMem> LM </localMem>
+         <activeAccounts> ACCTS </activeAccounts>
+         <previousGas> GAVAIL </previousGas>
+
+    syntax CallSixOp ::= "STATICCALL"
+ // ---------------------------------
+    rule <k> STATICCALL GCAP ACCTTO ARGSTART ARGWIDTH RETSTART RETWIDTH
+          => #checkCall ACCTFROM 0
+          ~> #call ACCTFROM ACCTTO ACCTTO Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0) 0 0 #range(LM, ARGSTART, ARGWIDTH) true
+          ~> #return RETSTART RETWIDTH
+         ...
+         </k>
+         <schedule> SCHED </schedule>
+         <id> ACCTFROM </id>
          <localMem> LM </localMem>
          <activeAccounts> ACCTS </activeAccounts>
          <previousGas> GAVAIL </previousGas>
@@ -1789,6 +1828,10 @@ module EVM
          <activeAccounts> ACCTS </activeAccounts>
          <gas> GAVAIL </gas>
 
+    rule <k> #gasExec(SCHED, STATICCALL GCAP ACCTTO _ _ _ _) => Ccall(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0) ... </k>
+         <activeAccounts> ACCTS </activeAccounts>
+         <gas> GAVAIL </gas>
+
     rule <k> #gasExec(SCHED, SELFDESTRUCT ACCTTO) => Cselfdestruct(SCHED, ACCTTO, ACCTS, BAL) ... </k>
          <activeAccounts> ACCTS </activeAccounts>
          <id> ACCTFROM </id>
@@ -1965,7 +2008,7 @@ module EVM
  // ----------------------------------------------------------
 
     syntax ScheduleFlag ::= "Gselfdestructnewaccount" | "Gstaticcalldepth" | "Gemptyisnonexistent" | "Gzerovaluenewaccountgas"
-                          | "hasRevert" | "hasReturnData"
+                          | "hasRevert" | "hasReturnData" | "hasStaticCall"
  // --------------------------------------------------------------------------------------------------------------------------
 
 
@@ -2045,6 +2088,7 @@ module EVM
     rule Gzerovaluenewaccountgas << DEFAULT >> => true
     rule hasRevert               << DEFAULT >> => false
     rule hasReturnData           << DEFAULT >> => false
+    rule hasStaticCall           << DEFAULT >> => false
 
 
 // ### Frontier Schedule
@@ -2118,8 +2162,9 @@ module EVM
 
     rule hasRevert     << BYZANTIUM >> => true
     rule hasReturnData << BYZANTIUM >> => true
+    rule hasStaticCall << BYZANTIUM >> => true
     rule SCHEDFLAG     << BYZANTIUM >> => SCHEDFLAG << EIP158 >>
-      requires notBool ( SCHEDFLAG ==K hasRevert orBool SCHEDFLAG ==K hasReturnData )
+      requires notBool ( SCHEDFLAG ==K hasRevert orBool SCHEDFLAG ==K hasReturnData orBool SCHEDFLAG ==K hasStaticCall )
 
 
 // ### Constantinople Schedule
@@ -2247,6 +2292,7 @@ module EVM
     rule #dasmOpCode( 242,     _ ) => CALLCODE
     rule #dasmOpCode( 243,     _ ) => RETURN
     rule #dasmOpCode( 244, SCHED ) => DELEGATECALL requires SCHED =/=K FRONTIER
+    rule #dasmOpCode( 250, SCHED ) => STATICCALL requires hasStaticCall << SCHED >>
     rule #dasmOpCode( 253, SCHED ) => REVERT requires hasRevert << SCHED >>
     rule #dasmOpCode( 255,     _ ) => SELFDESTRUCT
     rule #dasmOpCode(   W,     _ ) => INVALID [owise]
