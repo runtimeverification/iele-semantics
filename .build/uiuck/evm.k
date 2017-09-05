@@ -413,6 +413,7 @@ module EVM
     rule <k> #next => #end ... </k>
          <pc> PCOUNT </pc>
          <program> PGM </program>
+         <output> _ => .WordStack </output>
       requires notBool (PCOUNT in_keys(PGM))
 
 
@@ -489,25 +490,26 @@ module EVM
 
     syntax Int ::= #stackAdded ( OpCode ) [function]
  // ------------------------------------------------
-    rule #stackAdded(CALLDATACOPY) => 0
-    rule #stackAdded(CODECOPY)     => 0
-    rule #stackAdded(EXTCODECOPY)  => 0
-    rule #stackAdded(POP)          => 0
-    rule #stackAdded(MSTORE)       => 0
-    rule #stackAdded(MSTORE8)      => 0
-    rule #stackAdded(SSTORE)       => 0
-    rule #stackAdded(JUMP)         => 0
-    rule #stackAdded(JUMPI)        => 0
-    rule #stackAdded(JUMPDEST)     => 0
-    rule #stackAdded(STOP)         => 0
-    rule #stackAdded(RETURN)       => 0
-    rule #stackAdded(REVERT)       => 0
-    rule #stackAdded(SELFDESTRUCT) => 0
-    rule #stackAdded(PUSH(_,_))    => 1
-    rule #stackAdded(LOG(_))       => 0
-    rule #stackAdded(SWAP(N))      => N
-    rule #stackAdded(DUP(N))       => N +Int 1
-    rule #stackAdded(OP)           => 1 [owise]
+    rule #stackAdded(CALLDATACOPY)   => 0
+    rule #stackAdded(RETURNDATACOPY) => 0
+    rule #stackAdded(CODECOPY)       => 0
+    rule #stackAdded(EXTCODECOPY)    => 0
+    rule #stackAdded(POP)            => 0
+    rule #stackAdded(MSTORE)         => 0
+    rule #stackAdded(MSTORE8)        => 0
+    rule #stackAdded(SSTORE)         => 0
+    rule #stackAdded(JUMP)           => 0
+    rule #stackAdded(JUMPI)          => 0
+    rule #stackAdded(JUMPDEST)       => 0
+    rule #stackAdded(STOP)           => 0
+    rule #stackAdded(RETURN)         => 0
+    rule #stackAdded(REVERT)         => 0
+    rule #stackAdded(SELFDESTRUCT)   => 0
+    rule #stackAdded(PUSH(_,_))      => 1
+    rule #stackAdded(LOG(_))         => 0
+    rule #stackAdded(SWAP(N))        => N
+    rule #stackAdded(DUP(N))         => N +Int 1
+    rule #stackAdded(OP)             => 1 [owise]
 
     syntax Int ::= #stackDelta ( OpCode ) [function]
  // ------------------------------------------------
@@ -1066,6 +1068,7 @@ module EVM
     syntax NullStackOp ::= "STOP"
  // -----------------------------
     rule <k> STOP => #end ... </k>
+         <output> _ => .WordStack </output>
 
     syntax BinStackOp ::= "RETURN"
  // ------------------------------
@@ -1100,6 +1103,28 @@ module EVM
     rule <k> CALLDATACOPY MEMSTART DATASTART DATAWIDTH => . ... </k>
          <localMem> LM => LM [ MEMSTART := CD [ DATASTART .. DATAWIDTH ] ] </localMem>
          <callData> CD </callData>
+
+
+// ### Return Data
+
+// These operators query about the current return data buffer.
+
+
+    syntax NullStackOp ::= "RETURNDATASIZE"
+ // ---------------------------------------
+    rule <k> RETURNDATASIZE => #sizeWordStack(RD) ~> #push ... </k>
+         <output> RD </output>
+
+    syntax TernStackOp ::= "RETURNDATACOPY"
+ // ----------------------------------------
+    rule <k> RETURNDATACOPY MEMSTART DATASTART DATAWIDTH => . ... </k>
+         <localMem> LM => LM [ MEMSTART := RD [ DATASTART .. DATAWIDTH ] ] </localMem>
+         <output> RD </output>
+      requires DATASTART +Int DATAWIDTH <=Int #sizeWordStack(RD)
+
+    rule <k> RETURNDATACOPY MEMSTART DATASTART DATAWIDTH => #exception ... </k>
+         <output> RD </output>
+      requires DATASTART +Int DATAWIDTH >Int #sizeWordStack(RD)
 
 
 // ### Log Operations
@@ -1255,6 +1280,7 @@ module EVM
  // ---------------------------------------------------------------------------
     rule <k> #checkCall ACCT VALUE ~> #call _ _ _ GLIMIT _ _ _ => #refund GLIMIT ~> #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception ... </k>
          <callDepth> CD </callDepth>
+         <output> _ => .WordStack </output>
          <account>
            <acctID> ACCT </acctID>
            <balance> BAL </balance>
@@ -1328,6 +1354,7 @@ module EVM
           => #popCallStack ~> #popWorldState ~> #popSubstate ~> 0 ~> #push
          ...
          </k>
+         <output> _ => .WordStack </output>
 
     rule <k> #revert ~> #return RETSTART RETWIDTH
            => #popCallStack
@@ -1422,6 +1449,7 @@ module EVM
  // --------------------------------------------
     rule <k> #checkCreate ACCT VALUE ~> #create _ _ GAVAIL _ _ => #refund GAVAIL ~> #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception ... </k>
          <callDepth> CD </callDepth>
+         <output> _ => .WordStack </output>
          <account>
            <acctID> ACCT </acctID>
            <balance> BAL </balance>
@@ -1473,7 +1501,7 @@ module EVM
                    | "#mkCodeDeposit" Int
                    | "#finishCodeDeposit" Int WordStack
  // ---------------------------------------------------
-    rule <k> #exception ~> #codeDeposit _ => #popCallStack ~> #popWorldState ~> #popSubstate ~> 0 ~> #push ... </k>
+    rule <k> #exception ~> #codeDeposit _ => #popCallStack ~> #popWorldState ~> #popSubstate ~> 0 ~> #push ... </k> <output> _ => .WordStack </output>
     rule <k> #revert ~> #codeDeposit _ => #popCallStack ~> #popWorldState ~> #popSubstate ~> #refund GAVAIL ~> 0 ~> #push ... </k>
          <gas> GAVAIL </gas>
 
@@ -1492,7 +1520,7 @@ module EVM
 
     rule <k> #mkCodeDeposit ACCT => #popCallStack ~> #popWorldState ~> #popSubstate ~> 0 ~> #push ... </k>
          <schedule> SCHED </schedule>
-         <output> OUT </output>
+         <output> OUT => .WordStack </output>
       requires #sizeWordStack(OUT) >Int maxCodeSize < SCHED >
 
     rule <k> #finishCodeDeposit ACCT OUT
@@ -1563,6 +1591,7 @@ module EVM
            <balance> BALFROM </balance>
            ...
          </account>
+         <output> _ => .WordStack </output>
       requires ACCT =/=Int ACCTTO
 
     rule <k> SELFDESTRUCT ACCT => #end ... </k>
@@ -1578,6 +1607,7 @@ module EVM
            ...
          </account>
          <activeAccounts> ... ACCT |-> (_ => NONCE ==Int 0 andBool CODE ==K .WordStack) ... </activeAccounts>
+         <output> _ => .WordStack </output>
 
 
 // Precompiled Contracts
@@ -1661,9 +1691,10 @@ module EVM
     rule #memory ( SHA3 START WIDTH   , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
     rule #memory ( LOG(_) START WIDTH , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
 
-    rule #memory ( CODECOPY START _ WIDTH      , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
-    rule #memory ( EXTCODECOPY _ START _ WIDTH , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
-    rule #memory ( CALLDATACOPY START _ WIDTH  , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
+    rule #memory ( CODECOPY START _ WIDTH       , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
+    rule #memory ( EXTCODECOPY _ START _ WIDTH  , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
+    rule #memory ( CALLDATACOPY START _ WIDTH   , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
+    rule #memory ( RETURNDATACOPY START _ WIDTH , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
 
     rule #memory ( CREATE _ START WIDTH , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
     rule #memory ( RETURN START WIDTH   , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
@@ -1713,22 +1744,23 @@ module EVM
     rule #memory(DUP(_) _,   MU) => MU
     rule #memory(SWAP(_) _,  MU) => MU
 
-    rule #memory(STOP,         MU) => MU
-    rule #memory(ADDRESS,      MU) => MU
-    rule #memory(ORIGIN,       MU) => MU
-    rule #memory(CALLER,       MU) => MU
-    rule #memory(CALLVALUE,    MU) => MU
-    rule #memory(CALLDATASIZE, MU) => MU
-    rule #memory(CODESIZE,     MU) => MU
-    rule #memory(GASPRICE,     MU) => MU
-    rule #memory(COINBASE,     MU) => MU
-    rule #memory(TIMESTAMP,    MU) => MU
-    rule #memory(NUMBER,       MU) => MU
-    rule #memory(DIFFICULTY,   MU) => MU
-    rule #memory(GASLIMIT,     MU) => MU
-    rule #memory(PC,           MU) => MU
-    rule #memory(MSIZE,        MU) => MU
-    rule #memory(GAS,          MU) => MU
+    rule #memory(STOP,           MU) => MU
+    rule #memory(ADDRESS,        MU) => MU
+    rule #memory(ORIGIN,         MU) => MU
+    rule #memory(CALLER,         MU) => MU
+    rule #memory(CALLVALUE,      MU) => MU
+    rule #memory(CALLDATASIZE,   MU) => MU
+    rule #memory(RETURNDATASIZE, MU) => MU
+    rule #memory(CODESIZE,       MU) => MU
+    rule #memory(GASPRICE,       MU) => MU
+    rule #memory(COINBASE,       MU) => MU
+    rule #memory(TIMESTAMP,      MU) => MU
+    rule #memory(NUMBER,         MU) => MU
+    rule #memory(DIFFICULTY,     MU) => MU
+    rule #memory(GASLIMIT,       MU) => MU
+    rule #memory(PC,             MU) => MU
+    rule #memory(MSIZE,          MU) => MU
+    rule #memory(GAS,            MU) => MU
 
     rule #memory(SELFDESTRUCT _, MU) => MU
     rule #memory(CALLDATALOAD _, MU) => MU
@@ -1767,9 +1799,10 @@ module EVM
     rule <k> #gasExec(SCHED, EXP W0 0)  => Gexp < SCHED > ... </k>
     rule <k> #gasExec(SCHED, EXP W0 W1) => Gexp < SCHED > +Int (Gexpbyte < SCHED > *Int (1 +Int (log256Int(W1)))) ... </k> requires W1 =/=K 0
 
-    rule <k> #gasExec(SCHED, CALLDATACOPY  _ _ WIDTH) => Gverylow     < SCHED > +Int (Gcopy < SCHED > *Int (WIDTH up/Int 32)) ... </k>
-    rule <k> #gasExec(SCHED, CODECOPY      _ _ WIDTH) => Gverylow     < SCHED > +Int (Gcopy < SCHED > *Int (WIDTH up/Int 32)) ... </k>
-    rule <k> #gasExec(SCHED, EXTCODECOPY _ _ _ WIDTH) => Gextcodecopy < SCHED > +Int (Gcopy < SCHED > *Int (WIDTH up/Int 32)) ... </k>
+    rule <k> #gasExec(SCHED, CALLDATACOPY    _ _ WIDTH) => Gverylow     < SCHED > +Int (Gcopy < SCHED > *Int (WIDTH up/Int 32)) ... </k>
+    rule <k> #gasExec(SCHED, RETURNDATACOPY  _ _ WIDTH) => Gverylow     < SCHED > +Int (Gcopy < SCHED > *Int (WIDTH up/Int 32)) ... </k>
+    rule <k> #gasExec(SCHED, CODECOPY        _ _ WIDTH) => Gverylow     < SCHED > +Int (Gcopy < SCHED > *Int (WIDTH up/Int 32)) ... </k>
+    rule <k> #gasExec(SCHED, EXTCODECOPY   _ _ _ WIDTH) => Gextcodecopy < SCHED > +Int (Gcopy < SCHED > *Int (WIDTH up/Int 32)) ... </k>
 
     rule <k> #gasExec(SCHED, LOG(N) _ WIDTH) => (Glog < SCHED > +Int (Glogdata < SCHED > *Int WIDTH) +Int (N *Int Glogtopic < SCHED >)) ... </k>
 
@@ -1809,22 +1842,23 @@ module EVM
     rule <k> #gasExec(SCHED, REVERT _ _) => Gzero < SCHED > ... </k>
 
     // Wbase
-    rule <k> #gasExec(SCHED, ADDRESS)      => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, ORIGIN)       => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, CALLER)       => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, CALLVALUE)    => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, CALLDATASIZE) => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, CODESIZE)     => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, GASPRICE)     => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, COINBASE)     => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, TIMESTAMP)    => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, NUMBER)       => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, DIFFICULTY)   => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, GASLIMIT)     => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, POP _)        => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, PC)           => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, MSIZE)        => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, GAS)          => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, ADDRESS)        => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, ORIGIN)         => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, CALLER)         => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, CALLVALUE)      => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, CALLDATASIZE)   => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, RETURNDATASIZE) => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, CODESIZE)       => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, GASPRICE)       => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, COINBASE)       => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, TIMESTAMP)      => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, NUMBER)         => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, DIFFICULTY)     => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, GASLIMIT)       => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, POP _)          => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, PC)             => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, MSIZE)          => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, GAS)            => Gbase < SCHED > ... </k>
 
     // Wverylow
     rule <k> #gasExec(SCHED, ADD _ _)        => Gverylow < SCHED > ... </k>
@@ -1961,7 +1995,7 @@ module EVM
  // ----------------------------------------------------------
 
     syntax ScheduleFlag ::= "Gselfdestructnewaccount" | "Gstaticcalldepth" | "Gemptyisnonexistent" | "Gzerovaluenewaccountgas"
-                          | "hasRevert"
+                          | "hasRevert" | "hasReturnData"
  // --------------------------------------------------------------------------------------------------------------------------
 
 
@@ -2040,6 +2074,7 @@ module EVM
     rule Gemptyisnonexistent     << DEFAULT >> => false
     rule Gzerovaluenewaccountgas << DEFAULT >> => true
     rule hasRevert               << DEFAULT >> => false
+    rule hasReturnData           << DEFAULT >> => false
 
 
 // ### Frontier Schedule
@@ -2111,9 +2146,10 @@ module EVM
     rule SCHEDCONST < BYZANTIUM > => SCHEDCONST < EIP158 >
       requires notBool ( SCHEDCONST ==K Rb )
 
-    rule hasRevert << BYZANTIUM >> => true
-    rule SCHEDFLAG << BYZANTIUM >> => SCHEDFLAG << EIP158 >>
-      requires notBool (  SCHEDFLAG ==K hasRevert )
+    rule hasRevert     << BYZANTIUM >> => true
+    rule hasReturnData << BYZANTIUM >> => true
+    rule SCHEDFLAG     << BYZANTIUM >> => SCHEDFLAG << EIP158 >>
+      requires notBool ( SCHEDFLAG ==K hasRevert orBool SCHEDFLAG ==K hasReturnData )
 
 
 // ### Constantinople Schedule
@@ -2216,6 +2252,8 @@ module EVM
     rule #dasmOpCode(  58,     _ ) => GASPRICE
     rule #dasmOpCode(  59,     _ ) => EXTCODESIZE
     rule #dasmOpCode(  60,     _ ) => EXTCODECOPY
+    rule #dasmOpCode(  61, SCHED ) => RETURNDATASIZE requires hasReturnData << SCHED >>
+    rule #dasmOpCode(  62, SCHED ) => RETURNDATACOPY requires hasReturnData << SCHED >>
     rule #dasmOpCode(  64,     _ ) => BLOCKHASH
     rule #dasmOpCode(  65,     _ ) => COINBASE
     rule #dasmOpCode(  66,     _ ) => TIMESTAMP
