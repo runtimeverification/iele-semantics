@@ -41,6 +41,7 @@ module BALANCE-OF-SPEC
          <caller>       %CALLER_ID        </caller>
          <callData>     .WordStack        </callData>
          <callValue>    0                 </callValue>
+         <static>       false             </static>
 
          <wordStack>    WS    => ?A:WordStack </wordStack>
          <localMem>     .Map  => ?B:Map       </localMem>

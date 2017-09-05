@@ -41,6 +41,7 @@ module APPROVE-SPEC
          <caller>       %CALLER_ID        </caller>
          <callData>     .WordStack        </callData>
          <callValue>    0                 </callValue>
+         <static>       false             </static>
 
          <wordStack>   A2 : %ORIGIN_ID : WS => ?A:WordStack </wordStack>
          <localMem>    .Map                 => ?B:Map       </localMem>

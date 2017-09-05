@@ -40,6 +40,7 @@ module TRANSFER-FROM-SPEC
          <caller>       %CALLER_ID        </caller>
          <callData>     .WordStack        </callData>
          <callValue>    0                 </callValue>
+         <static>       false             </static>
 
          <gasPrice>     _               </gasPrice>
          <origin>       %ORIGIN_ID      </origin>

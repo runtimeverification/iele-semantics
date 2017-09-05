@@ -41,6 +41,7 @@ imports ETHEREUM-SIMULATION
          <caller>       %CALLER_ID            </caller>
          <callData>     .WordStack            </callData>
          <callValue>    0                     </callValue>
+         <static>       false                 </static>
          <wordStack>    WS   => WS1:WordStack </wordStack>
          <localMem>     .Map => ?B:Map        </localMem>
          <pc>           469  => 573           </pc>
