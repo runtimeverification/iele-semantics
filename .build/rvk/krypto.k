@@ -25,5 +25,11 @@ module KRYPTO
                     | ECDSARecover ( String , Int , String , String ) [function, hook(KRYPTO.ecdsaRecover)]
                     | Sha256 ( String )                               [function, hook(KRYPTO.sha256)]
                     | RipEmd160 ( String )                            [function, hook(KRYPTO.ripemd160)]
+
+    syntax Point ::= "(" Int "," Int ")"
+    syntax Point ::= BN128Add(Point, Point) [function, hook(KRYPTO.bn128add)]
+                   | BN128Mul(Point, Int) [function, hook(KRYPTO.bn128mul)]
+
+    syntax Bool ::= isValidPoint(Point) [function, hook(KRYPTO.bn128valid)]
 endmodule
 

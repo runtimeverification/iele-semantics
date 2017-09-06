@@ -46,3 +46,29 @@ let hook_ecdsaRecover c lbl sort config ff = match c with
   with Failure _ -> [String ""]
   |    Z.Overflow -> [String ""])
 | _ -> failwith "ecdsaRecover"
+
+let get_pt x y = if Z.equal x Z.zero && Z.equal y Z.zero then None else Some (BN128Elements.FQ.create x, BN128Elements.FQ.create y)
+
+let project_pt pt = match pt with
+| Some (xf, yf) -> BN128Elements.FQ.to_z xf, BN128Elements.FQ.to_z yf
+| None -> Z.zero, Z.zero
+
+let hook_bn128valid c lbl sort config ff = match c with
+  [KApply2(Lbl'LPar'_'Comm'_'RPar'_KRYPTO, [Int x], [Int y])] ->
+  [Bool (Z.lt x BN128Elements.field_modulus && Z.lt y BN128Elements.field_modulus && (BN128Curve.is_on_curve (get_pt x y) BN128Curve.b))]
+
+let hook_bn128add c lbl sort config ff = match c with
+  [KApply2(Lbl'LPar'_'Comm'_'RPar'_KRYPTO, [Int x1], [Int y1])],
+  [KApply2(Lbl'LPar'_'Comm'_'RPar'_KRYPTO, [Int x2], [Int y2])] ->
+  let pt1 = get_pt x1 y1 in
+  let pt2 = get_pt x2 y2 in
+  let x3, y3 = project_pt (BN128Curve.add pt1 pt2) in 
+  [KApply2(Lbl'LPar'_'Comm'_'RPar'_KRYPTO, [Int x3], [Int y3])]
+
+let hook_bn128mul c lbl sort config ff = match c with
+  [KApply2(Lbl'LPar'_'Comm'_'RPar'_KRYPTO, [Int x1], [Int y1])],
+  [Int s] ->
+  let pt1 = get_pt x1 y1 in
+  let x2, y2 = project_pt (BN128Curve.mul pt1 s) in 
+  [KApply2(Lbl'LPar'_'Comm'_'RPar'_KRYPTO, [Int x2], [Int y2])]
+  
