@@ -1639,6 +1639,8 @@ Precompiled Contracts
     rule #precompiled(3) => RIP160
     rule #precompiled(4) => ID
     rule #precompiled(5) => MODEXP
+    rule #precompiled(6) => ECADD
+    rule #precompiled(7) => ECMUL
 
     syntax Set ::= #precompiledAccounts ( Schedule ) [function]
  // ------------------------------------------------
@@ -1647,7 +1649,7 @@ Precompiled Contracts
     rule #precompiledAccounts(HOMESTEAD) => #precompiledAccounts(FRONTIER)
     rule #precompiledAccounts(EIP150) => #precompiledAccounts(HOMESTEAD)
     rule #precompiledAccounts(EIP158) => #precompiledAccounts(EIP150)
-    rule #precompiledAccounts(BYZANTIUM) => #precompiledAccounts(EIP158) SetItem(5)
+    rule #precompiledAccounts(BYZANTIUM) => #precompiledAccounts(EIP158) SetItem(5) SetItem(6) SetItem(7)
     rule #precompiledAccounts(CONSTANTINOPLE) => #precompiledAccounts(BYZANTIUM)
 ```
 
@@ -1702,7 +1704,36 @@ Precompiled Contracts
     rule #modexp2(BASE,    EXPLEN,   MODLEN, DATA) => #modexp3(BASE, #asInteger(DATA [ 0 .. EXPLEN ]), MODLEN, #drop(EXPLEN, DATA))
     rule #modexp3(BASE,    EXPONENT, MODLEN, DATA) => #padToWidth(MODLEN, #modexp4(BASE, EXPONENT, #asInteger(DATA [ 0 .. MODLEN ])))
     rule #modexp4(BASE,    EXPONENT, MODULUS)      => #asByteStack(powmod(BASE, EXPONENT, MODULUS))
+
+    syntax PrecompiledOp ::= "ECADD"
+ // --------------------------------
+    rule <k> ECADD => #ecadd((#asWord(DATA [ 0 .. 32 ]), #asWord(DATA [ 32 .. 32 ])), (#asWord(DATA [ 64 .. 32 ]), #asWord(DATA [ 96 .. 32 ]))) ... </k>
+         <callData> DATA </callData>
+
+    syntax InternalOp ::= #ecadd(Point, Point)
+ // ------------------------------------------
+    rule #ecadd(P1, P2) => #exception
+      requires notBool isValidPoint(P1) orBool notBool isValidPoint(P2)
+    rule <k> #ecadd(P1, P2) => #end ... </k> <output> _ => #point(BN128Add(P1, P2)) </output>
+      requires isValidPoint(P1) andBool isValidPoint(P2)
+
+    syntax PrecompiledOp ::= "ECMUL"
+ // --------------------------------
+    rule <k> ECMUL => #ecmul((#asWord(DATA [ 0 .. 32 ]), #asWord(DATA [ 32 .. 32 ])), #asWord(DATA [ 64 .. 32 ])) ... </k>
+         <callData> DATA </callData>
+
+    syntax InternalOp ::= #ecmul(Point, Int)
+ // ----------------------------------------
+    rule #ecmul(P, S) => #exception
+      requires notBool isValidPoint(P)
+    rule <k> #ecmul(P, S) => #end ... </k> <output> _ => #point(BN128Mul(P, S)) </output>
+      requires isValidPoint(P)
+
+    syntax WordStack ::= #point(Point) [function]
+ // ---------------------------------------------
+    rule #point((X, Y)) => #padToWidth(32, #asByteStack(X)) ++ #padToWidth(32, #asByteStack(Y))
 ```
+    
 
 Ethereum Gas Calculation
 ========================
@@ -1953,6 +1984,10 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
          </k>
          <schedule> SCHED </schedule>
          <callData> DATA </callData>
+
+    // TODO: get final gas cost from EIP
+    rule #gasExec(_, ECADD) => 500
+    rule #gasExec(_, ECMUL) => 2000
 ```
 
 There are several helpers for calculating gas (most of them also specified in the yellowpaper).
