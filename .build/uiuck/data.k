@@ -414,6 +414,8 @@ module EVM-DATA
 
 // -   `#asWord` will interperet a stack of bytes as a single word (with
 //     MSB first).
+// -   `#asInteger` will interperet a stack of bytes as a single
+//     arbitrary-precision integer (with MSB first).
 // -   `#asAccount` will interpret a stack of bytes as a single account id (with
 //     MSB first). Differs from `#asWord` only in that an empty stack represents
 //     the empty account, not account zero.
@@ -426,6 +428,12 @@ module EVM-DATA
     rule #asWord( .WordStack )    => 0
     rule #asWord( W : .WordStack) => W
     rule #asWord( W0 : W1 : WS )  => #asWord(((W0 *Word 256) +Word W1) : WS)
+
+    syntax Int ::= #asInteger ( WordStack ) [function]
+ // --------------------------------------------------
+    rule #asInteger( .WordStack )    => 0
+    rule #asInteger( W : .WordStack) => W
+    rule #asInteger( W0 : W1 : WS )  => #asInteger(((W0 *Int 256) +Int W1) : WS)
 
     syntax Account ::= #asAccount ( WordStack ) [function]
  // ------------------------------------------------------
