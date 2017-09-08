@@ -70,9 +70,12 @@ blockchain-tests: \
 #blockchain_tests=$(shell cat ${passing_test_file})
 blockchain_tests=$(wildcard tests/BlockchainTests/*/*/*/*.json)
 all_tests=$(wildcard tests/VMTests/*/*/*.json) ${blockchain_tests}
-skipped_tests=$(wildcard tests/VMTests/vmPerformanceTest/*/*.json) \
+skipped_tests=$(wildcard tests/VMTests/vmPerformance/*/*.json) \
    $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Constantinople.json) \
-   $(wildcard tests/BlockchainTests/GeneralStateTests/stQuadraticComplexityTest/*/*.json)
+   $(wildcard tests/BlockchainTests/GeneralStateTests/stQuadraticComplexityTest/*/*.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Call50000*/*.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Return50000*/*.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Call1MB1024Calldepth_d1g0v0/*.json) \
 
 passing_tests=$(filter-out ${skipped_tests}, ${all_tests})
 passing_blockchain_tests=$(filter-out ${skipped_tests}, ${blockchain_tests})
