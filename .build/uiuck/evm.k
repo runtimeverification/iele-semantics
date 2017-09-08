@@ -44,8 +44,8 @@ module EVM
                       // Mutable during a single transaction
                       // -----------------------------------
 
-                      <output>        .WordStack </output>              // H_RETURN
-                      <memoryUsed>    0          </memoryUsed>          // \mu_i
+                      <output>        .WordStack </output>                   // H_RETURN
+                      <memoryUsed>    0          </memoryUsed>               // \mu_i
                       <callDepth>     0          </callDepth>
                       <callStack>     .List      </callStack>
                       <interimStates> .List      </interimStates>
@@ -53,54 +53,54 @@ module EVM
                       <callLog>       .Set       </callLog>
 
                       <txExecState>
-                        <program>      .Map       </program>            // I_b
+                        <program>      .Map       </program>                 // I_b
                         <programBytes> .WordStack </programBytes>
 
                         // I_*
-                        <id>        0          </id>                    // I_a
-                        <caller>    0          </caller>                // I_s
-                        <callData>  .WordStack </callData>              // I_d
-                        <callValue> 0          </callValue>             // I_v
+                        <id>        0          </id>                         // I_a
+                        <caller>    0          </caller>                     // I_s
+                        <callData>  .WordStack </callData>                   // I_d
+                        <callValue> 0          </callValue>                  // I_v
 
                         // \mu_*
-                        <wordStack>   .WordStack </wordStack>           // \mu_s
-                        <localMem>    .Map       </localMem>            // \mu_m
-                        <pc>          0          </pc>                  // \mu_pc
-                        <gas>         0          </gas>                 // \mu_g
-                        <previousGas> 0          </previousGas>
+                        <wordStack>   .WordStack              </wordStack>   // \mu_s
+                        <localMem>    makeArray(2 ^Int 30, 0) </localMem>    // \mu_m
+                        <pc>          0                       </pc>          // \mu_pc
+                        <gas>         0                       </gas>         // \mu_g
+                        <previousGas> 0                       </previousGas>
  
                         <static> false </static>
                       </txExecState>
 
                       // A_* (execution substate)
                       <substate>
-                        <selfDestruct> .Set  </selfDestruct>            // A_s
-                        <log>          .List </log>                     // A_l
-                        <refund>       0     </refund>                  // A_r
+                        <selfDestruct> .Set  </selfDestruct>                 // A_s
+                        <log>          .List </log>                          // A_l
+                        <refund>       0     </refund>                       // A_r
                       </substate>
 
                       // Immutable during a single transaction
                       // -------------------------------------
 
-                      <gasPrice> 0 </gasPrice>                          // I_p
-                      <origin>   0 </origin>                            // I_o
+                      <gasPrice> 0 </gasPrice>                               // I_p
+                      <origin>   0 </origin>                                 // I_o
 
                       // I_H* (block information)
-                      <previousHash>     0          </previousHash>     // I_Hp
-                      <ommersHash>       0          </ommersHash>       // I_Ho
-                      <coinbase>         0          </coinbase>         // I_Hc
-                      <stateRoot>        0          </stateRoot>        // I_Hr
-                      <transactionsRoot> 0          </transactionsRoot> // I_Ht
-                      <receiptsRoot>     0          </receiptsRoot>     // I_He
-                      <logsBloom>        .WordStack </logsBloom>        // I_Hb
-                      <difficulty>       0          </difficulty>       // I_Hd
-                      <number>           0          </number>           // I_Hi
-                      <gasLimit>         0          </gasLimit>         // I_Hl
-                      <gasUsed>          0          </gasUsed>          // I_Hg
-                      <timestamp>        0          </timestamp>        // I_Hs
-                      <extraData>        .WordStack </extraData>        // I_Hx
-                      <mixHash>          0          </mixHash>          // I_Hm
-                      <blockNonce>       0          </blockNonce>       // I_Hn
+                      <previousHash>     0          </previousHash>          // I_Hp
+                      <ommersHash>       0          </ommersHash>            // I_Ho
+                      <coinbase>         0          </coinbase>              // I_Hc
+                      <stateRoot>        0          </stateRoot>             // I_Hr
+                      <transactionsRoot> 0          </transactionsRoot>      // I_Ht
+                      <receiptsRoot>     0          </receiptsRoot>          // I_He
+                      <logsBloom>        .WordStack </logsBloom>             // I_Hb
+                      <difficulty>       0          </difficulty>            // I_Hd
+                      <number>           0          </number>                // I_Hi
+                      <gasLimit>         0          </gasLimit>              // I_Hl
+                      <gasUsed>          0          </gasUsed>               // I_Hg
+                      <timestamp>        0          </timestamp>             // I_Hs
+                      <extraData>        .WordStack </extraData>             // I_Hx
+                      <mixHash>          0          </mixHash>               // I_Hm
+                      <blockNonce>       0          </blockNonce>            // I_Hn
 
                       <ommerBlockHeaders> [ .JSONList ] </ommerBlockHeaders>
                       <blockhash>         .List         </blockhash>
@@ -203,8 +203,8 @@ module EVM
 // -   `#dropCallStack` removes the top element of the `callStack`.
 
 
-    syntax State ::= "{" Int "|" Int "|" Map "|" WordStack "|" Int "|" WordStack "|" Int "|" WordStack "|" Map "|" Int "|" Int "|" Int "|" Bool "}"
- // -----------------------------------------------------------------------------------------------------------------------------------------------
+    syntax State ::= "{" Int "|" Int "|" Map "|" WordStack "|" Int "|" WordStack "|" Int "|" WordStack "|" Array "|" Int "|" Int "|" Int "|" Bool "}"
+ // -------------------------------------------------------------------------------------------------------------------------------------------------
 
     syntax InternalOp ::= "#pushCallStack"
  // --------------------------------------
@@ -1368,12 +1368,12 @@ module EVM
 
     syntax KItem ::= "#initVM"
  // --------------------------
-    rule <k> #initVM    => . ...      </k>
-         <pc>         _ => 0          </pc>
-         <memoryUsed> _ => 0          </memoryUsed>
-         <output>     _ => .WordStack </output>
-         <wordStack>  _ => .WordStack </wordStack>
-         <localMem>   _ => .Map       </localMem>
+    rule <k> #initVM    => . ...                   </k>
+         <pc>         _ => 0                       </pc>
+         <memoryUsed> _ => 0                       </memoryUsed>
+         <output>     _ => .WordStack              </output>
+         <wordStack>  _ => .WordStack              </wordStack>
+         <localMem>   _ => makeArray(2 ^Int 30, 0) </localMem>
 
     syntax KItem ::= "#return" Int Int
  // ----------------------------------
