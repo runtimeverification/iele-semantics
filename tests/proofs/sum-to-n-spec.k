@@ -26,7 +26,7 @@ module SUM-SPEC
          <schedule> DEFAULT </schedule>
          <callStack> .List </callStack>
          <memoryUsed> 0   </memoryUsed>
-         <localMem> .Map </localMem>
+         <localMem> array(.Map, 1073741824, 0) </localMem>
          <previousGas> _ => _ </previousGas>
          <program> sumTo(N) </program>
 
@@ -61,7 +61,7 @@ module SUM-SPEC
          <schedule> DEFAULT </schedule>
          <callStack> .List </callStack>
          <memoryUsed> 0   </memoryUsed>
-         <localMem> .Map </localMem>
+         <localMem> array(.Map, 1073741824, 0) </localMem>
          <previousGas> _ => _ </previousGas>
          <program> sumTo(N) </program>
 

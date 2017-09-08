@@ -214,7 +214,7 @@ module TRANSFER-SPEC
 These parts of the proof change, but we would like to avoid specifying exactly how (abstract over their state change).
 
 ```{.k .transfer-then .transfer-else}
-         <localMem>    .Map => _ </localMem>
+         <localMem>    array(.Map, 1073741824, 0) => _ </localMem>
          <previousGas> _    => _ </previousGas>
          <refund>      0    => _ </refund>
 ```
@@ -333,7 +333,7 @@ module TRANSFER-FROM-SPEC
 These parts of the proof change, but we would like to avoid specifying exactly how (abstract over their state change).
 
 ```{.k .transferFrom-then .transferFrom-else}
-         <localMem>    .Map => _ </localMem>
+         <localMem>    array(.Map, 1073741824, 0) => _ </localMem>
          <previousGas> _    => _ </previousGas>
          <refund>      0    => _ </refund>
 ```
@@ -435,7 +435,7 @@ imports ETHEREUM-SIMULATION
          <callValue>    0                     </callValue>
          <static>       false                 </static>
          <wordStack>    WS   => WS1:WordStack </wordStack>
-         <localMem>     .Map => ?B:Map        </localMem>
+         <localMem>     array(.Map, 1073741824, 0) => _ </localMem>
          <pc>           469  => 573           </pc>
          <gas>          G    => G -Int 415    </gas>
          <previousGas>  _    => _             </previousGas>
@@ -505,7 +505,7 @@ module APPROVE-SPEC
          <static>       false             </static>
 
          <wordStack>   A2 : %ORIGIN_ID : WS => ?A:WordStack </wordStack>
-         <localMem>    .Map                 => ?B:Map       </localMem>
+         <localMem>    array(.Map, 1073741824, 0) => _ </localMem>
          <pc>          574                  => 806          </pc>
          <gas>         G                    => G -Int 5269  </gas>
          <previousGas> _                    => _            </previousGas>
@@ -577,7 +577,7 @@ module BALANCE-OF-SPEC
          <static>       false             </static>
 
          <wordStack>    WS    => ?A:WordStack </wordStack>
-         <localMem>     .Map  => ?B:Map       </localMem>
+         <localMem>     array(.Map, 1073741824, 0) => _ </localMem>
          <pc>           316   => 381          </pc>
          <gas>          G     => G -Int 274   </gas>
          <previousGas>  _     => _            </previousGas>

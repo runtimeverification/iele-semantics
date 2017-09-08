@@ -44,7 +44,7 @@ module BALANCE-OF-SPEC
          <static>       false             </static>
 
          <wordStack>    WS    => ?A:WordStack </wordStack>
-         <localMem>     .Map  => ?B:Map       </localMem>
+         <localMem>     array(.Map, 1073741824, 0) => _ </localMem>
          <pc>           316   => 381          </pc>
          <gas>          G     => G -Int 274   </gas>
          <previousGas>  _     => _            </previousGas>

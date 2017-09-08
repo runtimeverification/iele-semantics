@@ -43,7 +43,7 @@ imports ETHEREUM-SIMULATION
          <callValue>    0                     </callValue>
          <static>       false                 </static>
          <wordStack>    WS   => WS1:WordStack </wordStack>
-         <localMem>     .Map => ?B:Map        </localMem>
+         <localMem>     array(.Map, 1073741824, 0) => _ </localMem>
          <pc>           469  => 573           </pc>
          <gas>          G    => G -Int 415    </gas>
          <previousGas>  _    => _             </previousGas>

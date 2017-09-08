@@ -31,7 +31,7 @@ module TOKEN-SPEC
          <wordStack>                        TRANSFER : %CALLER_ID : %ORIGIN_ID : WS
                   => A1 -Int TRANSFER : 0 : TRANSFER : %CALLER_ID : %ORIGIN_ID : WS
          </wordStack>
-         <localMem>     .Map   => _    </localMem>
+         <localMem>     array(.Map, 1073741824, 0) => _ </localMem>
          <pc>           836    => 1460 </pc>
          <gas>          100000 => _    </gas>
          <previousGas>  _      => _    </previousGas>

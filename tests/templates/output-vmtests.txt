@@ -22,7 +22,7 @@
         <callData> .WordStack </callData>
         <callValue> 0 </callValue>
         <wordStack> .WordStack </wordStack>
-        <localMem> .Map </localMem>
+        <localMem> array ( .Map , 1073741824 , 0 ) </localMem>
         <pc> 0 </pc>
         <gas> 0 </gas>
         <previousGas> 0 </previousGas>

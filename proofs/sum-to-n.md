@@ -23,7 +23,7 @@ The first part of the claim is largely static (or abstracted away, like `<previo
          <schedule> DEFAULT </schedule>
          <callStack> .List </callStack>
          <memoryUsed> 0   </memoryUsed>
-         <localMem> .Map </localMem>
+         <localMem> array(.Map, 1073741824, 0) </localMem>
          <previousGas> _ => _ </previousGas>
          <program> sumTo(N) </program>
 ```
@@ -57,7 +57,7 @@ The circularity is in the same static environment as the overall proof-goal.
          <schedule> DEFAULT </schedule>
          <callStack> .List </callStack>
          <memoryUsed> 0   </memoryUsed>
-         <localMem> .Map </localMem>
+         <localMem> array(.Map, 1073741824, 0) </localMem>
          <previousGas> _ => _ </previousGas>
          <program> sumTo(N) </program>
 ```

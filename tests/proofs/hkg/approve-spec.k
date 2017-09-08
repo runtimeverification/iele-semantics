@@ -44,7 +44,7 @@ module APPROVE-SPEC
          <static>       false             </static>
 
          <wordStack>   A2 : %ORIGIN_ID : WS => ?A:WordStack </wordStack>
-         <localMem>    .Map                 => ?B:Map       </localMem>
+         <localMem>    array(.Map, 1073741824, 0) => _ </localMem>
          <pc>          574                  => 806          </pc>
          <gas>         G                    => G -Int 5269  </gas>
          <previousGas> _                    => _            </previousGas>

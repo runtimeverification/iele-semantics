@@ -61,7 +61,7 @@ module TRANSFER-SPEC
 // how (abstract over their state change).
 
 
-         <localMem>    .Map => _ </localMem>
+         <localMem>    array(.Map, 1073741824, 0) => _ </localMem>
          <previousGas> _    => _ </previousGas>
          <refund>      0    => _ </refund>
 
