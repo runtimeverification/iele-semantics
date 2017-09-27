@@ -219,8 +219,8 @@ These parts of the proof change, but we would like to avoid specifying exactly h
 ### Then Branch
 
 ```{.k .transfer-then}
-         <pc>  1533 => 1772         </pc>
-         <gas>  G   => G -Int 10544 </gas>
+         <pc>  1533 => 1772 </pc>
+         <gas>  G   => G1   </gas>
 
          <wordStack>                        TRANSFER : %CALLER_ID : WS
                   => B2 +Int TRANSFER : 0 : TRANSFER : %CALLER_ID : WS
@@ -245,7 +245,8 @@ These parts of the proof change, but we would like to avoid specifying exactly h
        andBool B1 >=Int TRANSFER andBool B1 <Int pow256
        andBool B2 >=Int 0        andBool B2 +Int TRANSFER <Int pow256
        andBool #sizeWordStack(WS) <Int 1017
-       andBool G >=Int 10544
+       andBool G >=Int 25544
+       ensures G -Int G1 <=Int 25544
 endmodule
 ```
 
@@ -334,8 +335,8 @@ These parts of the proof change, but we would like to avoid specifying exactly h
 ### Then Branch
 
 ```{.k .transferFrom-then}
-         <pc>  818 => 1331         </pc>
-         <gas> G   => G -Int 16071 </gas>
+         <pc>  818 => 1331 </pc>
+         <gas> G   => G1   </gas>
 
          <wordStack>                        TRANSFER : %CALLER_ID : %ORIGIN_ID : WS
                   => A1 -Int TRANSFER : 0 : TRANSFER : %CALLER_ID : %ORIGIN_ID : WS
@@ -361,7 +362,8 @@ These parts of the proof change, but we would like to avoid specifying exactly h
        andBool A1 >=Int TRANSFER andBool A1 <Int pow256
        andBool B2 >=Int 0        andBool B2 +Int TRANSFER <Int pow256
        andBool #sizeWordStack(WS) <Int 1016
-       andBool G >=Int 16071
+       andBool G >=Int 31071
+       ensures G -Int G1 <=Int 31071
 endmodule
 ```
 
