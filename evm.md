@@ -49,6 +49,7 @@ In the comments next to each cell, we've marked which component of the yellowpap
                         <program>      .Map       </program>                 // I_b
                         <programBytes> .WordStack </programBytes>
                         <callDepth>    0          </callDepth>
+                        <jumpTable>    .Map       </jumpTable>
 
                         // I_*
                         <id>        0          </id>                         // I_a
@@ -318,19 +319,19 @@ Here all `OpCode`s are subsorted into `KItem` (allowing sequentialization), and 
     rule <k> (. => #next) ~> #execute ... </k>
     rule <k> EX:Exception ~> (#execute => .)  ... </k>
 
-    syntax InternalOp ::= "#execTo" Set
+    syntax InternalOp ::= "#execTo" K
  // -----------------------------------
-    rule <k> (. => #next) ~> #execTo OPS ... </k>
+    rule <k> (. => #next) ~> #execTo #klabel(LBL) ... </k>
          <pc> PCOUNT </pc>
          <program> ... PCOUNT |-> OP ... </program>
-      requires notBool (OP in OPS)
+      requires notBool LBL(OP)
 
-    rule <k> #execTo OPS => . ... </k>
+    rule <k> #execTo #klabel(LBL) => . ... </k>
          <pc> PCOUNT </pc>
          <program> ... PCOUNT |-> OP ... </program>
-      requires OP in OPS
+      requires LBL(OP)
 
-    rule <k> #execTo OPS => #end ... </k>
+    rule <k> #execTo #klabel(LBL) => #end ... </k>
          <pc> PCOUNT </pc>
          <program> PGM </program>
       requires notBool PCOUNT in keys(PGM)
@@ -429,9 +430,9 @@ Some checks if an opcode will throw an exception are relatively quick and done u
     rule #stackAdded(MSTORE)         => 0
     rule #stackAdded(MSTORE8)        => 0
     rule #stackAdded(SSTORE)         => 0
-    rule #stackAdded(JUMP)           => 0
-    rule #stackAdded(JUMPI)          => 0
-    rule #stackAdded(JUMPDEST)       => 0
+    rule #stackAdded(JUMP(_))        => 0
+    rule #stackAdded(JUMPI(_))       => 0
+    rule #stackAdded(JUMPDEST(_))    => 0
     rule #stackAdded(STOP)           => 0
     rule #stackAdded(RETURN)         => 0
     rule #stackAdded(REVERT)         => 0
@@ -452,15 +453,13 @@ Some checks if an opcode will throw an exception are relatively quick and done u
 ```{.k .uiuck .rvk}
     syntax InternalOp ::= "#badJumpDest?" "[" OpCode "]"
  // ----------------------------------------------------
-    rule <k> #badJumpDest? [ OP    ] => . ... </k> requires notBool isJumpOp(OP)
-    rule <k> #badJumpDest? [ OP    ] => . ... </k> <wordStack> DEST  : WS </wordStack> <program> ... DEST |-> JUMPDEST ... </program> requires isJumpOp(OP)
-    rule <k> #badJumpDest? [ JUMPI ] => . ... </k> <wordStack> _ : 0 : WS </wordStack>
+    rule <k> #badJumpDest? [ OP           ] => . ... </k> requires notBool isJumpOp(OP)
+    rule <k> #badJumpDest? [ JUMP (LABEL) ] => . ... </k> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ JUMPI(LABEL) ] => . ... </k> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ JUMPI(_)     ] => . ... </k> <wordStack> 0 : WS </wordStack>
 
-    rule <k> #badJumpDest? [ JUMP  ] => #exception ... </k> <wordStack> DEST :     WS </wordStack> <program> ... DEST |-> OP ... </program> requires OP =/=K JUMPDEST
-    rule <k> #badJumpDest? [ JUMPI ] => #exception ... </k> <wordStack> DEST : W : WS </wordStack> <program> ... DEST |-> OP ... </program> requires OP =/=K JUMPDEST andBool W =/=K 0
-
-    rule <k> #badJumpDest? [ JUMP  ] => #exception ... </k> <wordStack> DEST :     WS </wordStack> <program> PGM </program> requires notBool (DEST in_keys(PGM))
-    rule <k> #badJumpDest? [ JUMPI ] => #exception ... </k> <wordStack> DEST : W : WS </wordStack> <program> PGM </program> requires (notBool (DEST in_keys(PGM))) andBool W =/=K 0
+    rule <k> #badJumpDest? [ JUMP (LABEL) ] => #exception ... </k> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ JUMPI(LABEL) ] => #exception ... </k> <jumpTable> JUMPS </jumpTable> <wordStack> W : WS </wordStack> requires notBool LABEL in_keys(JUMPS) andBool W =/=K 0
 ```
 
 -   `#static?` determines if the opcode should throw an exception due to the static flag.
@@ -555,7 +554,8 @@ The `CallOp` opcodes all interperet their second argument as an address.
 
 ### Program Counter
 
-All operators except for `PUSH` and `JUMP*` increment the program counter by 1.
+All operators except for `PUSH`, `JUMPDEST`, and `JUMP*` increment the program counter by 1.
+`JUMPDEST` increments the program counter by 3.
 The arguments to `PUSH` must be skipped over (as they are inline), and the opcode `JUMP` already affects the program counter in the correct way.
 
 -   `#pc` calculates the next program counter of the given operator.
@@ -563,13 +563,20 @@ The arguments to `PUSH` must be skipped over (as they are inline), and the opcod
 ```{.k .uiuck .rvk}
     syntax InternalOp ::= "#pc" "[" OpCode "]"
  // ------------------------------------------
-    rule <k> #pc [ OP         ] => . ... </k> <pc> PCOUNT => PCOUNT +Int 1          </pc> requires notBool (isPushOp(OP) orBool isJumpOp(OP))
-    rule <k> #pc [ PUSH(N, _) ] => . ... </k> <pc> PCOUNT => PCOUNT +Int (1 +Int N) </pc>
-    rule <k> #pc [ OP         ] => . ... </k> requires isJumpOp(OP)
+    rule <k> #pc [ OP          ] => . ... </k> <pc> PCOUNT => PCOUNT +Int 1          </pc> requires notBool (isPushOp(OP) orBool isJumpAddrOp(OP))
+    rule <k> #pc [ PUSH(N, _)  ] => . ... </k> <pc> PCOUNT => PCOUNT +Int (1 +Int N) </pc>
+    rule <k> #pc [ OP          ] => . ... </k> requires isJumpOp(OP)
+    rule <k> #pc [ JUMPDEST(_) ] => . ... </k> <pc> PCOUNT => PCOUNT +Int 3          </pc>
 
     syntax Bool ::= isJumpOp ( OpCode ) [function]
  // ----------------------------------------------
-    rule isJumpOp(OP) => OP ==K JUMP orBool OP ==K JUMPI
+    rule isJumpOp(JUMP(_)) => true
+    rule isJumpOp(JUMPI(_)) => true
+    rule isJumpOp(...) => false [owise]
+    syntax Bool ::= isJumpAddrOp ( OpCode ) [function]
+    rule isJumpAddrOp(JUMPDEST(_)) => true
+    rule isJumpAddrOp(OP) => true requires isJumpOp(OP)
+    rule isJumpAddrOp(...) => false [owise]
 ```
 
 ### Substate Log
@@ -698,8 +705,9 @@ Note that `_in_` ignores the arguments to operators that are parametric.
     rule #asMapOpCodes( OPS::OpCodes ) => #asMapOpCodes(0, OPS, .Map)
 
     rule #asMapOpCodes( N , .OpCodes         , MAP ) => MAP
-    rule #asMapOpCodes( N , OP:OpCode  ; OCS , MAP ) => #asMapOpCodes(N +Int 1, OCS, MAP (N |-> OP)) requires notBool isPushOp(OP)
+    rule #asMapOpCodes( N , OP:OpCode  ; OCS , MAP ) => #asMapOpCodes(N +Int 1, OCS, MAP (N |-> OP)) requires notBool isPushOp(OP) andBool notBool isJumpAddrOp(OP)
     rule #asMapOpCodes( N , PUSH(M, W) ; OCS , MAP ) => #asMapOpCodes(N +Int 1 +Int M, OCS, MAP (N |-> PUSH(M, W)))
+    rule #asMapOpCodes( N , OP:OpCode  ; OCS , MAP ) => #asMapOpCodes(N +Int 3, OCS, MAP (N |-> OP)) requires isJumpAddrOp(OP)
 
     syntax OpCodes ::= #asOpCodes ( Map )                 [function]
                      | #asOpCodes ( Int , Map , OpCodes ) [function, klabel(#asOpCodesAux)]
@@ -707,8 +715,13 @@ Note that `_in_` ignores the arguments to operators that are parametric.
     rule #asOpCodes(M) => #asOpCodes(0, M, .OpCodes)
 
     rule #asOpCodes(N, .Map,               OPS) => OPS
-    rule #asOpCodes(N, N |-> OP         M, OPS) => #asOpCodes(N +Int 1,        M, OP         ; OPS) requires notBool isPushOp(OP)
+    rule #asOpCodes(N, N |-> OP         M, OPS) => #asOpCodes(N +Int 1,        M, OP         ; OPS) requires notBool isPushOp(OP) andBool notBool isJumpAddrOp(OP)
     rule #asOpCodes(N, N |-> PUSH(S, W) M, OPS) => #asOpCodes(N +Int 1 +Int S, M, PUSH(S, W) ; OPS)
+    rule #asOpCodes(N, N |-> OP:OpCode  M, OPS) => #asOpCodes(N +Int 3,        M, OP         ; OPS) requires isJumpAddrOp(OP)
+
+    syntax Int ::= #sizeOpCodeMap ( Map ) [function]
+ // ------------------------------------------------
+    rule #sizeOpCodeMap(M) => #sizeWordStack(#asmOpCodes(#asOpCodes(M)))
 ```
 
 EVM OpCodes
@@ -983,18 +996,18 @@ These operators make queries about the current execution state.
 The `JUMP*` family of operations affect the current program counter.
 
 ```{.k .uiuck .rvk}
-    syntax NullStackOp ::= "JUMPDEST"
+    syntax NullStackOp ::= JUMPDEST ( Int )
  // ---------------------------------
-    rule <k> JUMPDEST => . ... </k>
+    rule <k> JUMPDEST(_) => . ... </k>
 
-    syntax UnStackOp ::= "JUMP"
+    syntax NullStackOp ::= JUMP ( Int )
  // ---------------------------
-    rule <k> JUMP DEST => . ... </k> <pc> _ => DEST </pc>
+    rule <k> JUMP(LABEL) => . ... </k> <jumpTable> ... LABEL |-> DEST </jumpTable> <pc> _ => DEST </pc>
 
-    syntax BinStackOp ::= "JUMPI"
+    syntax UnStackOp ::= JUMPI ( Int )
  // -----------------------------
-    rule <k> JUMPI DEST I => . ... </k> <pc> _      => DEST          </pc> requires I =/=K 0
-    rule <k> JUMPI DEST 0 => . ... </k> <pc> PCOUNT => PCOUNT +Int 1 </pc>
+    rule <k> JUMPI(LABEL) I => . ... </k> <pc> _      => DEST          </pc> <jumpTable> ... LABEL |-> DEST </jumpTable> requires I =/=K 0
+    rule <k> JUMPI(LABEL) 0 => . ... </k> <pc> PCOUNT => PCOUNT +Int 3 </pc>
 ```
 
 ### `STOP`, `REVERT`, and `RETURN`
@@ -1267,6 +1280,7 @@ The various `CALL*` (and other inter-contract control flow) operations will be d
          <program> _ => CODE </program>
          <programBytes> _ => BYTES </programBytes>
          <static> OLDSTATIC:Bool => OLDSTATIC orBool STATIC </static>
+         <jumpTable> _ => #computeJumpTable(CODE) </jumpTable>
 
     syntax KItem ::= "#initVM"
  // --------------------------
@@ -1425,6 +1439,7 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
          <gas> OLDGAVAIL => GAVAIL </gas>
          <program> _ => #asMapOpCodes(#dasmOpCodes(INITCODE, SCHED)) </program>
          <programBytes> _ => INITCODE </programBytes>
+         <jumpTable> _ => #computeJumpTable(#asMapOpCodes(#dasmOpCodes(INITCODE, SCHED))) </jumpTable>
          <caller> _ => ACCTFROM </caller>
          <callLog> ... (.Set => #ifSet EXECMODE ==K VMTESTS #then SetItem({ 0 | OLDGAVAIL +Int GAVAIL | VALUE | INITCODE }) #else .Set #fi) </callLog>
          <callDepth> CD => CD +Int 1 </callDepth>
@@ -1723,9 +1738,9 @@ In the yellowpaper, each opcode is defined to consume zero gas unless specified 
 Grumble grumble, K sucks at `owise`.
 
 ```{.k .uiuck .rvk}
-    rule #memory(JUMP _,    MU) => MU
-    rule #memory(JUMPI _ _, MU) => MU
-    rule #memory(JUMPDEST,  MU) => MU
+    rule #memory(JUMP(_),      MU) => MU
+    rule #memory(JUMPI(_) _,   MU) => MU
+    rule #memory(JUMPDEST(_),  MU) => MU
 
     rule #memory(SSTORE _ _,   MU) => MU
     rule #memory(SLOAD _,      MU) => MU
@@ -1851,8 +1866,8 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
 
     rule <k> #gasExec(SCHED, SHA3 _ WIDTH) => Gsha3 < SCHED > +Int (Gsha3word < SCHED > *Int (WIDTH up/Int 32)) ... </k>
 
-    rule <k> #gasExec(SCHED, JUMPDEST) => Gjumpdest < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, SLOAD _)  => Gsload    < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, JUMPDEST(_)) => Gjumpdest < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, SLOAD _)     => Gsload    < SCHED > ... </k>
 
     // Wzero
     rule <k> #gasExec(SCHED, STOP)       => Gzero < SCHED > ... </k>
@@ -1911,10 +1926,10 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     // Wmid
     rule <k> #gasExec(SCHED, ADDMOD _ _ _) => Gmid < SCHED > ... </k>
     rule <k> #gasExec(SCHED, MULMOD _ _ _) => Gmid < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, JUMP _) => Gmid < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, JUMP(_)) => Gmid < SCHED > ... </k>
 
     // Whigh
-    rule <k> #gasExec(SCHED, JUMPI _ _) => Ghigh < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, JUMPI(_) _) => Ghigh < SCHED > ... </k>
 
     rule <k> #gasExec(SCHED, EXTCODESIZE _) => Gextcodesize < SCHED > ... </k>
     rule <k> #gasExec(SCHED, BALANCE _)     => Gbalance     < SCHED > ... </k>
@@ -2345,6 +2360,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
 -   `#dasmOpCodes` interperets `WordStack` as an `OpCodes`.
 -   `#dasmPUSH` handles the case of a `PushOp`.
 -   `#dasmOpCode` interperets a `Int` as an `OpCode`.
+-   `#computeJumpTable` fills in the jump table from a `Map` of `OpCode`.
 
 ```{.k .uiuck .rvk}
     syntax OpCodes ::= #dasmOpCodes ( WordStack , Schedule )           [function]
@@ -2354,13 +2370,16 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmOpCodes( WS, SCHED ) => #revOpCodes(#dasmOpCodes(.OpCodes, WS, SCHED), .OpCodes)
 
     rule #dasmOpCodes( OPS, .WordStack, _ ) => OPS
-    rule #dasmOpCodes( OPS, W : WS, SCHED ) => #dasmOpCodes(#dasmOpCode(W, SCHED) ; OPS, WS, SCHED) requires W >=Int 0   andBool W <=Int 95
+    rule #dasmOpCodes( OPS, W : WS, SCHED ) => #dasmOpCodes(#dasmOpCode(W, SCHED) ; OPS, WS, SCHED) requires W >=Int 0   andBool W <=Int 95 andBool W =/=Int 86 andBool W =/=Int 87 andBool W =/=Int 91
     rule #dasmOpCodes( OPS, W : WS, SCHED ) => #dasmOpCodes(#dasmOpCode(W, SCHED) ; OPS, WS, SCHED) requires W >=Int 165 andBool W <=Int 255
     rule #dasmOpCodes( OPS, W : WS, SCHED ) => #dasmOpCodes(DUP(W -Int 127)       ; OPS, WS, SCHED) requires W >=Int 128 andBool W <=Int 143
     rule #dasmOpCodes( OPS, W : WS, SCHED ) => #dasmOpCodes(SWAP(W -Int 143)      ; OPS, WS, SCHED) requires W >=Int 144 andBool W <=Int 159
     rule #dasmOpCodes( OPS, W : WS, SCHED ) => #dasmOpCodes(LOG(W -Int 160)       ; OPS, WS, SCHED) requires W >=Int 160 andBool W <=Int 164
 
     rule #dasmOpCodes( OPS, W : WS, SCHED ) => #dasmOpCodes(PUSH(W -Int 95, #asWord(#take(W -Int 95, WS))) ; OPS, #drop(W -Int 95, WS), SCHED) requires W >=Int 96  andBool W <=Int 127
+    rule #dasmOpCodes( OPS, 86 : W1 : W2 : WS, SCHED ) => #dasmOpCodes(JUMP(W1 *Int 256 +Int W2) ; OPS, WS, SCHED)
+    rule #dasmOpCodes( OPS, 87 : W1 : W2 : WS, SCHED ) => #dasmOpCodes(JUMPI(W1 *Int 256 +Int W2) ; OPS, WS, SCHED)
+    rule #dasmOpCodes( OPS, 91 : W1 : W2 : WS, SCHED ) => #dasmOpCodes(JUMPDEST(W1 *Int 256 +Int W2) ; OPS, WS, SCHED)
 
     rule #revOpCodes ( OP ; OPS , OPS' ) => #revOpCodes(OPS, OP ; OPS')
     rule #revOpCodes ( .OpCodes , OPS  ) => OPS
@@ -2418,12 +2437,9 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmOpCode(  83,     _ ) => MSTORE8
     rule #dasmOpCode(  84,     _ ) => SLOAD
     rule #dasmOpCode(  85,     _ ) => SSTORE
-    rule #dasmOpCode(  86,     _ ) => JUMP
-    rule #dasmOpCode(  87,     _ ) => JUMPI
     rule #dasmOpCode(  88,     _ ) => PC
     rule #dasmOpCode(  89,     _ ) => MSIZE
     rule #dasmOpCode(  90,     _ ) => GAS
-    rule #dasmOpCode(  91,     _ ) => JUMPDEST
     rule #dasmOpCode( 240,     _ ) => CREATE
     rule #dasmOpCode( 241,     _ ) => CALL
     rule #dasmOpCode( 242,     _ ) => CALLCODE
@@ -2433,5 +2449,16 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmOpCode( 253, SCHED ) => REVERT requires hasRevert << SCHED >>
     rule #dasmOpCode( 255,     _ ) => SELFDESTRUCT
     rule #dasmOpCode(   W,     _ ) => INVALID [owise]
+
+    syntax Map ::= #computeJumpTable ( Map )       [function]
+                 | #computeJumpTable ( Map , Map , Set ) [function, klabel(#computeJumpTableAux)]
+ // ---------------------------------------------------------------------------------------------
+    rule #computeJumpTable(OPS) => #computeJumpTable(OPS, .Map, .Set)
+
+    rule #computeJumpTable(.Map, JUMPS, _) => JUMPS
+
+    rule #computeJumpTable(DEST |-> JUMPDEST(LABEL) OPS, JUMPS, LABELS) => #computeJumpTable(OPS, JUMPS [ LABEL <- DEST  ], LABELS SetItem(LABEL)) requires notBool LABEL in LABELS
+    rule #computeJumpTable(_    |-> JUMPDEST(LABEL) OPS, JUMPS, LABELS) => #computeJumpTable(OPS, JUMPS [ LABEL <- undef ], LABELS)                requires         LABEL in LABELS
+    rule #computeJumpTable(_    |-> _               OPS, JUMPS, LABELS) => #computeJumpTable(OPS, JUMPS, LABELS)                                   [owise]
 endmodule
 ```

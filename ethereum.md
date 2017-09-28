@@ -342,6 +342,7 @@ State Manipulation
          <callLog>      _ => .Set                    </callLog>
          <program>      _ => .Map                    </program>
          <programBytes> _ => .WordStack              </programBytes>
+         <jumpTable>    _ => .Map                    </jumpTable>
          <id>           _ => 0                       </id>
          <caller>       _ => 0                       </caller>
          <callData>     _ => .WordStack              </callData>
@@ -491,7 +492,11 @@ Here we load the environmental information.
     rule load "exec" : { "data" : ((DATA:String) => #parseByteStack(DATA)) }
  // ------------------------------------------------------------------------
     rule <k> load "exec" : { "data" : (DATA:WordStack) } => . ... </k> <callData> _ => DATA </callData>
-    rule <k> load "exec" : { "code" : (CODE:WordStack) } => . ... </k> <program>  _ => #asMapOpCodes(#dasmOpCodes(CODE, SCHED)) </program> <programBytes> _ => CODE </programBytes> <schedule> SCHED </schedule>
+    rule <k> load "exec" : { "code" : (CODE:WordStack) } => . ... </k>
+         <program>  _ => #asMapOpCodes(#dasmOpCodes(CODE, SCHED)) </program>
+         <programBytes> _ => CODE </programBytes>
+         <jumpTable> _ => #computeJumpTable(#asMapOpCodes(#dasmOpCodes(CODE, SCHED))) </jumpTable>
+         <schedule> SCHED </schedule>
 ```
 
 The `"network"` key allows setting the fee schedule inside the test.

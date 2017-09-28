@@ -63,20 +63,23 @@ module EVM-ANALYSIS
 
 
     rule <mode> GASANALYZE </mode>
-         <k> #next => #setMode NORMAL ~> #execTo #gasBreaks ~> #setMode GASANALYZE ... </k>
+         <k> #next => #setMode NORMAL ~> #execTo #klabel(`#gasBreaks`) ~> #setMode GASANALYZE ... </k>
          <pc> PCOUNT </pc>
          <program> ... PCOUNT |-> OP ... </program>
-      requires notBool (OP in #gasBreaks)
+      requires notBool #gasBreaks(OP)
 
     rule <mode> GASANALYZE </mode>
          <k> #next => #endSummary ~> #setPC (PCOUNT +Int 1) ~> #setGas 1000000000 ~> #beginSummary ~> #next ... </k>
          <pc> PCOUNT </pc>
          <program> ... PCOUNT |-> OP ... </program>
-      requires OP in #gasBreaks
+      requires #gasBreaks(OP)
 
-    syntax Set ::= "#gasBreaks" [function]
- // --------------------------------------
-    rule #gasBreaks => (SetItem(JUMP) SetItem(JUMPI) SetItem(JUMPDEST))
+    syntax Bool ::= #gasBreaks(OpCode) [function]
+ // ---------------------------------------------
+    rule #gasBreaks(JUMP(_)) => true
+    rule #gasBreaks(JUMPI(_)) => true
+    rule #gasBreaks(JUMPDEST(_)) => true
+    rule #gasBreaks(...) => false [owise]
 
     syntax InternalOp ::= "#setPC"  Int
                         | "#setGas" Int
