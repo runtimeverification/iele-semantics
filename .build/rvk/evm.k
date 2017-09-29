@@ -584,7 +584,7 @@ module EVM
          <refund> BAL => 0 </refund>
          <account>
            <acctID> ACCT </acctID>
-           <balance> CURRBAL => CURRBAL +Word BAL </balance>
+           <balance> CURRBAL => CURRBAL +Int BAL </balance>
            ...
          </account>
          <activeAccounts> ... ACCT |-> (EMPTY => #if BAL >Int 0 #then false #else EMPTY #fi) ... </activeAccounts>
@@ -750,14 +750,14 @@ module EVM
     rule <k> #transferFunds ACCTFROM ACCTTO VALUE => . ... </k>
          <account>
            <acctID> ACCTFROM </acctID>
-           <balance> ORIGFROM => ORIGFROM -Word VALUE </balance>
+           <balance> ORIGFROM => ORIGFROM -Int VALUE </balance>
            <nonce> NONCE </nonce>
            <code> CODE </code>
            ...
          </account>
          <account>
            <acctID> ACCTTO </acctID>
-           <balance> ORIGTO => ORIGTO +Word VALUE </balance>
+           <balance> ORIGTO => ORIGTO +Int VALUE </balance>
            ...
          </account>
          <activeAccounts> ... ACCTTO |-> (EMPTY => #if VALUE >Int 0 #then false #else EMPTY #fi) ACCTFROM |-> (_ => ORIGFROM ==Int VALUE andBool NONCE ==Int 0 andBool CODE ==K .WordStack) ... </activeAccounts>
@@ -919,7 +919,7 @@ module EVM
 
     syntax NullOp ::= "MSIZE" | "CODESIZE"
  // --------------------------------------
-    rule <k> MSIZE    REG => #load REG 32 *Word MU         ... </k> <memoryUsed> MU </memoryUsed>
+    rule <k> MSIZE    REG => #load REG 32 *Int MU         ... </k> <memoryUsed> MU </memoryUsed>
     rule <k> CODESIZE REG => #load REG #sizeWordStack(PGM) ... </k> <programBytes> PGM </programBytes>
 
     syntax TernVoidOp ::= "CODECOPY"
@@ -1154,7 +1154,7 @@ module EVM
            ...
          </account>
          <refund> R => #ifInt OLD =/=Int 0 andBool VALUE ==Int 0
-                        #then R +Word Rsstoreclear < SCHED >
+                        #then R +Int Rsstoreclear < SCHED >
                         #else R
                        #fi
          </refund>
@@ -1525,7 +1525,7 @@ module EVM
          <schedule> SCHED </schedule>
          <id> ACCT </id>
          <selfDestruct> SDS (.Set => SetItem(ACCT)) </selfDestruct>
-         <refund> RF => #ifInt ACCT in SDS #then RF #else RF +Word Rselfdestruct < SCHED > #fi </refund>
+         <refund> RF => #ifInt ACCT in SDS #then RF #else RF +Int Rselfdestruct < SCHED > #fi </refund>
          <account>
            <acctID> ACCT </acctID>
            <balance> BALFROM </balance>
@@ -1538,7 +1538,7 @@ module EVM
          <schedule> SCHED </schedule>
          <id> ACCT </id>
          <selfDestruct> SDS (.Set => SetItem(ACCT)) </selfDestruct>
-         <refund> RF => #ifInt ACCT in SDS #then RF #else RF +Word Rselfdestruct < SCHED > #fi </refund>
+         <refund> RF => #ifInt ACCT in SDS #then RF #else RF +Int Rselfdestruct < SCHED > #fi </refund>
          <account>
            <acctID> ACCT </acctID>
            <balance> BALFROM => 0 </balance>

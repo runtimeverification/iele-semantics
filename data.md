@@ -438,7 +438,7 @@ The local memory of execution is a byte-array (instead of a word-array).
  // ---------------------------------------------------------------
     rule #asWord( .WordStack )    => 0
     rule #asWord( W : .WordStack) => W
-    rule #asWord( W0 : W1 : WS )  => #asWord(((W0 *Word 256) +Word W1) : WS)
+    rule #asWord( W0 : W1 : WS )  => #asWord(((W0 *Int 256) +Int W1) : WS)
 
     syntax Int ::= #asInteger ( WordStack ) [function]
  // --------------------------------------------------
@@ -467,7 +467,7 @@ Addresses
 ```{.k .uiuck .rvk}
     syntax Int ::= #addr ( Int ) [function]
  // ---------------------------------------
-    rule #addr(W) => W %Word (2 ^Word 160)
+    rule #addr(W) => W %Int (2 ^Int 160)
 ```
 
 -   `#newAddr` computes the address of a new account given the address and nonce of the creating account.
