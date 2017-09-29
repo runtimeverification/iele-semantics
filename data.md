@@ -49,15 +49,6 @@ Primitives
 
 Primitives provide the basic conversion from K's sorts `Int` and `Bool` to EVM's words.
 
--   `chop` interperets an integers modulo $2^256$.
-
-```{.k .uiuck .rvk}
-    syntax Int ::= chop ( Int ) [function]
- // --------------------------------------
-    rule chop ( I:Int ) => I %Int pow256 requires I <Int 0  orBool I >=Int pow256
-    rule chop ( I:Int ) => I             requires I >=Int 0 andBool I <Int pow256
-```
-
 -   `bool2Word` interperets a `Bool` as a `Int`.
 -   `word2Bool` interperets a `Int` as a `Bool`.
 
@@ -95,20 +86,6 @@ If we don't place the `Bool` condition as a side-condition for UIUC-K, it will a
 ```{.k .rvk}
     rule #ifInt A #then B #else C #fi => #if A #then B #else C #fi [macro]
     rule #ifSet A #then B #else C #fi => #if A #then B #else C #fi [macro]
-```
-
--   `sgn` gives the twos-complement interperetation of the sign of a word.
--   `abs` gives the twos-complement interperetation of the magnitude of a word.
-
-```{.k .uiuck .rvk}
-    syntax Int ::= sgn ( Int ) [function]
-                 | abs ( Int ) [function]
- // -------------------------------------
-    rule sgn(I) => -1 requires I >=Int pow255
-    rule sgn(I) => 1  requires I <Int pow255
-
-    rule abs(I) => 0 -Word I requires sgn(I) ==K -1
-    rule abs(I) => I         requires sgn(I) ==K 1
 ```
 
 ### Empty Account
@@ -162,34 +139,6 @@ You could alternatively calculate `I1 %Int I2`, then add one to the normal integ
     rule log256Int(N) => log2Int(N) /Int 8
 ```
 
-The corresponding `<op>Word` operations automatically perform the correct modulus for EVM words.
-
-```{.k .uiuck .rvk}
-    syntax Int ::= Int "+Word" Int [function]
-                 | Int "*Word" Int [function]
-                 | Int "-Word" Int [function]
-                 | Int "/Word" Int [function]
-                 | Int "%Word" Int [function]
- // -----------------------------------------
-    rule W0 +Word W1 => chop( W0 +Int W1 )
-    rule W0 -Word W1 => chop( W0 -Int W1 ) requires W0 >=Int W1
-    rule W0 -Word W1 => chop( (W0 +Int pow256) -Int W1 ) requires W0 <Int W1
-    rule W0 *Word W1 => chop( W0 *Int W1 )
-    rule W0 /Word 0  => 0
-    rule W0 /Word W1 => chop( W0 /Int W1 ) requires W1 =/=K 0
-    rule W0 %Word 0  => 0
-    rule W0 %Word W1 => chop( W0 %Int W1 ) requires W1 =/=K 0
-```
-
-Care is needed for `^Word` to avoid big exponentiation.
-
-```{.k .uiuck .rvk}
-    syntax Int ::= Int "^Word" Int [function]
- // -----------------------------------------
-    rule W0 ^Word W1 => (W0 ^Word (W1 /Int 2)) ^Word 2  requires W1 >=Int pow16 andBool W1 %Int 2 ==Int 0
-    rule W0 ^Word W1 => (W0 ^Word (W1 -Int 1)) *Word W0 requires W1 >=Int pow16 andBool W1 %Int 2 ==Int 1
-```
-
 RV-K has a more efficient power-modulus operator.
 
 ```{.k .uiuck .rvk}
@@ -205,22 +154,6 @@ RV-K has a more efficient power-modulus operator.
 ```{.k .rvk}
     rule powmod(W0, W1, W2) => W0 ^%Int W1 W2 requires W2 =/=Int 0
     rule powmod(W0, W1, 0) => 0
-```
-
-`/sWord` and `%sWord` give the signed interperetations of `/Word` and `%Word`.
-
-```{.k .uiuck .rvk}
-    syntax Int ::= Int "/sWord" Int [function]
-                 | Int "%sWord" Int [function]
- // ------------------------------------------
-    rule W0 /sWord W1 => #sgnInterp(sgn(W0) *Int sgn(W1) , abs(W0) /Word abs(W1))
-    rule W0 %sWord W1 => #sgnInterp(sgn(W0)              , abs(W0) %Word abs(W1))
-
-    syntax Int ::= #sgnInterp ( Int , Int ) [function]
- // --------------------------------------------------
-    rule #sgnInterp( 0  , W1 ) => 0
-    rule #sgnInterp( W0 , W1 ) => W1         requires W0 >Int 0
-    rule #sgnInterp( W0 , W1 ) => 0 -Word W1 requires W0 <Int 0
 ```
 
 Comparison Operators
@@ -247,46 +180,18 @@ The `<op>Word` comparison operators automatically interperet the `Bool` as a `Wo
     rule W0 ==Word W1 => 0 requires W0 =/=Int W1
 ```
 
--   `s<Word` implements a less-than for `Word` (with signed interperetation).
-
-```{.k .uiuck .rvk}
-    syntax Int ::= Int "s<Word" Int [function]
- // ------------------------------------------
-    rule W0 s<Word W1 => W0 <Word W1           requires sgn(W0) ==K 1  andBool sgn(W1) ==K 1
-    rule W0 s<Word W1 => bool2Word(false)      requires sgn(W0) ==K 1  andBool sgn(W1) ==K -1
-    rule W0 s<Word W1 => bool2Word(true)       requires sgn(W0) ==K -1 andBool sgn(W1) ==K 1
-    rule W0 s<Word W1 => abs(W1) <Word abs(W0) requires sgn(W0) ==K -1 andBool sgn(W1) ==K -1
-```
-
 Bitwise Operators
 -----------------
 
-Bitwise logical operators are lifted from the integer versions.
-
-```{.k .uiuck .rvk}
-    syntax Int ::= "~Word" Int       [function]
-                 | Int "|Word"   Int [function]
-                 | Int "&Word"   Int [function]
-                 | Int "xorWord" Int [function]
- // -------------------------------------------
-    rule ~Word W       => chop( W xorInt (pow256 -Int 1) )
-    rule W0 |Word   W1 => chop( W0 |Int W1 )
-    rule W0 &Word   W1 => chop( W0 &Int W1 )
-    rule W0 xorWord W1 => chop( W0 xorInt W1 )
-```
-
--   `bit` gets bit $N$ (0 being MSB).
--   `byte` gets byte $N$ (0 being the MSB).
+-   `bit` gets bit $N$ (0 being LSB).
+-   `byte` gets byte $N$ (0 being the LSB).
 
 ```{.k .uiuck .rvk}
     syntax Int ::= bit  ( Int , Int ) [function]
                  | byte ( Int , Int ) [function]
  // --------------------------------------------
-    rule bit(N, _)  => 0 requires N <Int 0 orBool N >=Int 256
-    rule byte(N, _) => 0 requires N <Int 0 orBool N >=Int 32
-
-    rule bit(N, W)  => (W >>Int (255 -Int N)) %Int 2                     requires N >=Int 0 andBool N <Int 256
-    rule byte(N, W) => (W >>Int (256 -Int (8 *Int (N +Int 1)))) %Int 256 requires N >=Int 0 andBool N <Int 32
+    rule bit(N, W)  => (W >>Int (N)) %Int 2
+    rule byte(N, W) => (W >>Int (N *Int 8)) %Int 256
 ```
 
 -   `#nBits` shifts in $N$ ones from the right.
@@ -308,9 +213,8 @@ Bitwise logical operators are lifted from the integer versions.
 ```{.k .uiuck .rvk}
     syntax Int ::= signextend( Int , Int ) [function]
  // -------------------------------------------------
-    rule signextend(N, W) => W requires N >=Int 32 orBool N <Int 0
-    rule signextend(N, W) => chop( (#nBytes(31 -Int N) <<Byte (N +Int 1)) |Int W ) requires N <Int 32 andBool N >=Int 0 andBool         word2Bool(bit(256 -Int (8 *Int (N +Int 1)), W))
-    rule signextend(N, W) => chop( #nBytes(N +Int 1)                      &Int W ) requires N <Int 32 andBool N >=Int 0 andBool notBool word2Bool(bit(256 -Int (8 *Int (N +Int 1)), W))
+    rule signextend(N, W) => (#nBytes(N) <<Byte (N +Int 1)) |Int W  requires         word2Bool(bit((8 *Int (N +Int 1)), W))
+    rule signextend(N, W) => #nBytes(N +Int 1) &Int W               requires notBool word2Bool(bit((8 *Int (N +Int 1)), W))
 ```
 
 -   `keccak` serves as a wrapper around the `Keccak256` in `KRYPTO`.
