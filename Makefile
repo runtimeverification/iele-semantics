@@ -1,6 +1,4 @@
-ifndef K_VERSION
-$(error K_VERSION not set. Please use the Build script, instead of running make directly)
-endif
+K_VERSION=rvk
 
 # Common to all versions of K
 # ===========================
@@ -66,8 +64,8 @@ split-vm-tests: \
 split-blockchain-tests: \
 				  $(patsubst tests/ethereum-tests/%.json,tests/%/make.timestamp, $(wildcard tests/ethereum-tests/BlockchainTests/GeneralStateTests/*/*.json)) \
 
-blockchain_tests=$(wildcard tests/BlockchainTests/*/*/*/*.json)
 vm_tests=$(wildcard tests/VMTests/*/*/*.json)
+blockchain_tests=$(wildcard tests/BlockchainTests/*/*/*/*.json)
 all_tests=${vm_tests} ${blockchain_tests}
 skipped_tests=$(wildcard tests/VMTests/vmPerformance/*/*.json) \
    $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Constantinople.json) \
