@@ -306,7 +306,7 @@ Here all `OpCode`s are subsorted into `KItem` (allowing sequentialization), and 
 ```{.k .uiuck .rvk}
     syntax KItem  ::= OpCode
     syntax OpCode ::= NullStackOp | UnStackOp | BinStackOp | TernStackOp | QuadStackOp
-                    | InvalidOp | StackOp | InternalOp | CallOp | CallSixOp | PushOp
+                    | InvalidOp | StackOp | InternalOp | CallOp | CallSixOp | LiOp
  // --------------------------------------------------------------------------------
 ```
 
@@ -408,7 +408,7 @@ Some checks if an opcode will throw an exception are relatively quick and done u
 
     syntax Int ::= #stackNeeded ( OpCode ) [function]
  // -------------------------------------------------
-    rule #stackNeeded(PUSH(_, _))      => 0
+    rule #stackNeeded(LI(_, _))      => 0
     rule #stackNeeded(NOP:NullStackOp) => 0
     rule #stackNeeded(UOP:UnStackOp)   => 1
     rule #stackNeeded(BOP:BinStackOp)  => 2 requires notBool isLogOp(BOP)
@@ -434,7 +434,7 @@ Some checks if an opcode will throw an exception are relatively quick and done u
     rule #stackAdded(RETURN)         => 0
     rule #stackAdded(REVERT)         => 0
     rule #stackAdded(SELFDESTRUCT)   => 0
-    rule #stackAdded(PUSH(_,_))      => 1
+    rule #stackAdded(LI(_,_))      => 1
     rule #stackAdded(LOG(_))         => 0
     rule #stackAdded(OP)             => 1 [owise]
 
@@ -483,7 +483,7 @@ Some checks if an opcode will throw an exception are relatively quick and done u
 ```{.k .uiuck .rvk}
     syntax InternalOp ::= "#exec" "[" OpCode "]"
  // --------------------------------------------
-    rule <k> #exec [ OP ] => #gas [ OP ] ~> OP ... </k> requires isInternalOp(OP) orBool isNullStackOp(OP) orBool isPushOp(OP)
+    rule <k> #exec [ OP ] => #gas [ OP ] ~> OP ... </k> requires isInternalOp(OP) orBool isNullStackOp(OP) orBool isLiOp(OP)
 ```
 
 Here we load the correct number of arguments from the `wordStack` based on the sort of the opcode.
@@ -549,17 +549,17 @@ The `CallOp` opcodes all interperet their second argument as an address.
 
 ### Program Counter
 
-All operators except for `PUSH`, `JUMPDEST`, and `JUMP*` increment the program counter by 1.
+All operators except for `LI`, `JUMPDEST`, and `JUMP*` increment the program counter by 1.
 `JUMPDEST` increments the program counter by 3.
-The arguments to `PUSH` must be skipped over (as they are inline), and the opcode `JUMP` already affects the program counter in the correct way.
+The arguments to `LI` must be skipped over (as they are inline), and the opcode `JUMP` already affects the program counter in the correct way.
 
 -   `#pc` calculates the next program counter of the given operator.
 
 ```{.k .uiuck .rvk}
     syntax InternalOp ::= "#pc" "[" OpCode "]"
  // ------------------------------------------
-    rule <k> #pc [ OP          ] => . ... </k> <pc> PCOUNT => PCOUNT +Int 1          </pc> requires notBool (isPushOp(OP) orBool isJumpAddrOp(OP))
-    rule <k> #pc [ PUSH(N, _)  ] => . ... </k> <pc> PCOUNT => PCOUNT +Int (1 +Int N) </pc>
+    rule <k> #pc [ OP          ] => . ... </k> <pc> PCOUNT => PCOUNT +Int 1          </pc> requires notBool (isLiOp(OP) orBool isJumpAddrOp(OP))
+    rule <k> #pc [ LI(N, _)  ] => . ... </k> <pc> PCOUNT => PCOUNT +Int (1 +Int N) </pc>
     rule <k> #pc [ OP          ] => . ... </k> requires isJumpOp(OP)
     rule <k> #pc [ JUMPDEST(_) ] => . ... </k> <pc> PCOUNT => PCOUNT +Int 3          </pc>
 
@@ -700,8 +700,8 @@ Note that `_in_` ignores the arguments to operators that are parametric.
     rule #asMapOpCodes( OPS::OpCodes ) => #asMapOpCodes(0, OPS, .Map)
 
     rule #asMapOpCodes( N , .OpCodes         , MAP ) => MAP
-    rule #asMapOpCodes( N , OP:OpCode  ; OCS , MAP ) => #asMapOpCodes(N +Int 1, OCS, MAP (N |-> OP)) requires notBool isPushOp(OP) andBool notBool isJumpAddrOp(OP)
-    rule #asMapOpCodes( N , PUSH(M, W) ; OCS , MAP ) => #asMapOpCodes(N +Int 1 +Int M, OCS, MAP (N |-> PUSH(M, W)))
+    rule #asMapOpCodes( N , OP:OpCode  ; OCS , MAP ) => #asMapOpCodes(N +Int 1, OCS, MAP (N |-> OP)) requires notBool isLiOp(OP) andBool notBool isJumpAddrOp(OP)
+    rule #asMapOpCodes( N , LI(M, W) ; OCS , MAP ) => #asMapOpCodes(N +Int 1 +Int M, OCS, MAP (N |-> LI(M, W)))
     rule #asMapOpCodes( N , OP:OpCode  ; OCS , MAP ) => #asMapOpCodes(N +Int 3, OCS, MAP (N |-> OP)) requires isJumpAddrOp(OP)
 
     syntax OpCodes ::= #asOpCodes ( Map )                 [function]
@@ -710,8 +710,8 @@ Note that `_in_` ignores the arguments to operators that are parametric.
     rule #asOpCodes(M) => #asOpCodes(0, M, .OpCodes)
 
     rule #asOpCodes(N, .Map,               OPS) => OPS
-    rule #asOpCodes(N, N |-> OP         M, OPS) => #asOpCodes(N +Int 1,        M, OP         ; OPS) requires notBool isPushOp(OP) andBool notBool isJumpAddrOp(OP)
-    rule #asOpCodes(N, N |-> PUSH(S, W) M, OPS) => #asOpCodes(N +Int 1 +Int S, M, PUSH(S, W) ; OPS)
+    rule #asOpCodes(N, N |-> OP         M, OPS) => #asOpCodes(N +Int 1,        M, OP         ; OPS) requires notBool isLiOp(OP) andBool notBool isJumpAddrOp(OP)
+    rule #asOpCodes(N, N |-> LI(S, W) M, OPS) => #asOpCodes(N +Int 1 +Int S, M, LI(S, W) ; OPS)
     rule #asOpCodes(N, N |-> OP:OpCode  M, OPS) => #asOpCodes(N +Int 3,        M, OP         ; OPS) requires isJumpAddrOp(OP)
 
     syntax Int ::= #sizeOpCodeMap ( Map ) [function]
@@ -838,9 +838,9 @@ We use `INVALID` both for marking the designated invalid operator and for garbag
 Some operators don't calculate anything, they just push the stack around a bit.
 
 ```{.k .uiuck .rvk}
-    syntax PushOp ::= PUSH ( Int , Int )
+    syntax LiOp ::= LI ( Int , Int )
  // ------------------------------------
-    rule <k> PUSH(_, W) => W ~> #push ... </k>
+    rule <k> LI(_, W) => W ~> #push ... </k>
 ```
 
 ### Local Memory
@@ -1756,7 +1756,7 @@ Grumble grumble, K sucks at `owise`.
     rule #memory(SGT _ _,        MU) => MU
     rule #memory(EQ _ _,         MU) => MU
 
-    rule #memory(PUSH(_, _), MU) => MU
+    rule #memory(LI(_, _), MU) => MU
 
     rule #memory(STOP,           MU) => MU
     rule #memory(ADDRESS,        MU) => MU
@@ -1893,7 +1893,7 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     rule <k> #gasExec(SCHED, MLOAD _)        => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, MSTORE _ _)     => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, MSTORE8 _ _)    => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, PUSH(_, _))     => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, LI(_, _))     => Gverylow < SCHED > ... </k>
 
     // Wlow
     rule <k> #gasExec(SCHED, MUL _ _)        => Glow < SCHED > ... </k>
@@ -2338,7 +2338,7 @@ Disassembler
 After interpreting the strings representing programs as a `WordStack`, it should be changed into an `OpCodes` for use by the EVM semantics.
 
 -   `#dasmOpCodes` interperets `WordStack` as an `OpCodes`.
--   `#dasmPUSH` handles the case of a `PushOp`.
+-   `#dasmLI` handles the case of a `LiOp`.
 -   `#dasmOpCode` interperets a `Int` as an `OpCode`.
 -   `#computeJumpTable` fills in the jump table from a `Map` of `OpCode`.
 
@@ -2354,7 +2354,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmOpCodes( OPS, W : WS, SCHED ) => #dasmOpCodes(#dasmOpCode(W, SCHED) ; OPS, WS, SCHED) requires W >=Int 165 andBool W <=Int 255
     rule #dasmOpCodes( OPS, W : WS, SCHED ) => #dasmOpCodes(LOG(W -Int 160)       ; OPS, WS, SCHED) requires W >=Int 160 andBool W <=Int 164
 
-    rule #dasmOpCodes( OPS, W : WS, SCHED ) => #dasmOpCodes(PUSH(W -Int 95, #asWord(#take(W -Int 95, WS))) ; OPS, #drop(W -Int 95, WS), SCHED) requires W >=Int 96  andBool W <=Int 127
+    rule #dasmOpCodes( OPS, W : WS, SCHED ) => #dasmOpCodes(LI(W -Int 95, #asWord(#take(W -Int 95, WS))) ; OPS, #drop(W -Int 95, WS), SCHED) requires W >=Int 96  andBool W <=Int 127
     rule #dasmOpCodes( OPS, 86 : W1 : W2 : WS, SCHED ) => #dasmOpCodes(JUMP(W1 *Int 256 +Int W2) ; OPS, WS, SCHED)
     rule #dasmOpCodes( OPS, 87 : W1 : W2 : WS, SCHED ) => #dasmOpCodes(JUMPI(W1 *Int 256 +Int W2) ; OPS, WS, SCHED)
     rule #dasmOpCodes( OPS, 91 : W1 : W2 : WS, SCHED ) => #dasmOpCodes(JUMPDEST(W1 *Int 256 +Int W2) ; OPS, WS, SCHED)
