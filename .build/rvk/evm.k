@@ -427,8 +427,6 @@ module EVM
     rule #stackNeeded(BOP:BinStackOp)  => 2 requires notBool isLogOp(BOP)
     rule #stackNeeded(TOP:TernStackOp) => 3
     rule #stackNeeded(QOP:QuadStackOp) => 4
-    rule #stackNeeded(DUP(N))          => N
-    rule #stackNeeded(SWAP(N))         => N +Int 1
     rule #stackNeeded(LOG(N))          => N +Int 2
     rule #stackNeeded(CSOP:CallSixOp)  => 6
     rule #stackNeeded(COP:CallOp)      => 7 requires notBool isCallSixOp(COP)
@@ -439,7 +437,6 @@ module EVM
     rule #stackAdded(RETURNDATACOPY) => 0
     rule #stackAdded(CODECOPY)       => 0
     rule #stackAdded(EXTCODECOPY)    => 0
-    rule #stackAdded(POP)            => 0
     rule #stackAdded(MSTORE)         => 0
     rule #stackAdded(MSTORE8)        => 0
     rule #stackAdded(SSTORE)         => 0
@@ -452,8 +449,6 @@ module EVM
     rule #stackAdded(SELFDESTRUCT)   => 0
     rule #stackAdded(PUSH(_,_))      => 1
     rule #stackAdded(LOG(_))         => 0
-    rule #stackAdded(SWAP(N))        => N
-    rule #stackAdded(DUP(N))         => N +Int 1
     rule #stackAdded(OP)             => 1 [owise]
 
     syntax Int ::= #stackDelta ( OpCode ) [function]
@@ -869,15 +864,6 @@ module EVM
 
 // Some operators don't calculate anything, they just push the stack around a bit.
 
-
-    syntax UnStackOp ::= "POP"
- // --------------------------
-    rule <k> POP W => . ... </k>
-
-    syntax StackOp ::= DUP ( Int ) | SWAP ( Int )
- // ---------------------------------------------
-    rule <k> DUP(N)  WS:WordStack => #setStack ((WS [ N -Int 1 ]) : WS)                      ... </k>
-    rule <k> SWAP(N) (W0 : WS)    => #setStack ((WS [ N -Int 1 ]) : (WS [ N -Int 1 := W0 ])) ... </k>
 
     syntax PushOp ::= PUSH ( Int , Int )
  // ------------------------------------
@@ -1816,10 +1802,7 @@ module EVM
     rule #memory(SGT _ _,        MU) => MU
     rule #memory(EQ _ _,         MU) => MU
 
-    rule #memory(POP _,      MU) => MU
     rule #memory(PUSH(_, _), MU) => MU
-    rule #memory(DUP(_) _,   MU) => MU
-    rule #memory(SWAP(_) _,  MU) => MU
 
     rule #memory(STOP,           MU) => MU
     rule #memory(ADDRESS,        MU) => MU
@@ -1936,7 +1919,6 @@ module EVM
     rule <k> #gasExec(SCHED, NUMBER)         => Gbase < SCHED > ... </k>
     rule <k> #gasExec(SCHED, DIFFICULTY)     => Gbase < SCHED > ... </k>
     rule <k> #gasExec(SCHED, GASLIMIT)       => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, POP _)          => Gbase < SCHED > ... </k>
     rule <k> #gasExec(SCHED, PC)             => Gbase < SCHED > ... </k>
     rule <k> #gasExec(SCHED, MSIZE)          => Gbase < SCHED > ... </k>
     rule <k> #gasExec(SCHED, GAS)            => Gbase < SCHED > ... </k>
@@ -1960,8 +1942,6 @@ module EVM
     rule <k> #gasExec(SCHED, MSTORE _ _)     => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, MSTORE8 _ _)    => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, PUSH(_, _))     => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, DUP(_) _)       => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, SWAP(_) _)      => Gverylow < SCHED > ... </k>
 
     // Wlow
     rule <k> #gasExec(SCHED, MUL _ _)        => Glow < SCHED > ... </k>
@@ -2314,8 +2294,6 @@ module EVM
     rule #dasmOpCodes( OPS, .WordStack, _ ) => OPS
     rule #dasmOpCodes( OPS, W : WS, SCHED ) => #dasmOpCodes(#dasmOpCode(W, SCHED) ; OPS, WS, SCHED) requires W >=Int 0   andBool W <=Int 95 andBool W =/=Int 86 andBool W =/=Int 87 andBool W =/=Int 91
     rule #dasmOpCodes( OPS, W : WS, SCHED ) => #dasmOpCodes(#dasmOpCode(W, SCHED) ; OPS, WS, SCHED) requires W >=Int 165 andBool W <=Int 255
-    rule #dasmOpCodes( OPS, W : WS, SCHED ) => #dasmOpCodes(DUP(W -Int 127)       ; OPS, WS, SCHED) requires W >=Int 128 andBool W <=Int 143
-    rule #dasmOpCodes( OPS, W : WS, SCHED ) => #dasmOpCodes(SWAP(W -Int 143)      ; OPS, WS, SCHED) requires W >=Int 144 andBool W <=Int 159
     rule #dasmOpCodes( OPS, W : WS, SCHED ) => #dasmOpCodes(LOG(W -Int 160)       ; OPS, WS, SCHED) requires W >=Int 160 andBool W <=Int 164
 
     rule #dasmOpCodes( OPS, W : WS, SCHED ) => #dasmOpCodes(PUSH(W -Int 95, #asWord(#take(W -Int 95, WS))) ; OPS, #drop(W -Int 95, WS), SCHED) requires W >=Int 96  andBool W <=Int 127
@@ -2373,7 +2351,6 @@ module EVM
     rule #dasmOpCode(  67,     _ ) => NUMBER
     rule #dasmOpCode(  68,     _ ) => DIFFICULTY
     rule #dasmOpCode(  69,     _ ) => GASLIMIT
-    rule #dasmOpCode(  80,     _ ) => POP
     rule #dasmOpCode(  81,     _ ) => MLOAD
     rule #dasmOpCode(  82,     _ ) => MSTORE
     rule #dasmOpCode(  83,     _ ) => MSTORE8
