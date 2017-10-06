@@ -45,16 +45,15 @@ module EVM
                       // -----------------------------------
 
                       <output>        .WordStack </output>                   // H_RETURN
-                      <memoryUsed>    0          </memoryUsed>               // \mu_i
-                      <callDepth>     0          </callDepth>
                       <callStack>     .List      </callStack>
                       <interimStates> .List      </interimStates>
                       <substateStack> .List      </substateStack>
                       <callLog>       .Set       </callLog>
 
-                      <txExecState>
+                      <callFrame>
                         <program>      .Map       </program>                 // I_b
                         <programBytes> .WordStack </programBytes>
+                        <callDepth>    0          </callDepth>
 
                         // I_*
                         <id>        0          </id>                         // I_a
@@ -65,12 +64,13 @@ module EVM
                         // \mu_*
                         <wordStack>   .WordStack              </wordStack>   // \mu_s
                         <localMem>    makeArray(2 ^Int 30, 0) </localMem>    // \mu_m
+                        <memoryUsed>  0                       </memoryUsed>  // \mu_i
                         <pc>          0                       </pc>          // \mu_pc
                         <gas>         0                       </gas>         // \mu_g
                         <previousGas> 0                       </previousGas>
- 
+
                         <static> false </static>
-                      </txExecState>
+                      </callFrame>
 
                       // A_* (execution substate)
                       <substate>
@@ -203,44 +203,17 @@ module EVM
 // -   `#dropCallStack` removes the top element of the `callStack`.
 
 
-    syntax State ::= "{" Int "|" Int "|" Map "|" WordStack "|" Int "|" WordStack "|" Int "|" WordStack "|" Array "|" Int "|" Int "|" Int "|" Bool "}"
- // -------------------------------------------------------------------------------------------------------------------------------------------------
-
     syntax InternalOp ::= "#pushCallStack"
  // --------------------------------------
     rule <k> #pushCallStack => . ... </k>
-         <callStack>  (.List => ListItem({ ACCT | GAVAIL | PGM | BYTES | CR | CD | CV | WS | LM | MUSED | PCOUNT | DEPTH | STATIC })) ... </callStack>
-         <id>           ACCT   </id>
-         <gas>          GAVAIL </gas>
-         <program>      PGM    </program>
-         <programBytes> BYTES  </programBytes>
-         <caller>       CR     </caller>
-         <callData>     CD     </callData>
-         <callValue>    CV     </callValue>
-         <wordStack>    WS     </wordStack>
-         <localMem>     LM     </localMem>
-         <memoryUsed>   MUSED  </memoryUsed>
-         <pc>           PCOUNT </pc>
-         <callDepth>    DEPTH  </callDepth>
-         <static>       STATIC </static>
+         <callFrame> FRAME </callFrame>
+         <callStack> (.List => ListItem(<callFrame> FRAME </callFrame>)) ... </callStack>
 
     syntax InternalOp ::= "#popCallStack"
  // -------------------------------------
     rule <k> #popCallStack => . ... </k>
-         <callStack>  (ListItem({ ACCT | GAVAIL | PGM | BYTES | CR | CD | CV | WS | LM | MUSED | PCOUNT | DEPTH | STATIC }) => .List) ... </callStack>
-         <id>           _ => ACCT   </id>
-         <gas>          _ => GAVAIL </gas>
-         <program>      _ => PGM    </program>
-         <programBytes> _ => BYTES  </programBytes>
-         <caller>       _ => CR     </caller>
-         <callData>     _ => CD     </callData>
-         <callValue>    _ => CV     </callValue>
-         <wordStack>    _ => WS     </wordStack>
-         <localMem>     _ => LM     </localMem>
-         <memoryUsed>   _ => MUSED  </memoryUsed>
-         <pc>           _ => PCOUNT </pc>
-         <callDepth>    _ => DEPTH  </callDepth>
-         <static>       _ => STATIC </static>
+         <callFrame> _ => FRAME </callFrame>
+         <callStack> (ListItem(<callFrame> FRAME </callFrame>) => .List) ... </callStack>
 
     syntax InternalOp ::= "#dropCallStack"
  // --------------------------------------
@@ -253,13 +226,6 @@ module EVM
 //     `interimStates` cell.
 // -   `#popWorldState` restores the top element of the `interimStates`.
 // -   `#dropWorldState` removes the top element of the `interimStates`.
-
-// We use slightly different rules for rv-k versus uiuc-k because uiuc-k does not
-// support storing configuration fragments. The semantics of these two sets of
-// rules are identical, however, the version rv-k uses is substantially faster. We
-// would use that version in both places if not for technical limitations on the
-// prover. In the long term, a new prover will be built capable of supporting the
-// same code in both versions of the semantics.
 
 
     syntax Accounts ::= "{" AccountsCell "|" Map "}"
