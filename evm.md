@@ -40,16 +40,15 @@ In the comments next to each cell, we've marked which component of the yellowpap
                       // -----------------------------------
 
                       <output>        .WordStack </output>                   // H_RETURN
-                      <memoryUsed>    0          </memoryUsed>               // \mu_i
-                      <callDepth>     0          </callDepth>
                       <callStack>     .List      </callStack>
                       <interimStates> .List      </interimStates>
                       <substateStack> .List      </substateStack>
                       <callLog>       .Set       </callLog>
 
-                      <txExecState>
+                      <callFrame>
                         <program>      .Map       </program>                 // I_b
                         <programBytes> .WordStack </programBytes>
+                        <callDepth>    0          </callDepth>
 
                         // I_*
                         <id>        0          </id>                         // I_a
@@ -60,12 +59,13 @@ In the comments next to each cell, we've marked which component of the yellowpap
                         // \mu_*
                         <wordStack>   .WordStack              </wordStack>   // \mu_s
                         <localMem>    makeArray(2 ^Int 30, 0) </localMem>    // \mu_m
+                        <memoryUsed>  0                       </memoryUsed>  // \mu_i
                         <pc>          0                       </pc>          // \mu_pc
                         <gas>         0                       </gas>         // \mu_g
                         <previousGas> 0                       </previousGas>
- 
+
                         <static> false </static>
-                      </txExecState>
+                      </callFrame>
 
                       // A_* (execution substate)
                       <substate>
@@ -205,44 +205,17 @@ The `callStack` cell stores a list of previous VM execution states.
 -   `#dropCallStack` removes the top element of the `callStack`.
 
 ```{.k .uiuck .rvk}
-    syntax State ::= "{" Int "|" Int "|" Map "|" WordStack "|" Int "|" WordStack "|" Int "|" WordStack "|" Array "|" Int "|" Int "|" Int "|" Bool "}"
- // -------------------------------------------------------------------------------------------------------------------------------------------------
-
     syntax InternalOp ::= "#pushCallStack"
  // --------------------------------------
     rule <k> #pushCallStack => . ... </k>
-         <callStack>  (.List => ListItem({ ACCT | GAVAIL | PGM | BYTES | CR | CD | CV | WS | LM | MUSED | PCOUNT | DEPTH | STATIC })) ... </callStack>
-         <id>           ACCT   </id>
-         <gas>          GAVAIL </gas>
-         <program>      PGM    </program>
-         <programBytes> BYTES  </programBytes>
-         <caller>       CR     </caller>
-         <callData>     CD     </callData>
-         <callValue>    CV     </callValue>
-         <wordStack>    WS     </wordStack>
-         <localMem>     LM     </localMem>
-         <memoryUsed>   MUSED  </memoryUsed>
-         <pc>           PCOUNT </pc>
-         <callDepth>    DEPTH  </callDepth>
-         <static>       STATIC </static>
+         <callFrame> FRAME </callFrame>
+         <callStack> (.List => ListItem(<callFrame> FRAME </callFrame>)) ... </callStack>
 
     syntax InternalOp ::= "#popCallStack"
  // -------------------------------------
     rule <k> #popCallStack => . ... </k>
-         <callStack>  (ListItem({ ACCT | GAVAIL | PGM | BYTES | CR | CD | CV | WS | LM | MUSED | PCOUNT | DEPTH | STATIC }) => .List) ... </callStack>
-         <id>           _ => ACCT   </id>
-         <gas>          _ => GAVAIL </gas>
-         <program>      _ => PGM    </program>
-         <programBytes> _ => BYTES  </programBytes>
-         <caller>       _ => CR     </caller>
-         <callData>     _ => CD     </callData>
-         <callValue>    _ => CV     </callValue>
-         <wordStack>    _ => WS     </wordStack>
-         <localMem>     _ => LM     </localMem>
-         <memoryUsed>   _ => MUSED  </memoryUsed>
-         <pc>           _ => PCOUNT </pc>
-         <callDepth>    _ => DEPTH  </callDepth>
-         <static>       _ => STATIC </static>
+         <callFrame> _ => FRAME </callFrame>
+         <callStack> (ListItem(<callFrame> FRAME </callFrame>) => .List) ... </callStack>
 
     syntax InternalOp ::= "#dropCallStack"
  // --------------------------------------
@@ -255,61 +228,7 @@ The `interimStates` cell stores a list of previous world states.
 -   `#popWorldState` restores the top element of the `interimStates`.
 -   `#dropWorldState` removes the top element of the `interimStates`.
 
-We use slightly different rules for rv-k versus uiuc-k because uiuc-k does not support storing configuration fragments.
-The semantics of these two sets of rules are identical, however, the version rv-k uses is substantially faster.
-We would use that version in both places if not for technical limitations on the prover.
-In the long term, a new prover will be built capable of supporting the same code in both versions of the semantics.
-
-```{.k .uiuck}
-    syntax Account ::= "{" Int "|" Int "|" WordStack "|" Map "|" Int "|" Bool "}"
- // -----------------------------------------------------------------------------
-
-    syntax InternalOp ::= "#pushWorldState" | "#pushWorldStateAux" Map | "#pushAccount" Int Bool
- // --------------------------------------------------------------------------------------------
-    rule <k> #pushWorldState => #pushWorldStateAux ACCTS ... </k>
-         <activeAccounts> ACCTS </activeAccounts>
-         <interimStates> (.List => ListItem(.Set)) ... </interimStates>
-
-    rule <k> #pushWorldStateAux .Map => . ... </k>
-    rule <k> #pushWorldStateAux ((ACCT |-> EMPTY) REST) => #pushAccount ACCT EMPTY ~> #pushWorldStateAux REST ... </k>
-    rule <k> #pushAccount ACCT EMPTY => . ... </k>
-         <interimStates> ListItem((.Set => SetItem({ ACCT | BAL | CODE | STORAGE | NONCE | EMPTY })) REST) ... </interimStates>
-         <account>
-           <acctID> ACCT </acctID>
-           <balance> BAL </balance>
-           <code> CODE </code>
-           <storage> STORAGE </storage>
-           <nonce> NONCE </nonce>
-         </account>
-
-    syntax InternalOp ::= "#popWorldState" | "#popWorldStateAux" Set
- // ----------------------------------------------------------------
-    rule <k> #popWorldState => #popWorldStateAux PREVSTATE ... </k>
-         <interimStates> (ListItem(PREVSTATE) => .List) ... </interimStates>
-         <activeAccounts> _ => .Map </activeAccounts>
-         <accounts> _ => .Bag </accounts>
-
-    rule <k> #popWorldStateAux .Set => . ... </k>
-    rule <k> #popWorldStateAux ( (SetItem({ ACCT | BAL | CODE | STORAGE | NONCE | EMPTY }) => .Set) REST ) ... </k>
-         <activeAccounts> ... (.Map => ACCT |-> EMPTY) </activeAccounts>
-         <accounts> ( .Bag
-                   => <account>
-                        <acctID> ACCT </acctID>
-                        <balance> BAL </balance>
-                        <code> CODE </code>
-                        <storage> STORAGE </storage>
-                        <nonce> NONCE </nonce>
-                      </account>
-                    )
-                    ...
-         </accounts>
-
-    syntax InternalOp ::= "#dropWorldState"
- // ---------------------------------------
-    rule <k> #dropWorldState => . ... </k> <interimStates> (ListItem(_) => .List) ... </interimStates>
-```
-
-```{.k .rvk}
+```{.k .uiuck .rvk}
     syntax Accounts ::= "{" AccountsCell "|" Map "}"
  // ------------------------------------------------
 
