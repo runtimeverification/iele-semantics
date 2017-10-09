@@ -5,7 +5,7 @@ K_VERSION=rvk
 
 .PHONY: all clean build tangle defn proofs split-tests test
 
-all: build split-tests
+all: build vm-tests
 
 clean:
 	rm -r .build
@@ -84,7 +84,7 @@ passing_targets=${passing_tests:=.test}
 passing_vm_targets=${passing_vm_tests:=.test}
 passing_blockchain_targets=${passing_blockchain_tests:=.test}
 
-test: $(passing_targets)
+test: $(passing_vm_targets)
 vm-test: $(passing_vm_targets)
 blockchain-test: $(passing_blockchain_targets)
 
