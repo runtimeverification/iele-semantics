@@ -48,13 +48,15 @@ type iele_opcode = [
 | `MSTORE
 | `SLOAD
 | `SSTORE
-| `JUMP of int
-| `JUMPI of int
 | `PC
 | `MSIZE
 | `GAS
+| `LOADPOS
+| `LOADNEG
+| `JUMP of int
+| `JUMPI of int
 | `JUMPDEST of int
-| `LOADI
+| `REGISTERS of int
 | `LOG of int
 | `CREATE
 | `CALL
@@ -65,7 +67,6 @@ type iele_opcode = [
 | `REVERT
 | `INVALID
 | `SELFDESTRUCT
-| `REGISTERS of int
 ]
 
 type iele_op =
@@ -123,14 +124,15 @@ let asm_iele_opcode op = match op with
 | `MSTORE -> "\x55"
 | `SLOAD -> "\x56"
 | `SSTORE -> "\x57"
-| `JUMP i -> "\x58" ^ (IeleUtil.be_int_width (Z.of_int i) 16)
-| `JUMPI i -> "\x59" ^ (IeleUtil.be_int_width (Z.of_int i) 16)
-| `PC -> "\x5a"
-| `MSIZE -> "\x5b"
-| `GAS -> "\x5c"
-| `JUMPDEST i -> "\x5d" ^ (IeleUtil.be_int_width (Z.of_int i) 16)
-| `LOADI -> "\x60"
-| `REGISTERS i -> "\x80" ^ (IeleUtil.string_of_char (Char.chr i))
+| `PC -> "\x58"
+| `MSIZE -> "\x59"
+| `GAS -> "\x5a"
+| `LOADPOS -> "\x60"
+| `LOADNEG -> "\x61"
+| `JUMP i -> "\x62" ^ (IeleUtil.be_int_width (Z.of_int i) 16)
+| `JUMPI i -> "\x63" ^ (IeleUtil.be_int_width (Z.of_int i) 16)
+| `JUMPDEST i -> "\x64" ^ (IeleUtil.be_int_width (Z.of_int i) 16)
+| `REGISTERS i -> "\x65" ^ (IeleUtil.string_of_char (Char.chr i))
 | `LOG(n) ->
   let byte = 0xa0 + n in
   let ch = Char.chr byte in

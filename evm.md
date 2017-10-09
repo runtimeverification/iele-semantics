@@ -575,10 +575,6 @@ Some of them require an argument to be interpereted as an address (modulo 160 bi
 
 ### Program Counter
 
-All operators except for `LOADI`, `JUMPDEST`, and `JUMP*` increment the program counter by 1.
-`JUMPDEST` increments the program counter by 3.
-The arguments to `LOADI` must be skipped over (as they are inline), and the opcode `JUMP` already affects the program counter in the correct way.
-
 -   `#pc` calculates the next program counter of the given operator.
 
 ```{.k .uiuck .rvk}
@@ -837,9 +833,13 @@ We use `INVALID` both for marking the designated invalid operator and for garbag
 Some operators don't calculate anything, they just push the stack around a bit.
 
 ```{.k .uiuck .rvk}
-    syntax NullOp ::= LOADI ( Int , Int )
- // ----------------------------------
-    rule <k> LOADI(_, W) REG => #load REG W ... </k> 
+    syntax NullOp ::= LOADPOS ( Int , Int )
+ // ---------------------------------------
+    rule <k> LOADPOS(_, W) REG => #load REG W ... </k> 
+
+    syntax NullOp ::= LOADNEG ( Int , Int )
+ // ---------------------------------------
+    rule <k> LOADNEG(_, W) REG => #load REG (0 -Int W) ... </k> 
 
     syntax InternalOp ::= "#load" Reg Int
  // -------------------------------------
@@ -990,7 +990,7 @@ The `JUMP*` family of operations affect the current program counter.
     syntax UnVoidOp ::= JUMPI ( Int )
  // ---------------------------------
     rule <k> JUMPI(LABEL) I => . ... </k> <pc> _      => DEST          </pc> <jumpTable> ... LABEL |-> DEST </jumpTable> requires I =/=K 0
-    rule <k> JUMPI(LABEL) 0 => . ... </k> <pc> PCOUNT => PCOUNT +Int 3 </pc>
+    rule <k> JUMPI(LABEL) 0 => . ... </k> <pc> PCOUNT => PCOUNT +Int #opWidth(JUMPI(LABEL), NREGS) </pc> <nregs> NREGS </nregs>
 ```
 
 ### `STOP`, `REVERT`, and `RETURN`
@@ -1854,7 +1854,8 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     rule <k> #gasExec(SCHED, MLOAD _ _)          => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, MSTORE _ _)         => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, MSTORE8 _ _)        => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, LOADI(_, _) _)      => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, LOADPOS(_, _) _)    => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, LOADNEG(_, _) _)    => Gverylow < SCHED > ... </k>
 
     // Wlow
     rule <k> #gasExec(SCHED, MUL _ _ _)        => Glow < SCHED > ... </k>
@@ -2305,24 +2306,26 @@ After interpreting the strings representing programs as a `WordStack`, it should
                  | #dasmOps ( Ops , WordStack , K , Schedule , Int ) [function, klabel(#dasmOpsAux)]
                  | #revOps  ( Ops , Ops )                        [function]
  // -----------------------------------------------------------------------------
-    rule #dasmOps( 128 : NBITS : WS, SCHED ) => #revOps(#dasmOps(REGISTERS (1 <<Int NBITS) ; .Ops, WS, .K, SCHED, NBITS), .Ops)
+    rule #dasmOps( 101 : NBITS : WS, SCHED ) => #revOps(#dasmOps(REGISTERS (NBITS) ; .Ops, WS, .K, SCHED, NBITS), .Ops)
     rule #dasmOps( WS, SCHED ) => #revOps(#dasmOps(.Ops, WS, .K, SCHED, 32), .Ops) [owise]
 
     rule #dasmOps( OPS, .WordStack, .K, _, _ ) => OPS
 
     rule #dasmOps( OPS, W : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, #dasmOpCode(W, SCHED), SCHED, NREGS)
-      requires (W >=Int 0   andBool W <=Int 95 andBool W =/=Int 88 andBool W =/=Int 89 andBool W =/=Int 93)
-        orBool (W >=Int 129 andBool W <=Int 255)
+      requires (W >=Int 0   andBool W <=Int 95)
+        orBool (W >=Int 102 andBool W <=Int 255)
 
-    rule #dasmOps( OPS, 96 : WS, .K,             SCHED, NREGS ) => #dasmOps(OPS, WS, #str(#pushLen(#drop(NREGS up/Int 8, WS)), #pushOffset(#drop(NREGS up/Int 8, WS))), SCHED, NREGS)
-    rule #dasmOps( OPS,      WS, #str(LEN, POS), SCHED, NREGS ) => #dasmOps(OPS, WS, LOADI(LEN +Int POS, #asWord(WS [ POS +Int (NREGS up/Int 8) .. LEN ])), SCHED, NREGS)
+    rule #dasmOps( OPS, W : WS, .K,             SCHED, NREGS ) => #dasmOps(OPS, W : WS, #str(#pushLen(#drop(NREGS up/Int 8, WS)), #pushOffset(#drop(NREGS up/Int 8, WS))), SCHED, NREGS)
+      requires W >=Int 96 andBool W <Int 98
+    rule #dasmOps( OPS, 96 : WS, #str(LEN, POS), SCHED, NREGS ) => #dasmOps(OPS, WS, LOADPOS(LEN +Int POS, #asWord(WS [ POS +Int (NREGS up/Int 8) .. LEN ])), SCHED, NREGS)
+    rule #dasmOps( OPS, 97 : WS, #str(LEN, POS), SCHED, NREGS ) => #dasmOps(OPS, WS, LOADNEG(LEN +Int POS, #asWord(WS [ POS +Int (NREGS up/Int 8) .. LEN ])), SCHED, NREGS)
 
-    rule #dasmOps( OPS,  88 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMP(W1 *Int 256 +Int W2),     SCHED, NREGS)
-    rule #dasmOps( OPS,  89 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMPI(W1 *Int 256 +Int W2),    SCHED, NREGS)
-    rule #dasmOps( OPS,  93 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMPDEST(W1 *Int 256 +Int W2), SCHED, NREGS)
-    rule #dasmOps( OPS, 128 : W1      : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, REGISTERS(W1),                 SCHED, NREGS)
+    rule #dasmOps( OPS,  98 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMP(W1 *Int 256 +Int W2),     SCHED, NREGS)
+    rule #dasmOps( OPS,  99 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMPI(W1 *Int 256 +Int W2),    SCHED, NREGS)
+    rule #dasmOps( OPS, 100 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMPDEST(W1 *Int 256 +Int W2), SCHED, NREGS)
+    rule #dasmOps( OPS, 101 : W1      : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, REGISTERS(W1),                 SCHED, NREGS)
 
-    rule #dasmOps( OPS, WS, OP:OpCode, SCHED, NREGS) => #dasmOps(#dasmRegs(OP, WS, NREGS) ; OPS, #drop(#opWidth(OP, NREGS) -Int 1, WS), .K, SCHED, NREGS)
+    rule #dasmOps( OPS, WS, OP:OpCode, SCHED, NREGS) => #dasmOps(#dasmRegs(OP, WS, NREGS) ; OPS, #drop(#opWidth(OP, NREGS) -Int #opCodeWidth(OP), WS), .K, SCHED, NREGS)
 
     rule #revOps ( OP ; OPS , OPS' ) => #revOps(OPS, OP ; OPS')
     rule #revOps ( .Ops , OPS  ) => OPS
@@ -2330,8 +2333,9 @@ After interpreting the strings representing programs as a `WordStack`, it should
     syntax Op ::= #dasmRegs ( OpCode , WordStack , Int ) [function]
                 | #dasmRegs ( OpCode , Int , Int , Int ) [function, klabel(#dasmRegsAux)]
  // -------------------------------------------------------------------------------------
-    rule #dasmRegs ( LOADI(N, W), WS, NREGS ) => #dasmRegs(LOADI(N, W), #asInteger(#take(NREGS up/Int 8, WS)),             NREGS, (1 <<Int NREGS) -Int 1)
-    rule #dasmRegs ( OP,          WS, NREGS ) => #dasmRegs(OP,          #asInteger(#take(#opWidth(OP, NREGS) -Int 1, WS)), NREGS, (1 <<Int NREGS) -Int 1) [owise]
+    rule #dasmRegs ( LOADPOS(N, W), WS, NREGS ) => #dasmRegs(LOADPOS(N, W), #asInteger(#take(NREGS up/Int 8, WS)),                            NREGS, (1 <<Int NREGS) -Int 1)
+    rule #dasmRegs ( LOADNEG(N, W), WS, NREGS ) => #dasmRegs(LOADNEG(N, W), #asInteger(#take(NREGS up/Int 8, WS)),                            NREGS, (1 <<Int NREGS) -Int 1)
+    rule #dasmRegs ( OP,            WS, NREGS ) => #dasmRegs(OP,            #asInteger(#take(#opWidth(OP, NREGS) -Int #opCodeWidth(OP), WS)), NREGS, (1 <<Int NREGS) -Int 1) [owise]
 
     rule #dasmRegs ( OP:NullOp,     R, W, M ) => OP %(R, W, M, 0)
     rule #dasmRegs ( OP:NullVoidOp, R, W, M ) => OP
@@ -2353,12 +2357,17 @@ After interpreting the strings representing programs as a `WordStack`, it should
 
     syntax Int ::= #opWidth ( OpCode , Int ) [function]
  // ---------------------------------------------------
-    rule #opWidth ( LOADI(N, _),  NREGS ) => 1 +Int N +Int (NREGS up/Int 8)
-    rule #opWidth ( JUMPDEST(_),  NREGS ) => 3
-    rule #opWidth ( JUMP(_),      NREGS ) => 3
-    rule #opWidth ( JUMPI(_),     NREGS ) => 3 +Int        (NREGS up/Int 8)
-    rule #opWidth ( REGISTERS(_), NREGS ) => 2
-    rule #opWidth ( OP,           NREGS ) => 1 +Int        ((NREGS *Int #numArgs(OP)) up/Int 8)
+    rule #opWidth ( LOADPOS(N, _), NREGS ) => 1 +Int N +Int (NREGS up/Int 8)
+    rule #opWidth ( LOADNEG(N, _), NREGS ) => 1 +Int N +Int (NREGS up/Int 8)
+    rule #opWidth ( OP, NREGS ) => #opCodeWidth(OP) +Int ((NREGS *Int #numArgs(OP)) up/Int 8) [owise]
+
+    syntax Int ::= #opCodeWidth ( OpCode ) [function]
+ // -------------------------------------------------
+    rule #opCodeWidth( JUMPDEST(_) )   => 3
+    rule #opCodeWidth( JUMP(_) )       => 3
+    rule #opCodeWidth( JUMPI(_) )      => 3
+    rule #opCodeWidth( REGISTERS(_) )  => 2
+    rule #opCodeWidth( OP )            => 1 [owise]
 
     syntax Int ::= #numArgs ( OpCode ) [function]
  // ---------------------------------------------
@@ -2427,9 +2436,9 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmOpCode(  85,     _ ) => MSTORE
     rule #dasmOpCode(  86,     _ ) => SLOAD
     rule #dasmOpCode(  87,     _ ) => SSTORE
-    rule #dasmOpCode(  90,     _ ) => PC
-    rule #dasmOpCode(  91,     _ ) => MSIZE
-    rule #dasmOpCode(  92,     _ ) => GAS
+    rule #dasmOpCode(  88,     _ ) => PC
+    rule #dasmOpCode(  89,     _ ) => MSIZE
+    rule #dasmOpCode(  90,     _ ) => GAS
     rule #dasmOpCode( 160,     _ ) => LOG0
     rule #dasmOpCode( 161,     _ ) => LOG1
     rule #dasmOpCode( 162,     _ ) => LOG2

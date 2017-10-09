@@ -115,7 +115,7 @@ let convert_to_ssa (cfg : evm_graph) : iele_graph =
     if List.length curr_stack < i+1 then Op(`INVALID,[])
     else (stack := List.nth curr_stack i :: List.tl (set_nth curr_stack i (List.hd curr_stack)); Nop)
   | `PUSH(v) -> 
-    let op = LiOp(`LOADI,!regcount,v) in
+    let op = LiOp(`LOADPOS,!regcount,v) in
     stack := !regcount :: curr_stack;
     regcount := !regcount + 1;
     op
@@ -233,10 +233,13 @@ let alloc_registers (ops: iele_op list) : iele_op list =
   done;
   Op(`REGISTERS !regbits,[]) :: all_ops
 
+let max_val = Z.sub (Z.shift_left Z.one 255) Z.one
+
 let rec postprocess_iele iele = match iele with
 | Nop :: tl -> postprocess_iele tl
 | Op(`MSTORE, regs) :: tl -> Op(`MSTORE256, regs) :: postprocess_iele tl
-| Op(`CALLDATALOAD, [reg;datastart]) :: tl -> LiOp(`LOADI, -1, (Z.of_int 32)) :: Op(`CALLDATALOAD, [reg;datastart; -1]) :: postprocess_iele tl
+| Op(`CALLDATALOAD, [reg;datastart]) :: tl -> LiOp(`LOADPOS, -1, (Z.of_int 32)) :: Op(`CALLDATALOAD, [reg;datastart; -1]) :: postprocess_iele tl
+| LiOp(`LOADPOS, reg, z) :: tl when Z.gt z max_val -> LiOp(`LOADNEG, reg, Z.signed_extract z 0 256) :: postprocess_iele tl
 | hd :: tl -> hd :: postprocess_iele tl
 | [] -> []
 

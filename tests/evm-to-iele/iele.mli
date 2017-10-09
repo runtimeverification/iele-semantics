@@ -48,13 +48,15 @@ type iele_opcode = [
 | `MSTORE
 | `SLOAD
 | `SSTORE
-| `JUMP of int
-| `JUMPI of int
 | `PC
 | `MSIZE
 | `GAS
+| `LOADPOS
+| `LOADNEG
+| `JUMP of int
+| `JUMPI of int
 | `JUMPDEST of int
-| `LOADI
+| `REGISTERS of int
 | `LOG of int
 | `CREATE
 | `CALL
@@ -65,7 +67,6 @@ type iele_opcode = [
 | `REVERT
 | `INVALID
 | `SELFDESTRUCT
-| `REGISTERS of int
 ]
 
 type iele_op =
