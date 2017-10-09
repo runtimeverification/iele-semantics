@@ -438,8 +438,8 @@ Some checks if an opcode will throw an exception are relatively quick and done u
 -   `#exec` will load the arguments of the opcode and trigger the subsequent operations.
 
 ```{.k .uiuck .rvk}
-    syntax InternalOp ::= "#exec" "[" Op "]" [strict]
- // --------------------------------------------
+    syntax InternalOp ::= "#exec" "[" Op "]"
+ // ----------------------------------------
     rule <k> #exec [ OP:LoadedOp ] => #gas [ #addr?(OP) ] ~> #addr?(OP) ... </k>
 ```
 
@@ -450,20 +450,70 @@ Some of them require an argument to be interpereted as an address (modulo 160 bi
     syntax LoadedOp ::= NullOp Reg                      [klabel(nullOp)]
                       | NullVoidOp
 
-    syntax Op ::= UnOp Reg Reg                           [klabel(unOp), strict(2)]
-                | UnVoidOp Reg                           [klabel(unVoidOp), strict]
-                | BinOp Reg Reg Reg                      [klabel(binOp), seqstrict(2, 3)]
-                | BinVoidOp Reg Reg                      [klabel(binVoidOp), seqstrict]
-                | TernOp Reg Reg Reg Reg                 [klabel(ternOp), seqstrict(2, 3, 4)]
-                | TernVoidOp Reg Reg Reg                 [klabel(ternVoidOp), seqstrict]
-                | QuadVoidOp Reg Reg Reg Reg             [klabel(quadVoidOp), seqstrict]
-                | FiveVoidOp Reg Reg Reg Reg Reg         [klabel(fiveVoidOp), seqstrict]
-                | SixVoidOp Reg Reg Reg Reg Reg Reg      [klabel(sixVoidOp), seqstrict]
-                | CallSixOp Reg Reg Reg Reg Reg Reg Reg  [klabel(callSixOp), seqstrict(2, 3, 4, 5, 6, 7)]
-                | CallOp Reg Reg Reg Reg Reg Reg Reg Reg [klabel(callOp), seqstrict(2, 3, 4, 5, 6, 7, 8)]
+    syntax Op ::= UnOp Reg Reg                           [klabel(unOp)]
+                | UnVoidOp Reg                           [klabel(unVoidOp)]
+                | BinOp Reg Reg Reg                      [klabel(binOp)]
+                | BinVoidOp Reg Reg                      [klabel(binVoidOp)]
+                | TernOp Reg Reg Reg Reg                 [klabel(ternOp)]
+                | TernVoidOp Reg Reg Reg                 [klabel(ternVoidOp)]
+                | QuadVoidOp Reg Reg Reg Reg             [klabel(quadVoidOp)]
+                | FiveVoidOp Reg Reg Reg Reg Reg         [klabel(fiveVoidOp)]
+                | SixVoidOp Reg Reg Reg Reg Reg Reg      [klabel(sixVoidOp)]
+                | CallSixOp Reg Reg Reg Reg Reg Reg Reg  [klabel(callSixOp)]
+                | CallOp Reg Reg Reg Reg Reg Reg Reg Reg [klabel(callOp)]
+
+    context #exec [ _::UnOp _ HOLE:Reg ]
+
+    context #exec [ _::UnVoidOp HOLE:Reg ]
+
+    context #exec [ _::BinOp _ HOLE:Reg _ ]
+    context #exec [ _::BinOp _ _ HOLE:Reg ]
+
+    context #exec [ _::BinVoidOp HOLE:Reg _ ]
+    context #exec [ _::BinVoidOp _ HOLE:Reg ]
+
+    context #exec [ _::TernOp _ HOLE:Reg _ _ ]
+    context #exec [ _::TernOp _ _ HOLE:Reg _ ]
+    context #exec [ _::TernOp _ _ _ HOLE:Reg ]
+
+    context #exec [ _::TernVoidOp HOLE:Reg _ _ ]
+    context #exec [ _::TernVoidOp _ HOLE:Reg _ ]
+    context #exec [ _::TernVoidOp _ _ HOLE:Reg ]
+
+    context #exec [ _::QuadVoidOp HOLE:Reg _ _ _ ]
+    context #exec [ _::QuadVoidOp _ HOLE:Reg _ _ ]
+    context #exec [ _::QuadVoidOp _ _ HOLE:Reg _ ]
+    context #exec [ _::QuadVoidOp _ _ _ HOLE:Reg ]
+
+    context #exec [ _::FiveVoidOp HOLE:Reg _ _ _ _ ]
+    context #exec [ _::FiveVoidOp _ HOLE:Reg _ _ _ ]
+    context #exec [ _::FiveVoidOp _ _ HOLE:Reg _ _ ]
+    context #exec [ _::FiveVoidOp _ _ _ HOLE:Reg _ ]
+    context #exec [ _::FiveVoidOp _ _ _ _ HOLE:Reg ]
+
+    context #exec [ _::SixVoidOp HOLE:Reg _ _ _ _ _ ]
+    context #exec [ _::SixVoidOp _ HOLE:Reg _ _ _ _ ]
+    context #exec [ _::SixVoidOp _ _ HOLE:Reg _ _ _ ]
+    context #exec [ _::SixVoidOp _ _ _ HOLE:Reg _ _ ]
+    context #exec [ _::SixVoidOp _ _ _ _ HOLE:Reg _ ]
+    context #exec [ _::SixVoidOp _ _ _ _ _ HOLE:Reg ]
+
+    context #exec [ _::CallSixOp _ HOLE:Reg _ _ _ _ _ ]
+    context #exec [ _::CallSixOp _ _ HOLE:Reg _ _ _ _ ]
+    context #exec [ _::CallSixOp _ _ _ HOLE:Reg _ _ _ ]
+    context #exec [ _::CallSixOp _ _ _ _ HOLE:Reg _ _ ]
+    context #exec [ _::CallSixOp _ _ _ _ _ HOLE:Reg _ ]
+    context #exec [ _::CallSixOp _ _ _ _ _ _ HOLE:Reg ]
+
+    context #exec [ _::CallOp _ HOLE:Reg _ _ _ _ _ _ ]
+    context #exec [ _::CallOp _ _ HOLE:Reg _ _ _ _ _ ]
+    context #exec [ _::CallOp _ _ _ HOLE:Reg _ _ _ _ ]
+    context #exec [ _::CallOp _ _ _ _ HOLE:Reg _ _ _ ]
+    context #exec [ _::CallOp _ _ _ _ _ HOLE:Reg _ _ ]
+    context #exec [ _::CallOp _ _ _ _ _ _ HOLE:Reg _ ]
+    context #exec [ _::CallOp _ _ _ _ _ _ _ HOLE:Reg ]
 
     syntax Op ::= LoadedOp
-    syntax KResult ::= LoadedOp
 
     syntax LoadedOp ::= UnOp Reg Int                           [klabel(unOp)]
                       | UnVoidOp Int                           [klabel(unVoidOp)]
