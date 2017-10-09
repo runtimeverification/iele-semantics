@@ -2204,7 +2204,7 @@ module EVM
         orBool (W >=Int 129 andBool W <=Int 255)
 
     rule #dasmOps( OPS, 96 : WS, .K,             SCHED, NREGS ) => #dasmOps(OPS, WS, #str(#pushLen(#drop(NREGS up/Int 8, WS)), #pushOffset(#drop(NREGS up/Int 8, WS))), SCHED, NREGS)
-    rule #dasmOps( OPS,      WS, #str(LEN, POS), SCHED, NREGS ) => #dasmOps(OPS, WS [ 0 .. NREGS up/Int 8 ] ++ #drop(LEN +Int POS +Int (NREGS up/Int 8), WS), LOADI(LEN +Int POS, #asWord(WS [ POS +Int (NREGS up/Int 8) .. LEN ])), SCHED, NREGS)
+    rule #dasmOps( OPS,      WS, #str(LEN, POS), SCHED, NREGS ) => #dasmOps(OPS, WS, LOADI(LEN +Int POS, #asWord(WS [ POS +Int (NREGS up/Int 8) .. LEN ])), SCHED, NREGS)
 
     rule #dasmOps( OPS,  88 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMP(W1 *Int 256 +Int W2),     SCHED, NREGS)
     rule #dasmOps( OPS,  89 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMPI(W1 *Int 256 +Int W2),    SCHED, NREGS)
@@ -2219,7 +2219,8 @@ module EVM
     syntax Op ::= #dasmRegs ( OpCode , WordStack , Int ) [function]
                 | #dasmRegs ( OpCode , Int , Int , Int ) [function, klabel(#dasmRegsAux)]
  // -------------------------------------------------------------------------------------
-    rule #dasmRegs ( OP, WS, NREGS ) => #dasmRegs(OP, #asInteger(#take(#opWidth(OP, NREGS) -Int 1, WS)), NREGS, (1 <<Int NREGS) -Int 1)
+    rule #dasmRegs ( LOADI(N, W), WS, NREGS ) => #dasmRegs(LOADI(N, W), #asInteger(#take(NREGS up/Int 8, WS)),             NREGS, (1 <<Int NREGS) -Int 1)
+    rule #dasmRegs ( OP,          WS, NREGS ) => #dasmRegs(OP,          #asInteger(#take(#opWidth(OP, NREGS) -Int 1, WS)), NREGS, (1 <<Int NREGS) -Int 1) [owise]
 
     rule #dasmRegs ( OP:NullOp,     R, W, M ) => OP %(R, W, M, 0)
     rule #dasmRegs ( OP:NullVoidOp, R, W, M ) => OP
