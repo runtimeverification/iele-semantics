@@ -67,8 +67,8 @@ split-vm-tests: \
 split-blockchain-tests: \
 				  $(patsubst tests/ethereum-tests/%.json,tests/%/make.timestamp, $(wildcard tests/ethereum-tests/BlockchainTests/GeneralStateTests/*/*.json)) \
 
-vm_tests=$(wildcard tests/VMTests/*/*/*.json)
-blockchain_tests=$(wildcard tests/BlockchainTests/*/*/*/*.json)
+vm_tests=$(wildcard tests/VMTests/*/*/*.iele.json)
+blockchain_tests=$(wildcard tests/BlockchainTests/*/*/*/*.iele.json)
 all_tests=${vm_tests} ${blockchain_tests}
 skipped_tests=$(wildcard tests/VMTests/vmPerformance/*/*.json) \
    $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Constantinople.json) \
