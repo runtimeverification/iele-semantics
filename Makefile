@@ -58,8 +58,11 @@ tests/proofs/bad/hkg-token-buggy-spec.k: proofs/token-buggy-spec.md
 
 split-tests: split-vm-tests split-blockchain-tests
 
+invalid_iele_tests_file=tests/failing.expected
+invalid_iele_tests= $(shell cat ${invalid_iele_tests_file})
+
 split-vm-tests: \
-		  $(patsubst tests/ethereum-tests/%.json,tests/%/make.timestamp, $(wildcard tests/ethereum-tests/VMTests/*/*.json)) \
+		  $(patsubst tests/ethereum-tests/%.json,tests/%/make.timestamp, $(filter-out ${invalid_iele_tests}, $(wildcard tests/ethereum-tests/VMTests/*/*.json))) \
 
 split-blockchain-tests: \
 				  $(patsubst tests/ethereum-tests/%.json,tests/%/make.timestamp, $(wildcard tests/ethereum-tests/BlockchainTests/GeneralStateTests/*/*.json)) \
