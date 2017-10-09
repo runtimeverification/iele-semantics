@@ -849,21 +849,21 @@ module EVM
  // --------------------------------
     rule <k> ISZERO REG 0 => #load REG 1       ... </k>
     rule <k> ISZERO REG W => #load REG 0       ... </k> requires W =/=K 0
-    rule <k> NOT    REG W => #load REG ~Word W ... </k>
+    rule <k> NOT    REG W => #load REG ~Int W ... </k>
 
     syntax BinOp ::= "ADD" | "MUL" | "SUB" | "DIV" | "EXP" | "MOD"
  // --------------------------------------------------------------
-    rule <k> ADD REG W0 W1 => #load REG W0 +Word W1 ... </k>
-    rule <k> MUL REG W0 W1 => #load REG W0 *Word W1 ... </k>
-    rule <k> SUB REG W0 W1 => #load REG W0 -Word W1 ... </k>
-    rule <k> DIV REG W0 W1 => #load REG W0 /Word W1 ... </k>
-    rule <k> EXP REG W0 W1 => #load REG W0 ^Word W1 ... </k>
-    rule <k> MOD REG W0 W1 => #load REG W0 %Word W1 ... </k>
+    rule <k> ADD REG W0 W1 => #load REG W0 +Int W1 ... </k>
+    rule <k> MUL REG W0 W1 => #load REG W0 *Int W1 ... </k>
+    rule <k> SUB REG W0 W1 => #load REG W0 -Int W1 ... </k>
+    rule <k> DIV REG W0 W1 => #load REG W0 /Int W1 ... </k>
+    rule <k> EXP REG W0 W1 => #load REG W0 ^Int W1 ... </k>
+    rule <k> MOD REG W0 W1 => #load REG W0 %Int W1 ... </k>
 
     syntax TernOp ::= "ADDMOD" | "MULMOD"
  // -------------------------------------
-    rule <k> ADDMOD REG W0 W1 W2 => #load REG (W0 +Int W1) %Word W2 ... </k>
-    rule <k> MULMOD REG W0 W1 W2 => #load REG (W0 *Int W1) %Word W2 ... </k>
+    rule <k> ADDMOD REG W0 W1 W2 => #load REG (W0 +Int W1) %Int W2 ... </k>
+    rule <k> MULMOD REG W0 W1 W2 => #load REG (W0 *Int W1) %Int W2 ... </k>
 
     syntax BinOp ::= "BYTE" | "SIGNEXTEND"
  // --------------------------------------
@@ -872,9 +872,9 @@ module EVM
 
     syntax BinOp ::= "AND" | "EVMOR" | "XOR"
  // ----------------------------------------
-    rule <k> AND   REG W0 W1 => #load REG W0 &Word W1   ... </k>
-    rule <k> EVMOR REG W0 W1 => #load REG W0 |Word W1   ... </k>
-    rule <k> XOR   REG W0 W1 => #load REG W0 xorWord W1 ... </k>
+    rule <k> AND   REG W0 W1 => #load REG W0 &Int W1   ... </k>
+    rule <k> EVMOR REG W0 W1 => #load REG W0 |Int W1   ... </k>
+    rule <k> XOR   REG W0 W1 => #load REG W0 xorInt W1 ... </k>
 
     syntax BinOp ::= "LT" | "GT" | "EQ"
  // -----------------------------------

@@ -136,37 +136,11 @@ module EVM-DATA
 
     syntax Int ::= powmod(Int, Int, Int) [function]
  // -----------------------------------------------
-    rule W0 ^Word W1 => powmod(W0, W1, pow256) requires W1 <Int pow16
 
 
 
     rule powmod(W0, W1, W2) => W0 ^%Int W1 W2 requires W2 =/=Int 0
     rule powmod(W0, W1, 0) => 0
-
-
-// Comparison Operators
-// --------------------
-
-// The `<op>Word` comparison operators automatically interperet the `Bool` as a
-// `Word`.
-
-
-    syntax Int ::= Int "<Word"  Int [function]
-                 | Int ">Word"  Int [function]
-                 | Int "<=Word" Int [function]
-                 | Int ">=Word" Int [function]
-                 | Int "==Word" Int [function]
- // ------------------------------------------
-    rule W0 <Word  W1 => 1 requires W0 <Int   W1
-    rule W0 <Word  W1 => 0 requires W0 >=Int  W1
-    rule W0 >Word  W1 => 1 requires W0 >Int   W1
-    rule W0 >Word  W1 => 0 requires W0 <=Int  W1
-    rule W0 <=Word W1 => 1 requires W0 <=Int  W1
-    rule W0 <=Word W1 => 0 requires W0 >Int   W1
-    rule W0 >=Word W1 => 1 requires W0 >=Int  W1
-    rule W0 >=Word W1 => 0 requires W0 <Int   W1
-    rule W0 ==Word W1 => 1 requires W0 ==Int  W1
-    rule W0 ==Word W1 => 0 requires W0 =/=Int W1
 
 
 // Bitwise Operators
