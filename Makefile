@@ -90,11 +90,14 @@ tests/VMTests/%.test: tests/VMTests/% build
 tests/BlockchainTests/%.test: tests/BlockchainTests/% build
 	./blockchaintest $<
 
-tests/%/make.timestamp: tests/ethereum-tests/%.json
+tests/%/make.timestamp: tests/ethereum-tests/%.json tests/evm-to-iele/evm-to-iele
 	@echo "==   split: $@"
 	mkdir -p $(dir $@)
 	tests/split-test.py $< $(dir $@)
 	touch $@
+
+tests/evm-to-iele/evm-to-iele: $(wildcard tests/evm-to-iele/*.ml tests/evm-to-iele/*.mli)
+	cd tests/evm-to-iele && ocamlfind opt -g ieleUtil.mli ieleUtil.ml evm.mli evm.ml iele.mli iele.ml conversion.mli conversion.ml main.ml -package zarith -package hex -linkpkg -o evm-to-iele
 
 tests/ethereum-tests/%.json:
 	@echo "==  git submodule: cloning upstreams test repository"
