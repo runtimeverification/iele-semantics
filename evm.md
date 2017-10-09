@@ -2263,7 +2263,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
       requires (W >=Int 0   andBool W <=Int 95 andBool W =/=Int 88 andBool W =/=Int 89 andBool W =/=Int 93)
         orBool (W >=Int 128 andBool W <=Int 255)
 
-    rule #dasmOps( OPS, 96 : WS, .K,             SCHED, NREGS ) => #dasmOps(OPS, WS, #str(#pushLen(WS), #pushOffset(WS)), SCHED, NREGS)
+    rule #dasmOps( OPS, 96 : WS, .K,             SCHED, NREGS ) => #dasmOps(OPS, WS, #str(#pushLen(#drop(NREGS up/Int 8, WS)), #pushOffset(#drop(NREGS up/Int 8, WS))), SCHED, NREGS)
     rule #dasmOps( OPS,      WS, #str(LEN, POS), SCHED, NREGS ) => #dasmOps(OPS, WS [ 0 .. NREGS up/Int 8 ] ++ #drop(LEN +Int POS +Int (NREGS up/Int 8), WS), LOADI(LEN +Int POS, #asWord(WS [ POS +Int (NREGS up/Int 8) .. LEN ])), SCHED, NREGS)
 
     rule #dasmOps( OPS, 88 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMP(W1 *Int 256 +Int W2), SCHED, NREGS)
