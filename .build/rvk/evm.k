@@ -860,11 +860,6 @@ module EVM
     rule <k> EXP REG W0 W1 => #load REG W0 ^Word W1 ... </k>
     rule <k> MOD REG W0 W1 => #load REG W0 %Word W1 ... </k>
 
-    syntax BinOp ::= "SDIV" | "SMOD"
- // --------------------------------
-    rule <k> SDIV REG W0 W1 => #load REG W0 /sWord W1 ... </k>
-    rule <k> SMOD REG W0 W1 => #load REG W0 %sWord W1 ... </k>
-
     syntax TernOp ::= "ADDMOD" | "MULMOD"
  // -------------------------------------
     rule <k> ADDMOD REG W0 W1 W2 => #load REG (W0 +Int W1) %Word W2 ... </k>
@@ -889,11 +884,6 @@ module EVM
     rule <k> GT REG W0 W1 => #load REG 0 ... </k>  requires W0 <=Int  W1
     rule <k> EQ REG W0 W1 => #load REG 1 ... </k>  requires W0 ==Int  W1
     rule <k> EQ REG W0 W1 => #load REG 0 ... </k>  requires W0 =/=Int W1
-
-    syntax BinOp ::= "SLT" | "SGT"
- // ------------------------------
-    rule <k> SLT REG W0 W1 => #load REG W0 s<Word W1 ... </k>
-    rule <k> SGT REG W0 W1 => #load REG W1 s<Word W0 ... </k>
 
     syntax BinOp ::= "SHA3"
  // -----------------------
@@ -1843,8 +1833,6 @@ module EVM
     rule <k> #gasExec(SCHED, NOT _ _)          => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, LT _ _ _)         => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, GT _ _ _)         => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, SLT _ _ _)        => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, SGT _ _ _)        => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, EQ _ _ _)         => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, ISZERO _ _)       => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, AND _ _ _)        => Gverylow < SCHED > ... </k>
@@ -1860,9 +1848,7 @@ module EVM
     // Wlow
     rule <k> #gasExec(SCHED, MUL _ _ _)        => Glow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, DIV _ _ _)        => Glow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, SDIV _ _ _)       => Glow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, MOD _ _ _)        => Glow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, SMOD _  _ _)       => Glow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, SIGNEXTEND _ _ _) => Glow < SCHED > ... </k>
 
     // Wmid
@@ -2278,17 +2264,13 @@ module EVM
     rule #dasmOpCode(   2,     _ ) => MUL
     rule #dasmOpCode(   3,     _ ) => SUB
     rule #dasmOpCode(   4,     _ ) => DIV
-    rule #dasmOpCode(   5,     _ ) => SDIV
     rule #dasmOpCode(   6,     _ ) => MOD
-    rule #dasmOpCode(   7,     _ ) => SMOD
     rule #dasmOpCode(   8,     _ ) => ADDMOD
     rule #dasmOpCode(   9,     _ ) => MULMOD
     rule #dasmOpCode(  10,     _ ) => EXP
     rule #dasmOpCode(  11,     _ ) => SIGNEXTEND
     rule #dasmOpCode(  16,     _ ) => LT
     rule #dasmOpCode(  17,     _ ) => GT
-    rule #dasmOpCode(  18,     _ ) => SLT
-    rule #dasmOpCode(  19,     _ ) => SGT
     rule #dasmOpCode(  20,     _ ) => EQ
     rule #dasmOpCode(  21,     _ ) => ISZERO
     rule #dasmOpCode(  22,     _ ) => AND
