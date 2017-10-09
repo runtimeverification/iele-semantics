@@ -63,12 +63,13 @@ module EVM
                         <callValue> 0          </callValue>                  // I_v
 
                         // \mu_*
-                        <wordStack>   .WordStack              </wordStack>   // \mu_s
-                        <localMem>    makeArray(2 ^Int 30, 0) </localMem>    // \mu_m
-                        <memoryUsed>  0                       </memoryUsed>  // \mu_i
-                        <pc>          0                       </pc>          // \mu_pc
-                        <gas>         0                       </gas>         // \mu_g
-                        <previousGas> 0                       </previousGas>
+                        <regs>        .Array </regs>                         // \mu_s
+                        <nregs>       0      </nregs>
+                        <localMem>    .Array </localMem>                     // \mu_m
+                        <memoryUsed>  0      </memoryUsed>                   // \mu_i
+                        <pc>          0      </pc>                           // \mu_pc
+                        <gas>         0      </gas>                          // \mu_g
+                        <previousGas> 0      </previousGas>
 
                         <static> false </static>
                       </callFrame>
@@ -299,6 +300,11 @@ module EVM
     rule <k> #revert    ~>  #? K : _ ?#  => K ~> #revert    ... </k>
     rule <k> #end       ~> (#? K : _ ?#) => K ~> #end       ... </k>
 
+    syntax Reg ::= "%" Int | Int
+    syntax KResult ::= Int
+ // ----------------------------
+    rule <k> % REG => REGS [ REG ] ... </k> <regs> REGS </regs>
+
 
 // OpCode Execution Cycle
 // ----------------------
@@ -309,8 +315,8 @@ module EVM
 
 
     syntax KItem  ::= OpCode
-    syntax OpCode ::= NullStackOp | UnStackOp | BinStackOp | TernStackOp | QuadStackOp
-                    | InvalidOp | StackOp | InternalOp | CallOp | CallSixOp | LiOp
+    syntax OpCode ::= NullOp | NullVoidOp | UnOp | UnVoidOp | BinOp | BinVoidOp | TernOp | TernVoidOp | QuadVoidOp
+                    | FiveVoidOp | SixVoidOp | InvalidOp | InternalOp | CallOp | CallSixOp
  // --------------------------------------------------------------------------------
 
 
@@ -369,7 +375,7 @@ module EVM
     rule <mode> EXECMODE </mode>
          <k> #next
           => #pushCallStack
-          ~> #exceptional? [ OP ] ~> #exec [ OP ] ~> #pc [ OP ]
+          ~> #exceptional? [ OP ] ~> #exec [ OP ] ~> #pc [ #code(OP) ]
           ~> #? #dropCallStack : #popCallStack ?#
          ...
          </k>
@@ -378,19 +384,18 @@ module EVM
       requires EXECMODE in (SetItem(NORMAL) SetItem(VMTESTS))
 
 
-// ### Exceptional OpCodes
+// ### Exceptional Ops
 
 // Some checks if an opcode will throw an exception are relatively quick and done
 // up front.
 
-// -   `#exceptional?` checks if the operator is invalid and will not cause
-//     `wordStack` size issues (this implements the function `Z` in the
-//     yellowpaper, section 9.4.2).
+// -   `#exceptional?` checks if the operator is invalid (this implements the
+//     function `Z` in the yellowpaper, section 9.4.2).
 
 
-    syntax InternalOp ::= "#exceptional?" "[" OpCode "]"
+    syntax InternalOp ::= "#exceptional?" "[" Op "]"
  // ----------------------------------------------------
-    rule <k> #exceptional? [ OP ] => #invalid? [ OP ] ~> #stackNeeded? [ OP ] ~> #badJumpDest? [ OP ] ~> #static? [ OP ] ... </k>
+    rule <k> #exceptional? [ OP ] => #invalid? [ #code(OP) ] ~> #badJumpDest? [ OP ] ~> #static? [ OP ] ... </k>
 
 
 // -   `#invalid?` checks if it's the designated invalid opcode.
@@ -402,153 +407,122 @@ module EVM
     rule <k> #invalid? [ OP      ] => .          ... </k> requires notBool isInvalidOp(OP)
 
 
-// -   `#stackNeeded?` checks that the stack will be not be under/overflown.
-// -   `#stackNeeded`, `#stackAdded`, and `#stackDelta` are helpers for deciding
-//     `#stackNeeded?`.
-
-
-    syntax InternalOp ::= "#stackNeeded?" "[" OpCode "]"
- // ----------------------------------------------------
-    rule <k> #stackNeeded? [ OP ] => #exception ... </k>
-         <wordStack> WS </wordStack>
-      requires #sizeWordStack(WS) <Int #stackNeeded(OP)
-        orBool #sizeWordStack(WS) +Int #stackDelta(OP) >Int 1024
-
-    rule <k> #stackNeeded? [ OP ] => .K ... </k>
-         <wordStack> WS </wordStack>
-      requires notBool (#sizeWordStack(WS) <Int #stackNeeded(OP)
-               orBool   #sizeWordStack(WS) +Int #stackDelta(OP) >Int 1024)
-
-    syntax Int ::= #stackNeeded ( OpCode ) [function]
- // -------------------------------------------------
-    rule #stackNeeded(LI(_, _))      => 0
-    rule #stackNeeded(NOP:NullStackOp) => 0
-    rule #stackNeeded(UOP:UnStackOp)   => 1
-    rule #stackNeeded(BOP:BinStackOp)  => 2 requires notBool isLogOp(BOP)
-    rule #stackNeeded(TOP:TernStackOp) => 3
-    rule #stackNeeded(QOP:QuadStackOp) => 4
-    rule #stackNeeded(LOG(N))          => N +Int 2
-    rule #stackNeeded(CSOP:CallSixOp)  => 6
-    rule #stackNeeded(COP:CallOp)      => 7 requires notBool isCallSixOp(COP)
-
-    syntax Int ::= #stackAdded ( OpCode ) [function]
- // ------------------------------------------------
-    rule #stackAdded(CALLDATACOPY)   => 0
-    rule #stackAdded(RETURNDATACOPY) => 0
-    rule #stackAdded(CODECOPY)       => 0
-    rule #stackAdded(EXTCODECOPY)    => 0
-    rule #stackAdded(MSTORE)         => 0
-    rule #stackAdded(MSTORE8)        => 0
-    rule #stackAdded(SSTORE)         => 0
-    rule #stackAdded(JUMP(_))        => 0
-    rule #stackAdded(JUMPI(_))       => 0
-    rule #stackAdded(JUMPDEST(_))    => 0
-    rule #stackAdded(STOP)           => 0
-    rule #stackAdded(RETURN)         => 0
-    rule #stackAdded(REVERT)         => 0
-    rule #stackAdded(SELFDESTRUCT)   => 0
-    rule #stackAdded(LI(_,_))      => 1
-    rule #stackAdded(LOG(_))         => 0
-    rule #stackAdded(OP)             => 1 [owise]
-
-    syntax Int ::= #stackDelta ( OpCode ) [function]
- // ------------------------------------------------
-    rule #stackDelta(OP) => #stackAdded(OP) -Int #stackNeeded(OP)
-
-
 // -   `#badJumpDest?` determines if the opcode will result in a bad
 //     jump destination.
 
 
-    syntax InternalOp ::= "#badJumpDest?" "[" OpCode "]"
+    syntax InternalOp ::= "#badJumpDest?" "[" Op "]"
  // ----------------------------------------------------
-    rule <k> #badJumpDest? [ OP           ] => . ... </k> requires notBool isJumpOp(OP)
-    rule <k> #badJumpDest? [ JUMP (LABEL) ] => . ... </k> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ JUMPI(LABEL) ] => . ... </k> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ JUMPI(_)     ] => . ... </k> <wordStack> 0 : WS </wordStack>
+    rule <k> #badJumpDest? [ OP               ] => . ... </k> requires notBool isJumpOp(#code(OP))
+    rule <k> #badJumpDest? [ JUMP (LABEL)     ] => . ... </k> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ JUMPI(LABEL) _   ] => . ... </k> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ JUMPI(_)     % R ] => . ... </k> <regs> REGS </regs> requires REGS [ R ] ==K 0
 
-    rule <k> #badJumpDest? [ JUMP (LABEL) ] => #exception ... </k> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ JUMPI(LABEL) ] => #exception ... </k> <jumpTable> JUMPS </jumpTable> <wordStack> W : WS </wordStack> requires notBool LABEL in_keys(JUMPS) andBool W =/=K 0
+    rule <k> #badJumpDest? [ JUMP (LABEL)     ] => #exception ... </k> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ JUMPI(LABEL) % R ] => #exception ... </k> <jumpTable> JUMPS </jumpTable> <regs> REGS </regs> requires notBool LABEL in_keys(JUMPS) andBool REGS [ R ] =/=K 0
 
 
 // -   `#static?` determines if the opcode should throw an exception due to the
 //     static flag.
 
 
-    syntax InternalOp ::= "#static?" "[" OpCode "]"
+    syntax InternalOp ::= "#static?" "[" Op "]"
  // -----------------------------------------------
-    rule <k> #static? [ OP ] => .          ... </k>                             <static> false </static>
-    rule <k> #static? [ OP ] => .          ... </k> <wordStack> WS </wordStack> <static> true  </static> requires notBool #changesState(OP, WS)
-    rule <k> #static? [ OP ] => #exception ... </k> <wordStack> WS </wordStack> <static> true  </static> requires         #changesState(OP, WS)
+    rule <k> #static? [ OP ] => .          ... </k>                               <static> false </static>
+    rule <k> #static? [ OP ] => .          ... </k> <regs> REGS </regs> <static> true  </static> requires notBool #changesState(#code(OP), OP, REGS)
+    rule <k> #static? [ OP ] => #exception ... </k> <regs> REGS </regs> <static> true  </static> requires         #changesState(#code(OP), OP, REGS)
 
-    syntax Bool ::= #changesState ( OpCode , WordStack ) [function]
+    syntax Bool ::= #changesState ( OpCode, Op , Array ) [function]
  // ---------------------------------------------------------------
-    rule #changesState(LOG(_), _) => true
-    rule #changesState(SSTORE, _) => true
-    rule #changesState(CALL, _ : _ : VALUE : _) => true requires VALUE =/=Int 0
-    rule #changesState(CREATE, _) => true
-    rule #changesState(SELFDESTRUCT, _) => true
-    rule #changesState(_, _) => false [owise]
+    rule #changesState(LOG0, _, _) => true
+    rule #changesState(LOG1, _, _) => true
+    rule #changesState(LOG2, _, _) => true
+    rule #changesState(LOG3, _, _) => true
+    rule #changesState(LOG4, _, _) => true
+    rule #changesState(SSTORE, _, _) => true
+    rule #changesState(_, CALL _ _ _ VALUE _ _ _ _, _) => true requires VALUE =/=Int 0
+    rule #changesState(CREATE, _, _) => true
+    rule #changesState(SELFDESTRUCT, _, _) => true
+    rule #changesState(...) => false [owise]
 
 
 // ### Execution Step
 
-// -   `#exec` will load the arguments of the opcode (it assumes `#stackNeeded?` is
-//     accurate and has been called) and trigger the subsequent operations.
+// -   `#exec` will load the arguments of the opcode and trigger the
+//     subsequent operations.
 
 
-    syntax InternalOp ::= "#exec" "[" OpCode "]"
+    syntax InternalOp ::= "#exec" "[" Op "]" [strict]
  // --------------------------------------------
-    rule <k> #exec [ OP ] => #gas [ OP ] ~> OP ... </k> requires isInternalOp(OP) orBool isNullStackOp(OP) orBool isLiOp(OP)
+    rule <k> #exec [ OP:LoadedOp ] => #gas [ #addr?(OP) ] ~> #addr?(OP) ... </k>
 
 
-// Here we load the correct number of arguments from the `wordStack` based on the
-// sort of the opcode. Some of them require an argument to be interpereted as an
-// address (modulo 160 bits), so the `#addr?` function performs that check.
+// Here we load the correct number of arguments from the `regs` based on the sort
+// of the opcode. Some of them require an argument to be interpereted as an address
+// (modulo 160 bits), so the `#addr?` function performs that check.
 
 
-    syntax InternalOp ::= UnStackOp Int
-                        | BinStackOp Int Int
-                        | TernStackOp Int Int Int
-                        | QuadStackOp Int Int Int Int
+    syntax LoadedOp ::= NullOp Reg                      [klabel(nullOp)]
+                      | NullVoidOp
+
+    syntax Op ::= UnOp Reg Reg                           [klabel(unOp), strict(2)]
+                | UnVoidOp Reg                           [klabel(unVoidOp), strict]
+                | BinOp Reg Reg Reg                      [klabel(binOp), seqstrict(2, 3)]
+                | BinVoidOp Reg Reg                      [klabel(binVoidOp), seqstrict]
+                | TernOp Reg Reg Reg Reg                 [klabel(ternOp), seqstrict(2, 3, 4)]
+                | TernVoidOp Reg Reg Reg                 [klabel(ternVoidOp), seqstrict]
+                | QuadVoidOp Reg Reg Reg Reg             [klabel(quadVoidOp), seqstrict]
+                | FiveVoidOp Reg Reg Reg Reg Reg         [klabel(fiveVoidOp), seqstrict]
+                | SixVoidOp Reg Reg Reg Reg Reg Reg      [klabel(sixVoidOp), seqstrict]
+                | CallSixOp Reg Reg Reg Reg Reg Reg Reg  [klabel(callSixOp), seqstrict(2, 3, 4, 5, 6, 7)]
+                | CallOp Reg Reg Reg Reg Reg Reg Reg Reg [klabel(callOp), seqstrict(2, 3, 4, 5, 6, 7, 8)]
+
+    syntax Op ::= LoadedOp
+    syntax KResult ::= LoadedOp
+
+    syntax LoadedOp ::= UnOp Reg Int                           [klabel(unOp)]
+                      | UnVoidOp Int                           [klabel(unVoidOp)]
+                      | BinOp Reg Int Int                      [klabel(binOp)]
+                      | BinVoidOp Int Int                      [klabel(binVoidOp)]
+                      | TernOp Reg Int Int Int                 [klabel(ternOp)]
+                      | TernVoidOp Int Int Int                 [klabel(ternVoidOp)]
+                      | QuadVoidOp Int Int Int Int             [klabel(quadVoidOp)]
+                      | FiveVoidOp Int Int Int Int Int         [klabel(fiveVoidOp)]
+                      | SixVoidOp Int Int Int Int Int Int      [klabel(sixVoidOp)]
+                      | CallSixOp Reg Int Int Int Int Int Int  [klabel(callSixOp)]
+                      | CallOp Reg Int Int Int Int Int Int Int [klabel(callOp)]
+
+    syntax Op ::= "#addr?" "(" Op ")" [function]
  // -------------------------------------------------
-    rule <k> #exec [ UOP:UnStackOp   => UOP #addr?(UOP, W0)          ] ... </k> <wordStack> W0 : WS                => WS </wordStack>
-    rule <k> #exec [ BOP:BinStackOp  => BOP #addr?(BOP, W0) W1       ] ... </k> <wordStack> W0 : W1 : WS           => WS </wordStack>
-    rule <k> #exec [ TOP:TernStackOp => TOP #addr?(TOP, W0) W1 W2    ] ... </k> <wordStack> W0 : W1 : W2 : WS      => WS </wordStack>
-    rule <k> #exec [ QOP:QuadStackOp => QOP #addr?(QOP, W0) W1 W2 W3 ] ... </k> <wordStack> W0 : W1 : W2 : W3 : WS => WS </wordStack>
+    rule #addr?(BALANCE REG W)                       => BALANCE REG #addr(W)
+    rule #addr?(EXTCODESIZE REG W)                   => EXTCODESIZE REG #addr(W)
+    rule #addr?(EXTCODECOPY W0 W1 W2 W3)             => EXTCODECOPY #addr(W0) W1 W2 W3
+    rule #addr?(SELFDESTRUCT W)                      => SELFDESTRUCT #addr(W)
+    rule #addr?(CSO:CallSixOp REG W0 W1 W2 W3 W4 W5) => CSO REG W0 #addr(W1) W2 W3 W4 W5
+    rule #addr?(CO:CallOp REG W0 W1 W2 W3 W4 W5 W6)  => CO  REG W0 #addr(W1) W2 W3 W4 W5 W6
+    rule #addr?(OP)                                  => OP [owise]
 
-    syntax Int ::= "#addr?" "(" OpCode "," Int ")" [function]
- // ---------------------------------------------------------
-    rule #addr?(BALANCE,      W) => #addr(W)
-    rule #addr?(EXTCODESIZE,  W) => #addr(W)
-    rule #addr?(EXTCODECOPY,  W) => #addr(W)
-    rule #addr?(SELFDESTRUCT, W) => #addr(W)
-    rule #addr?(OP, W)           => W        requires (OP =/=K BALANCE) andBool (OP =/=K EXTCODESIZE) andBool (OP =/=K EXTCODECOPY) andBool (OP =/=K SELFDESTRUCT)
-
-
-// `StackOp` is used for opcodes which require a large portion of the stack.
-
-
-    syntax InternalOp ::= StackOp WordStack
- // ---------------------------------------
-    rule <k> #exec [ SO:StackOp => SO WS ] ... </k> <wordStack> WS </wordStack>
-
-
-// The `CallOp` opcodes all interperet their second argument as an address.
-
-
-    syntax InternalOp ::= CallSixOp Int Int     Int Int Int Int
-                        | CallOp    Int Int Int Int Int Int Int
- // -----------------------------------------------------------
-    rule <k> #exec [ CSO:CallSixOp => CSO W0 #addr(W1)    W2 W3 W4 W5 ] ... </k> <wordStack> W0 : W1 : W2 : W3 : W4 : W5 : WS      => WS </wordStack>
-    rule <k> #exec [ CO:CallOp     => CO  W0 #addr(W1) W2 W3 W4 W5 W6 ] ... </k> <wordStack> W0 : W1 : W2 : W3 : W4 : W5 : W6 : WS => WS </wordStack>
+    syntax OpCode ::= #code ( Op ) [function]
+    rule #code(OP::NullOp _)                => OP
+    rule #code(OP:NullVoidOp)               => OP
+    rule #code(OP::UnOp _ _)                => OP
+    rule #code(OP::UnVoidOp _)              => OP
+    rule #code(OP::BinOp _ _ _)             => OP
+    rule #code(OP::BinVoidOp _ _)           => OP
+    rule #code(OP::TernOp _ _ _ _)          => OP
+    rule #code(OP::TernVoidOp _ _ _)        => OP
+    rule #code(OP::QuadVoidOp _ _ _ _)      => OP
+    rule #code(OP::FiveVoidOp _ _ _ _ _)    => OP
+    rule #code(OP::SixVoidOp _ _ _ _ _ _)   => OP
+    rule #code(OP::CallSixOp _ _ _ _ _ _ _) => OP
+    rule #code(OP::CallOp _ _ _ _ _ _ _ _)  => OP
 
 
 // -   `#gas` calculates how much gas this operation costs, and takes into account
 //     the memory consumed.
 
 
-    syntax InternalOp ::= "#gas" "[" OpCode "]" | "#deductGas" | "#deductMemory"
+    syntax InternalOp ::= "#gas" "[" Op "]" | "#deductGas" | "#deductMemory"
  // ----------------------------------------------------------------------------
     rule <k> #gas [ OP ] => #memory(OP, MU) ~> #deductMemory ~> #gasExec(SCHED, OP) ~> #deductGas ... </k> <memoryUsed> MU </memoryUsed> <schedule> SCHED </schedule>
 
@@ -577,10 +551,8 @@ module EVM
 
     syntax InternalOp ::= "#pc" "[" OpCode "]"
  // ------------------------------------------
-    rule <k> #pc [ OP          ] => . ... </k> <pc> PCOUNT => PCOUNT +Int 1          </pc> requires notBool (isLiOp(OP) orBool isJumpAddrOp(OP))
-    rule <k> #pc [ LI(N, _)  ] => . ... </k> <pc> PCOUNT => PCOUNT +Int (1 +Int N) </pc>
-    rule <k> #pc [ OP          ] => . ... </k> requires isJumpOp(OP)
-    rule <k> #pc [ JUMPDEST(_) ] => . ... </k> <pc> PCOUNT => PCOUNT +Int 3          </pc>
+    rule <k> #pc [ OP ] => . ... </k> requires isJumpOp(OP)
+    rule <k> #pc [ OP ] => . ... </k> <pc> PCOUNT => PCOUNT +Int #opWidth(OP, NREGS) </pc> <nregs> NREGS </nregs> requires notBool isJumpOp(OP)
 
     syntax Bool ::= isJumpOp ( OpCode ) [function]
  // ----------------------------------------------
@@ -594,16 +566,6 @@ module EVM
 
 
 // ### Substate Log
-
-// During execution of a transaction some things are recorded in the substate log
-// (Section 6.1 in yellowpaper). This is a right cons-list of `SubstateLogEntry`
-// (which contains the account ID along with the specified portions of the
-// `wordStack` and `localMem`).
-
-
-    syntax SubstateLogEntry ::= "{" Int "|" WordStack "|" WordStack "}"
- // -------------------------------------------------------------------
-
 
 // After executing a transaction, it's necessary to have the effect of the substate
 // log recorded.
@@ -714,55 +676,27 @@ module EVM
 // Note that `_in_` ignores the arguments to operators that are parametric.
 
 
-    syntax OpCodes ::= ".OpCodes" | OpCode ";" OpCodes
+    syntax Ops ::= ".Ops" | Op ";" Ops
  // --------------------------------------------------
 
-    syntax Map ::= #asMapOpCodes ( OpCodes )             [function]
-                 | #asMapOpCodes ( Int , OpCodes , Map ) [function, klabel(#asMapOpCodesAux)]
+    syntax Map ::= #asMapOps ( Ops )                   [function]
+                 | #asMapOps ( Int , Ops , Map , Int ) [function, klabel(#asMapOpsAux)]
  // -----------------------------------------------------------------------------------------
-    rule #asMapOpCodes( OPS::OpCodes ) => #asMapOpCodes(0, OPS, .Map)
+    rule #asMapOps( REGISTERS(N) ; OPS::Ops ) => #asMapOps(2, OPS, 0 |-> REGISTERS(N), N)
+    rule #asMapOps( OPS::Ops ) => #asMapOps(0, OPS, .Map, 32) [owise]
 
-    rule #asMapOpCodes( N , .OpCodes         , MAP ) => MAP
-    rule #asMapOpCodes( N , OP:OpCode  ; OCS , MAP ) => #asMapOpCodes(N +Int 1, OCS, MAP (N |-> OP)) requires notBool isLiOp(OP) andBool notBool isJumpAddrOp(OP)
-    rule #asMapOpCodes( N , LI(M, W) ; OCS , MAP ) => #asMapOpCodes(N +Int 1 +Int M, OCS, MAP (N |-> LI(M, W)))
-    rule #asMapOpCodes( N , OP:OpCode  ; OCS , MAP ) => #asMapOpCodes(N +Int 3, OCS, MAP (N |-> OP)) requires isJumpAddrOp(OP)
-
-    syntax OpCodes ::= #asOpCodes ( Map )                 [function]
-                     | #asOpCodes ( Int , Map , OpCodes ) [function, klabel(#asOpCodesAux)]
- // ---------------------------------------------------------------------------------------
-    rule #asOpCodes(M) => #asOpCodes(0, M, .OpCodes)
-
-    rule #asOpCodes(N, .Map,               OPS) => OPS
-    rule #asOpCodes(N, N |-> OP         M, OPS) => #asOpCodes(N +Int 1,        M, OP         ; OPS) requires notBool isLiOp(OP) andBool notBool isJumpAddrOp(OP)
-    rule #asOpCodes(N, N |-> LI(S, W) M, OPS) => #asOpCodes(N +Int 1 +Int S, M, LI(S, W) ; OPS)
-    rule #asOpCodes(N, N |-> OP:OpCode  M, OPS) => #asOpCodes(N +Int 3,        M, OP         ; OPS) requires isJumpAddrOp(OP)
-
-    syntax Int ::= #sizeOpCodeMap ( Map ) [function]
- // ------------------------------------------------
-    rule #sizeOpCodeMap(M) => #sizeWordStack(#asmOpCodes(#asOpCodes(M)))
+    rule #asMapOps( _ , .Ops        , MAP, _ )     => MAP
+    rule #asMapOps( N , OP:Op ; OCS , MAP, NREGS ) => #asMapOps(N +Int #opWidth(#code(OP), NREGS), OCS, MAP (N |-> OP), NREGS)
 
 
-// EVM OpCodes
-// -----------
+// EVM Ops
+// -------
 
 // Each subsection has a different class of opcodes. Organization is based roughly
 // on what parts of the execution state are needed to compute the result of each
 // operator. This sometimes corresponds to the organization in the yellowpaper.
 
 // ### Internal Operations
-
-// These are just used by the other operators for shuffling local execution state
-// around on the EVM.
-
-// -   `#push` will push an element to the `wordStack` without any checks.
-// -   `#setStack_` will set the current stack to the given one.
-
-
-    syntax InternalOp ::= "#push" | "#setStack" WordStack
- // -----------------------------------------------------
-    rule <k> W0:Int ~> #push => . ... </k> <wordStack> WS => W0 : WS </wordStack>
-    rule <k> #setStack WS    => . ... </k> <wordStack> _  => WS      </wordStack>
-
 
 // -   `#newAccount_` allows declaring a new empty account with the given address
 //     (and assumes the rounding to 160 bits has already occured). If the account
@@ -860,14 +794,27 @@ module EVM
  // ------------------------------
 
 
+// ### Program Header
+
+
+    syntax NullVoidOp ::= REGISTERS(Int)
+ // ------------------------------------
+    rule <k> REGISTERS(_) => . ... </k>
+
+
 // ### Stack Manipulations
 
 // Some operators don't calculate anything, they just push the stack around a bit.
 
 
-    syntax LiOp ::= LI ( Int , Int )
- // ------------------------------------
-    rule <k> LI(_, W) => W ~> #push ... </k>
+    syntax NullOp ::= LI ( Int , Int )
+ // ----------------------------------
+    rule <k> LI(_, W) REG => #load REG W ... </k> 
+
+    syntax InternalOp ::= "#load" Reg Int
+ // -------------------------------------
+    rule <k> #load % REG VALUE => . ... </k>
+         <regs> REGS => REGS [ REG <- VALUE ] </regs>
 
 
 // ### Local Memory
@@ -875,13 +822,13 @@ module EVM
 // These operations are getters/setters of the local execution memory.
 
 
-    syntax UnStackOp ::= "MLOAD"
- // ----------------------------
-    rule <k> MLOAD INDEX => #asWord(#range(LM, INDEX, 32)) ~> #push ... </k>
+    syntax UnOp ::= "MLOAD"
+ // -----------------------
+    rule <k> MLOAD REG INDEX => #load REG #asWord(#range(LM, INDEX, 32)) ... </k>
          <localMem> LM </localMem>
 
-    syntax BinStackOp ::= "MSTORE" | "MSTORE8"
- // ------------------------------------------
+    syntax BinVoidOp ::= "MSTORE" | "MSTORE8"
+ // -----------------------------------------
     rule <k> MSTORE INDEX VALUE => . ... </k>
          <localMem> LM => LM [ INDEX := #padToWidth(32, #asByteStack(VALUE)) ] </localMem>
 
@@ -892,65 +839,65 @@ module EVM
 // ### Expressions
 
 // Expression calculations are simple and don't require anything but the arguments
-// from the `wordStack` to operate.
+// from the `regs` to operate.
 
 // NOTE: We have to call the opcode `OR` by `EVMOR` instead, because K has trouble
 // parsing it/compiling the definition otherwise.
 
 
-    syntax UnStackOp ::= "ISZERO" | "NOT"
+    syntax UnOp ::= "ISZERO" | "NOT"
+ // --------------------------------
+    rule <k> ISZERO REG 0 => #load REG 1       ... </k>
+    rule <k> ISZERO REG W => #load REG 0       ... </k> requires W =/=K 0
+    rule <k> NOT    REG W => #load REG ~Word W ... </k>
+
+    syntax BinOp ::= "ADD" | "MUL" | "SUB" | "DIV" | "EXP" | "MOD"
+ // --------------------------------------------------------------
+    rule <k> ADD REG W0 W1 => #load REG W0 +Word W1 ... </k>
+    rule <k> MUL REG W0 W1 => #load REG W0 *Word W1 ... </k>
+    rule <k> SUB REG W0 W1 => #load REG W0 -Word W1 ... </k>
+    rule <k> DIV REG W0 W1 => #load REG W0 /Word W1 ... </k>
+    rule <k> EXP REG W0 W1 => #load REG W0 ^Word W1 ... </k>
+    rule <k> MOD REG W0 W1 => #load REG W0 %Word W1 ... </k>
+
+    syntax BinOp ::= "SDIV" | "SMOD"
+ // --------------------------------
+    rule <k> SDIV REG W0 W1 => #load REG W0 /sWord W1 ... </k>
+    rule <k> SMOD REG W0 W1 => #load REG W0 %sWord W1 ... </k>
+
+    syntax TernOp ::= "ADDMOD" | "MULMOD"
  // -------------------------------------
-    rule <k> ISZERO 0 => 1        ~> #push ... </k>
-    rule <k> ISZERO W => 0        ~> #push ... </k> requires W =/=K 0
-    rule <k> NOT    W => ~Word W  ~> #push ... </k>
+    rule <k> ADDMOD REG W0 W1 W2 => #load REG (W0 +Int W1) %Word W2 ... </k>
+    rule <k> MULMOD REG W0 W1 W2 => #load REG (W0 *Int W1) %Word W2 ... </k>
 
-    syntax BinStackOp ::= "ADD" | "MUL" | "SUB" | "DIV" | "EXP" | "MOD"
- // -------------------------------------------------------------------
-    rule <k> ADD W0 W1 => W0 +Word W1 ~> #push ... </k>
-    rule <k> MUL W0 W1 => W0 *Word W1 ~> #push ... </k>
-    rule <k> SUB W0 W1 => W0 -Word W1 ~> #push ... </k>
-    rule <k> DIV W0 W1 => W0 /Word W1 ~> #push ... </k>
-    rule <k> EXP W0 W1 => W0 ^Word W1 ~> #push ... </k>
-    rule <k> MOD W0 W1 => W0 %Word W1 ~> #push ... </k>
+    syntax BinOp ::= "BYTE" | "SIGNEXTEND"
+ // --------------------------------------
+    rule <k> BYTE REG INDEX W     => #load REG byte(INDEX, W)     ... </k>
+    rule <k> SIGNEXTEND REG W0 W1 => #load REG signextend(W0, W1) ... </k>
 
-    syntax BinStackOp ::= "SDIV" | "SMOD"
- // -------------------------------------
-    rule <k> SDIV W0 W1 => W0 /sWord W1 ~> #push ... </k>
-    rule <k> SMOD W0 W1 => W0 %sWord W1 ~> #push ... </k>
-
-    syntax TernStackOp ::= "ADDMOD" | "MULMOD"
- // ------------------------------------------
-    rule <k> ADDMOD W0 W1 W2 => (W0 +Int W1) %Word W2 ~> #push ... </k>
-    rule <k> MULMOD W0 W1 W2 => (W0 *Int W1) %Word W2 ~> #push ... </k>
-
-    syntax BinStackOp ::= "BYTE" | "SIGNEXTEND"
- // -------------------------------------------
-    rule <k> BYTE INDEX W     => byte(INDEX, W)     ~> #push ... </k>
-    rule <k> SIGNEXTEND W0 W1 => signextend(W0, W1) ~> #push ... </k>
-
-    syntax BinStackOp ::= "AND" | "EVMOR" | "XOR"
- // ---------------------------------------------
-    rule <k> AND   W0 W1 => W0 &Word W1   ~> #push ... </k>
-    rule <k> EVMOR W0 W1 => W0 |Word W1   ~> #push ... </k>
-    rule <k> XOR   W0 W1 => W0 xorWord W1 ~> #push ... </k>
-
-    syntax BinStackOp ::= "LT" | "GT" | "EQ"
+    syntax BinOp ::= "AND" | "EVMOR" | "XOR"
  // ----------------------------------------
-    rule <k> LT W0 W1 => 1 ~> #push ... </k>  requires W0 <Int   W1
-    rule <k> LT W0 W1 => 0 ~> #push ... </k>  requires W0 >=Int  W1
-    rule <k> GT W0 W1 => 1 ~> #push ... </k>  requires W0 >Int   W1
-    rule <k> GT W0 W1 => 0 ~> #push ... </k>  requires W0 <=Int  W1
-    rule <k> EQ W0 W1 => 1 ~> #push ... </k>  requires W0 ==Int  W1
-    rule <k> EQ W0 W1 => 0 ~> #push ... </k>  requires W0 =/=Int W1
+    rule <k> AND   REG W0 W1 => #load REG W0 &Word W1   ... </k>
+    rule <k> EVMOR REG W0 W1 => #load REG W0 |Word W1   ... </k>
+    rule <k> XOR   REG W0 W1 => #load REG W0 xorWord W1 ... </k>
 
-    syntax BinStackOp ::= "SLT" | "SGT"
+    syntax BinOp ::= "LT" | "GT" | "EQ"
  // -----------------------------------
-    rule <k> SLT W0 W1 => W0 s<Word W1 ~> #push ... </k>
-    rule <k> SGT W0 W1 => W1 s<Word W0 ~> #push ... </k>
+    rule <k> LT REG W0 W1 => #load REG 1 ... </k>  requires W0 <Int   W1
+    rule <k> LT REG W0 W1 => #load REG 0 ... </k>  requires W0 >=Int  W1
+    rule <k> GT REG W0 W1 => #load REG 1 ... </k>  requires W0 >Int   W1
+    rule <k> GT REG W0 W1 => #load REG 0 ... </k>  requires W0 <=Int  W1
+    rule <k> EQ REG W0 W1 => #load REG 1 ... </k>  requires W0 ==Int  W1
+    rule <k> EQ REG W0 W1 => #load REG 0 ... </k>  requires W0 =/=Int W1
 
-    syntax BinStackOp ::= "SHA3"
- // ----------------------------
-    rule <k> SHA3 MEMSTART MEMWIDTH => keccak(#range(LM, MEMSTART, MEMWIDTH)) ~> #push ... </k>
+    syntax BinOp ::= "SLT" | "SGT"
+ // ------------------------------
+    rule <k> SLT REG W0 W1 => #load REG W0 s<Word W1 ... </k>
+    rule <k> SGT REG W0 W1 => #load REG W1 s<Word W0 ... </k>
+
+    syntax BinOp ::= "SHA3"
+ // -----------------------
+    rule <k> SHA3 REG MEMSTART MEMWIDTH => #load REG keccak(#range(LM, MEMSTART, MEMWIDTH)) ... </k>
          <localMem> LM </localMem>
 
 
@@ -959,43 +906,43 @@ module EVM
 // These operators make queries about the current execution state.
 
 
-    syntax NullStackOp ::= "PC" | "GAS" | "GASPRICE" | "GASLIMIT"
- // -------------------------------------------------------------
-    rule <k> PC       => PCOUNT ~> #push ... </k> <pc> PCOUNT </pc>
-    rule <k> GAS      => GAVAIL ~> #push ... </k> <gas> GAVAIL </gas>
-    rule <k> GASPRICE => GPRICE ~> #push ... </k> <gasPrice> GPRICE </gasPrice>
-    rule <k> GASLIMIT => GLIMIT ~> #push ... </k> <gasLimit> GLIMIT </gasLimit>
+    syntax NullOp ::= "PC" | "GAS" | "GASPRICE" | "GASLIMIT"
+ // --------------------------------------------------------
+    rule <k> PC       REG => #load REG PCOUNT ... </k> <pc> PCOUNT </pc>
+    rule <k> GAS      REG => #load REG GAVAIL ... </k> <gas> GAVAIL </gas>
+    rule <k> GASPRICE REG => #load REG GPRICE ... </k> <gasPrice> GPRICE </gasPrice>
+    rule <k> GASLIMIT REG => #load REG GLIMIT ... </k> <gasLimit> GLIMIT </gasLimit>
 
-    syntax NullStackOp ::= "COINBASE" | "TIMESTAMP" | "NUMBER" | "DIFFICULTY"
- // -------------------------------------------------------------------------
-    rule <k> COINBASE   => CB   ~> #push ... </k> <coinbase> CB </coinbase>
-    rule <k> TIMESTAMP  => TS   ~> #push ... </k> <timestamp> TS </timestamp>
-    rule <k> NUMBER     => NUMB ~> #push ... </k> <number> NUMB </number>
-    rule <k> DIFFICULTY => DIFF ~> #push ... </k> <difficulty> DIFF </difficulty>
-
-    syntax NullStackOp ::= "ADDRESS" | "ORIGIN" | "CALLER" | "CALLVALUE"
+    syntax NullOp ::= "COINBASE" | "TIMESTAMP" | "NUMBER" | "DIFFICULTY"
  // --------------------------------------------------------------------
-    rule <k> ADDRESS   => ACCT ~> #push ... </k> <id> ACCT </id>
-    rule <k> ORIGIN    => ORG  ~> #push ... </k> <origin> ORG </origin>
-    rule <k> CALLER    => CL   ~> #push ... </k> <caller> CL </caller>
-    rule <k> CALLVALUE => CV   ~> #push ... </k> <callValue> CV </callValue>
+    rule <k> COINBASE   REG => #load REG CB   ... </k> <coinbase> CB </coinbase>
+    rule <k> TIMESTAMP  REG => #load REG TS   ... </k> <timestamp> TS </timestamp>
+    rule <k> NUMBER     REG => #load REG NUMB ... </k> <number> NUMB </number>
+    rule <k> DIFFICULTY REG => #load REG DIFF ... </k> <difficulty> DIFF </difficulty>
 
-    syntax NullStackOp ::= "MSIZE" | "CODESIZE"
- // -------------------------------------------
-    rule <k> MSIZE    => 32 *Word MU         ~> #push ... </k> <memoryUsed> MU </memoryUsed>
-    rule <k> CODESIZE => #sizeWordStack(PGM) ~> #push ... </k> <programBytes> PGM </programBytes>
+    syntax NullOp ::= "ADDRESS" | "ORIGIN" | "CALLER" | "CALLVALUE"
+ // ---------------------------------------------------------------
+    rule <k> ADDRESS   REG => #load REG ACCT ... </k> <id> ACCT </id>
+    rule <k> ORIGIN    REG => #load REG ORG  ... </k> <origin> ORG </origin>
+    rule <k> CALLER    REG => #load REG CL   ... </k> <caller> CL </caller>
+    rule <k> CALLVALUE REG => #load REG CV   ... </k> <callValue> CV </callValue>
 
-    syntax TernStackOp ::= "CODECOPY"
- // ---------------------------------
+    syntax NullOp ::= "MSIZE" | "CODESIZE"
+ // --------------------------------------
+    rule <k> MSIZE    REG => #load REG 32 *Word MU         ... </k> <memoryUsed> MU </memoryUsed>
+    rule <k> CODESIZE REG => #load REG #sizeWordStack(PGM) ... </k> <programBytes> PGM </programBytes>
+
+    syntax TernVoidOp ::= "CODECOPY"
+ // --------------------------------
     rule <k> CODECOPY MEMSTART PGMSTART WIDTH => . ... </k>
          <programBytes> PGM </programBytes>
          <localMem> LM => LM [ MEMSTART := PGM [ PGMSTART .. WIDTH ] ] </localMem>
 
-    syntax UnStackOp ::= "BLOCKHASH"
- // --------------------------------
-    rule <k> BLOCKHASH N => #if N >=Int HI orBool HI -Int 256 >Int N #then 0 #else #parseHexWord(Keccak256(Int2String(N))) #fi ~> #push ... </k> <number> HI </number> <mode> VMTESTS </mode>
+    syntax UnOp ::= "BLOCKHASH"
+ // ---------------------------
+    rule <k> BLOCKHASH REG N => #load REG #if N >=Int HI orBool HI -Int 256 >Int N #then 0 #else #parseHexWord(Keccak256(Int2String(N))) #fi ... </k> <number> HI </number> <mode> VMTESTS </mode>
 
-    rule <k> BLOCKHASH N => #blockhash(HASHES, N, HI -Int 1, 0) ~> #push ... </k> <number> HI </number> <blockhash> HASHES </blockhash> <mode> NORMAL </mode>
+    rule <k> BLOCKHASH REG N => #load REG #blockhash(HASHES, N, HI -Int 1, 0) ... </k> <number> HI </number> <blockhash> HASHES </blockhash> <mode> NORMAL </mode>
 
     syntax Int ::= #blockhash ( List , Int , Int , Int ) [function]
  // ---------------------------------------------------------------
@@ -1011,16 +958,16 @@ module EVM
 // The `JUMP*` family of operations affect the current program counter.
 
 
-    syntax NullStackOp ::= JUMPDEST ( Int )
- // ---------------------------------
+    syntax NullVoidOp ::= JUMPDEST ( Int )
+ // --------------------------------------
     rule <k> JUMPDEST(_) => . ... </k>
 
-    syntax NullStackOp ::= JUMP ( Int )
- // ---------------------------
+    syntax NullVoidOp ::= JUMP ( Int )
+ // ----------------------------------
     rule <k> JUMP(LABEL) => . ... </k> <jumpTable> ... LABEL |-> DEST </jumpTable> <pc> _ => DEST </pc>
 
-    syntax UnStackOp ::= JUMPI ( Int )
- // -----------------------------
+    syntax UnVoidOp ::= JUMPI ( Int )
+ // ---------------------------------
     rule <k> JUMPI(LABEL) I => . ... </k> <pc> _      => DEST          </pc> <jumpTable> ... LABEL |-> DEST </jumpTable> requires I =/=K 0
     rule <k> JUMPI(LABEL) 0 => . ... </k> <pc> PCOUNT => PCOUNT +Int 3 </pc>
 
@@ -1028,19 +975,19 @@ module EVM
 // ### `STOP`, `REVERT`, and `RETURN`
 
 
-    syntax NullStackOp ::= "STOP"
- // -----------------------------
+    syntax NullVoidOp ::= "STOP"
+ // ----------------------------
     rule <k> STOP => #end ... </k>
          <output> _ => .WordStack </output>
 
-    syntax BinStackOp ::= "RETURN"
- // ------------------------------
+    syntax BinVoidOp ::= "RETURN"
+ // -----------------------------
     rule <k> RETURN RETSTART RETWIDTH => #end ... </k>
          <output> _ => #range(LM, RETSTART, RETWIDTH) </output>
          <localMem> LM </localMem>
 
-    syntax BinStackOp ::= "REVERT"
- // ------------------------------
+    syntax BinVoidOp ::= "REVERT"
+ // -----------------------------
     rule <k> REVERT RETSTART RETWIDTH => #revert ... </k>
          <output> _ => #range(LM, RETSTART, RETWIDTH) </output>
          <localMem> LM </localMem>
@@ -1051,18 +998,18 @@ module EVM
 // These operators query about the current `CALL*` state.
 
 
-    syntax NullStackOp ::= "CALLDATASIZE"
- // -------------------------------------
-    rule <k> CALLDATASIZE => #sizeWordStack(CD) ~> #push ... </k>
+    syntax NullOp ::= "CALLDATASIZE"
+ // --------------------------------
+    rule <k> CALLDATASIZE REG => #load REG #sizeWordStack(CD) ... </k>
          <callData> CD </callData>
 
-    syntax UnStackOp ::= "CALLDATALOAD"
- // -----------------------------------
-    rule <k> CALLDATALOAD DATASTART => #asWord(CD [ DATASTART .. 32 ]) ~> #push ... </k>
+    syntax UnOp ::= "CALLDATALOAD"
+ // ------------------------------
+    rule <k> CALLDATALOAD REG DATASTART => #load REG #asWord(CD [ DATASTART .. 32 ]) ... </k>
          <callData> CD </callData>
 
-    syntax TernStackOp ::= "CALLDATACOPY"
- // -------------------------------------
+    syntax TernVoidOp ::= "CALLDATACOPY"
+ // ------------------------------------
     rule <k> CALLDATACOPY MEMSTART DATASTART DATAWIDTH => . ... </k>
          <localMem> LM => LM [ MEMSTART := CD [ DATASTART .. DATAWIDTH ] ] </localMem>
          <callData> CD </callData>
@@ -1073,13 +1020,13 @@ module EVM
 // These operators query about the current return data buffer.
 
 
-    syntax NullStackOp ::= "RETURNDATASIZE"
- // ---------------------------------------
-    rule <k> RETURNDATASIZE => #sizeWordStack(RD) ~> #push ... </k>
+    syntax NullOp ::= "RETURNDATASIZE"
+ // ----------------------------------
+    rule <k> RETURNDATASIZE REG => #load REG #sizeWordStack(RD) ... </k>
          <output> RD </output>
 
-    syntax TernStackOp ::= "RETURNDATACOPY"
- // ----------------------------------------
+    syntax TernVoidOp ::= "RETURNDATACOPY"
+ // --------------------------------------
     rule <k> RETURNDATACOPY MEMSTART DATASTART DATAWIDTH => . ... </k>
          <localMem> LM => LM [ MEMSTART := RD [ DATASTART .. DATAWIDTH ] ] </localMem>
          <output> RD </output>
@@ -1092,20 +1039,40 @@ module EVM
 
 // ### Log Operations
 
+// During execution of a transaction some things are recorded in the substate log
+// (Section 6.1 in yellowpaper). This is a right cons-list of `SubstateLogEntry`
+// (which contains the account ID along with the specified portions of the
+// `wordStack` and `localMem`).
 
-    syntax BinStackOp ::= LogOp
-    syntax LogOp ::= LOG ( Int )
+
+    syntax SubstateLogEntry ::= "{" Int "|" WordStack "|" WordStack "}"
+ // -------------------------------------------------------------------
+
+
+
+    syntax BinVoidOp  ::= "LOG0"
+    syntax TernVoidOp ::= "LOG1"
+    syntax QuadVoidOp ::= "LOG2"
+    syntax FiveVoidOp ::= "LOG3"
+    syntax SixVoidOp  ::= "LOG4"
  // ----------------------------
-    rule <k> LOG(N) MEMSTART MEMWIDTH => . ... </k>
+
+    rule LOG0 MEMSTART MEMWIDTH => #log MEMSTART MEMWIDTH .WordStack
+    rule LOG1 MEMSTART MEMWIDTH W0 => #log MEMSTART MEMWIDTH W0 : .WordStack
+    rule LOG2 MEMSTART MEMWIDTH W0 W1 => #log MEMSTART MEMWIDTH W0 : W1 : .WordStack
+    rule LOG3 MEMSTART MEMWIDTH W0 W1 W2 => #log MEMSTART MEMWIDTH W0 : W1 : W2 : .WordStack
+    rule LOG4 MEMSTART MEMWIDTH W0 W1 W2 W3 => #log MEMSTART MEMWIDTH W0 : W1 : W2 : W3 : .WordStack
+
+    syntax InternalOp ::= "#log" Int Int WordStack
+ // ----------------------------------------------
+    rule <k> #log MEMSTART MEMWIDTH WS => . ... </k>
          <id> ACCT </id>
-         <wordStack> WS => #drop(N, WS) </wordStack>
          <localMem> LM </localMem>
-         <log> ... (.List => ListItem({ ACCT | #take(N, WS) | #range(LM, MEMSTART, MEMWIDTH) })) </log>
-      requires #sizeWordStack(WS) >=Int N
+         <log> ... (.List => ListItem({ ACCT | WS | #range(LM, MEMSTART, MEMWIDTH) })) </log>
 
 
-// Ethereum Network OpCodes
-// ------------------------
+// Ethereum Network Ops
+// --------------------
 
 // Operators that require access to the rest of the Ethereum network world-state
 // can be taken as a first draft of a "blockchain generic" language.
@@ -1118,29 +1085,29 @@ module EVM
 // empty data.
 
 
-    syntax UnStackOp ::= "BALANCE"
- // ------------------------------
-    rule <k> BALANCE ACCT => BAL ~> #push ... </k>
+    syntax UnOp ::= "BALANCE"
+ // -------------------------
+    rule <k> BALANCE REG ACCT => #load REG BAL ... </k>
          <account>
            <acctID> ACCT </acctID>
            <balance> BAL </balance>
            ...
          </account>
 
-    rule <k> BALANCE ACCT => #newAccount ACCT ~> 0 ~> #push ... </k>
+    rule <k> BALANCE REG ACCT => #newAccount ACCT ~> #load REG 0 ... </k>
          <activeAccounts> ACCTS </activeAccounts>
       requires notBool ACCT in_keys(ACCTS)
 
-    syntax UnStackOp ::= "EXTCODESIZE"
- // ----------------------------------
-    rule <k> EXTCODESIZE ACCT => #sizeWordStack(CODE) ~> #push ... </k>
+    syntax UnOp ::= "EXTCODESIZE"
+ // -----------------------------
+    rule <k> EXTCODESIZE REG ACCT => #load REG #sizeWordStack(CODE) ... </k>
          <account>
            <acctID> ACCT </acctID>
            <code> CODE </code>
            ...
          </account>
 
-    rule <k> EXTCODESIZE ACCT => #newAccount ACCT ~> 0 ~> #push ... </k>
+    rule <k> EXTCODESIZE REG ACCT => #newAccount ACCT ~> #load REG 0 ... </k>
          <activeAccounts> ACCTS </activeAccounts>
       requires notBool ACCT in_keys(ACCTS)
 
@@ -1149,8 +1116,8 @@ module EVM
 // `EXTCODECOPY`? Should we pad zeros (for the copied "program")?
 
 
-    syntax QuadStackOp ::= "EXTCODECOPY"
- // ------------------------------------
+    syntax QuadVoidOp ::= "EXTCODECOPY"
+ // -----------------------------------
     rule <k> EXTCODECOPY ACCT MEMSTART PGMSTART WIDTH => . ... </k>
          <localMem> LM => LM [ MEMSTART := PGM [ PGMSTART .. WIDTH ] ] </localMem>
          <account>
@@ -1169,9 +1136,9 @@ module EVM
 // These operations interact with the account storage.
 
 
-    syntax UnStackOp ::= "SLOAD"
- // ----------------------------
-    rule <k> SLOAD INDEX => 0 ~> #push ... </k>
+    syntax UnOp ::= "SLOAD"
+ // -----------------------
+    rule <k> SLOAD REG INDEX => #load REG 0 ... </k>
          <id> ACCT </id>
          <account>
            <acctID> ACCT </acctID>
@@ -1179,7 +1146,7 @@ module EVM
            ...
          </account> requires notBool INDEX in_keys(STORAGE)
 
-    rule <k> SLOAD INDEX => VALUE ~> #push ... </k>
+    rule <k> SLOAD REG INDEX => #load REG VALUE ... </k>
          <id> ACCT </id>
          <account>
            <acctID> ACCT </acctID>
@@ -1187,8 +1154,8 @@ module EVM
            ...
          </account>
 
-    syntax BinStackOp ::= "SSTORE"
- // ------------------------------
+    syntax BinVoidOp ::= "SSTORE"
+ // -----------------------------
     rule <k> SSTORE INDEX VALUE => . ... </k>
          <id> ACCT </id>
          <account>
@@ -1268,7 +1235,7 @@ module EVM
       requires ACCTCODE in #precompiledAccounts(SCHED)
 
     rule <k> #call ACCTFROM ACCTTO ACCTCODE GLIMIT VALUE APPVALUE ARGS STATIC
-          => #callWithCode ACCTFROM ACCTTO #asMapOpCodes(#dasmOpCodes(CODE, SCHED)) CODE GLIMIT VALUE APPVALUE ARGS STATIC
+          => #callWithCode ACCTFROM ACCTTO #asMapOps(#dasmOps(CODE, SCHED)) CODE GLIMIT VALUE APPVALUE ARGS STATIC
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -1308,37 +1275,38 @@ module EVM
 
     syntax KItem ::= "#initVM"
  // --------------------------
-    rule <k> #initVM    => . ...                   </k>
-         <pc>         _ => 0                       </pc>
-         <memoryUsed> _ => 0                       </memoryUsed>
-         <output>     _ => .WordStack              </output>
-         <wordStack>  _ => .WordStack              </wordStack>
-         <localMem>   _ => makeArray(2 ^Int 30, 0) </localMem>
+    rule <k> #initVM    => . ...       </k>
+         <pc>         _ => 0           </pc>
+         <memoryUsed> _ => 0           </memoryUsed>
+         <output>     _ => .WordStack  </output>
+         <regs>       _ => .Array      </regs>
+         <nregs>      _ => 32          </nregs>
+         <localMem>   _ => .Array      </localMem>
 
-    syntax KItem ::= "#return" Int Int
- // ----------------------------------
-    rule <k> #exception ~> #return _ _
-          => #popCallStack ~> #popWorldState ~> #popSubstate ~> 0 ~> #push
+    syntax KItem ::= "#return" Int Int Reg
+ // --------------------------------------
+    rule <k> #exception ~> #return _ _ REG
+          => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG 0
          ...
          </k>
          <output> _ => .WordStack </output>
 
-    rule <k> #revert ~> #return RETSTART RETWIDTH
+    rule <k> #revert ~> #return RETSTART RETWIDTH REG
            => #popCallStack
            ~> #popWorldState
            ~> #popSubstate
-           ~> 0 ~> #push ~> #refund GAVAIL ~> #setLocalMem RETSTART RETWIDTH OUT
+           ~> #load REG 0 ~> #refund GAVAIL ~> #setLocalMem RETSTART RETWIDTH OUT
           ...
          </k>
          <output> OUT </output>
          <gas> GAVAIL </gas>
 
     rule <mode> EXECMODE </mode>
-         <k> #end ~> #return RETSTART RETWIDTH
+         <k> #end ~> #return RETSTART RETWIDTH REG
           => #popCallStack
           ~> #if EXECMODE ==K VMTESTS #then #popWorldState #else #dropWorldState #fi
           ~> #dropSubstate
-          ~> 1 ~> #push ~> #refund GAVAIL ~> #setLocalMem RETSTART RETWIDTH OUT
+          ~> #load REG 1 ~> #refund GAVAIL ~> #setLocalMem RETSTART RETWIDTH OUT
          ...
          </k>
          <output> OUT </output>
@@ -1359,10 +1327,10 @@ module EVM
 
     syntax CallOp ::= "CALL"
  // ------------------------
-    rule <k> CALL GCAP ACCTTO VALUE ARGSTART ARGWIDTH RETSTART RETWIDTH
+    rule <k> CALL REG GCAP ACCTTO VALUE ARGSTART ARGWIDTH RETSTART RETWIDTH
           => #checkCall ACCTFROM VALUE
           ~> #call ACCTFROM ACCTTO ACCTTO Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, VALUE) VALUE VALUE #range(LM, ARGSTART, ARGWIDTH) false
-          ~> #return RETSTART RETWIDTH
+          ~> #return RETSTART RETWIDTH REG
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -1373,10 +1341,10 @@ module EVM
 
     syntax CallOp ::= "CALLCODE"
  // ----------------------------
-    rule <k> CALLCODE GCAP ACCTTO VALUE ARGSTART ARGWIDTH RETSTART RETWIDTH
+    rule <k> CALLCODE REG GCAP ACCTTO VALUE ARGSTART ARGWIDTH RETSTART RETWIDTH
           => #checkCall ACCTFROM VALUE
           ~> #call ACCTFROM ACCTFROM ACCTTO Ccallgas(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, VALUE) VALUE VALUE #range(LM, ARGSTART, ARGWIDTH) false
-          ~> #return RETSTART RETWIDTH
+          ~> #return RETSTART RETWIDTH REG
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -1387,10 +1355,10 @@ module EVM
 
     syntax CallSixOp ::= "DELEGATECALL"
  // -----------------------------------
-    rule <k> DELEGATECALL GCAP ACCTTO ARGSTART ARGWIDTH RETSTART RETWIDTH
+    rule <k> DELEGATECALL REG GCAP ACCTTO ARGSTART ARGWIDTH RETSTART RETWIDTH
           => #checkCall ACCTFROM 0
           ~> #call ACCTAPPFROM ACCTFROM ACCTTO Ccallgas(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, 0) 0 VALUE #range(LM, ARGSTART, ARGWIDTH) false
-          ~> #return RETSTART RETWIDTH
+          ~> #return RETSTART RETWIDTH REG
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -1403,10 +1371,10 @@ module EVM
 
     syntax CallSixOp ::= "STATICCALL"
  // ---------------------------------
-    rule <k> STATICCALL GCAP ACCTTO ARGSTART ARGWIDTH RETSTART RETWIDTH
+    rule <k> STATICCALL REG GCAP ACCTTO ARGSTART ARGWIDTH RETSTART RETWIDTH
           => #checkCall ACCTFROM 0
           ~> #call ACCTFROM ACCTTO ACCTTO Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0) 0 0 #range(LM, ARGSTART, ARGWIDTH) true
-          ~> #return RETSTART RETWIDTH
+          ~> #return RETSTART RETWIDTH REG
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -1464,9 +1432,9 @@ module EVM
          <schedule> SCHED </schedule>
          <id> ACCT => ACCTTO </id>
          <gas> OLDGAVAIL => GAVAIL </gas>
-         <program> _ => #asMapOpCodes(#dasmOpCodes(INITCODE, SCHED)) </program>
+         <program> _ => #asMapOps(#dasmOps(INITCODE, SCHED)) </program>
          <programBytes> _ => INITCODE </programBytes>
-         <jumpTable> _ => #computeJumpTable(#asMapOpCodes(#dasmOpCodes(INITCODE, SCHED))) </jumpTable>
+         <jumpTable> _ => #computeJumpTable(#asMapOps(#dasmOps(INITCODE, SCHED))) </jumpTable>
          <caller> _ => ACCTFROM </caller>
          <callLog> ... (.Set => #ifSet EXECMODE ==K VMTESTS #then SetItem({ 0 | OLDGAVAIL +Int GAVAIL | VALUE | INITCODE }) #else .Set #fi) </callLog>
          <callDepth> CD => CD +Int 1 </callDepth>
@@ -1479,20 +1447,20 @@ module EVM
          </account>
          <activeAccounts> ... ACCTTO |-> (EMPTY => #if Gemptyisnonexistent << SCHED >> #then false #else EMPTY #fi) ... </activeAccounts>
 
-    syntax KItem ::= "#codeDeposit" Int
-                   | "#mkCodeDeposit" Int
-                   | "#finishCodeDeposit" Int WordStack
- // ---------------------------------------------------
-    rule <k> #exception ~> #codeDeposit _ => #popCallStack ~> #popWorldState ~> #popSubstate ~> 0 ~> #push ... </k> <output> _ => .WordStack </output>
-    rule <k> #revert ~> #codeDeposit _ => #popCallStack ~> #popWorldState ~> #popSubstate ~> #refund GAVAIL ~> 0 ~> #push ... </k>
+    syntax KItem ::= "#codeDeposit" Int Reg
+                   | "#mkCodeDeposit" Int Reg
+                   | "#finishCodeDeposit" Int WordStack Reg
+ // -------------------------------------------------------
+    rule <k> #exception ~> #codeDeposit _ REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG 0 ... </k> <output> _ => .WordStack </output>
+    rule <k> #revert ~> #codeDeposit _ REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #refund GAVAIL ~> #load REG 0 ... </k>
          <gas> GAVAIL </gas>
 
     rule <mode> EXECMODE </mode>
-         <k> #end ~> #codeDeposit ACCT => #mkCodeDeposit ACCT ... </k>
+         <k> #end ~> #codeDeposit ACCT REG => #mkCodeDeposit ACCT REG ... </k>
 
-    rule <k> #mkCodeDeposit ACCT
+    rule <k> #mkCodeDeposit ACCT REG
           => #if EXECMODE ==K VMTESTS #then . #else Gcodedeposit < SCHED > *Int #sizeWordStack(OUT) ~> #deductGas #fi
-          ~> #finishCodeDeposit ACCT OUT
+          ~> #finishCodeDeposit ACCT OUT REG
          ...
          </k>
          <mode> EXECMODE </mode>
@@ -1500,14 +1468,14 @@ module EVM
          <output> OUT => .WordStack </output>
       requires #sizeWordStack(OUT) <=Int maxCodeSize < SCHED >
 
-    rule <k> #mkCodeDeposit ACCT => #popCallStack ~> #popWorldState ~> #popSubstate ~> 0 ~> #push ... </k>
+    rule <k> #mkCodeDeposit ACCT REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG 0 ... </k>
          <schedule> SCHED </schedule>
          <output> OUT => .WordStack </output>
       requires #sizeWordStack(OUT) >Int maxCodeSize < SCHED >
 
-    rule <k> #finishCodeDeposit ACCT OUT
+    rule <k> #finishCodeDeposit ACCT OUT REG
           => #popCallStack ~> #if EXECMODE ==K VMTESTS #then #popWorldState #else #dropWorldState #fi ~> #dropSubstate
-          ~> #refund GAVAIL ~> ACCT ~> #push
+          ~> #refund GAVAIL ~> #load REG ACCT
          ...
          </k>
          <mode> EXECMODE </mode>
@@ -1519,16 +1487,16 @@ module EVM
          </account>
          <activeAccounts> ... ACCT |-> (EMPTY => #if OUT =/=K .WordStack #then false #else EMPTY #fi) ... </activeAccounts>
 
-    rule <k> #exception ~> #finishCodeDeposit ACCT _
+    rule <k> #exception ~> #finishCodeDeposit ACCT _ REG
           => #popCallStack ~> #if EXECMODE ==K VMTESTS #then #popWorldState #else #dropWorldState #fi ~> #dropSubstate
-          ~> #refund GAVAIL ~> ACCT ~> #push
+          ~> #refund GAVAIL ~> #load REG ACCT
          ...
          </k>
          <mode> EXECMODE </mode>
          <gas> GAVAIL </gas>
          <schedule> FRONTIER </schedule>
 
-    rule <k> #exception ~> #finishCodeDeposit _ _ => #popCallStack ~> #popWorldState ~> #popSubstate ~> 0 ~> #push ... </k>
+    rule <k> #exception ~> #finishCodeDeposit _ _ REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG 0 ... </k>
          <schedule> SCHED </schedule>
       requires SCHED =/=K FRONTIER
 
@@ -1537,12 +1505,12 @@ module EVM
 // cleans up the result with `#codeDeposit`.
 
 
-    syntax TernStackOp ::= "CREATE"
- // -------------------------------
-    rule <k> CREATE VALUE MEMSTART MEMWIDTH
+    syntax TernOp ::= "CREATE"
+ // --------------------------
+    rule <k> CREATE REG VALUE MEMSTART MEMWIDTH
           => #checkCreate ACCT VALUE
           ~> #create ACCT #newAddr(ACCT, NONCE) #ifInt Gstaticcalldepth << SCHED >> #then GAVAIL #else #allBut64th(GAVAIL) #fi VALUE #range(LM, MEMSTART, MEMWIDTH)
-          ~> #codeDeposit #newAddr(ACCT, NONCE)
+          ~> #codeDeposit #newAddr(ACCT, NONCE) REG
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -1561,8 +1529,8 @@ module EVM
 // destroys the balance in the account, irreparably losing it.
 
 
-    syntax UnStackOp ::= "SELFDESTRUCT"
- // -----------------------------------
+    syntax UnVoidOp ::= "SELFDESTRUCT"
+ // ----------------------------------
     rule <k> SELFDESTRUCT ACCTTO => #transferFunds ACCT ACCTTO BALFROM ~> #end ... </k>
          <schedule> SCHED </schedule>
          <id> ACCT </id>
@@ -1599,7 +1567,7 @@ module EVM
 //     addresses 1 through 4.
 
 
-    syntax NullStackOp   ::= PrecompiledOp
+    syntax NullVoidOp   ::= PrecompiledOp
     syntax PrecompiledOp ::= #precompiled ( Int ) [function]
  // --------------------------------------------------------
     rule #precompiled(1) => ECREC
@@ -1745,90 +1713,32 @@ module EVM
 //     which helps track the memory used.
 
 
-    syntax Int ::= #memory ( OpCode , Int ) [function]
+    syntax Int ::= #memory ( Op , Int ) [function]
  // --------------------------------------------------
-    rule #memory ( MLOAD INDEX     , MU ) => #memoryUsageUpdate(MU, INDEX, 32)
+    rule #memory ( MLOAD _ INDEX   , MU ) => #memoryUsageUpdate(MU, INDEX, 32)
     rule #memory ( MSTORE INDEX _  , MU ) => #memoryUsageUpdate(MU, INDEX, 32)
     rule #memory ( MSTORE8 INDEX _ , MU ) => #memoryUsageUpdate(MU, INDEX, 1)
 
-    rule #memory ( SHA3 START WIDTH   , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
-    rule #memory ( LOG(_) START WIDTH , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
+    rule #memory ( SHA3 _ START WIDTH       , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
+    rule #memory ( LOG0 START WIDTH         , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
+    rule #memory ( LOG1 START WIDTH _       , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
+    rule #memory ( LOG2 START WIDTH _ _     , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
+    rule #memory ( LOG3 START WIDTH _ _ _   , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
+    rule #memory ( LOG4 START WIDTH _ _ _ _ , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
 
     rule #memory ( CODECOPY START _ WIDTH       , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
     rule #memory ( EXTCODECOPY _ START _ WIDTH  , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
     rule #memory ( CALLDATACOPY START _ WIDTH   , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
     rule #memory ( RETURNDATACOPY START _ WIDTH , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
 
-    rule #memory ( CREATE _ START WIDTH , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
-    rule #memory ( RETURN START WIDTH   , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
-    rule #memory ( REVERT START WIDTH   , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
+    rule #memory ( CREATE _ _ START WIDTH , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
+    rule #memory ( RETURN START WIDTH     , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
+    rule #memory ( REVERT START WIDTH     , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
 
-    rule #memory ( COP:CallOp     _ _ _ ARGSTART ARGWIDTH RETSTART RETWIDTH , MU ) => #memoryUsageUpdate(#memoryUsageUpdate(MU, ARGSTART, ARGWIDTH), RETSTART, RETWIDTH)
-    rule #memory ( CSOP:CallSixOp _ _   ARGSTART ARGWIDTH RETSTART RETWIDTH , MU ) => #memoryUsageUpdate(#memoryUsageUpdate(MU, ARGSTART, ARGWIDTH), RETSTART, RETWIDTH)
+    rule #memory ( COP:CallOp     _ _ _ _ ARGSTART ARGWIDTH RETSTART RETWIDTH , MU ) => #memoryUsageUpdate(#memoryUsageUpdate(MU, ARGSTART, ARGWIDTH), RETSTART, RETWIDTH)
+    rule #memory ( CSOP:CallSixOp _ _ _   ARGSTART ARGWIDTH RETSTART RETWIDTH , MU ) => #memoryUsageUpdate(#memoryUsageUpdate(MU, ARGSTART, ARGWIDTH), RETSTART, RETWIDTH)
 
-
-// Grumble grumble, K sucks at `owise`.
-
-
-    rule #memory(JUMP(_),      MU) => MU
-    rule #memory(JUMPI(_) _,   MU) => MU
-    rule #memory(JUMPDEST(_),  MU) => MU
-
-    rule #memory(SSTORE _ _,   MU) => MU
-    rule #memory(SLOAD _,      MU) => MU
-
-    rule #memory(ADD _ _,        MU) => MU
-    rule #memory(SUB _ _,        MU) => MU
-    rule #memory(MUL _ _,        MU) => MU
-    rule #memory(DIV _ _,        MU) => MU
-    rule #memory(EXP _ _,        MU) => MU
-    rule #memory(MOD _ _,        MU) => MU
-    rule #memory(SDIV _ _,       MU) => MU
-    rule #memory(SMOD _ _,       MU) => MU
-    rule #memory(SIGNEXTEND _ _, MU) => MU
-    rule #memory(ADDMOD _ _ _,   MU) => MU
-    rule #memory(MULMOD _ _ _,   MU) => MU
-
-    rule #memory(NOT _,     MU) => MU
-    rule #memory(AND _ _,   MU) => MU
-    rule #memory(EVMOR _ _, MU) => MU
-    rule #memory(XOR _ _,   MU) => MU
-    rule #memory(BYTE _ _,  MU) => MU
-    rule #memory(ISZERO _,  MU) => MU
-
-    rule #memory(LT _ _,         MU) => MU
-    rule #memory(GT _ _,         MU) => MU
-    rule #memory(SLT _ _,        MU) => MU
-    rule #memory(SGT _ _,        MU) => MU
-    rule #memory(EQ _ _,         MU) => MU
-
-    rule #memory(LI(_, _), MU) => MU
-
-    rule #memory(STOP,           MU) => MU
-    rule #memory(ADDRESS,        MU) => MU
-    rule #memory(ORIGIN,         MU) => MU
-    rule #memory(CALLER,         MU) => MU
-    rule #memory(CALLVALUE,      MU) => MU
-    rule #memory(CALLDATASIZE,   MU) => MU
-    rule #memory(RETURNDATASIZE, MU) => MU
-    rule #memory(CODESIZE,       MU) => MU
-    rule #memory(GASPRICE,       MU) => MU
-    rule #memory(COINBASE,       MU) => MU
-    rule #memory(TIMESTAMP,      MU) => MU
-    rule #memory(NUMBER,         MU) => MU
-    rule #memory(DIFFICULTY,     MU) => MU
-    rule #memory(GASLIMIT,       MU) => MU
-    rule #memory(PC,             MU) => MU
-    rule #memory(MSIZE,          MU) => MU
-    rule #memory(GAS,            MU) => MU
-
-    rule #memory(SELFDESTRUCT _, MU) => MU
-    rule #memory(CALLDATALOAD _, MU) => MU
-    rule #memory(EXTCODESIZE _,  MU) => MU
-    rule #memory(BALANCE _,      MU) => MU
-    rule #memory(BLOCKHASH _,    MU) => MU
-
-    rule #memory(_:PrecompiledOp, MU) => MU
+    rule #memory(_, MU) => MU [owise]
 
     syntax Int ::= #memoryUsageUpdate ( Int , Int , Int ) [function]
  // ----------------------------------------------------------------
@@ -1846,7 +1756,7 @@ module EVM
 //     the intrinsic execution gas of each opcode.
 
 
-    syntax InternalOp ::= #gasExec ( Schedule , OpCode )
+    syntax InternalOp ::= #gasExec ( Schedule , Op )
  // ----------------------------------------------------
     rule <k> #gasExec(SCHED, SSTORE INDEX VALUE) => Csstore(SCHED, VALUE, #lookup(STORAGE, INDEX)) ... </k>
          <id> ACCT </id>
@@ -1856,31 +1766,35 @@ module EVM
            ...
          </account>
 
-    rule <k> #gasExec(SCHED, EXP W0 0)  => Gexp < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, EXP W0 W1) => Gexp < SCHED > +Int (Gexpbyte < SCHED > *Int (1 +Int (log256Int(W1)))) ... </k> requires W1 =/=K 0
+    rule <k> #gasExec(SCHED, EXP _ W0 0)  => Gexp < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, EXP _ W0 W1) => Gexp < SCHED > +Int (Gexpbyte < SCHED > *Int (1 +Int (log256Int(W1)))) ... </k> requires W1 =/=K 0
 
     rule <k> #gasExec(SCHED, CALLDATACOPY    _ _ WIDTH) => Gverylow     < SCHED > +Int (Gcopy < SCHED > *Int (WIDTH up/Int 32)) ... </k>
     rule <k> #gasExec(SCHED, RETURNDATACOPY  _ _ WIDTH) => Gverylow     < SCHED > +Int (Gcopy < SCHED > *Int (WIDTH up/Int 32)) ... </k>
     rule <k> #gasExec(SCHED, CODECOPY        _ _ WIDTH) => Gverylow     < SCHED > +Int (Gcopy < SCHED > *Int (WIDTH up/Int 32)) ... </k>
     rule <k> #gasExec(SCHED, EXTCODECOPY   _ _ _ WIDTH) => Gextcodecopy < SCHED > +Int (Gcopy < SCHED > *Int (WIDTH up/Int 32)) ... </k>
 
-    rule <k> #gasExec(SCHED, LOG(N) _ WIDTH) => (Glog < SCHED > +Int (Glogdata < SCHED > *Int WIDTH) +Int (N *Int Glogtopic < SCHED >)) ... </k>
+    rule <k> #gasExec(SCHED, LOG0 _ WIDTH)         => (Glog < SCHED > +Int (Glogdata < SCHED > *Int WIDTH) +Int (0 *Int Glogtopic < SCHED >)) ... </k>
+    rule <k> #gasExec(SCHED, LOG1 _ WIDTH _)       => (Glog < SCHED > +Int (Glogdata < SCHED > *Int WIDTH) +Int (1 *Int Glogtopic < SCHED >)) ... </k>
+    rule <k> #gasExec(SCHED, LOG2 _ WIDTH _ _)     => (Glog < SCHED > +Int (Glogdata < SCHED > *Int WIDTH) +Int (2 *Int Glogtopic < SCHED >)) ... </k>
+    rule <k> #gasExec(SCHED, LOG3 _ WIDTH _ _ _)   => (Glog < SCHED > +Int (Glogdata < SCHED > *Int WIDTH) +Int (3 *Int Glogtopic < SCHED >)) ... </k>
+    rule <k> #gasExec(SCHED, LOG4 _ WIDTH _ _ _ _) => (Glog < SCHED > +Int (Glogdata < SCHED > *Int WIDTH) +Int (4 *Int Glogtopic < SCHED >)) ... </k>
 
-    rule <k> #gasExec(SCHED, CALL         GCAP ACCTTO VALUE _ _ _ _) => Ccall(SCHED, ACCTTO,   ACCTS, GCAP, GAVAIL, VALUE) ... </k>
+    rule <k> #gasExec(SCHED, CALL _         GCAP ACCTTO VALUE _ _ _ _) => Ccall(SCHED, ACCTTO,   ACCTS, GCAP, GAVAIL, VALUE) ... </k>
          <activeAccounts> ACCTS </activeAccounts>
          <gas> GAVAIL </gas>
 
-    rule <k> #gasExec(SCHED, CALLCODE     GCAP _      VALUE _ _ _ _) => Ccall(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, VALUE) ... </k>
+    rule <k> #gasExec(SCHED, CALLCODE _     GCAP _      VALUE _ _ _ _) => Ccall(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, VALUE) ... </k>
          <id> ACCTFROM </id>
          <activeAccounts> ACCTS </activeAccounts>
          <gas> GAVAIL </gas>
 
-    rule <k> #gasExec(SCHED, DELEGATECALL GCAP _ _ _ _ _) => Ccall(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, 0) ... </k>
+    rule <k> #gasExec(SCHED, DELEGATECALL _ GCAP _ _ _ _ _) => Ccall(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, 0) ... </k>
          <id> ACCTFROM </id>
          <activeAccounts> ACCTS </activeAccounts>
          <gas> GAVAIL </gas>
 
-    rule <k> #gasExec(SCHED, STATICCALL GCAP ACCTTO _ _ _ _) => Ccall(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0) ... </k>
+    rule <k> #gasExec(SCHED, STATICCALL _ GCAP ACCTTO _ _ _ _) => Ccall(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0) ... </k>
          <activeAccounts> ACCTS </activeAccounts>
          <gas> GAVAIL </gas>
 
@@ -1893,12 +1807,12 @@ module EVM
            ...
          </account>
 
-    rule <k> #gasExec(SCHED, CREATE _ _ _) => Gcreate < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, CREATE _ _ _ _) => Gcreate < SCHED > ... </k>
 
-    rule <k> #gasExec(SCHED, SHA3 _ WIDTH) => Gsha3 < SCHED > +Int (Gsha3word < SCHED > *Int (WIDTH up/Int 32)) ... </k>
+    rule <k> #gasExec(SCHED, SHA3 _ _ WIDTH) => Gsha3 < SCHED > +Int (Gsha3word < SCHED > *Int (WIDTH up/Int 32)) ... </k>
 
     rule <k> #gasExec(SCHED, JUMPDEST(_)) => Gjumpdest < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, SLOAD _)     => Gsload    < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, SLOAD _ _)     => Gsload    < SCHED > ... </k>
 
     // Wzero
     rule <k> #gasExec(SCHED, STOP)       => Gzero < SCHED > ... </k>
@@ -1906,62 +1820,62 @@ module EVM
     rule <k> #gasExec(SCHED, REVERT _ _) => Gzero < SCHED > ... </k>
 
     // Wbase
-    rule <k> #gasExec(SCHED, ADDRESS)        => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, ORIGIN)         => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, CALLER)         => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, CALLVALUE)      => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, CALLDATASIZE)   => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, RETURNDATASIZE) => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, CODESIZE)       => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, GASPRICE)       => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, COINBASE)       => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, TIMESTAMP)      => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, NUMBER)         => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, DIFFICULTY)     => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, GASLIMIT)       => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, PC)             => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, MSIZE)          => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, GAS)            => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, ADDRESS _)        => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, ORIGIN _)         => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, CALLER _)         => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, CALLVALUE _)      => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, CALLDATASIZE _)   => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, RETURNDATASIZE _) => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, CODESIZE _)       => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, GASPRICE _)       => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, COINBASE _)       => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, TIMESTAMP _)      => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, NUMBER _)         => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, DIFFICULTY _)     => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, GASLIMIT _)       => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, PC _)             => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, MSIZE _)          => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, GAS _)            => Gbase < SCHED > ... </k>
 
     // Wverylow
-    rule <k> #gasExec(SCHED, ADD _ _)        => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, SUB _ _)        => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, NOT _)          => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, LT _ _)         => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, GT _ _)         => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, SLT _ _)        => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, SGT _ _)        => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, EQ _ _)         => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, ISZERO _)       => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, AND _ _)        => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, EVMOR _ _)      => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, XOR _ _)        => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, BYTE _ _)       => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, CALLDATALOAD _) => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, MLOAD _)        => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, MSTORE _ _)     => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, MSTORE8 _ _)    => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, LI(_, _))     => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, ADD _ _ _)        => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, SUB _ _ _)        => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, NOT _ _)          => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, LT _ _ _)         => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, GT _ _ _)         => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, SLT _ _ _)        => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, SGT _ _ _)        => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, EQ _ _ _)         => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, ISZERO _ _)       => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, AND _ _ _)        => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, EVMOR _ _ _)      => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, XOR _ _ _)        => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, BYTE _ _ _)       => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, CALLDATALOAD _ _) => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, MLOAD _ _)        => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, MSTORE _ _)       => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, MSTORE8 _ _)      => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, LI(_, _) _)       => Gverylow < SCHED > ... </k>
 
     // Wlow
-    rule <k> #gasExec(SCHED, MUL _ _)        => Glow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, DIV _ _)        => Glow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, SDIV _ _)       => Glow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, MOD _ _)        => Glow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, SMOD _ _)       => Glow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, SIGNEXTEND _ _) => Glow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, MUL _ _ _)        => Glow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, DIV _ _ _)        => Glow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, SDIV _ _ _)       => Glow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, MOD _ _ _)        => Glow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, SMOD _  _ _)       => Glow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, SIGNEXTEND _ _ _) => Glow < SCHED > ... </k>
 
     // Wmid
-    rule <k> #gasExec(SCHED, ADDMOD _ _ _) => Gmid < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, MULMOD _ _ _) => Gmid < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, ADDMOD _ _ _ _) => Gmid < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, MULMOD _ _ _ _) => Gmid < SCHED > ... </k>
     rule <k> #gasExec(SCHED, JUMP(_)) => Gmid < SCHED > ... </k>
 
     // Whigh
     rule <k> #gasExec(SCHED, JUMPI(_) _) => Ghigh < SCHED > ... </k>
 
-    rule <k> #gasExec(SCHED, EXTCODESIZE _) => Gextcodesize < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, BALANCE _)     => Gbalance     < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, BLOCKHASH _)   => Gblockhash   < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, EXTCODESIZE _ _) => Gextcodesize < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, BALANCE _ _)     => Gbalance     < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, BLOCKHASH _ _)   => Gblockhash   < SCHED > ... </k>
 
     // Precompiled
     rule <k> #gasExec(_, ECREC)  => 3000 ... </k>
@@ -2277,32 +2191,85 @@ module EVM
 // ------------
 
 // After interpreting the strings representing programs as a `WordStack`, it should
-// be changed into an `OpCodes` for use by the EVM semantics.
+// be changed into an `Ops` for use by the EVM semantics.
 
-// -   `#dasmOpCodes` interperets `WordStack` as an `OpCodes`.
+// -   `#dasmOps` interperets `WordStack` as an `Ops`.
 // -   `#dasmLI` handles the case of a `LiOp`.
 // -   `#dasmOpCode` interperets a `Int` as an `OpCode`.
 // -   `#computeJumpTable` fills in the jump table from a `Map` of `OpCode`.
 
 
-    syntax OpCodes ::= #dasmOpCodes ( WordStack , Schedule )           [function]
-                     | #dasmOpCodes ( OpCodes , WordStack , Schedule ) [function, klabel(#dasmOpCodesAux)]
-                     | #revOpCodes  ( OpCodes , OpCodes )              [function]
+    syntax Ops ::= #dasmOps ( WordStack , Schedule )       [function]
+                 | #dasmOps ( Ops , WordStack , K , Schedule , Int ) [function, klabel(#dasmOpsAux)]
+                 | #revOps  ( Ops , Ops )                        [function]
+    syntax OpCode ::= ".OpCode"
  // -----------------------------------------------------------------------------
-    rule #dasmOpCodes( WS, SCHED ) => #revOpCodes(#dasmOpCodes(.OpCodes, WS, SCHED), .OpCodes)
+    rule #dasmOps( 128 : NBITS : WS, SCHED ) => #revOps(#dasmOps(REGISTERS (1 <<Int NBITS) ; .Ops, WS, .K, SCHED, NBITS), .Ops)
+    rule #dasmOps( WS, SCHED ) => #revOps(#dasmOps(.Ops, WS, .K, SCHED, 32), .Ops) [owise]
 
-    rule #dasmOpCodes( OPS, .WordStack, _ ) => OPS
-    rule #dasmOpCodes( OPS, W : WS, SCHED ) => #dasmOpCodes(#dasmOpCode(W, SCHED) ; OPS, WS, SCHED) requires W >=Int 0   andBool W <=Int 95 andBool W =/=Int 86 andBool W =/=Int 87 andBool W =/=Int 91
-    rule #dasmOpCodes( OPS, W : WS, SCHED ) => #dasmOpCodes(#dasmOpCode(W, SCHED) ; OPS, WS, SCHED) requires W >=Int 165 andBool W <=Int 255
-    rule #dasmOpCodes( OPS, W : WS, SCHED ) => #dasmOpCodes(LOG(W -Int 160)       ; OPS, WS, SCHED) requires W >=Int 160 andBool W <=Int 164
+    rule #dasmOps( OPS, .WordStack, .K, _, _ ) => OPS
 
-    rule #dasmOpCodes( OPS, W : WS, SCHED ) => #dasmOpCodes(LI(W -Int 95, #asWord(#take(W -Int 95, WS))) ; OPS, #drop(W -Int 95, WS), SCHED) requires W >=Int 96  andBool W <=Int 127
-    rule #dasmOpCodes( OPS, 86 : W1 : W2 : WS, SCHED ) => #dasmOpCodes(JUMP(W1 *Int 256 +Int W2) ; OPS, WS, SCHED)
-    rule #dasmOpCodes( OPS, 87 : W1 : W2 : WS, SCHED ) => #dasmOpCodes(JUMPI(W1 *Int 256 +Int W2) ; OPS, WS, SCHED)
-    rule #dasmOpCodes( OPS, 91 : W1 : W2 : WS, SCHED ) => #dasmOpCodes(JUMPDEST(W1 *Int 256 +Int W2) ; OPS, WS, SCHED)
+    rule #dasmOps( OPS, W : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, #dasmOpCode(W, SCHED), SCHED, NREGS)
+      requires (W >=Int 0   andBool W <=Int 95 andBool W =/=Int 88 andBool W =/=Int 89 andBool W =/=Int 93)
+        orBool (W >=Int 128 andBool W <=Int 255)
 
-    rule #revOpCodes ( OP ; OPS , OPS' ) => #revOpCodes(OPS, OP ; OPS')
-    rule #revOpCodes ( .OpCodes , OPS  ) => OPS
+    rule #dasmOps( OPS, W : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, #drop(W -Int 95, WS), LI(W -Int 95, #asWord(#take(W -Int 95, WS))), SCHED, NREGS)
+      requires W >=Int 96  andBool W <=Int 127
+    rule #dasmOps( OPS, 88 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMP(W1 *Int 256 +Int W2), SCHED, NREGS)
+    rule #dasmOps( OPS, 89 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMPI(W1 *Int 256 +Int W2), SCHED, NREGS)
+    rule #dasmOps( OPS, 93 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMPDEST(W1 *Int 256 +Int W2), SCHED, NREGS)
+
+    rule #dasmOps( OPS, WS, OP:OpCode, SCHED, NREGS) => #dasmOps(#dasmRegs(OP, WS, NREGS) ; OPS, #drop(#opWidth(OP, NREGS) -Int 1, WS), .K, SCHED, NREGS)
+
+    rule #revOps ( OP ; OPS , OPS' ) => #revOps(OPS, OP ; OPS')
+    rule #revOps ( .Ops , OPS  ) => OPS
+
+    syntax Op ::= #dasmRegs ( OpCode , WordStack , Int ) [function]
+                | #dasmRegs ( OpCode , Int , Int , Int ) [function, klabel(#dasmRegsAux)]
+ // -------------------------------------------------------------------------------------
+    rule #dasmRegs ( OP, WS, NREGS ) => #dasmRegs(OP, #asInteger(#take(#opWidth(OP, NREGS) -Int 1, WS)), NREGS, (1 <<Int NREGS) -Int 1)
+
+    rule #dasmRegs ( OP:NullOp,     R, W, M ) => OP %(R, W, M, 0)
+    rule #dasmRegs ( OP:NullVoidOp, R, W, M ) => OP
+    rule #dasmRegs ( OP:UnOp,       R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1)
+    rule #dasmRegs ( OP:UnVoidOp,   R, W, M ) => OP %(R, W, M, 0)
+    rule #dasmRegs ( OP:BinOp,      R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2)
+    rule #dasmRegs ( OP:BinVoidOp,  R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1)
+    rule #dasmRegs ( OP:TernOp,     R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2) %(R, W, M, 3)
+    rule #dasmRegs ( OP:TernVoidOp, R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2)
+    rule #dasmRegs ( OP:QuadVoidOp, R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2) %(R, W, M, 3)
+    rule #dasmRegs ( OP:FiveVoidOp, R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2) %(R, W, M, 3) %(R, W, M, 4)
+    rule #dasmRegs ( OP:SixVoidOp,  R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2) %(R, W, M, 3) %(R, W, M, 4) %(R, W, M, 5)
+    rule #dasmRegs ( OP:CallSixOp,  R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2) %(R, W, M, 3) %(R, W, M, 4) %(R, W, M, 5) %(R, W, M, 6)
+    rule #dasmRegs ( OP:CallOp,     R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2) %(R, W, M, 3) %(R, W, M, 4) %(R, W, M, 5) %(R, W, M, 6) %(R, W, M, 7)
+
+    syntax Reg ::= "%" "(" Int "," Int "," Int "," Int ")" [function]
+ // -----------------------------------------------------------------
+    rule %(REGS, WIDTH, MASK, IDX) => % ((REGS >>Int (IDX *Int WIDTH)) &Int MASK)
+
+    syntax Int ::= #opWidth ( OpCode , Int ) [function]
+ // ---------------------------------------------------
+    rule #opWidth ( LI(N, _),    NREGS ) => 1 +Int N +Int (NREGS up/Int 8)
+    rule #opWidth ( JUMPDEST(_), NREGS ) => 3
+    rule #opWidth ( JUMP(_),     NREGS ) => 3
+    rule #opWidth ( JUMPI(_),    NREGS ) => 3 +Int        (NREGS up/Int 8)
+    rule #opWidth ( OP,          NREGS ) => 1 +Int        ((NREGS *Int #numArgs(OP)) up/Int 8)
+
+    syntax Int ::= #numArgs ( OpCode ) [function]
+ // ---------------------------------------------
+    rule #numArgs ( _:NullOp )     => 1
+    rule #numArgs ( _:NullVoidOp ) => 0
+    rule #numArgs ( _:UnOp )       => 2
+    rule #numArgs ( _:UnVoidOp )   => 1
+    rule #numArgs ( _:BinOp )      => 3
+    rule #numArgs ( _:BinVoidOp )  => 2
+    rule #numArgs ( _:TernOp )     => 4
+    rule #numArgs ( _:TernVoidOp ) => 3
+    rule #numArgs ( _:QuadVoidOp ) => 4
+    rule #numArgs ( _:FiveVoidOp ) => 5
+    rule #numArgs ( _:SixVoidOp )  => 6
+    rule #numArgs ( _:CallSixOp )  => 7
+    rule #numArgs ( _:CallOp )     => 8
 
     syntax OpCode ::= #dasmOpCode ( Int , Schedule ) [function]
  // -----------------------------------------------------------
@@ -2351,14 +2318,22 @@ module EVM
     rule #dasmOpCode(  67,     _ ) => NUMBER
     rule #dasmOpCode(  68,     _ ) => DIFFICULTY
     rule #dasmOpCode(  69,     _ ) => GASLIMIT
-    rule #dasmOpCode(  81,     _ ) => MLOAD
-    rule #dasmOpCode(  82,     _ ) => MSTORE
+    rule #dasmOpCode(  80,     _ ) => MLOAD8
+    rule #dasmOpCode(  81,     _ ) => MLOAD256
+    rule #dasmOpCode(  82,     _ ) => MLOAD
     rule #dasmOpCode(  83,     _ ) => MSTORE8
-    rule #dasmOpCode(  84,     _ ) => SLOAD
-    rule #dasmOpCode(  85,     _ ) => SSTORE
-    rule #dasmOpCode(  88,     _ ) => PC
-    rule #dasmOpCode(  89,     _ ) => MSIZE
-    rule #dasmOpCode(  90,     _ ) => GAS
+    rule #dasmOpCode(  84,     _ ) => MSTORE256
+    rule #dasmOpCode(  85,     _ ) => MSTORE
+    rule #dasmOpCode(  86,     _ ) => SLOAD
+    rule #dasmOpCode(  87,     _ ) => SSTORE
+    rule #dasmOpCode(  90,     _ ) => PC
+    rule #dasmOpCode(  91,     _ ) => MSIZE
+    rule #dasmOpCode(  92,     _ ) => GAS
+    rule #dasmOpCode( 160,     _ ) => LOG0
+    rule #dasmOpCode( 161,     _ ) => LOG1
+    rule #dasmOpCode( 162,     _ ) => LOG2
+    rule #dasmOpCode( 163,     _ ) => LOG3
+    rule #dasmOpCode( 164,     _ ) => LOG4
     rule #dasmOpCode( 240,     _ ) => CREATE
     rule #dasmOpCode( 241,     _ ) => CALL
     rule #dasmOpCode( 242,     _ ) => CALLCODE

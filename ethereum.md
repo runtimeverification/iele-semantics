@@ -44,7 +44,7 @@ For verification purposes, it's much easier to specify a program in terms of its
 To do so, we'll extend sort `JSON` with some EVM specific syntax, and provide a "pretti-fication" to the nicer input form.
 
 ```{.k .uiuck .rvk}
-    syntax JSON ::= Int | WordStack | OpCodes | Map | Call | SubstateLogEntry | Account
+    syntax JSON ::= Int | WordStack | Ops | Map | Call | SubstateLogEntry | Account
  // -----------------------------------------------------------------------------------
 
     syntax JSONList ::= #sortJSONList ( JSONList )            [function]
@@ -172,7 +172,7 @@ To do so, we'll extend sort `JSON` with some EVM specific syntax, and provide a 
     rule <k> #exception ~> #finishTx => #popCallStack ~> #popWorldState ~> #popSubstate ... </k>
     rule <k> #revert    ~> #finishTx => #popCallStack ~> #popWorldState ~> #popSubstate ~> #refund GAVAIL ... </k> <gas> GAVAIL </gas>       
 
-    rule <k> #end ~> #finishTx => #mkCodeDeposit ACCT ... </k>
+    rule <k> #end ~> #finishTx => #mkCodeDeposit ACCT %0 ... </k>
          <id> ACCT </id>
          <txPending> ListItem(TXID:Int) ... </txPending>
          <message>
@@ -335,28 +335,28 @@ State Manipulation
     syntax EthreumCommand ::= "clearTX"
  // -----------------------------------
     rule <k> clearTX => . ... </k>
-         <output>       _ => .WordStack              </output>
-         <memoryUsed>   _ => 0                       </memoryUsed>
-         <callDepth>    _ => 0                       </callDepth>
-         <callStack>    _ => .List                   </callStack>
-         <callLog>      _ => .Set                    </callLog>
-         <program>      _ => .Map                    </program>
-         <programBytes> _ => .WordStack              </programBytes>
-         <jumpTable>    _ => .Map                    </jumpTable>
-         <id>           _ => 0                       </id>
-         <caller>       _ => 0                       </caller>
-         <callData>     _ => .WordStack              </callData>
-         <callValue>    _ => 0                       </callValue>
-         <wordStack>    _ => .WordStack              </wordStack>
-         <localMem>     _ => makeArray(2 ^Int 30, 0) </localMem>
-         <pc>           _ => 0                       </pc>
-         <gas>          _ => 0                       </gas>
-         <previousGas>  _ => 0                       </previousGas>
-         <selfDestruct> _ => .Set                    </selfDestruct>
-         <log>          _ => .List                   </log>
-         <refund>       _ => 0                       </refund>
-         <gasPrice>     _ => 0                       </gasPrice>
-         <origin>       _ => 0                       </origin>
+         <output>       _ => .WordStack </output>
+         <memoryUsed>   _ => 0          </memoryUsed>
+         <callDepth>    _ => 0          </callDepth>
+         <callStack>    _ => .List      </callStack>
+         <callLog>      _ => .Set       </callLog>
+         <program>      _ => .Map       </program>
+         <programBytes> _ => .WordStack </programBytes>
+         <jumpTable>    _ => .Map       </jumpTable>
+         <id>           _ => 0          </id>
+         <caller>       _ => 0          </caller>
+         <callData>     _ => .WordStack </callData>
+         <callValue>    _ => 0          </callValue>
+         <regs>         _ => .Array     </regs>
+         <localMem>     _ => .Array     </localMem>
+         <pc>           _ => 0          </pc>
+         <gas>          _ => 0          </gas>
+         <previousGas>  _ => 0          </previousGas>
+         <selfDestruct> _ => .Set       </selfDestruct>
+         <log>          _ => .List      </log>
+         <refund>       _ => 0          </refund>
+         <gasPrice>     _ => 0          </gasPrice>
+         <origin>       _ => 0          </origin>
 
     syntax EthreumCommand ::= "clearBLOCK"
  // --------------------------------------
@@ -493,9 +493,9 @@ Here we load the environmental information.
  // ------------------------------------------------------------------------
     rule <k> load "exec" : { "data" : (DATA:WordStack) } => . ... </k> <callData> _ => DATA </callData>
     rule <k> load "exec" : { "code" : (CODE:WordStack) } => . ... </k>
-         <program>  _ => #asMapOpCodes(#dasmOpCodes(CODE, SCHED)) </program>
+         <program>  _ => #asMapOps(#dasmOps(CODE, SCHED)) </program>
          <programBytes> _ => CODE </programBytes>
-         <jumpTable> _ => #computeJumpTable(#asMapOpCodes(#dasmOpCodes(CODE, SCHED))) </jumpTable>
+         <jumpTable> _ => #computeJumpTable(#asMapOps(#dasmOps(CODE, SCHED))) </jumpTable>
          <schedule> SCHED </schedule>
 ```
 
