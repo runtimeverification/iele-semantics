@@ -316,7 +316,7 @@ module EVM
 
     syntax KItem  ::= OpCode
     syntax OpCode ::= NullOp | NullVoidOp | UnOp | UnVoidOp | BinOp | BinVoidOp | TernOp | TernVoidOp | QuadVoidOp
-                    | FiveVoidOp | SixVoidOp | InvalidOp | InternalOp | CallOp | CallSixOp
+                    | FiveVoidOp | SixVoidOp | InternalOp | CallOp | CallSixOp
  // --------------------------------------------------------------------------------
 
 
@@ -791,7 +791,8 @@ module EVM
 
 
     syntax InvalidOp ::= "INVALID"
- // ------------------------------
+    syntax NullVoidOp ::= InvalidOp
+ // -------------------------------
 
 
 // ### Program Header

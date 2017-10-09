@@ -312,7 +312,7 @@ Here all `OpCode`s are subsorted into `KItem` (allowing sequentialization), and 
 ```{.k .uiuck .rvk}
     syntax KItem  ::= OpCode
     syntax OpCode ::= NullOp | NullVoidOp | UnOp | UnVoidOp | BinOp | BinVoidOp | TernOp | TernVoidOp | QuadVoidOp
-                    | FiveVoidOp | SixVoidOp | InvalidOp | InternalOp | CallOp | CallSixOp
+                    | FiveVoidOp | SixVoidOp | InternalOp | CallOp | CallSixOp
  // --------------------------------------------------------------------------------
 ```
 
@@ -769,7 +769,8 @@ We use `INVALID` both for marking the designated invalid operator and for garbag
 
 ```{.k .uiuck .rvk}
     syntax InvalidOp ::= "INVALID"
- // ------------------------------
+    syntax NullVoidOp ::= InvalidOp
+ // -------------------------------
 ```
 
 ### Program Header
