@@ -972,9 +972,9 @@ These operators query about the current `CALL*` state.
     rule <k> CALLDATASIZE REG => #load REG #sizeWordStack(CD) ... </k>
          <callData> CD </callData>
 
-    syntax UnOp ::= "CALLDATALOAD"
- // ------------------------------
-    rule <k> CALLDATALOAD REG DATASTART => #load REG #asWord(CD [ DATASTART .. 32 ]) ... </k>
+    syntax BinOp ::= "CALLDATALOAD"
+ // -------------------------------
+    rule <k> CALLDATALOAD REG DATASTART DATAWIDTH => #load REG #asWord(CD [ DATASTART .. DATAWIDTH ]) ... </k>
          <callData> CD </callData>
 
     syntax TernVoidOp ::= "CALLDATACOPY"
@@ -1786,22 +1786,22 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     rule <k> #gasExec(SCHED, GAS _)            => Gbase < SCHED > ... </k>
 
     // Wverylow
-    rule <k> #gasExec(SCHED, ADD _ _ _)        => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, SUB _ _ _)        => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, NOT _ _)          => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, LT _ _ _)         => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, GT _ _ _)         => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, EQ _ _ _)         => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, ISZERO _ _)       => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, AND _ _ _)        => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, EVMOR _ _ _)      => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, XOR _ _ _)        => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, BYTE _ _ _)       => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, CALLDATALOAD _ _) => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, MLOAD _ _)        => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, MSTORE _ _)       => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, MSTORE8 _ _)      => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, LI(_, _) _)       => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, ADD _ _ _)          => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, SUB _ _ _)          => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, NOT _ _)            => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, LT _ _ _)           => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, GT _ _ _)           => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, EQ _ _ _)           => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, ISZERO _ _)         => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, AND _ _ _)          => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, EVMOR _ _ _)        => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, XOR _ _ _)          => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, BYTE _ _ _)         => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, CALLDATALOAD _ _ _) => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, MLOAD _ _)          => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, MSTORE _ _)         => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, MSTORE8 _ _)        => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, LOADI(_, _) _)      => Gverylow < SCHED > ... </k>
 
     // Wlow
     rule <k> #gasExec(SCHED, MUL _ _ _)        => Glow < SCHED > ... </k>
