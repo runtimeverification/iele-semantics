@@ -23,10 +23,12 @@ Some important numbers that are referred to often during execution:
     syntax Int ::= "pow256" [function]
                  | "pow255" [function]
                  | "pow16"  [function]
+                 | "pow30"  [function]
  // ----------------------------------
     rule pow256 => 2 ^Int 256
     rule pow255 => 2 ^Int 255
     rule pow16  => 2 ^Int 16
+    rule pow30  => 2 ^Int 30
 ```
 
 The JSON format is used extensively for communication in the Ethereum circles.
@@ -406,6 +408,18 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
  // ---------------------------------------------------------------
     rule #padToWidth(N, WS) => WS                     requires notBool #sizeWordStack(WS) <Int N
     rule #padToWidth(N, WS) => #padToWidth(N, 0 : WS) requires #sizeWordStack(WS) <Int N
+```
+
+Memory
+------
+
+-   `.Array` is an arbitrary length array of zeroes.
+
+```{.k .uiuck .rvk}
+
+    syntax Array ::= ".Array" [function, impure]
+ // ------------------------------------
+    rule .Array => makeArray(pow30, 0)
 ```
 
 Byte Arrays
