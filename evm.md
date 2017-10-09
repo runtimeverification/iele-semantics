@@ -800,15 +800,18 @@ Some operators don't calculate anything, they just push the stack around a bit.
 These operations are getters/setters of the local execution memory.
 
 ```{.k .uiuck .rvk}
-    syntax UnOp ::= "MLOAD"
- // -----------------------
-    rule <k> MLOAD REG INDEX => #load REG #asWord(#range(LM, INDEX, 32)) ... </k>
+    syntax UnOp ::= "MLOAD8" | "MLOAD256" | "MLOAD"
+ // -----------------------------------------------
+    rule <k> MLOAD256 REG INDEX => #load REG #asWord(#range(LM, INDEX, 32)) ... </k>
          <localMem> LM </localMem>
 
-    syntax BinVoidOp ::= "MSTORE" | "MSTORE8"
- // -----------------------------------------
-    rule <k> MSTORE INDEX VALUE => . ... </k>
-         <localMem> LM => LM [ INDEX := #padToWidth(32, #asByteStack(VALUE)) ] </localMem>
+    rule <k> MLOAD8 REG INDEX => #load REG #asWord(#range(LM, INDEX, 1)) ... </k>
+         <localMem> LM </localMem>
+
+    syntax BinVoidOp ::= "MSTORE8" | "MSTORE256" | "MSTORE"
+ // -------------------------------------------------------
+    rule <k> MSTORE256 INDEX VALUE => . ... </k>
+         <localMem> LM => LM [ INDEX := #padToWidth(32, #asByteStack(VALUE %Int pow256)) ] </localMem>
 
     rule <k> MSTORE8 INDEX VALUE => . ... </k>
          <localMem> LM => LM [ INDEX <- (VALUE %Int 256) ]    </localMem>

@@ -176,8 +176,8 @@ module EVM-DATA
 
     syntax Int ::= signextend( Int , Int ) [function]
  // -------------------------------------------------
-    rule signextend(N, W) => chop( (#nBytes(N) <<Byte (N +Int 1)) |Int W ) requires         word2Bool(bit((8 *Int (N +Int 1)), W))
-    rule signextend(N, W) => chop( #nBytes(N +Int 1) &Int W )              requires notBool word2Bool(bit((8 *Int (N +Int 1)), W))
+    rule signextend(N, W) => (#nBytes(N) <<Byte (N +Int 1)) |Int W  requires         word2Bool(bit((8 *Int (N +Int 1)), W))
+    rule signextend(N, W) => #nBytes(N +Int 1) &Int W               requires notBool word2Bool(bit((8 *Int (N +Int 1)), W))
 
 
 // -   `keccak` serves as a wrapper around the `Keccak256` in `KRYPTO`.
