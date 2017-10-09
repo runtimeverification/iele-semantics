@@ -64,7 +64,7 @@ module EVM
 
                         // \mu_*
                         <regs>        .Array </regs>                         // \mu_s
-                        <nregs>       0      </nregs>
+                        <nregs>       5      </nregs>
                         <localMem>    .Array </localMem>                     // \mu_m
                         <memoryUsed>  0      </memoryUsed>                   // \mu_i
                         <pc>          0      </pc>                           // \mu_pc
@@ -800,7 +800,8 @@ module EVM
 
     syntax NullVoidOp ::= REGISTERS(Int)
  // ------------------------------------
-    rule <k> REGISTERS(_) => . ... </k>
+    rule <k> REGISTERS(NREGS) => .          ... </k> <pc>      0 </pc> <nregs> _ => NREGS </nregs>
+    rule <k> REGISTERS(NREGS) => #exception ... </k> <pc> PCOUNT </pc> requires PCOUNT =/=K 0
 
 
 // ### Stack Manipulations
@@ -1274,7 +1275,7 @@ module EVM
          <memoryUsed> _ => 0           </memoryUsed>
          <output>     _ => .WordStack  </output>
          <regs>       _ => .Array      </regs>
-         <nregs>      _ => 32          </nregs>
+         <nregs>      _ => 5           </nregs>
          <localMem>   _ => .Array      </localMem>
 
     syntax KItem ::= "#return" Int Int Reg
@@ -2200,14 +2201,15 @@ module EVM
 
     rule #dasmOps( OPS, W : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, #dasmOpCode(W, SCHED), SCHED, NREGS)
       requires (W >=Int 0   andBool W <=Int 95 andBool W =/=Int 88 andBool W =/=Int 89 andBool W =/=Int 93)
-        orBool (W >=Int 128 andBool W <=Int 255)
+        orBool (W >=Int 129 andBool W <=Int 255)
 
     rule #dasmOps( OPS, 96 : WS, .K,             SCHED, NREGS ) => #dasmOps(OPS, WS, #str(#pushLen(#drop(NREGS up/Int 8, WS)), #pushOffset(#drop(NREGS up/Int 8, WS))), SCHED, NREGS)
     rule #dasmOps( OPS,      WS, #str(LEN, POS), SCHED, NREGS ) => #dasmOps(OPS, WS [ 0 .. NREGS up/Int 8 ] ++ #drop(LEN +Int POS +Int (NREGS up/Int 8), WS), LOADI(LEN +Int POS, #asWord(WS [ POS +Int (NREGS up/Int 8) .. LEN ])), SCHED, NREGS)
 
-    rule #dasmOps( OPS, 88 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMP(W1 *Int 256 +Int W2), SCHED, NREGS)
-    rule #dasmOps( OPS, 89 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMPI(W1 *Int 256 +Int W2), SCHED, NREGS)
-    rule #dasmOps( OPS, 93 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMPDEST(W1 *Int 256 +Int W2), SCHED, NREGS)
+    rule #dasmOps( OPS,  88 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMP(W1 *Int 256 +Int W2),     SCHED, NREGS)
+    rule #dasmOps( OPS,  89 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMPI(W1 *Int 256 +Int W2),    SCHED, NREGS)
+    rule #dasmOps( OPS,  93 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMPDEST(W1 *Int 256 +Int W2), SCHED, NREGS)
+    rule #dasmOps( OPS, 128 : W1      : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, REGISTERS(W1),                 SCHED, NREGS)
 
     rule #dasmOps( OPS, WS, OP:OpCode, SCHED, NREGS) => #dasmOps(#dasmRegs(OP, WS, NREGS) ; OPS, #drop(#opWidth(OP, NREGS) -Int 1, WS), .K, SCHED, NREGS)
 
@@ -2239,11 +2241,12 @@ module EVM
 
     syntax Int ::= #opWidth ( OpCode , Int ) [function]
  // ---------------------------------------------------
-    rule #opWidth ( LOADI(N, _),    NREGS ) => 1 +Int N +Int (NREGS up/Int 8)
-    rule #opWidth ( JUMPDEST(_), NREGS ) => 3
-    rule #opWidth ( JUMP(_),     NREGS ) => 3
-    rule #opWidth ( JUMPI(_),    NREGS ) => 3 +Int        (NREGS up/Int 8)
-    rule #opWidth ( OP,          NREGS ) => 1 +Int        ((NREGS *Int #numArgs(OP)) up/Int 8)
+    rule #opWidth ( LOADI(N, _),  NREGS ) => 1 +Int N +Int (NREGS up/Int 8)
+    rule #opWidth ( JUMPDEST(_),  NREGS ) => 3
+    rule #opWidth ( JUMP(_),      NREGS ) => 3
+    rule #opWidth ( JUMPI(_),     NREGS ) => 3 +Int        (NREGS up/Int 8)
+    rule #opWidth ( REGISTERS(_), NREGS ) => 2
+    rule #opWidth ( OP,           NREGS ) => 1 +Int        ((NREGS *Int #numArgs(OP)) up/Int 8)
 
     syntax Int ::= #numArgs ( OpCode ) [function]
  // ---------------------------------------------
