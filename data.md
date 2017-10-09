@@ -619,5 +619,17 @@ Decoding
     rule #decodeLengthPrefixLength(#str,  STR, START, B0) => #decodeLengthPrefixLength(#str,  START, B0 -Int 128 -Int 56 +Int 1, #asWord(#parseByteStackRaw(substrString(STR, START +Int 1, START +Int 1 +Int (B0 -Int 128 -Int 56 +Int 1)))))
     rule #decodeLengthPrefixLength(#list, STR, START, B0) => #decodeLengthPrefixLength(#list, START, B0 -Int 192 -Int 56 +Int 1, #asWord(#parseByteStackRaw(substrString(STR, START +Int 1, START +Int 1 +Int (B0 -Int 192 -Int 56 +Int 1)))))
     rule #decodeLengthPrefixLength(TYPE, START, LL, L) => TYPE(L, START +Int 1 +Int LL)
+
+    syntax Int ::= #pushLen ( WordStack ) [function]
+ // -----------------------------------------------
+    rule #pushLen ( B0 : WS ) => 1                               requires B0  <Int 128 orBool  B0 >=Int 192
+    rule #pushLen ( B0 : WS ) => B0 -Int 128                     requires B0 >=Int 128 andBool B0  <Int 184
+    rule #pushLen ( B0 : WS ) => #asWord(#take(B0 -Int 183, WS)) requires B0 >=Int 184 andBool B0  <Int 192
+
+    syntax Int ::= #pushOffset ( WordStack ) [function]
+ // --------------------------------------------------
+    rule #pushOffset ( B0 : WS ) => 0           requires B0  <Int 128 orBool  B0 >=Int 192
+    rule #pushOffset ( B0 : WS ) => 1           requires B0 >=Int 128 andBool B0  <Int 184
+    rule #pushOffset ( B0 : WS ) => B0 -Int 182 requires B0 >=Int 184 andBool B0  <Int 192
 endmodule
 ```

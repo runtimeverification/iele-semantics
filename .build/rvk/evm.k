@@ -541,9 +541,9 @@ module EVM
 
 // ### Program Counter
 
-// All operators except for `LI`, `JUMPDEST`, and `JUMP*` increment the program
+// All operators except for `LOADI`, `JUMPDEST`, and `JUMP*` increment the program
 // counter by 1. `JUMPDEST` increments the program counter by 3. The arguments to
-// `LI` must be skipped over (as they are inline), and the opcode `JUMP` already
+// `LOADI` must be skipped over (as they are inline), and the opcode `JUMP` already
 // affects the program counter in the correct way.
 
 // -   `#pc` calculates the next program counter of the given operator.
@@ -807,9 +807,9 @@ module EVM
 // Some operators don't calculate anything, they just push the stack around a bit.
 
 
-    syntax NullOp ::= LI ( Int , Int )
+    syntax NullOp ::= LOADI ( Int , Int )
  // ----------------------------------
-    rule <k> LI(_, W) REG => #load REG W ... </k> 
+    rule <k> LOADI(_, W) REG => #load REG W ... </k> 
 
     syntax InternalOp ::= "#load" Reg Int
  // -------------------------------------
@@ -2183,7 +2183,6 @@ module EVM
 // be changed into an `Ops` for use by the EVM semantics.
 
 // -   `#dasmOps` interperets `WordStack` as an `Ops`.
-// -   `#dasmLI` handles the case of a `LiOp`.
 // -   `#dasmOpCode` interperets a `Int` as an `OpCode`.
 // -   `#computeJumpTable` fills in the jump table from a `Map` of `OpCode`.
 
@@ -2191,7 +2190,6 @@ module EVM
     syntax Ops ::= #dasmOps ( WordStack , Schedule )       [function]
                  | #dasmOps ( Ops , WordStack , K , Schedule , Int ) [function, klabel(#dasmOpsAux)]
                  | #revOps  ( Ops , Ops )                        [function]
-    syntax OpCode ::= ".OpCode"
  // -----------------------------------------------------------------------------
     rule #dasmOps( 128 : NBITS : WS, SCHED ) => #revOps(#dasmOps(REGISTERS (1 <<Int NBITS) ; .Ops, WS, .K, SCHED, NBITS), .Ops)
     rule #dasmOps( WS, SCHED ) => #revOps(#dasmOps(.Ops, WS, .K, SCHED, 32), .Ops) [owise]
@@ -2202,8 +2200,9 @@ module EVM
       requires (W >=Int 0   andBool W <=Int 95 andBool W =/=Int 88 andBool W =/=Int 89 andBool W =/=Int 93)
         orBool (W >=Int 128 andBool W <=Int 255)
 
-    rule #dasmOps( OPS, W : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, #drop(W -Int 95, WS), LI(W -Int 95, #asWord(#take(W -Int 95, WS))), SCHED, NREGS)
-      requires W >=Int 96  andBool W <=Int 127
+    rule #dasmOps( OPS, 96 : WS, .K,             SCHED, NREGS ) => #dasmOps(OPS, WS, #str(#pushLen(WS), #pushOffset(WS)), SCHED, NREGS)
+    rule #dasmOps( OPS,      WS, #str(LEN, POS), SCHED, NREGS ) => #dasmOps(OPS, WS [ 0 .. NREGS up/Int 8 ] ++ #drop(LEN +Int POS +Int (NREGS up/Int 8), WS), LOADI(LEN +Int POS, #asWord(WS [ POS +Int (NREGS up/Int 8) .. LEN ])), SCHED, NREGS)
+
     rule #dasmOps( OPS, 88 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMP(W1 *Int 256 +Int W2), SCHED, NREGS)
     rule #dasmOps( OPS, 89 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMPI(W1 *Int 256 +Int W2), SCHED, NREGS)
     rule #dasmOps( OPS, 93 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMPDEST(W1 *Int 256 +Int W2), SCHED, NREGS)
@@ -2238,7 +2237,7 @@ module EVM
 
     syntax Int ::= #opWidth ( OpCode , Int ) [function]
  // ---------------------------------------------------
-    rule #opWidth ( LI(N, _),    NREGS ) => 1 +Int N +Int (NREGS up/Int 8)
+    rule #opWidth ( LOADI(N, _),    NREGS ) => 1 +Int N +Int (NREGS up/Int 8)
     rule #opWidth ( JUMPDEST(_), NREGS ) => 3
     rule #opWidth ( JUMP(_),     NREGS ) => 3
     rule #opWidth ( JUMPI(_),    NREGS ) => 3 +Int        (NREGS up/Int 8)
