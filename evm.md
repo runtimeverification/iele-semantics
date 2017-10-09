@@ -1764,9 +1764,10 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     rule <k> #gasExec(SCHED, SLOAD _ _)     => Gsload    < SCHED > ... </k>
 
     // Wzero
-    rule <k> #gasExec(SCHED, STOP)       => Gzero < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, RETURN _ _) => Gzero < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, REVERT _ _) => Gzero < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, STOP)         => Gzero < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, RETURN _ _)   => Gzero < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, REVERT _ _)   => Gzero < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, REGISTERS(_)) => Gzero < SCHED > ... </k>
 
     // Wbase
     rule <k> #gasExec(SCHED, ADDRESS _)        => Gbase < SCHED > ... </k>
