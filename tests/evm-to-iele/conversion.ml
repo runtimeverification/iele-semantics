@@ -259,4 +259,6 @@ let evm_to_iele (evm:evm_op list) : iele_op list =
   let resolved = resolve_phi ssa in
   let flattened = List.flatten resolved in
   let postprocessed = postprocess_iele flattened in
-  alloc_registers postprocessed
+  match postprocessed with
+  | [] -> []
+  | _::_ -> alloc_registers postprocessed
