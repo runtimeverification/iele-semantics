@@ -1761,8 +1761,8 @@ module EVM
 
     syntax Int ::= #memory ( Op , Int ) [function]
  // --------------------------------------------------
-    rule #memory ( MLOAD _ INDEX   , MU ) => #memoryUsageUpdate(MU, INDEX, 32)
-    rule #memory ( MSTORE INDEX _  , MU ) => #memoryUsageUpdate(MU, INDEX, 32)
+    rule #memory ( MLOAD256 _ INDEX   , MU ) => #memoryUsageUpdate(MU, INDEX, 32)
+    rule #memory ( MSTORE256 INDEX _  , MU ) => #memoryUsageUpdate(MU, INDEX, 32)
     rule #memory ( MSTORE8 INDEX _ , MU ) => #memoryUsageUpdate(MU, INDEX, 1)
 
     rule #memory ( SHA3 _ START WIDTH       , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
@@ -1897,8 +1897,8 @@ module EVM
     rule <k> #gasExec(SCHED, XOR _ _ _)          => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, BYTE _ _ _)         => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, CALLDATALOAD _ _ _) => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, MLOAD _ _)          => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, MSTORE _ _)         => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, MLOAD256 _ _)       => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, MSTORE256 _ _)      => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, MSTORE8 _ _)        => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, LOADPOS(_, _) _)    => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, LOADNEG(_, _) _)    => Gverylow < SCHED > ... </k>

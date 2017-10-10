@@ -246,6 +246,7 @@ let rec postprocess_iele iele = match iele with
 | Nop :: tl -> postprocess_iele tl
 | Op(`BYTE, [reg;byte;v]) :: tl -> LiOp(`LOADPOS, -2, (Z.of_int 31)) :: Op(`SUB, [byte; -2; byte]) :: Op(`BYTE, [reg;byte;v]) :: postprocess_iele tl
 | Op(`MSTORE, regs) :: tl -> Op(`MSTORE256, regs) :: postprocess_iele tl
+| Op(`MLOAD, regs) :: tl -> Op(`MLOAD256, regs) :: postprocess_iele tl
 | Op(`CALLDATALOAD, [reg;datastart]) :: tl -> LiOp(`LOADPOS, -1, _32) :: Op(`CALLDATALOAD, [reg;datastart; -1]) :: postprocess_iele tl
 | LiOp(`LOADPOS, reg, z) :: tl when Z.gt z max_val -> LiOp(`LOADNEG, reg, Z.signed_extract z 0 256) :: postprocess_iele tl
 | hd :: tl -> hd :: postprocess_iele tl
