@@ -291,7 +291,7 @@ module EVM
     syntax Exception ::= "#exception" | "#end" | "#revert"
  // ------------------------------------------
     rule <k> EX:Exception ~> (_:Int    => .) ... </k>
-    rule <k> EX:Exception ~> (_:OpCode => .) ... </k>
+    rule <k> EX:Exception ~> (_:Op => .) ... </k>
 
     syntax KItem ::= "#?" K ":" K "?#"
  // ----------------------------------
@@ -315,9 +315,10 @@ module EVM
 
 
     syntax KItem  ::= OpCode
-    syntax OpCode ::= NullOp | NullVoidOp | UnOp | UnVoidOp | BinOp | BinVoidOp | TernOp | TernVoidOp | QuadVoidOp
-                    | FiveVoidOp | SixVoidOp | InternalOp | CallOp | CallSixOp
- // --------------------------------------------------------------------------------
+    syntax Op ::= InternalOp
+    syntax OpCode ::= NullOp | NullVoidOp | UnOp | UnVoidOp | BinOp | BinVoidOp | TernOp
+                    | TernVoidOp | QuadVoidOp | FiveVoidOp | SixVoidOp | CallOp | CallSixOp
+ // ---------------------------------------------------------------------------------------
 
 
 // -   `#execute` calls `#next` repeatedly until it recieves an `#end` or
