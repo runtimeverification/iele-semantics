@@ -222,9 +222,11 @@ let rec discover_phi phi_web pre_stack post_stack = match pre_stack,post_stack w
 let resolve_phi ((ssa,regcount) as graph: iele_graph) : iele_op list list =
   let annotated_graph = annotate_graph_with_incoming_edges graph in
   let phi_web = IeleUtil.UnionFind.create regcount in
-  List.iter (fun (incoming_edges,pre_stack,ops) ->
-    List.iter (discover_phi phi_web pre_stack) incoming_edges) annotated_graph;
-  List.map (fun (incoming_edges,pre_stack,ops) -> List.map (replace_registers (IeleUtil.UnionFind.find phi_web)) ops) annotated_graph
+  let preprocessed_graph = List.map (fun (incoming_edges,pre_stack,ops) ->
+    match incoming_edges, pre_stack with
+    | [], _::_ -> [Op(`INVALID,[])]
+    | _ -> List.iter (discover_phi phi_web pre_stack) incoming_edges; ops) annotated_graph in
+  List.map (fun ops -> List.map (replace_registers (IeleUtil.UnionFind.find phi_web)) ops) preprocessed_graph
 
 let alloc_registers (ops: iele_op list) : iele_op list = 
   let regs = Hashtbl.create 32 in
