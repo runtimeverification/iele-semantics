@@ -615,7 +615,7 @@ The `"rlp"` key loads the block information.
            <storage> ACCTSTORAGE </storage>
            ...
          </account>
-      requires #removeZeros(ACCTSTORAGE) ==K STORAGE
+      requires #adjustStorageValues(#removeZeros(ACCTSTORAGE)) ==K STORAGE
 
     rule <k> check "account" : { ACCT : { "code" : (CODE:WordStack) } } => . ... </k>
          <account>
@@ -623,6 +623,11 @@ The `"rlp"` key loads the block information.
            <code> CODE </code>
            ...
          </account>
+
+    syntax Map ::= #adjustStorageValues(Map) [function]
+ // ---------------------------------------------------
+    rule #adjustStorageValues(K |-> V M) => K |-> twos(32, V) #adjustStorageValues(M)
+    rule #adjustStorageValues(.Map) => .Map
 ```
 
 Here we check the other post-conditions associated with an EVM test.
