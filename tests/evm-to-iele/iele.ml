@@ -9,6 +9,7 @@ type iele_opcode = [
 | `MULMOD
 | `EXP
 | `SIGNEXTEND
+| `TWOS
 | `LT
 | `GT
 | `EQ
@@ -85,6 +86,7 @@ let asm_iele_opcode op = match op with
 | `MULMOD -> "\x09"
 | `EXP -> "\x0a"
 | `SIGNEXTEND -> "\x0b"
+| `TWOS -> "\x0c"
 | `LT -> "\x10"
 | `GT -> "\x11"
 | `EQ -> "\x14"

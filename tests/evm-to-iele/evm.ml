@@ -82,6 +82,7 @@ type intermediate_op = [
 | `MULMOD
 | `EXP
 | `SIGNEXTEND
+| `TWOS
 | `LT
 | `GT
 | `EQ

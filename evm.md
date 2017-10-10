@@ -896,10 +896,11 @@ NOTE: We have to call the opcode `OR` by `EVMOR` instead, because K has trouble 
     rule <k> ADDMOD REG W0 W1 W2 => #load REG (W0 +Int W1) %Int W2 ... </k>
     rule <k> MULMOD REG W0 W1 W2 => #load REG (W0 *Int W1) %Int W2 ... </k>
 
-    syntax BinOp ::= "BYTE" | "SIGNEXTEND"
- // --------------------------------------
+    syntax BinOp ::= "BYTE" | "SIGNEXTEND" | "TWOS"
+ // -----------------------------------------------
     rule <k> BYTE REG INDEX W     => #load REG byte(INDEX, W)     ... </k>
     rule <k> SIGNEXTEND REG W0 W1 => #load REG signextend(W0, W1) ... </k>
+    rule <k> TWOS REG W0 W1       => #load REG twos(W0, W1)       ... </k>
 
     syntax BinOp ::= "AND" | "EVMOR" | "XOR"
  // ----------------------------------------
@@ -1862,6 +1863,7 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     rule <k> #gasExec(SCHED, DIV _ _ _)        => Glow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, MOD _ _ _)        => Glow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, SIGNEXTEND _ _ _) => Glow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, TWOS _ _ _)       => Glow < SCHED > ... </k>
 
     // Wmid
     rule <k> #gasExec(SCHED, ADDMOD _ _ _ _) => Gmid < SCHED > ... </k>
@@ -2397,6 +2399,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmOpCode(   9,     _ ) => MULMOD
     rule #dasmOpCode(  10,     _ ) => EXP
     rule #dasmOpCode(  11,     _ ) => SIGNEXTEND
+    rule #dasmOpCode(  12,     _ ) => TWOS
     rule #dasmOpCode(  16,     _ ) => LT
     rule #dasmOpCode(  17,     _ ) => GT
     rule #dasmOpCode(  20,     _ ) => EQ

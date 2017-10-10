@@ -35,7 +35,7 @@ let stack_needed op = match op with
 | `EXTCODECOPY -> 4
 | `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY | `ADDMOD | `MULMOD | `CREATE -> 3
 | `RETURN | `REVERT | `SSTORE | `MSTORE | `MSTORE8 | `ADD | `MUL | `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND
-| `AND | `OR | `XOR | `LT | `GT | `EQ | `SHA3 -> 2
+| `TWOS | `AND | `OR | `XOR | `LT | `GT | `EQ | `SHA3 -> 2
 | `SELFDESTRUCT | `JUMPI(_) | `MLOAD | `ISZERO | `NOT | `BLOCKHASH | `CALLDATALOAD | `BALANCE | `EXTCODESIZE 
 | `SLOAD | `POP -> 1
 | `INVALID | `STOP | `JUMPDEST(_) | `JUMP(_) | `PC | `GAS | `GASPRICE | `GASLIMIT | `COINBASE | `TIMESTAMP
@@ -60,7 +60,7 @@ let compute_cfg (intermediate: intermediate_op list) : evm_graph =
     | `EXTCODECOPY -> delta := !delta - 4
     | `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY -> delta := !delta - 3
     | `RETURN | `REVERT | `SSTORE | `ADDMOD | `MULMOD | `CREATE | `MSTORE | `MSTORE8 -> delta := !delta - 2
-    | `POP | `SELFDESTRUCT | `ADD | `MUL | `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND
+    | `POP | `SELFDESTRUCT | `ADD | `MUL | `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND | `TWOS
     | `AND | `OR | `XOR | `LT | `GT | `EQ | `SHA3  -> delta := !delta - 1
     | `SWAP(_) | `INVALID | `STOP | `MLOAD | `ISZERO | `NOT | `BLOCKHASH | `CALLDATALOAD | `BALANCE
     | `EXTCODESIZE | `SLOAD -> ()
@@ -137,7 +137,7 @@ let convert_to_ssa (cfg : evm_graph) : iele_graph =
     | hd :: tl -> let op = Op(op,[hd]) in
     stack := tl;
     op) (* unary consumer *)
-  | `ADD | `MUL | `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND | `AND | `OR | `XOR
+  | `ADD | `MUL | `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND | `TWOS | `AND | `OR | `XOR
   | `LT | `GT | `EQ | `SHA3 as op->
     (match curr_stack with [] | _ :: [] -> Op(`INVALID,[])
     | r1 :: r2 :: tl -> let op = Op(op,[!regcount;r1;r2]) in

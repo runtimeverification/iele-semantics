@@ -9,6 +9,7 @@ type iele_opcode = [
 | `MULMOD
 | `EXP
 | `SIGNEXTEND
+| `TWOS
 | `LT
 | `GT
 | `EQ
