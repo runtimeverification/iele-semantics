@@ -1,12 +1,17 @@
 open Evm
 open Iele
 
+let pow256 = Z.shift_left Z.one 256
+let _32 = Z.of_int 32
+
 let rec preprocess_evm (evm: evm_op list) : intermediate_op list = match evm with
 | [] -> []
 | `SDIV :: tl -> `DIV :: preprocess_evm tl
 | `SMOD :: tl -> `MOD :: preprocess_evm tl
 | `SLT :: tl -> `LT :: preprocess_evm tl
 | `SGT :: tl -> `GT :: preprocess_evm tl
+| `GT :: tl -> `PUSH(_32) :: `TWOS :: `SWAP(1) :: `PUSH(_32) :: `TWOS :: `SWAP(1) :: `GT :: preprocess_evm tl
+| `LT :: tl -> `PUSH(_32) :: `TWOS :: `SWAP(1) :: `PUSH(_32) :: `TWOS :: `SWAP(1) :: `LT :: preprocess_evm tl
 | (`JUMP|`JUMPI) :: tl -> `INVALID :: preprocess_evm tl
 | `PUSH(_,pc) :: `JUMP :: tl when Z.lt pc (Z.of_int 65536) -> `JUMP(Z.to_int pc) :: preprocess_evm tl
 | `PUSH(_,pc) :: `JUMPI :: tl when Z.lt pc (Z.of_int 65536) -> `JUMPI(Z.to_int pc) :: preprocess_evm tl
@@ -15,7 +20,7 @@ let rec preprocess_evm (evm: evm_op list) : intermediate_op list = match evm wit
 | `PUSH(n,v) :: [] -> `PUSH(v) :: []
 | `LOG(_) | `CALL | `CALLCODE | `DELEGATECALL | `STATICCALL | `EXTCODECOPY | `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY
 | `RETURN | `REVERT | `SSTORE | `ADDMOD | `MULMOD | `CREATE | `POP | `SELFDESTRUCT | `MSTORE | `MSTORE8 | `ADD | `MUL 
-| `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND | `AND | `OR | `XOR | `LT | `GT | `EQ | `SHA3 | `SWAP(_) | `INVALID
+| `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND | `AND | `OR | `XOR | `EQ | `SHA3 | `SWAP(_) | `INVALID
 | `STOP | `MLOAD | `ISZERO | `NOT | `BLOCKHASH | `CALLDATALOAD | `BALANCE | `EXTCODESIZE | `SLOAD | `DUP(_)
 | `PC | `GAS | `GASPRICE | `GASLIMIT | `COINBASE | `TIMESTAMP | `NUMBER | `DIFFICULTY | `ADDRESS | `ORIGIN | `CALLER 
 | `CALLVALUE | `MSIZE | `CODESIZE | `CALLDATASIZE | `RETURNDATASIZE | `JUMPDEST _ as op :: tl-> op :: preprocess_evm tl
@@ -239,7 +244,7 @@ let rec postprocess_iele iele = match iele with
 | Nop :: tl -> postprocess_iele tl
 | Op(`BYTE, [reg;byte;v]) :: tl -> LiOp(`LOADPOS, -2, (Z.of_int 31)) :: Op(`SUB, [byte; -2; byte]) :: Op(`BYTE, [reg;byte;v]) :: postprocess_iele tl
 | Op(`MSTORE, regs) :: tl -> Op(`MSTORE256, regs) :: postprocess_iele tl
-| Op(`CALLDATALOAD, [reg;datastart]) :: tl -> LiOp(`LOADPOS, -1, (Z.of_int 32)) :: Op(`CALLDATALOAD, [reg;datastart; -1]) :: postprocess_iele tl
+| Op(`CALLDATALOAD, [reg;datastart]) :: tl -> LiOp(`LOADPOS, -1, _32) :: Op(`CALLDATALOAD, [reg;datastart; -1]) :: postprocess_iele tl
 | LiOp(`LOADPOS, reg, z) :: tl when Z.gt z max_val -> LiOp(`LOADNEG, reg, Z.signed_extract z 0 256) :: postprocess_iele tl
 | hd :: tl -> hd :: postprocess_iele tl
 | [] -> []
