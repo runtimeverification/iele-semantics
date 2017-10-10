@@ -49,6 +49,15 @@ Primitives
 
 Primitives provide the basic conversion from K's sorts `Int` and `Bool` to EVM's words.
 
+-   `chop` interperets an integers modulo $2^256$.
+
+```{.k .uiuck .rvk}
+    syntax Int ::= chop ( Int ) [function]
+ // --------------------------------------
+    rule chop ( I:Int ) => I modInt pow256 requires I <Int 0  orBool I >=Int pow256
+    rule chop ( I:Int ) => I               requires I >=Int 0 andBool I <Int pow256
+```
+
 -   `bool2Word` interperets a `Bool` as a `Int`.
 -   `word2Bool` interperets a `Int` as a `Bool`.
 
@@ -247,7 +256,7 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
 
     syntax WordStack ::= WordStack "[" Int ".." Int "]" [function]
  // --------------------------------------------------------------
-    rule WS [ START .. WIDTH ] => #take(WIDTH, #drop(START, WS))
+    rule WS [ START .. WIDTH ] => #take(chop(WIDTH), #drop(START, WS))
 ```
 
 -   `WS [ N ]` accesses element $N$ of $WS$.
@@ -431,7 +440,7 @@ We are using the polymorphic `Map` sort for these word maps.
     syntax WordStack ::= #range ( Array , Int , Int )            [function]
     syntax WordStack ::= #range ( Array , Int , Int , WordStack) [function, klabel(#rangeAux)]
  // ----------------------------------------------------------------------------------------
-    rule #range(WM, START, WIDTH) => #range(WM, START +Int WIDTH -Int 1, WIDTH, .WordStack)
+    rule #range(WM, START, WIDTH) => #range(WM, START +Int chop(WIDTH) -Int 1, chop(WIDTH), .WordStack)
 
     rule #range(WM, END, 0,     WS) => WS
 ```

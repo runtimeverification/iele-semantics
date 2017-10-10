@@ -1329,7 +1329,7 @@ The various `CALL*` (and other inter-contract control flow) operations will be d
     rule <k> #refund G => . ... </k> <gas> GAVAIL => GAVAIL +Int G </gas>
 
     rule <k> #setLocalMem START WIDTH WS => . ... </k>
-         <localMem> LM => LM [ START := #take(minInt(WIDTH, #sizeWordStack(WS)), WS) ] </localMem>
+         <localMem> LM => LM [ START := #take(minInt(chop(WIDTH), #sizeWordStack(WS)), WS) ] </localMem>
 ```
 
 For each `CALL*` operation, we make a corresponding call to `#call` and a state-change to setup the custom parts of the calling environment.
@@ -1746,7 +1746,7 @@ In the yellowpaper, each opcode is defined to consume zero gas unless specified 
     syntax Int ::= #memoryUsageUpdate ( Int , Int , Int ) [function]
  // ----------------------------------------------------------------
     rule #memoryUsageUpdate(MU, START, 0)     => MU
-    rule #memoryUsageUpdate(MU, START, WIDTH) => maxInt(MU, (START +Int WIDTH) up/Int 32) requires WIDTH >Int 0
+    rule #memoryUsageUpdate(MU, START, WIDTH) => maxInt(MU, (START +Int chop(WIDTH)) up/Int 32) requires WIDTH =/=Int 0
 ```
 
 Execution Gas
@@ -1770,16 +1770,16 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     rule <k> #gasExec(SCHED, EXP _ W0 0)  => Gexp < SCHED > ... </k>
     rule <k> #gasExec(SCHED, EXP _ W0 W1) => Gexp < SCHED > +Int (Gexpbyte < SCHED > *Int (1 +Int (log256Int(W1)))) ... </k> requires W1 =/=K 0
 
-    rule <k> #gasExec(SCHED, CALLDATACOPY    _ _ WIDTH) => Gverylow     < SCHED > +Int (Gcopy < SCHED > *Int (WIDTH up/Int 32)) ... </k>
-    rule <k> #gasExec(SCHED, RETURNDATACOPY  _ _ WIDTH) => Gverylow     < SCHED > +Int (Gcopy < SCHED > *Int (WIDTH up/Int 32)) ... </k>
-    rule <k> #gasExec(SCHED, CODECOPY        _ _ WIDTH) => Gverylow     < SCHED > +Int (Gcopy < SCHED > *Int (WIDTH up/Int 32)) ... </k>
-    rule <k> #gasExec(SCHED, EXTCODECOPY   _ _ _ WIDTH) => Gextcodecopy < SCHED > +Int (Gcopy < SCHED > *Int (WIDTH up/Int 32)) ... </k>
+    rule <k> #gasExec(SCHED, CALLDATACOPY    _ _ WIDTH) => Gverylow     < SCHED > +Int (Gcopy < SCHED > *Int (chop(WIDTH) up/Int 32)) ... </k>
+    rule <k> #gasExec(SCHED, RETURNDATACOPY  _ _ WIDTH) => Gverylow     < SCHED > +Int (Gcopy < SCHED > *Int (chop(WIDTH) up/Int 32)) ... </k>
+    rule <k> #gasExec(SCHED, CODECOPY        _ _ WIDTH) => Gverylow     < SCHED > +Int (Gcopy < SCHED > *Int (chop(WIDTH) up/Int 32)) ... </k>
+    rule <k> #gasExec(SCHED, EXTCODECOPY   _ _ _ WIDTH) => Gextcodecopy < SCHED > +Int (Gcopy < SCHED > *Int (chop(WIDTH) up/Int 32)) ... </k>
 
-    rule <k> #gasExec(SCHED, LOG0 _ WIDTH)         => (Glog < SCHED > +Int (Glogdata < SCHED > *Int WIDTH) +Int (0 *Int Glogtopic < SCHED >)) ... </k>
-    rule <k> #gasExec(SCHED, LOG1 _ WIDTH _)       => (Glog < SCHED > +Int (Glogdata < SCHED > *Int WIDTH) +Int (1 *Int Glogtopic < SCHED >)) ... </k>
-    rule <k> #gasExec(SCHED, LOG2 _ WIDTH _ _)     => (Glog < SCHED > +Int (Glogdata < SCHED > *Int WIDTH) +Int (2 *Int Glogtopic < SCHED >)) ... </k>
-    rule <k> #gasExec(SCHED, LOG3 _ WIDTH _ _ _)   => (Glog < SCHED > +Int (Glogdata < SCHED > *Int WIDTH) +Int (3 *Int Glogtopic < SCHED >)) ... </k>
-    rule <k> #gasExec(SCHED, LOG4 _ WIDTH _ _ _ _) => (Glog < SCHED > +Int (Glogdata < SCHED > *Int WIDTH) +Int (4 *Int Glogtopic < SCHED >)) ... </k>
+    rule <k> #gasExec(SCHED, LOG0 _ WIDTH)         => (Glog < SCHED > +Int (Glogdata < SCHED > *Int chop(WIDTH)) +Int (0 *Int Glogtopic < SCHED >)) ... </k>
+    rule <k> #gasExec(SCHED, LOG1 _ WIDTH _)       => (Glog < SCHED > +Int (Glogdata < SCHED > *Int chop(WIDTH)) +Int (1 *Int Glogtopic < SCHED >)) ... </k>
+    rule <k> #gasExec(SCHED, LOG2 _ WIDTH _ _)     => (Glog < SCHED > +Int (Glogdata < SCHED > *Int chop(WIDTH)) +Int (2 *Int Glogtopic < SCHED >)) ... </k>
+    rule <k> #gasExec(SCHED, LOG3 _ WIDTH _ _ _)   => (Glog < SCHED > +Int (Glogdata < SCHED > *Int chop(WIDTH)) +Int (3 *Int Glogtopic < SCHED >)) ... </k>
+    rule <k> #gasExec(SCHED, LOG4 _ WIDTH _ _ _ _) => (Glog < SCHED > +Int (Glogdata < SCHED > *Int chop(WIDTH)) +Int (4 *Int Glogtopic < SCHED >)) ... </k>
 
     rule <k> #gasExec(SCHED, CALL _         GCAP ACCTTO VALUE _ _ _ _) => Ccall(SCHED, ACCTTO,   ACCTS, GCAP, GAVAIL, VALUE) ... </k>
          <activeAccounts> ACCTS </activeAccounts>
@@ -1810,7 +1810,7 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
 
     rule <k> #gasExec(SCHED, CREATE _ _ _ _) => Gcreate < SCHED > ... </k>
 
-    rule <k> #gasExec(SCHED, SHA3 _ _ WIDTH) => Gsha3 < SCHED > +Int (Gsha3word < SCHED > *Int (WIDTH up/Int 32)) ... </k>
+    rule <k> #gasExec(SCHED, SHA3 _ _ WIDTH) => Gsha3 < SCHED > +Int (Gsha3word < SCHED > *Int (chop(WIDTH) up/Int 32)) ... </k>
 
     rule <k> #gasExec(SCHED, JUMPDEST(_)) => Gjumpdest < SCHED > ... </k>
     rule <k> #gasExec(SCHED, SLOAD _ _)     => Gsload    < SCHED > ... </k>
