@@ -4,10 +4,11 @@ type iele_opcode = [
 | `MUL
 | `SUB
 | `DIV
+| `EXP
 | `MOD
 | `ADDMOD
 | `MULMOD
-| `EXP
+| `EXPMOD
 | `SIGNEXTEND
 | `TWOS
 | `LT
@@ -82,9 +83,10 @@ let asm_iele_opcode op = match op with
 | `SUB -> "\x03"
 | `DIV -> "\x04"
 | `MOD -> "\x06"
+| `EXP -> "\x07"
 | `ADDMOD -> "\x08"
 | `MULMOD -> "\x09"
-| `EXP -> "\x0a"
+| `EXPMOD -> "\x0a"
 | `SIGNEXTEND -> "\x0b"
 | `TWOS -> "\x0c"
 | `LT -> "\x10"

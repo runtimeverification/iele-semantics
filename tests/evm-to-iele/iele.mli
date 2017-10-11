@@ -5,9 +5,10 @@ type iele_opcode = [
 | `SUB
 | `DIV
 | `MOD
+| `EXP
 | `ADDMOD
 | `MULMOD
-| `EXP
+| `EXPMOD
 | `SIGNEXTEND
 | `TWOS
 | `LT

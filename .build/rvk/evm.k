@@ -917,12 +917,13 @@ module EVM
     rule <k> MOD REG W0 W1 => #load REG W0 %Int W1 ... </k> requires W1 =/=Int 0
     rule <k> MOD REG W0  0 => #load REG 0          ... </k>
 
-    syntax TernOp ::= "ADDMOD" | "MULMOD"
- // -------------------------------------
+    syntax TernOp ::= "ADDMOD" | "MULMOD" | "EXPMOD"
+ // ------------------------------------------------
     rule <k> ADDMOD REG W0 W1 W2 => #load REG (W0 +Int W1) %Int W2 ... </k> requires W2 =/=Int 0
     rule <k> ADDMOD REG W0 W1  0 => #load REG 0                    ... </k>
     rule <k> MULMOD REG W0 W1 W2 => #load REG (W0 *Int W1) %Int W2 ... </k> requires W2 =/=Int 0
     rule <k> MULMOD REG W0 W1  0 => #load REG 0                    ... </k>
+    rule <k> EXPMOD REG W0 W1 W2 => #load REG powmod(W0,W1,W2)     ... </k>
 
     syntax BinOp ::= "BYTE" | "SIGNEXTEND" | "TWOS"
  // -----------------------------------------------
@@ -1917,6 +1918,7 @@ module EVM
     // Wmid
     rule <k> #gasExec(SCHED, ADDMOD _ _ _ _) => Gmid < SCHED > ... </k>
     rule <k> #gasExec(SCHED, MULMOD _ _ _ _) => Gmid < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, EXPMOD _ _ _ _) => Gmid < SCHED > ... </k>
     rule <k> #gasExec(SCHED, JUMP(_)) => Gmid < SCHED > ... </k>
 
     // Whigh
@@ -2338,9 +2340,10 @@ module EVM
     rule #dasmOpCode(   3,     _ ) => SUB
     rule #dasmOpCode(   4,     _ ) => DIV
     rule #dasmOpCode(   6,     _ ) => MOD
+    rule #dasmOpCode(   7,     _ ) => EXP
     rule #dasmOpCode(   8,     _ ) => ADDMOD
     rule #dasmOpCode(   9,     _ ) => MULMOD
-    rule #dasmOpCode(  10,     _ ) => EXP
+    rule #dasmOpCode(  10,     _ ) => EXPMOD
     rule #dasmOpCode(  11,     _ ) => SIGNEXTEND
     rule #dasmOpCode(  12,     _ ) => TWOS
     rule #dasmOpCode(  16,     _ ) => LT
