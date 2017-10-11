@@ -182,17 +182,16 @@ module EVM-DATA
     rule N <<Byte M => N <<Int (8 *Int M)
 
 
-// -   `signextend(N, W)` sign-extends from byte $N$ of $W$ (0 being MSB).
+// -   `signextend(N, W)` sign-extends from byte $N$ of $W$ (0 being LSB).
 
 
     syntax Int ::= signextend ( Int , Int ) [function]
                  | twos ( Int , Int )       [function]
  // --------------------------------------------------
-    rule signextend(N, W) => (#nBytes(N) <<Byte (N +Int 1)) |Int W  requires         word2Bool(bit((8 *Int (N +Int 1)), W))
-    rule signextend(N, W) => #nBytes(N +Int 1) &Int W               requires notBool word2Bool(bit((8 *Int (N +Int 1)), W))
+    rule signextend(N, W) => twos(N +Int 1, W) -Int (1 <<Byte (N +Int 1))  requires         word2Bool(bit((8 *Int (N +Int 1) -Int 1), twos(N +Int 1, W)))
+    rule signextend(N, W) => twos(N +Int 1, W)                             requires notBool word2Bool(bit((8 *Int (N +Int 1) -Int 1), twos(N +Int 1, W)))
 
-    rule twos(N, W) => W requires W >=Int 0
-    rule twos(N, W) => (1 <<Byte N) +Int W requires W <Int 0
+    rule twos(N, W) => W modInt (1 <<Byte N)
 
 
 // -   `keccak` serves as a wrapper around the `Keccak256` in `KRYPTO`.

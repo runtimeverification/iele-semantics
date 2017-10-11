@@ -903,9 +903,9 @@ NOTE: We have to call the opcode `OR` by `EVMOR` instead, because K has trouble 
 
     syntax BinOp ::= "BYTE" | "SIGNEXTEND" | "TWOS"
  // -----------------------------------------------
-    rule <k> BYTE REG INDEX W     => #load REG byte(INDEX, W)     ... </k>
-    rule <k> SIGNEXTEND REG W0 W1 => #load REG signextend(W0, W1) ... </k>
-    rule <k> TWOS REG W0 W1       => #load REG twos(W0, W1)       ... </k>
+    rule <k> BYTE REG INDEX W     => #load REG byte(chop(INDEX), W)     ... </k>
+    rule <k> SIGNEXTEND REG W0 W1 => #load REG signextend(chop(W0), W1) ... </k>
+    rule <k> TWOS REG W0 W1       => #load REG twos(chop(W0), W1)       ... </k>
 
     syntax BinOp ::= "AND" | "EVMOR" | "XOR"
  // ----------------------------------------
