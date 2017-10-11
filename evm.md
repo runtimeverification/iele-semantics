@@ -888,14 +888,18 @@ NOTE: We have to call the opcode `OR` by `EVMOR` instead, because K has trouble 
     rule <k> ADD REG W0 W1 => #load REG W0 +Int W1 ... </k>
     rule <k> MUL REG W0 W1 => #load REG W0 *Int W1 ... </k>
     rule <k> SUB REG W0 W1 => #load REG W0 -Int W1 ... </k>
-    rule <k> DIV REG W0 W1 => #load REG W0 /Int W1 ... </k>
+    rule <k> DIV REG W0 W1 => #load REG W0 /Int W1 ... </k> requires W1 =/=Int 0
+    rule <k> DIV REG W0  0 => #load REG 0          ... </k>
     rule <k> EXP REG W0 W1 => #load REG W0 ^Int W1 ... </k>
-    rule <k> MOD REG W0 W1 => #load REG W0 %Int W1 ... </k>
+    rule <k> MOD REG W0 W1 => #load REG W0 %Int W1 ... </k> requires W1 =/=Int 0
+    rule <k> MOD REG W0  0 => #load REG 0          ... </k>
 
     syntax TernOp ::= "ADDMOD" | "MULMOD"
  // -------------------------------------
-    rule <k> ADDMOD REG W0 W1 W2 => #load REG (W0 +Int W1) %Int W2 ... </k>
-    rule <k> MULMOD REG W0 W1 W2 => #load REG (W0 *Int W1) %Int W2 ... </k>
+    rule <k> ADDMOD REG W0 W1 W2 => #load REG (W0 +Int W1) %Int W2 ... </k> requires W2 =/=Int 0
+    rule <k> ADDMOD REG W0 W1  0 => #load REG 0                    ... </k>
+    rule <k> MULMOD REG W0 W1 W2 => #load REG (W0 *Int W1) %Int W2 ... </k> requires W2 =/=Int 0
+    rule <k> MULMOD REG W0 W1  0 => #load REG 0                    ... </k>
 
     syntax BinOp ::= "BYTE" | "SIGNEXTEND" | "TWOS"
  // -----------------------------------------------
