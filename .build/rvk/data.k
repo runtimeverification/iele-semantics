@@ -246,7 +246,7 @@ module EVM-DATA
 
     syntax WordStack ::= WordStack "[" Int ".." Int "]" [function]
  // --------------------------------------------------------------
-    rule WS [ START .. WIDTH ] => #take(chop(WIDTH), #drop(START, WS))
+    rule WS [ START .. WIDTH ] => #take(chop(WIDTH), #drop(chop(START), WS))
 
 
 // -   `WS [ N ]` accesses element $N$ of $WS$.
@@ -435,12 +435,12 @@ module EVM-DATA
     syntax Array ::= Array "[" Int ":=" WordStack "]" [function]
  // --------------------------------------------------------
     rule WM[ N := .WordStack ] => WM
-    rule WM[ N := W : WS     ] => (WM[N <- W])[N +Int 1 := WS]
+    rule WM[ N := W : WS     ] => (WM[chop(N) <- W])[chop(N) +Int 1 := WS]
 
     syntax WordStack ::= #range ( Array , Int , Int )            [function]
     syntax WordStack ::= #range ( Array , Int , Int , WordStack) [function, klabel(#rangeAux)]
  // ----------------------------------------------------------------------------------------
-    rule #range(WM, START, WIDTH) => #range(WM, START +Int chop(WIDTH) -Int 1, chop(WIDTH), .WordStack)
+    rule #range(WM, START, WIDTH) => #range(WM, chop(START) +Int chop(WIDTH) -Int 1, chop(WIDTH), .WordStack)
 
     rule #range(WM, END, 0,     WS) => WS
 

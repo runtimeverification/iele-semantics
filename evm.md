@@ -1057,11 +1057,11 @@ These operators query about the current return data buffer.
     rule <k> RETURNDATACOPY MEMSTART DATASTART DATAWIDTH => . ... </k>
          <localMem> LM => LM [ MEMSTART := RD [ DATASTART .. DATAWIDTH ] ] </localMem>
          <output> RD </output>
-      requires DATASTART +Int DATAWIDTH <=Int #sizeWordStack(RD)
+      requires chop(DATASTART) +Int chop(DATAWIDTH) <=Int #sizeWordStack(RD)
 
     rule <k> RETURNDATACOPY MEMSTART DATASTART DATAWIDTH => #exception ... </k>
          <output> RD </output>
-      requires DATASTART +Int DATAWIDTH >Int #sizeWordStack(RD)
+      requires chop(DATASTART) +Int chop(DATAWIDTH) >Int #sizeWordStack(RD)
 ```
 
 ### Log Operations
@@ -1751,7 +1751,7 @@ In the yellowpaper, each opcode is defined to consume zero gas unless specified 
     syntax Int ::= #memoryUsageUpdate ( Int , Int , Int ) [function]
  // ----------------------------------------------------------------
     rule #memoryUsageUpdate(MU, START, 0)     => MU
-    rule #memoryUsageUpdate(MU, START, WIDTH) => maxInt(MU, (START +Int chop(WIDTH)) up/Int 32) requires WIDTH =/=Int 0
+    rule #memoryUsageUpdate(MU, START, WIDTH) => maxInt(MU, (chop(START) +Int chop(WIDTH)) up/Int 32) requires WIDTH =/=Int 0
 ```
 
 Execution Gas
