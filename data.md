@@ -20,15 +20,17 @@ module EVM-DATA
 Some important numbers that are referred to often during execution:
 
 ```{.k .uiuck .rvk}
-    syntax Int ::= "pow256" [function]
-                 | "pow255" [function]
-                 | "pow16"  [function]
+    syntax Int ::= "pow16"  [function]
                  | "pow30"  [function]
+                 | "pow160" [function]
+                 | "pow255" [function]
+                 | "pow256" [function]
  // ----------------------------------
-    rule pow256 => 2 ^Int 256
-    rule pow255 => 2 ^Int 255
     rule pow16  => 2 ^Int 16
     rule pow30  => 2 ^Int 30
+    rule pow160 => 2 ^Int 160
+    rule pow255 => 2 ^Int 255
+    rule pow256 => 2 ^Int 256
 ```
 
 The JSON format is used extensively for communication in the Ethereum circles.
@@ -359,7 +361,7 @@ Addresses
 ```{.k .uiuck .rvk}
     syntax Int ::= #addr ( Int ) [function]
  // ---------------------------------------
-    rule #addr(W) => W %Int (2 ^Int 160)
+    rule #addr(W) => W modInt pow160
 ```
 
 -   `#newAddr` computes the address of a new account given the address and nonce of the creating account.
