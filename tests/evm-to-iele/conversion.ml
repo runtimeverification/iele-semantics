@@ -65,9 +65,9 @@ let compute_cfg (intermediate: intermediate_op list) : evm_graph =
     | `EXTCODECOPY -> delta := !delta - 4
     | `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY -> delta := !delta - 3
     | `RETURN | `REVERT | `SSTORE | `ADDMOD | `MULMOD | `CREATE | `MSTORE | `MSTORE8 -> delta := !delta - 2
-    | `POP | `SELFDESTRUCT | `ADD | `MUL | `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND | `TWOS
+    | `POP | `ADD | `MUL | `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND | `TWOS
     | `AND | `OR | `XOR | `LT | `GT | `EQ | `SHA3  -> delta := !delta - 1
-    | `SWAP(_) | `INVALID | `STOP | `MLOAD | `ISZERO | `NOT | `BLOCKHASH | `CALLDATALOAD | `BALANCE
+    | `SWAP(_) | `MLOAD | `ISZERO | `NOT | `BLOCKHASH | `CALLDATALOAD | `BALANCE
     | `EXTCODESIZE | `SLOAD -> ()
     | `DUP(_) | `PUSH(_) | `PC | `GAS | `GASPRICE | `GASLIMIT | `COINBASE | `TIMESTAMP | `NUMBER | `DIFFICULTY
     | `ADDRESS | `ORIGIN | `CALLER | `CALLVALUE | `MSIZE | `CODESIZE | `CALLDATASIZE 
@@ -90,7 +90,21 @@ let compute_cfg (intermediate: intermediate_op list) : evm_graph =
       delta := !delta - 1;
       output := (!max_needed,component,true,Some pc) :: !output;
       max_needed := 0;
-      delta := 0)) intermediate;
+      delta := 0
+    | `STOP | `INVALID ->
+      let component = List.rev !rev_component in
+      rev_component := [];
+      output := (!max_needed,component,false,None) :: !output;
+      max_needed := 0;
+      delta := 0
+    | `SELFDESTRUCT ->
+      let component = List.rev !rev_component in
+      rev_component := [];
+      delta := !delta - 1;
+      output := (!max_needed,component,false,None) :: !output;
+      max_needed := 0;
+      delta := 0
+    )) intermediate;
   let component = List.rev !rev_component in
   output := (!max_needed,component,true,None) :: !output;
   List.rev !output
