@@ -52,7 +52,7 @@ type evm_op = [
 | `SSTORE
 | `JUMP
 | `JUMPI
-| `PC
+| `PC of int
 | `MSIZE
 | `GAS
 | `JUMPDEST of int

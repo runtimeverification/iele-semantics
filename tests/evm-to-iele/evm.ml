@@ -52,7 +52,7 @@ type evm_op = [
 | `SSTORE
 | `JUMP
 | `JUMPI
-| `PC
+| `PC of int
 | `MSIZE
 | `GAS
 | `JUMPDEST of int
@@ -205,7 +205,7 @@ let dasm_evm str =
     | '\x55' -> `SSTORE
     | '\x56' -> `JUMP
     | '\x57' -> `JUMPI
-    | '\x58' -> `PC
+    | '\x58' -> `PC idx
     | '\x59' -> `MSIZE
     | '\x5a' -> `GAS
     | '\x5b' -> `JUMPDEST idx

@@ -99,11 +99,8 @@ tests/ethereum-tests/VMTests/vmIOandFlowOperations/DynamicJump1.json
 tests/ethereum-tests/VMTests/vmSystemOperations/callcodeToReturn1.json
 tests/ethereum-tests/VMTests/vmSystemOperations/callstatelessToReturn1.json
 tests/ethereum-tests/VMTests/vmSystemOperations/CallToReturn1.json
-tests/ethereum-tests/VMTests/vmIOandFlowOperations/pc1.json
 tests/ethereum-tests/VMTests/vmIOandFlowOperations/loop_stacklimit_1021.json
 tests/ethereum-tests/VMTests/vmIOandFlowOperations/kv1.json
-tests/ethereum-tests/VMTests/vmIOandFlowOperations/DynamicJumpStartWithJumpDest.json
-tests/ethereum-tests/VMTests/vmIOandFlowOperations/pc0.json
 tests/ethereum-tests/VMTests/vmEnvironmentalInfo/extcodesize1.json
 tests/ethereum-tests/VMTests/vmEnvironmentalInfo/extcodecopy0AddressTooBigLeft.json
 tests/ethereum-tests/VMTests/vmEnvironmentalInfo/extcodecopy0.json
