@@ -864,10 +864,10 @@ These operations are getters/setters of the local execution memory.
     syntax BinVoidOp ::= "MSTORE8" | "MSTORE256" | "MSTORE"
  // -------------------------------------------------------
     rule <k> MSTORE256 INDEX VALUE => . ... </k>
-         <localMem> LM => LM [ INDEX := #padToWidth(32, #asByteStack(VALUE %Int pow256)) ] </localMem>
+         <localMem> LM => LM [ INDEX := #padToWidth(32, #asByteStack(chop(VALUE))) ] </localMem>
 
     rule <k> MSTORE8 INDEX VALUE => . ... </k>
-         <localMem> LM => LM [ INDEX <- (VALUE %Int 256) ]    </localMem>
+         <localMem> LM => LM [ INDEX <- (VALUE modInt 256) ]    </localMem>
 ```
 
 ### Expressions

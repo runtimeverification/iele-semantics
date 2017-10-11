@@ -615,7 +615,7 @@ The `"rlp"` key loads the block information.
            <storage> ACCTSTORAGE </storage>
            ...
          </account>
-      requires #adjustStorageValues(#removeZeros(ACCTSTORAGE)) ==K STORAGE
+      requires #removeZeros(#adjustStorageValues(ACCTSTORAGE)) ==K STORAGE
 
     rule <k> check "account" : { ACCT : { "code" : (CODE:WordStack) } } => . ... </k>
          <account>
@@ -626,7 +626,7 @@ The `"rlp"` key loads the block information.
 
     syntax Map ::= #adjustStorageValues(Map) [function]
  // ---------------------------------------------------
-    rule #adjustStorageValues(K |-> V M) => K |-> twos(32, V) #adjustStorageValues(M)
+    rule #adjustStorageValues(K |-> V M) => K |-> chop(V) #adjustStorageValues(M)
     rule #adjustStorageValues(.Map) => .Map
 ```
 
