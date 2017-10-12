@@ -1193,6 +1193,7 @@ These operations interact with the account storage.
                        #fi
          </refund>
          <schedule> SCHED </schedule>
+         requires INDEX >=Int 0 andBool INDEX <Int pow256
 
     rule <k> SSTORE INDEX VALUE => . ... </k>
          <id> ACCT </id>
@@ -1202,6 +1203,10 @@ These operations interact with the account storage.
            ...
          </account>
       requires notBool (INDEX in_keys(STORAGE))
+       andBool INDEX >=Int 0 andBool INDEX <Int pow256
+
+    rule <k> SSTORE (INDEX => chop(INDEX)) _ ... </k>
+      requires INDEX <Int 0 orBool INDEX >=Int pow256
 ```
 
 ### Call Operations
