@@ -310,40 +310,62 @@ module EVM-DATA
 
 // The local memory of execution is a byte-array (instead of a word-array).
 
-// -   `#asWord` will interperet a stack of bytes as a single word (with
-//     MSB first).
-// -   `#asInteger` will interperet a stack of bytes as a single
+// -   `#asSigned` will interperet a stack of bytes as a single signed
+//     arbitrary-precision integaer (with MSB first).
+// -   `#asUnsigned` will interperet a stack of bytes as a single unsigned
 //     arbitrary-precision integer (with MSB first).
 // -   `#asAccount` will interpret a stack of bytes as a single account id (with
-//     MSB first). Differs from `#asWord` only in that an empty stack represents
-//     the empty account, not account zero.
-// -   `#asByteStack` will split a single word up into a `WordStack` where each
-//     word is a byte wide.
+//     MSB first). Differs from `#asUnsigned` only in that an empty stack
+//     represents the empty account, not account zero.
+// -   `#asSignedBytes` will split a single signed integer up into a `WordStack`
+//     where each word is a byte wide.
+// -   `#asUnsignedBytes` will split a single unsigned integer up into a
+//     `WordStack` where each word is a byte wide.
 
 
-    syntax Int ::= #asWord ( WordStack ) [function, smtlib(asWord)]
- // ---------------------------------------------------------------
-    rule #asWord( .WordStack )    => 0
-    rule #asWord( W : .WordStack) => W
-    rule #asWord( W0 : W1 : WS )  => #asWord(((W0 *Int 256) +Int W1) : WS)
+    syntax Int ::= #asSigned ( WordStack )       [function]
+                 | #asSigned ( WordStack , Int ) [function, klabel(#asSignedAux), smtlib(asSigned)]
+ // -----------------------------------------------------------------------------------------------
+    rule #asSigned( WS )                => #asSigned(WS, 0)
+    rule #asSigned( .WordStack,     _ ) => 0
+    rule #asSigned( W : .WordStack, N ) => signextend(N, W)
+    rule #asSigned( W0 : W1 : WS,   N ) => #asSigned(((W0 *Int 256) +Int W1) : WS, N +Int 1)
 
-    syntax Int ::= #asInteger ( WordStack ) [function]
- // --------------------------------------------------
-    rule #asInteger( .WordStack )    => 0
-    rule #asInteger( W : .WordStack) => W
-    rule #asInteger( W0 : W1 : WS )  => #asInteger(((W0 *Int 256) +Int W1) : WS)
+    syntax Int ::= #asUnsigned ( WordStack ) [function]
+ // ---------------------------------------------------
+    rule #asUnsigned( .WordStack )    => 0
+    rule #asUnsigned( W : .WordStack) => W
+    rule #asUnsigned( W0 : W1 : WS )  => #asUnsigned(((W0 *Int 256) +Int W1) : WS)
 
     syntax Account ::= #asAccount ( WordStack ) [function]
  // ------------------------------------------------------
     rule #asAccount( .WordStack ) => .Account
-    rule #asAccount( W : WS )     => #asWord(W : WS)
+    rule #asAccount( W : WS )     => #asUnsigned(W : WS)
 
-    syntax WordStack ::= #asByteStack ( Int )             [function]
-                       | #asByteStack ( Int , WordStack ) [function, klabel(#asByteStackAux), smtlib(asByteStack)]
+    syntax Int ::= #numBytes ( Int )       [function]
+                 | #numBytes ( Int , Int ) [function, klabel(#numBytesAux)]
+ // -----------------------------------------------------------------------
+    rule #numBytes(W) => #numBytes(W, 0)
+    rule #numBytes(0, N) => N
+    rule #numBytes(W, N) => #numBytes(W >>Int 8, N +Int 1)
+
+    syntax WordStack ::= #asSignedBytes ( Int )                    [function]
+                       | #asSignedBytes ( Int , WordStack , Bool ) [function, klabel(#asSignedBytesAux), smtlib(asSignedBytes)]
+ // ---------------------------------------------------------------------------------------------------------------------
+    rule #asSignedBytes( W ) => #asSignedBytes( W ,                                          .WordStack , true  ) requires W >=Int 0
+    rule #asSignedBytes( W ) => #asSignedBytes( twos(#numBytes(0 -Int W *Int 2 -Int 1), W) , .WordStack , false ) requires W  <Int 0
+    rule #asSignedBytes( 0 , WS         , false ) => WS
+    rule #asSignedBytes( 0 , .WordStack , true  ) => .WordStack
+    rule #asSignedBytes( 0 , W : WS     , true  ) => W : WS requires W <Int 128
+    rule #asSignedBytes( 0 , W : WS     , true  ) => 0 : W : WS requires W >=Int 128
+    rule #asSignedBytes( W , WS , POS ) => #asSignedBytes( W /Int 256 , W %Int 256 : WS , POS ) requires W =/=K 0
+
+    syntax WordStack ::= #asUnsignedBytes ( Int )             [function]
+                       | #asUnsignedBytes ( Int , WordStack ) [function, klabel(#asUnsignedBytesAux), smtlib(asUnsignedBytes)]
  // --------------------------------------------------------------------------------------------------------------
-    rule #asByteStack( W ) => #asByteStack( W , .WordStack )
-    rule #asByteStack( 0 , WS ) => WS
-    rule #asByteStack( W , WS ) => #asByteStack( W /Int 256 , W %Int 256 : WS ) requires W =/=K 0
+    rule #asUnsignedBytes( W ) => #asUnsignedBytes( W , .WordStack )
+    rule #asUnsignedBytes( 0 , WS ) => WS
+    rule #asUnsignedBytes( W , WS ) => #asUnsignedBytes( W /Int 256 , W %Int 256 : WS ) requires W =/=K 0
 
 
 // Addresses
@@ -389,21 +411,21 @@ module EVM-DATA
                  | #blockHeaderHash(String, String, String, String, String, String, String, String, String, String, String, String, String, String, String) [function, klabel(#blockHashHeaderStr)]
  // -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
    rule #blockHeaderHash(HP, HO, HC, HR, HT, HE, HB, HD, HI, HL, HG, HS, HX, HM, HN)
-         => #blockHeaderHash(#asWord(#parseByteStackRaw(HP)),
-                             #asWord(#parseByteStackRaw(HO)),
-                             #asWord(#parseByteStackRaw(HC)),
-                             #asWord(#parseByteStackRaw(HR)),
-                             #asWord(#parseByteStackRaw(HT)),
-                             #asWord(#parseByteStackRaw(HE)),
+         => #blockHeaderHash(#asUnsigned(#parseByteStackRaw(HP)),
+                             #asUnsigned(#parseByteStackRaw(HO)),
+                             #asUnsigned(#parseByteStackRaw(HC)),
+                             #asUnsigned(#parseByteStackRaw(HR)),
+                             #asUnsigned(#parseByteStackRaw(HT)),
+                             #asUnsigned(#parseByteStackRaw(HE)),
                                      #parseByteStackRaw(HB) ,
-                             #asWord(#parseByteStackRaw(HD)),
-                             #asWord(#parseByteStackRaw(HI)),
-                             #asWord(#parseByteStackRaw(HL)),
-                             #asWord(#parseByteStackRaw(HG)),
-                             #asWord(#parseByteStackRaw(HS)),
+                             #asUnsigned(#parseByteStackRaw(HD)),
+                             #asUnsigned(#parseByteStackRaw(HI)),
+                             #asUnsigned(#parseByteStackRaw(HL)),
+                             #asUnsigned(#parseByteStackRaw(HG)),
+                             #asUnsigned(#parseByteStackRaw(HS)),
                                      #parseByteStackRaw(HX) ,
-                             #asWord(#parseByteStackRaw(HM)),
-                             #asWord(#parseByteStackRaw(HN)))
+                             #asUnsigned(#parseByteStackRaw(HM)),
+                             #asUnsigned(#parseByteStackRaw(HN)))
 
     rule #blockHeaderHash(HP, HO, HC, HR, HT, HE, HB, HD, HI, HL, HG, HS, HX, HM, HN)
          => #parseHexWord(Keccak256(#rlpEncodeLength(         #rlpEncodeBytes(HP, 32)
@@ -579,9 +601,9 @@ module EVM-DATA
  // --------------------------------------------------------------
     rule #rlpEncodeWord(0) => "\x80"
     rule #rlpEncodeWord(WORD) => chrChar(WORD) requires WORD >Int 0 andBool WORD <Int 128
-    rule #rlpEncodeWord(WORD) => #rlpEncodeLength(#unparseByteStack(#asByteStack(WORD)), 128) requires WORD >=Int 128
+    rule #rlpEncodeWord(WORD) => #rlpEncodeLength(#unparseByteStack(#asSignedBytes(WORD)), 128) requires WORD >=Int 128
 
-    rule #rlpEncodeBytes(WORD, LEN) => #rlpEncodeString(#unparseByteStack(#padToWidth(LEN, #asByteStack(WORD))))
+    rule #rlpEncodeBytes(WORD, LEN) => #rlpEncodeString(#unparseByteStack(#padToWidth(LEN, #asUnsignedBytes(WORD))))
 
     rule #rlpEncodeWordStack(.WordStack) => ""
     rule #rlpEncodeWordStack(W : WS)     => #rlpEncodeWord(W) +String #rlpEncodeWordStack(WS)
@@ -596,7 +618,7 @@ module EVM-DATA
                     | #rlpEncodeLength ( String , Int , String ) [function, klabel(#rlpEncodeLengthAux)]
  // ----------------------------------------------------------------------------------------------------
     rule #rlpEncodeLength(STR, OFFSET) => chrChar(lengthString(STR) +Int OFFSET) +String STR requires lengthString(STR) <Int 56
-    rule #rlpEncodeLength(STR, OFFSET) => #rlpEncodeLength(STR, OFFSET, #unparseByteStack(#asByteStack(lengthString(STR)))) requires lengthString(STR) >=Int 56
+    rule #rlpEncodeLength(STR, OFFSET) => #rlpEncodeLength(STR, OFFSET, #unparseByteStack(#asUnsignedBytes(lengthString(STR)))) requires lengthString(STR) >=Int 56
     rule #rlpEncodeLength(STR, OFFSET, BL) => chrChar(lengthString(BL) +Int OFFSET +Int 55) +String BL +String STR
 
 
@@ -637,15 +659,15 @@ module EVM-DATA
     rule #decodeLengthPrefix(STR, START, B0) => #list(B0 -Int 192, START +Int 1)                 requires B0 >=Int 192 andBool B0 <Int 192 +Int 56
     rule #decodeLengthPrefix(STR, START, B0) => #decodeLengthPrefixLength(#list, STR, START, B0) [owise]
 
-    rule #decodeLengthPrefixLength(#str,  STR, START, B0) => #decodeLengthPrefixLength(#str,  START, B0 -Int 128 -Int 56 +Int 1, #asWord(#parseByteStackRaw(substrString(STR, START +Int 1, START +Int 1 +Int (B0 -Int 128 -Int 56 +Int 1)))))
-    rule #decodeLengthPrefixLength(#list, STR, START, B0) => #decodeLengthPrefixLength(#list, START, B0 -Int 192 -Int 56 +Int 1, #asWord(#parseByteStackRaw(substrString(STR, START +Int 1, START +Int 1 +Int (B0 -Int 192 -Int 56 +Int 1)))))
+    rule #decodeLengthPrefixLength(#str,  STR, START, B0) => #decodeLengthPrefixLength(#str,  START, B0 -Int 128 -Int 56 +Int 1, #asUnsigned(#parseByteStackRaw(substrString(STR, START +Int 1, START +Int 1 +Int (B0 -Int 128 -Int 56 +Int 1)))))
+    rule #decodeLengthPrefixLength(#list, STR, START, B0) => #decodeLengthPrefixLength(#list, START, B0 -Int 192 -Int 56 +Int 1, #asUnsigned(#parseByteStackRaw(substrString(STR, START +Int 1, START +Int 1 +Int (B0 -Int 192 -Int 56 +Int 1)))))
     rule #decodeLengthPrefixLength(TYPE, START, LL, L) => TYPE(L, START +Int 1 +Int LL)
 
     syntax Int ::= #pushLen ( WordStack ) [function]
  // -----------------------------------------------
     rule #pushLen ( B0 : WS ) => 1                               requires B0  <Int 128 orBool  B0 >=Int 192
     rule #pushLen ( B0 : WS ) => B0 -Int 128                     requires B0 >=Int 128 andBool B0  <Int 184
-    rule #pushLen ( B0 : WS ) => #asWord(#take(B0 -Int 183, WS)) requires B0 >=Int 184 andBool B0  <Int 192
+    rule #pushLen ( B0 : WS ) => #asUnsigned(#take(B0 -Int 183, WS)) requires B0 >=Int 184 andBool B0  <Int 192
 
     syntax Int ::= #pushOffset ( WordStack ) [function]
  // --------------------------------------------------

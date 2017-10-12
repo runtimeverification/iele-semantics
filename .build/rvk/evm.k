@@ -876,16 +876,16 @@ module EVM
 
     syntax UnOp ::= "MLOAD8" | "MLOAD256" | "MLOAD"
  // -----------------------------------------------
-    rule <k> MLOAD256 REG INDEX => #load REG #asWord(#range(LM, INDEX, 32)) ... </k>
+    rule <k> MLOAD256 REG INDEX => #load REG #asSigned(#range(LM, INDEX, 32)) ... </k>
          <localMem> LM </localMem>
 
-    rule <k> MLOAD8 REG INDEX => #load REG #asWord(#range(LM, INDEX, 1)) ... </k>
+    rule <k> MLOAD8 REG INDEX => #load REG #asSigned(#range(LM, INDEX, 1)) ... </k>
          <localMem> LM </localMem>
 
     syntax BinVoidOp ::= "MSTORE8" | "MSTORE256" | "MSTORE"
  // -------------------------------------------------------
     rule <k> MSTORE256 INDEX VALUE => . ... </k>
-         <localMem> LM => LM [ INDEX := #padToWidth(32, #asByteStack(chop(VALUE))) ] </localMem>
+         <localMem> LM => LM [ INDEX := #padToWidth(32, #asUnsignedBytes(chop(VALUE))) ] </localMem>
 
     rule <k> MSTORE8 INDEX VALUE => . ... </k>
          <localMem> LM => LM [ INDEX <- (VALUE modInt 256) ]    </localMem>
@@ -1056,7 +1056,7 @@ module EVM
 
     syntax BinOp ::= "CALLDATALOAD"
  // -------------------------------
-    rule <k> CALLDATALOAD REG DATASTART DATAWIDTH => #load REG #asWord(CD [ DATASTART .. DATAWIDTH ]) ... </k>
+    rule <k> CALLDATALOAD REG DATASTART DATAWIDTH => #load REG #asSigned(CD [ DATASTART .. DATAWIDTH ]) ... </k>
          <callData> CD </callData>
 
     syntax TernVoidOp ::= "CALLDATACOPY"
@@ -1651,12 +1651,12 @@ module EVM
  // --------------------------------
     rule <k> ECREC => #end ... </k>
          <callData> DATA </callData>
-         <output> _ => #ecrec(#sender(#unparseByteStack(DATA [ 0 .. 32 ]), #asWord(DATA [ 32 .. 32 ]), #unparseByteStack(DATA [ 64 .. 32 ]), #unparseByteStack(DATA [ 96 .. 32 ]))) </output>
+         <output> _ => #ecrec(#sender(#unparseByteStack(DATA [ 0 .. 32 ]), #asUnsigned(DATA [ 32 .. 32 ]), #unparseByteStack(DATA [ 64 .. 32 ]), #unparseByteStack(DATA [ 96 .. 32 ]))) </output>
 
     syntax WordStack ::= #ecrec ( Account ) [function]
  // --------------------------------------------------
     rule #ecrec(.Account) => .WordStack
-    rule #ecrec(N:Int)    => #padToWidth(32, #asByteStack(N))
+    rule #ecrec(N:Int)    => #padToWidth(32, #asUnsignedBytes(N))
 
     syntax PrecompiledOp ::= "SHA256"
  // ---------------------------------
@@ -1695,7 +1695,7 @@ module EVM
 
     syntax PrecompiledOp ::= "ECADD"
  // --------------------------------
-    rule <k> ECADD => #ecadd((#asWord(DATA [ 0 .. 32 ]), #asWord(DATA [ 32 .. 32 ])), (#asWord(DATA [ 64 .. 32 ]), #asWord(DATA [ 96 .. 32 ]))) ... </k>
+    rule <k> ECADD => #ecadd((#asUnsigned(DATA [ 0 .. 32 ]), #asUnsigned(DATA [ 32 .. 32 ])), (#asUnsigned(DATA [ 64 .. 32 ]), #asUnsigned(DATA [ 96 .. 32 ]))) ... </k>
          <callData> DATA </callData>
 
     syntax InternalOp ::= #ecadd(G1Point, G1Point)
@@ -1707,7 +1707,7 @@ module EVM
 
     syntax PrecompiledOp ::= "ECMUL"
  // --------------------------------
-    rule <k> ECMUL => #ecmul((#asWord(DATA [ 0 .. 32 ]), #asWord(DATA [ 32 .. 32 ])), #asWord(DATA [ 64 .. 32 ])) ... </k>
+    rule <k> ECMUL => #ecmul((#asUnsigned(DATA [ 0 .. 32 ]), #asUnsigned(DATA [ 32 .. 32 ])), #asUnsigned(DATA [ 64 .. 32 ])) ... </k>
          <callData> DATA </callData>
 
     syntax InternalOp ::= #ecmul(G1Point, Int)
@@ -1719,7 +1719,7 @@ module EVM
 
     syntax WordStack ::= #point(G1Point) [function]
  // -----------------------------------------------
-    rule #point((X, Y)) => #padToWidth(32, #asByteStack(X)) ++ #padToWidth(32, #asByteStack(Y))
+    rule #point((X, Y)) => #padToWidth(32, #asUnsignedBytes(X)) ++ #padToWidth(32, #asUnsignedBytes(Y))
 
     syntax PrecompiledOp ::= "ECPAIRING"
  // ------------------------------------
@@ -1732,9 +1732,9 @@ module EVM
 
     syntax InternalOp ::= #ecpairing(List, List, Int, WordStack, Int)
  // -----------------------------------------------------------------
-    rule (.K => #checkPoint) ~> #ecpairing((.List => ListItem((#asWord(DATA [ I .. 32 ]), #asWord(DATA [ I +Int 32 .. 32 ])))) _, (.List => ListItem((#asWord(DATA [ I +Int 96 .. 32 ]) x #asWord(DATA [ I +Int 64 .. 32 ]) , #asWord(DATA [ I +Int 160 .. 32 ]) x #asWord(DATA [ I +Int 128 .. 32 ])))) _, I => I +Int 192, DATA, LEN)
+    rule (.K => #checkPoint) ~> #ecpairing((.List => ListItem((#asUnsigned(DATA [ I .. 32 ]), #asUnsigned(DATA [ I +Int 32 .. 32 ])))) _, (.List => ListItem((#asUnsigned(DATA [ I +Int 96 .. 32 ]) x #asUnsigned(DATA [ I +Int 64 .. 32 ]) , #asUnsigned(DATA [ I +Int 160 .. 32 ]) x #asUnsigned(DATA [ I +Int 128 .. 32 ])))) _, I => I +Int 192, DATA, LEN)
     rule <k> #ecpairing(A, B, LEN, _, LEN) => #end ... </k>
-         <output> _ => #padToWidth(32, #asByteStack(bool2Word(BN128AtePairing(A, B)))) </output>
+         <output> _ => #padToWidth(32, #asUnsignedBytes(bool2Word(BN128AtePairing(A, B)))) </output>
 
     syntax InternalOp ::= "#checkPoint"
  // -----------------------------------
@@ -2264,8 +2264,8 @@ module EVM
 
     rule #dasmOps( OPS, W : WS, .K,             SCHED, NREGS ) => #dasmOps(OPS, W : WS, #str(#pushLen(#drop(NREGS up/Int 8, WS)), #pushOffset(#drop(NREGS up/Int 8, WS))), SCHED, NREGS)
       requires W >=Int 96 andBool W <Int 98
-    rule #dasmOps( OPS, 96 : WS, #str(LEN, POS), SCHED, NREGS ) => #dasmOps(OPS, WS, LOADPOS(LEN +Int POS, #asWord(WS [ POS +Int (NREGS up/Int 8) .. LEN ])), SCHED, NREGS)
-    rule #dasmOps( OPS, 97 : WS, #str(LEN, POS), SCHED, NREGS ) => #dasmOps(OPS, WS, LOADNEG(LEN +Int POS, #asWord(WS [ POS +Int (NREGS up/Int 8) .. LEN ])), SCHED, NREGS)
+    rule #dasmOps( OPS, 96 : WS, #str(LEN, POS), SCHED, NREGS ) => #dasmOps(OPS, WS, LOADPOS(LEN +Int POS, #asUnsigned(WS [ POS +Int (NREGS up/Int 8) .. LEN ])), SCHED, NREGS)
+    rule #dasmOps( OPS, 97 : WS, #str(LEN, POS), SCHED, NREGS ) => #dasmOps(OPS, WS, LOADNEG(LEN +Int POS, #asUnsigned(WS [ POS +Int (NREGS up/Int 8) .. LEN ])), SCHED, NREGS)
 
     rule #dasmOps( OPS,  98 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMP(W1 *Int 256 +Int W2),     SCHED, NREGS)
     rule #dasmOps( OPS,  99 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMPI(W1 *Int 256 +Int W2),    SCHED, NREGS)
@@ -2280,9 +2280,9 @@ module EVM
     syntax Op ::= #dasmRegs ( OpCode , WordStack , Int ) [function]
                 | #dasmRegs ( OpCode , Int , Int , Int ) [function, klabel(#dasmRegsAux)]
  // -------------------------------------------------------------------------------------
-    rule #dasmRegs ( LOADPOS(N, W), WS, NREGS ) => #dasmRegs(LOADPOS(N, W), #asInteger(#take(NREGS up/Int 8, WS)),                            NREGS, (1 <<Int NREGS) -Int 1)
-    rule #dasmRegs ( LOADNEG(N, W), WS, NREGS ) => #dasmRegs(LOADNEG(N, W), #asInteger(#take(NREGS up/Int 8, WS)),                            NREGS, (1 <<Int NREGS) -Int 1)
-    rule #dasmRegs ( OP,            WS, NREGS ) => #dasmRegs(OP,            #asInteger(#take(#opWidth(OP, NREGS) -Int #opCodeWidth(OP), WS)), NREGS, (1 <<Int NREGS) -Int 1) [owise]
+    rule #dasmRegs ( LOADPOS(N, W), WS, NREGS ) => #dasmRegs(LOADPOS(N, W), #asUnsigned(#take(NREGS up/Int 8, WS)),                            NREGS, (1 <<Int NREGS) -Int 1)
+    rule #dasmRegs ( LOADNEG(N, W), WS, NREGS ) => #dasmRegs(LOADNEG(N, W), #asUnsigned(#take(NREGS up/Int 8, WS)),                            NREGS, (1 <<Int NREGS) -Int 1)
+    rule #dasmRegs ( OP,            WS, NREGS ) => #dasmRegs(OP,            #asUnsigned(#take(#opWidth(OP, NREGS) -Int #opCodeWidth(OP), WS)), NREGS, (1 <<Int NREGS) -Int 1) [owise]
 
     rule #dasmRegs ( OP:NullOp,     R, W, M ) => OP %(R, W, M, 0)
     rule #dasmRegs ( OP:NullVoidOp, R, W, M ) => OP

@@ -534,25 +534,25 @@ module ETHEREUM-SIMULATION
           => load "transaction" : BT
          ...
          </k>
-         <previousHash>      _ => #asWord(#parseByteStackRaw(HP)) </previousHash>
-         <ommersHash>        _ => #asWord(#parseByteStackRaw(HO)) </ommersHash>
-         <coinbase>          _ => #asWord(#parseByteStackRaw(HC)) </coinbase>
-         <stateRoot>         _ => #asWord(#parseByteStackRaw(HR)) </stateRoot>
-         <transactionsRoot>  _ => #asWord(#parseByteStackRaw(HT)) </transactionsRoot>
-         <receiptsRoot>      _ => #asWord(#parseByteStackRaw(HE)) </receiptsRoot>
+         <previousHash>      _ => #asUnsigned(#parseByteStackRaw(HP)) </previousHash>
+         <ommersHash>        _ => #asUnsigned(#parseByteStackRaw(HO)) </ommersHash>
+         <coinbase>          _ => #asUnsigned(#parseByteStackRaw(HC)) </coinbase>
+         <stateRoot>         _ => #asUnsigned(#parseByteStackRaw(HR)) </stateRoot>
+         <transactionsRoot>  _ => #asUnsigned(#parseByteStackRaw(HT)) </transactionsRoot>
+         <receiptsRoot>      _ => #asUnsigned(#parseByteStackRaw(HE)) </receiptsRoot>
          <logsBloom>         _ => #parseByteStackRaw(HB)          </logsBloom>
-         <difficulty>        _ => #asWord(#parseByteStackRaw(HD)) </difficulty>
-         <number>            _ => #asWord(#parseByteStackRaw(HI)) </number>
-         <gasLimit>          _ => #asWord(#parseByteStackRaw(HL)) </gasLimit>
-         <gasUsed>           _ => #asWord(#parseByteStackRaw(HG)) </gasUsed>
-         <timestamp>         _ => #asWord(#parseByteStackRaw(HS)) </timestamp>
+         <difficulty>        _ => #asUnsigned(#parseByteStackRaw(HD)) </difficulty>
+         <number>            _ => #asUnsigned(#parseByteStackRaw(HI)) </number>
+         <gasLimit>          _ => #asUnsigned(#parseByteStackRaw(HL)) </gasLimit>
+         <gasUsed>           _ => #asUnsigned(#parseByteStackRaw(HG)) </gasUsed>
+         <timestamp>         _ => #asUnsigned(#parseByteStackRaw(HS)) </timestamp>
          <extraData>         _ => #parseByteStackRaw(HX)          </extraData>
-         <mixHash>           _ => #asWord(#parseByteStackRaw(HM)) </mixHash>
-         <blockNonce>        _ => #asWord(#parseByteStackRaw(HN)) </blockNonce>
+         <mixHash>           _ => #asUnsigned(#parseByteStackRaw(HM)) </mixHash>
+         <blockNonce>        _ => #asUnsigned(#parseByteStackRaw(HN)) </blockNonce>
          <ommerBlockHeaders> _ => BU                              </ommerBlockHeaders>
 
     rule <k> load "genesisRLP": [ [ HP, HO, HC, HR, HT, HE:String, HB, HD, HI, HL, HG, HS, HX, HM, HN, .JSONList ], _, _, .JSONList ] => .K ... </k>
-         <blockhash> .List => ListItem(#blockHeaderHash(HP, HO, HC, HR, HT, HE, HB, HD, HI, HL, HG, HS, HX, HM, HN)) ListItem(#asWord(#parseByteStackRaw(HP))) ... </blockhash>
+         <blockhash> .List => ListItem(#blockHeaderHash(HP, HO, HC, HR, HT, HE, HB, HD, HI, HL, HG, HS, HX, HM, HN)) ListItem(#asUnsigned(#parseByteStackRaw(HP))) ... </blockhash>
 
     rule <k> load "transaction" : [ [ TN , TP , TG , TT , TV , TI , TW , TR , TS ] , REST => REST ] ... </k>
          <txOrder>   ... .List => ListItem(!ID) </txOrder>
@@ -561,12 +561,12 @@ module ETHEREUM-SIMULATION
            ( .Bag
           => <message>
                <msgID>      !ID:Int                                 </msgID>
-               <txNonce>    #asWord(#parseByteStackRaw(TN))         </txNonce>
-               <txGasPrice> #asWord(#parseByteStackRaw(TP))         </txGasPrice>
-               <txGasLimit> #asWord(#parseByteStackRaw(TG))         </txGasLimit>
+               <txNonce>    #asUnsigned(#parseByteStackRaw(TN))         </txNonce>
+               <txGasPrice> #asUnsigned(#parseByteStackRaw(TP))         </txGasPrice>
+               <txGasLimit> #asUnsigned(#parseByteStackRaw(TG))         </txGasLimit>
                <to>         #asAccount(#parseByteStackRaw(TT))      </to>
-               <value>      #asWord(#parseByteStackRaw(TV))         </value>
-               <v>          #asWord(#parseByteStackRaw(TW))         </v>
+               <value>      #asUnsigned(#parseByteStackRaw(TV))         </value>
+               <v>          #asUnsigned(#parseByteStackRaw(TW))         </v>
                <r>          #padToWidth(32, #parseByteStackRaw(TR)) </r>
                <s>          #padToWidth(32, #parseByteStackRaw(TS)) </s>
                <data>       #parseByteStackRaw(TI)                  </data>
@@ -680,7 +680,7 @@ module ETHEREUM-SIMULATION
 
     rule check "blockHeader" : { KEY : (VALUE:String => #parseByteStack(VALUE)) }
 
-    rule check "blockHeader" : { KEY : (VALUE:WordStack => #asWord(VALUE)) }
+    rule check "blockHeader" : { KEY : (VALUE:WordStack => #asUnsigned(VALUE)) }
       requires KEY in ( SetItem("coinbase") SetItem("difficulty") SetItem("gasLimit") SetItem("gasUsed")
                         SetItem("mixHash") SetItem("nonce") SetItem("number") SetItem("parentHash")
                         SetItem("receiptTrie") SetItem("stateRoot") SetItem("timestamp")
@@ -719,14 +719,14 @@ module ETHEREUM-SIMULATION
          <extraData>        HX </extraData>
          <mixHash>          HM </mixHash>
          <blockNonce>       HN </blockNonce>
-      requires #blockHeaderHash(HP, HO, HC, HR, HT, HE, HB, HD, HI, HL, HG, HS, HX, HM, HN) ==Int #asWord(HASH)
+      requires #blockHeaderHash(HP, HO, HC, HR, HT, HE, HB, HD, HI, HL, HG, HS, HX, HM, HN) ==Int #asUnsigned(HASH)
 
     rule check TESTID : { "genesisBlockHeader" : BLOCKHEADER } => check "genesisBlockHeader" : BLOCKHEADER ~> failure TESTID
  // ------------------------------------------------------------------------------------------------------------------------
     rule check "genesisBlockHeader" : { KEY : VALUE , REST } => check "genesisBlockHeader" : { KEY : VALUE } ~> check "genesisBlockHeader" : { REST } requires REST =/=K .JSONList
     rule check "genesisBlockHeader" : { KEY : VALUE } => .K requires KEY =/=String "hash"
 
-    rule check "genesisBlockHeader" : { "hash": (HASH:String => #asWord(#parseByteStack(HASH))) }
+    rule check "genesisBlockHeader" : { "hash": (HASH:String => #asUnsigned(#parseByteStack(HASH))) }
     rule <k> check "genesisBlockHeader" : { "hash": HASH } => . ... </k>
          <blockhash> ... ListItem(HASH) ListItem(_) </blockhash>
 
@@ -743,7 +743,7 @@ module ETHEREUM-SIMULATION
 
     rule check "transactions" : ("to" : (VALUE:WordStack => #asAccount(VALUE)))
 
-    rule check "transactions" : (KEY : (VALUE:WordStack => #asWord(VALUE)))
+    rule check "transactions" : (KEY : (VALUE:WordStack => #asUnsigned(VALUE)))
       requires KEY in ( SetItem("gasLimit") SetItem("gasPrice") SetItem("nonce")
                         SetItem("v") SetItem("value")
                       )
