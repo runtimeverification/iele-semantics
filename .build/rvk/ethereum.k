@@ -659,7 +659,7 @@ module ETHEREUM-SIMULATION
     rule #rlpEncodeLogs(SL) => #rlpEncodeLength(#rlpEncodeLogsAux(SL), 192)
     rule #rlpEncodeLogsAux(ListItem({ ACCT | TOPICS | DATA }) SL) => #rlpEncodeLength(#rlpEncodeBytes(ACCT, 20) +String #rlpEncodeLength(#rlpEncodeTopics(TOPICS), 192) +String #rlpEncodeString(#unparseByteStack(DATA)), 192) +String #rlpEncodeLogsAux(SL)
     rule #rlpEncodeLogsAux(.List) => ""
-    rule #rlpEncodeTopics(TOPIC : TOPICS) => #rlpEncodeBytes(TOPIC, 32) +String #rlpEncodeTopics(TOPICS)
+    rule #rlpEncodeTopics(TOPIC : TOPICS) => #rlpEncodeBytes(chop(TOPIC), 32) +String #rlpEncodeTopics(TOPICS)
     rule #rlpEncodeTopics(.WordStack) => ""
 
     rule check TESTID : { "gas" : GLEFT } => check "gas" : GLEFT ~> failure TESTID
