@@ -55,6 +55,7 @@ module EVM
                         <programBytes> .WordStack </programBytes>
                         <callDepth>    0          </callDepth>
                         <jumpTable>    .Map       </jumpTable>
+                        <localCalls>   .List      </localCalls>
 
                         // I_*
                         <id>        0          </id>                         // I_a
@@ -414,13 +415,15 @@ module EVM
 
     syntax InternalOp ::= "#badJumpDest?" "[" Op "]"
  // ----------------------------------------------------
-    rule <k> #badJumpDest? [ OP               ] => . ... </k> requires notBool isJumpOp(#code(OP))
-    rule <k> #badJumpDest? [ JUMP (LABEL)     ] => . ... </k> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ JUMPI(LABEL) _   ] => . ... </k> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ JUMPI(_)     % R ] => . ... </k> <regs> REGS </regs> requires REGS [ R ] ==K 0
+    rule <k> #badJumpDest? [ OP                ] => . ... </k> requires notBool isJumpOp(#code(OP))
+    rule <k> #badJumpDest? [ JUMP (LABEL)      ] => . ... </k> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ LOCALCALL (LABEL) ] => . ... </k> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ JUMPI(LABEL) _    ] => . ... </k> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ JUMPI(_)     % R  ] => . ... </k> <regs> REGS </regs> requires REGS [ R ] ==K 0
 
-    rule <k> #badJumpDest? [ JUMP (LABEL)     ] => #exception ... </k> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ JUMPI(LABEL) % R ] => #exception ... </k> <jumpTable> JUMPS </jumpTable> <regs> REGS </regs> requires notBool LABEL in_keys(JUMPS) andBool REGS [ R ] =/=K 0
+    rule <k> #badJumpDest? [ JUMP (LABEL)      ] => #exception ... </k> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ LOCALCALL (LABEL) ] => #exception ... </k> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ JUMPI(LABEL) % R  ] => #exception ... </k> <jumpTable> JUMPS </jumpTable> <regs> REGS </regs> requires notBool LABEL in_keys(JUMPS) andBool REGS [ R ] =/=K 0
 
 
 // -   `#static?` determines if the opcode should throw an exception due to the
@@ -597,18 +600,21 @@ module EVM
 
     syntax InternalOp ::= "#pc" "[" OpCode "]"
  // ------------------------------------------
-    rule <k> #pc [ OP ] => . ... </k> requires isJumpOp(OP)
-    rule <k> #pc [ OP ] => . ... </k> <pc> PCOUNT => PCOUNT +Int #opWidth(OP, NREGS) </pc> <nregs> NREGS </nregs> requires notBool isJumpOp(OP)
+    rule <k> #pc [ OP ] => . ... </k> requires isJumpOrReturnOp(OP)
+    rule <k> #pc [ OP ] => . ... </k> <pc> PCOUNT => PCOUNT +Int #opWidth(OP, NREGS) </pc> <nregs> NREGS </nregs> requires notBool isJumpOrReturnOp(OP)
 
     syntax Bool ::= isJumpOp ( OpCode ) [function]
  // ----------------------------------------------
     rule isJumpOp(JUMP(_)) => true
     rule isJumpOp(JUMPI(_)) => true
+    rule isJumpOp(LOCALCALL(_)) => true
     rule isJumpOp(...) => false [owise]
-    syntax Bool ::= isJumpAddrOp ( OpCode ) [function]
-    rule isJumpAddrOp(JUMPDEST(_)) => true
-    rule isJumpAddrOp(OP) => true requires isJumpOp(OP)
-    rule isJumpAddrOp(...) => false [owise]
+
+    syntax Bool ::= isJumpOrReturnOp ( OpCode ) [function]
+ // ------------------------------------------------------
+    rule isJumpOrReturnOp(LOCALRETURN) => true
+    rule isJumpOrReturnOp(OP) => true requires isJumpOp(OP)
+    rule isJumpOrReturnOp(...) => false [owise]
 
 
 // ### Substate Log
@@ -1022,6 +1028,15 @@ module EVM
     rule <k> JUMPI(LABEL) I => . ... </k> <pc> _      => DEST          </pc> <jumpTable> ... LABEL |-> DEST </jumpTable> requires I =/=K 0
     rule <k> JUMPI(LABEL) 0 => . ... </k> <pc> PCOUNT => PCOUNT +Int #opWidth(JUMPI(LABEL), NREGS) </pc> <nregs> NREGS </nregs>
 
+    syntax NullVoidOp ::= LOCALCALL ( Int )
+ // ---------------------------------------------
+    rule <k> LOCALCALL(LABEL) => . ... </k> <jumpTable> ... LABEL |-> CALLDEST RET |-> RETDEST </jumpTable> <pc> PCOUNT => CALLDEST </pc> <localCalls> .List => ListItem(PCOUNT +Int 3) ... </localCalls>
+
+    syntax NullVoidOp ::= "LOCALRETURN"
+ // -----------------------------------
+    rule <k> LOCALRETURN => . ... </k> <pc> _ => DEST </pc> <localCalls> ListItem(DEST) => .List ... </localCalls>
+    rule <k> LOCALRETURN => #exception ... </k> <localCalls> .List </localCalls>
+
 
 // ### `STOP`, `REVERT`, and `RETURN`
 
@@ -1338,6 +1353,7 @@ module EVM
          <regs>       _ => .Array      </regs>
          <nregs>      _ => 5           </nregs>
          <localMem>   _ => .Array      </localMem>
+         <localCalls> _ => .List       </localCalls>
 
     syntax KItem ::= "#return" Int Int Reg
  // --------------------------------------
@@ -1906,10 +1922,12 @@ module EVM
     rule <k> #gasExec(SCHED, ADDMOD _ _ _ _) => Gmid < SCHED > ... </k>
     rule <k> #gasExec(SCHED, MULMOD _ _ _ _) => Gmid < SCHED > ... </k>
     rule <k> #gasExec(SCHED, EXPMOD _ _ _ _) => Gmid < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, JUMP(_)) => Gmid < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, JUMP(_))        => Gmid < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, LOCALCALL(_)) => Gmid < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, LOCALRETURN)    => Gmid < SCHED > ... </k>
 
     // Whigh
-    rule <k> #gasExec(SCHED, JUMPI(_) _) => Ghigh < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, JUMPI(_) _)        => Ghigh < SCHED > ... </k>
 
     rule <k> #gasExec(SCHED, EXTCODESIZE _ _) => Gextcodesize < SCHED > ... </k>
     rule <k> #gasExec(SCHED, BALANCE _ _)     => Gbalance     < SCHED > ... </k>
@@ -2219,24 +2237,26 @@ module EVM
                  | #dasmOps ( Ops , WordStack , K , Schedule , Int ) [function, klabel(#dasmOpsAux)]
                  | #revOps  ( Ops , Ops )                        [function]
  // -----------------------------------------------------------------------------
-    rule #dasmOps( 101 : NBITS : WS, SCHED ) => #revOps(#dasmOps(REGISTERS (NBITS) ; .Ops, WS, .K, SCHED, NBITS), .Ops)
+    rule #dasmOps( 98 : NBITS : WS, SCHED ) => #revOps(#dasmOps(REGISTERS (NBITS) ; .Ops, WS, .K, SCHED, NBITS), .Ops)
     rule #dasmOps( WS, SCHED ) => #revOps(#dasmOps(.Ops, WS, .K, SCHED, 32), .Ops) [owise]
 
     rule #dasmOps( OPS, .WordStack, .K, _, _ ) => OPS
 
     rule #dasmOps( OPS, W : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, #dasmOpCode(W, SCHED), SCHED, NREGS)
       requires (W >=Int 0   andBool W <=Int 95)
-        orBool (W >=Int 102 andBool W <=Int 255)
+        orBool (W >=Int 102 andBool W <=Int 246)
+        orBool (W >=Int 249 andBool W <=Int 255)
 
     rule #dasmOps( OPS, W : WS, .K,             SCHED, NREGS ) => #dasmOps(OPS, W : WS, #str(#pushLen(#drop(NREGS up/Int 8, WS)), #pushOffset(#drop(NREGS up/Int 8, WS))), SCHED, NREGS)
       requires W >=Int 96 andBool W <Int 98
     rule #dasmOps( OPS, 96 : WS, #str(LEN, POS), SCHED, NREGS ) => #dasmOps(OPS, WS, LOADPOS(LEN +Int POS, #asUnsigned(WS [ POS +Int (NREGS up/Int 8) .. LEN ])), SCHED, NREGS)
     rule #dasmOps( OPS, 97 : WS, #str(LEN, POS), SCHED, NREGS ) => #dasmOps(OPS, WS, LOADNEG(LEN +Int POS, #asUnsigned(WS [ POS +Int (NREGS up/Int 8) .. LEN ])), SCHED, NREGS)
 
-    rule #dasmOps( OPS,  98 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMP(W1 *Int 256 +Int W2),     SCHED, NREGS)
-    rule #dasmOps( OPS,  99 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMPI(W1 *Int 256 +Int W2),    SCHED, NREGS)
-    rule #dasmOps( OPS, 100 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMPDEST(W1 *Int 256 +Int W2), SCHED, NREGS)
-    rule #dasmOps( OPS, 101 : W1      : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, REGISTERS(W1),                 SCHED, NREGS)
+    rule #dasmOps( OPS,  98 : W1      : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, REGISTERS(W1),                  SCHED, NREGS)
+    rule #dasmOps( OPS,  99 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMP(W1 *Int 256 +Int W2),      SCHED, NREGS)
+    rule #dasmOps( OPS, 100 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMPI(W1 *Int 256 +Int W2),     SCHED, NREGS)
+    rule #dasmOps( OPS, 101 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMPDEST(W1 *Int 256 +Int W2),  SCHED, NREGS)
+    rule #dasmOps( OPS, 247 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, LOCALCALL(W1 *Int 256 +Int W2), SCHED, NREGS)
 
     rule #dasmOps( OPS, WS, OP:OpCode, SCHED, NREGS) => #dasmOps(#dasmRegs(OP, WS, NREGS) ; OPS, #drop(#opWidth(OP, NREGS) -Int #opCodeWidth(OP), WS), .K, SCHED, NREGS)
 
@@ -2276,11 +2296,12 @@ module EVM
 
     syntax Int ::= #opCodeWidth ( OpCode ) [function]
  // -------------------------------------------------
-    rule #opCodeWidth( JUMPDEST(_) )   => 3
-    rule #opCodeWidth( JUMP(_) )       => 3
-    rule #opCodeWidth( JUMPI(_) )      => 3
-    rule #opCodeWidth( REGISTERS(_) )  => 2
-    rule #opCodeWidth( OP )            => 1 [owise]
+    rule #opCodeWidth( JUMPDEST(_) )  => 3
+    rule #opCodeWidth( JUMP(_) )      => 3
+    rule #opCodeWidth( JUMPI(_) )     => 3
+    rule #opCodeWidth( LOCALCALL(_) ) => 3
+    rule #opCodeWidth( REGISTERS(_) ) => 2
+    rule #opCodeWidth( OP )           => 1 [owise]
 
     syntax Int ::= #numArgs ( OpCode ) [function]
  // ---------------------------------------------
@@ -2362,10 +2383,11 @@ module EVM
     rule #dasmOpCode( 240,     _ ) => CREATE
     rule #dasmOpCode( 241,     _ ) => CALL
     rule #dasmOpCode( 242,     _ ) => CALLCODE
-    rule #dasmOpCode( 243,     _ ) => RETURN
-    rule #dasmOpCode( 244, SCHED ) => DELEGATECALL requires SCHED =/=K FRONTIER
-    rule #dasmOpCode( 250, SCHED ) => STATICCALL requires hasStaticCall << SCHED >>
-    rule #dasmOpCode( 253, SCHED ) => REVERT requires hasRevert << SCHED >>
+    rule #dasmOpCode( 243, SCHED ) => DELEGATECALL requires SCHED =/=K FRONTIER
+    rule #dasmOpCode( 244, SCHED ) => STATICCALL requires hasStaticCall << SCHED >>
+    rule #dasmOpCode( 245,     _ ) => RETURN
+    rule #dasmOpCode( 246, SCHED ) => REVERT requires hasRevert << SCHED >>
+    rule #dasmOpCode( 248,     _ ) => LOCALRETURN
     rule #dasmOpCode( 255,     _ ) => SELFDESTRUCT
     rule #dasmOpCode(   W,     _ ) => INVALID [owise]
 

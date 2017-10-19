@@ -67,6 +67,8 @@ We'll need to make summaries of the state which collect information about how mu
  // ---------------------------------------------
     rule #gasBreaks(JUMP(_)) => true
     rule #gasBreaks(JUMPI(_)) => true
+    rule #gasBreaks(LOCALCALL(_)) => true
+    rule #gasBreaks(LOCALRETURN) => true
     rule #gasBreaks(JUMPDEST(_)) => true
     rule #gasBreaks(...) => false [owise]
 

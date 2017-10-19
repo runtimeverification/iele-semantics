@@ -78,6 +78,8 @@ module EVM-ANALYSIS
  // ---------------------------------------------
     rule #gasBreaks(JUMP(_)) => true
     rule #gasBreaks(JUMPI(_)) => true
+    rule #gasBreaks(LOCALCALL(_)) => true
+    rule #gasBreaks(LOCALRETURN) => true
     rule #gasBreaks(JUMPDEST(_)) => true
     rule #gasBreaks(...) => false [owise]
 

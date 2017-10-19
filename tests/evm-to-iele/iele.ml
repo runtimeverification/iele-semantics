@@ -63,9 +63,11 @@ type iele_opcode = [
 | `CREATE
 | `CALL
 | `CALLCODE
-| `RETURN
 | `DELEGATECALL
 | `STATICCALL
+| `LOCALCALL of int
+| `RETURN
+| `LOCALRETURN
 | `REVERT
 | `INVALID
 | `SELFDESTRUCT
@@ -133,10 +135,10 @@ let asm_iele_opcode op = match op with
 | `GAS -> "\x5a"
 | `LOADPOS -> "\x60"
 | `LOADNEG -> "\x61"
-| `JUMP i -> "\x62" ^ (IeleUtil.be_int_width (Z.of_int i) 16)
-| `JUMPI i -> "\x63" ^ (IeleUtil.be_int_width (Z.of_int i) 16)
-| `JUMPDEST i -> "\x64" ^ (IeleUtil.be_int_width (Z.of_int i) 16)
-| `REGISTERS i -> "\x65" ^ (IeleUtil.string_of_char (Char.chr i))
+| `REGISTERS i -> "\x62" ^ (IeleUtil.string_of_char (Char.chr i))
+| `JUMP i -> "\x63" ^ (IeleUtil.be_int_width (Z.of_int i) 16)
+| `JUMPI i -> "\x64" ^ (IeleUtil.be_int_width (Z.of_int i) 16)
+| `JUMPDEST i -> "\x65" ^ (IeleUtil.be_int_width (Z.of_int i) 16)
 | `LOG(n) ->
   let byte = 0xa0 + n in
   let ch = Char.chr byte in
@@ -144,10 +146,12 @@ let asm_iele_opcode op = match op with
 | `CREATE -> "\xf0"
 | `CALL -> "\xf1"
 | `CALLCODE -> "\xf2"
-| `RETURN -> "\xf3"
-| `DELEGATECALL -> "\xf4"
-| `STATICCALL -> "\xfa"
-| `REVERT -> "\xfd"
+| `DELEGATECALL -> "\xf3"
+| `STATICCALL -> "\xf4"
+| `RETURN -> "\xf5"
+| `REVERT -> "\xf6"
+| `LOCALCALL (call) -> "\xf7" ^ (IeleUtil.be_int_width (Z.of_int call) 16)
+| `LOCALRETURN -> "\xf9"
 | `INVALID -> "\xfe"
 | `SELFDESTRUCT -> "\xff"
 
