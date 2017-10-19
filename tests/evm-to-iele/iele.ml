@@ -133,12 +133,12 @@ let asm_iele_opcode op = match op with
 | `PC -> "\x58"
 | `MSIZE -> "\x59"
 | `GAS -> "\x5a"
-| `LOADPOS -> "\x60"
-| `LOADNEG -> "\x61"
-| `REGISTERS i -> "\x62" ^ (IeleUtil.string_of_char (Char.chr i))
-| `JUMP i -> "\x63" ^ (IeleUtil.be_int_width (Z.of_int i) 16)
-| `JUMPI i -> "\x64" ^ (IeleUtil.be_int_width (Z.of_int i) 16)
-| `JUMPDEST i -> "\x65" ^ (IeleUtil.be_int_width (Z.of_int i) 16)
+| `LOADPOS -> "\x61"
+| `LOADNEG -> "\x62"
+| `REGISTERS i -> "\x63" ^ (IeleUtil.string_of_char (Char.chr i))
+| `JUMP i -> "\x64" ^ (IeleUtil.be_int_width (Z.of_int i) 16)
+| `JUMPI i -> "\x65" ^ (IeleUtil.be_int_width (Z.of_int i) 16)
+| `JUMPDEST i -> "\x66" ^ (IeleUtil.be_int_width (Z.of_int i) 16)
 | `LOG(n) ->
   let byte = 0xa0 + n in
   let ch = Char.chr byte in

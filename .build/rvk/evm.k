@@ -856,9 +856,10 @@ module EVM
     rule <k> REGISTERS(NREGS) => #exception ... </k> <pc> PCOUNT </pc> requires PCOUNT =/=K 0
 
 
-// ### Stack Manipulations
+// ### Register Manipulations
 
-// Some operators don't calculate anything, they just push the stack around a bit.
+// Some operators don't calculate anything, they just manipulate the state of
+// registers.
 
 
     syntax NullOp ::= LOADPOS ( Int , Int )
@@ -868,6 +869,10 @@ module EVM
     syntax NullOp ::= LOADNEG ( Int , Int )
  // ---------------------------------------
     rule <k> LOADNEG(_, W) REG => #load REG (0 -Int W) ... </k> 
+
+    syntax UnOp ::= "MOVE"
+ // ----------------------
+    rule <k> MOVE REG VAL => #load REG VAL ... </k>
 
     syntax InternalOp ::= "#load" Reg Int
  // -------------------------------------
@@ -1910,6 +1915,7 @@ module EVM
     rule <k> #gasExec(SCHED, MSTORE8 _ _)        => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, LOADPOS(_, _) _)    => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, LOADNEG(_, _) _)    => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, MOVE _ _)           => Gverylow < SCHED > ... </k>
 
     // Wlow
     rule <k> #gasExec(SCHED, MUL _ _ _)        => Glow < SCHED > ... </k>
@@ -2237,25 +2243,25 @@ module EVM
                  | #dasmOps ( Ops , WordStack , K , Schedule , Int ) [function, klabel(#dasmOpsAux)]
                  | #revOps  ( Ops , Ops )                        [function]
  // -----------------------------------------------------------------------------
-    rule #dasmOps( 98 : NBITS : WS, SCHED ) => #revOps(#dasmOps(REGISTERS (NBITS) ; .Ops, WS, .K, SCHED, NBITS), .Ops)
+    rule #dasmOps( 99 : NBITS : WS, SCHED ) => #revOps(#dasmOps(REGISTERS (NBITS) ; .Ops, WS, .K, SCHED, NBITS), .Ops)
     rule #dasmOps( WS, SCHED ) => #revOps(#dasmOps(.Ops, WS, .K, SCHED, 32), .Ops) [owise]
 
     rule #dasmOps( OPS, .WordStack, .K, _, _ ) => OPS
 
     rule #dasmOps( OPS, W : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, #dasmOpCode(W, SCHED), SCHED, NREGS)
-      requires (W >=Int 0   andBool W <=Int 95)
-        orBool (W >=Int 102 andBool W <=Int 246)
+      requires (W >=Int 0   andBool W <=Int 96)
+        orBool (W >=Int 103 andBool W <=Int 246)
         orBool (W >=Int 249 andBool W <=Int 255)
 
     rule #dasmOps( OPS, W : WS, .K,             SCHED, NREGS ) => #dasmOps(OPS, W : WS, #str(#pushLen(#drop(NREGS up/Int 8, WS)), #pushOffset(#drop(NREGS up/Int 8, WS))), SCHED, NREGS)
-      requires W >=Int 96 andBool W <Int 98
-    rule #dasmOps( OPS, 96 : WS, #str(LEN, POS), SCHED, NREGS ) => #dasmOps(OPS, WS, LOADPOS(LEN +Int POS, #asUnsigned(WS [ POS +Int (NREGS up/Int 8) .. LEN ])), SCHED, NREGS)
-    rule #dasmOps( OPS, 97 : WS, #str(LEN, POS), SCHED, NREGS ) => #dasmOps(OPS, WS, LOADNEG(LEN +Int POS, #asUnsigned(WS [ POS +Int (NREGS up/Int 8) .. LEN ])), SCHED, NREGS)
+      requires W >=Int 97 andBool W <Int 99
+    rule #dasmOps( OPS, 97 : WS, #str(LEN, POS), SCHED, NREGS ) => #dasmOps(OPS, WS, LOADPOS(LEN +Int POS, #asUnsigned(WS [ POS +Int (NREGS up/Int 8) .. LEN ])), SCHED, NREGS)
+    rule #dasmOps( OPS, 98 : WS, #str(LEN, POS), SCHED, NREGS ) => #dasmOps(OPS, WS, LOADNEG(LEN +Int POS, #asUnsigned(WS [ POS +Int (NREGS up/Int 8) .. LEN ])), SCHED, NREGS)
 
-    rule #dasmOps( OPS,  98 : W1      : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, REGISTERS(W1),                  SCHED, NREGS)
-    rule #dasmOps( OPS,  99 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMP(W1 *Int 256 +Int W2),      SCHED, NREGS)
-    rule #dasmOps( OPS, 100 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMPI(W1 *Int 256 +Int W2),     SCHED, NREGS)
-    rule #dasmOps( OPS, 101 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMPDEST(W1 *Int 256 +Int W2),  SCHED, NREGS)
+    rule #dasmOps( OPS,  99 : W1      : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, REGISTERS(W1),                  SCHED, NREGS)
+    rule #dasmOps( OPS, 100 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMP(W1 *Int 256 +Int W2),      SCHED, NREGS)
+    rule #dasmOps( OPS, 101 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMPI(W1 *Int 256 +Int W2),     SCHED, NREGS)
+    rule #dasmOps( OPS, 102 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMPDEST(W1 *Int 256 +Int W2),  SCHED, NREGS)
     rule #dasmOps( OPS, 247 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, LOCALCALL(W1 *Int 256 +Int W2), SCHED, NREGS)
 
     rule #dasmOps( OPS, WS, OP:OpCode, SCHED, NREGS) => #dasmOps(#dasmRegs(OP, WS, NREGS) ; OPS, #drop(#opWidth(OP, NREGS) -Int #opCodeWidth(OP), WS), .K, SCHED, NREGS)
@@ -2375,6 +2381,7 @@ module EVM
     rule #dasmOpCode(  88,     _ ) => PC
     rule #dasmOpCode(  89,     _ ) => MSIZE
     rule #dasmOpCode(  90,     _ ) => GAS
+    rule #dasmOpCode(  96,     _ ) => MOVE
     rule #dasmOpCode( 160,     _ ) => LOG0
     rule #dasmOpCode( 161,     _ ) => LOG1
     rule #dasmOpCode( 162,     _ ) => LOG2
