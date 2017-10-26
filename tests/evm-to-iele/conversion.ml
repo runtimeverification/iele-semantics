@@ -4,6 +4,7 @@ open Iele
 let pow256 = Z.shift_left Z.one 256
 let _32 = Z.of_int 32
 let _31 = Z.of_int 31
+let _65536 = Z.of_int 65536
 
 let compatibility = true
 
@@ -16,8 +17,8 @@ let rec preprocess_evm (evm: evm_op list) : intermediate_op list = match evm wit
 | `SLT :: tl -> `LT :: preprocess_evm tl
 | `SGT :: tl -> `GT :: preprocess_evm tl
 | (`JUMP|`JUMPI) :: tl -> `INVALID :: preprocess_evm tl
-| `PUSH(_,pc) :: `JUMP :: tl when Z.lt pc (Z.of_int 65536) -> `JUMP(Z.to_int pc) :: preprocess_evm tl
-| `PUSH(_,pc) :: `JUMPI :: tl when Z.lt pc (Z.of_int 65536) -> `JUMPI(Z.to_int pc) :: preprocess_evm tl
+| `PUSH(_,pc) :: `JUMP :: tl when Z.lt pc _65536 -> `JUMP(Z.to_int pc) :: preprocess_evm tl
+| `PUSH(_,pc) :: `JUMPI :: tl when Z.lt pc _65536 -> `JUMPI(Z.to_int pc) :: preprocess_evm tl
 | `PUSH(_,byte) :: `SIGNEXTEND :: tl -> `PUSH(Z.min byte _31) :: `SIGNEXTEND :: preprocess_evm tl
 | _ :: (`JUMP|`JUMPI) :: _ -> failwith "dynamic jumps detected"
 | `PUSH(n,v) :: op2 :: tl -> `PUSH(v) :: preprocess_evm (op2 :: tl)
@@ -70,7 +71,7 @@ let compute_cfg (intermediate: intermediate_op list) : evm_graph =
     | `DELEGATECALL | `STATICCALL -> delta := !delta - 5
     | `EXTCODECOPY -> delta := !delta - 4
     | `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY -> delta := !delta - 3
-    | `RETURN | `REVERT | `SSTORE | `ADDMOD | `MULMOD | `CREATE | `MSTORE | `MSTORE8 -> delta := !delta - 2
+    | `SSTORE | `ADDMOD | `MULMOD | `CREATE | `MSTORE | `MSTORE8 -> delta := !delta - 2
     | `POP | `ADD | `MUL | `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND | `TWOS
     | `AND | `OR | `XOR | `LT | `GT | `EQ | `SHA3  -> delta := !delta - 1
     | `SWAP(_) | `MLOAD | `ISZERO | `NOT | `BLOCKHASH | `CALLDATALOAD | `BALANCE
@@ -93,27 +94,19 @@ let compute_cfg (intermediate: intermediate_op list) : evm_graph =
     | `JUMPI(pc) ->
       let component = List.rev !rev_component in
       rev_component := [];
-      delta := !delta - 1;
       output := (!max_needed,component,true,Some pc) :: !output;
       max_needed := 0;
       delta := 0
-    | `STOP | `INVALID ->
+    | `STOP | `INVALID | `SELFDESTRUCT | `RETURN | `REVERT ->
       let component = List.rev !rev_component in
       rev_component := [];
-      output := (!max_needed,component,false,None) :: !output;
-      max_needed := 0;
-      delta := 0
-    | `SELFDESTRUCT ->
-      let component = List.rev !rev_component in
-      rev_component := [];
-      delta := !delta - 1;
       output := (!max_needed,component,false,None) :: !output;
       max_needed := 0;
       delta := 0
     )) intermediate;
   let component = List.rev !rev_component in
   output := (!max_needed,component,true,None) :: !output;
-  List.rev !output
+  List.filter (fun (_,ops,_,_) -> ops <> []) (List.rev !output)
 
 type iele_graph = (int list * iele_op list * int list * bool * int option) list * int
 
