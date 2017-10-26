@@ -1,8 +1,8 @@
 // Ethereum Simulations
 // ====================
 
-// Ethereum is using the EVM to drive updates over the world state. Actual
-// execution of the EVM is defined in [the EVM file](evm.md).
+// Ethereum is using the EVM to drive updates over the world state.
+// Actual execution of the EVM is defined in [the EVM file](evm.md).
 
 
 requires "evm.k"
@@ -17,8 +17,8 @@ module ETHEREUM-SIMULATION
     imports K-REFLECTION
 
 
-// An Ethereum simulation is a list of Ethereum commands. Some Ethereum commands
-// take an Ethereum specification (eg. for an account or transaction).
+// An Ethereum simulation is a list of Ethereum commands.
+// Some Ethereum commands take an Ethereum specification (eg. for an account or transaction).
 
 
     syntax EthereumSimulation ::= ".EthereumSimulation"
@@ -32,13 +32,11 @@ module ETHEREUM-SIMULATION
     rule <k> JSONINPUT:JSON => run JSONINPUT success .EthereumSimulation </k>
 
 
-// For verification purposes, it's much easier to specify a program in terms of its
-// op-codes and not the hex-encoding that the tests use. To do so, we'll extend
-// sort `JSON` with some EVM specific syntax, and provide a "pretti-fication" to
-// the nicer input form.
+// For verification purposes, it's much easier to specify a program in terms of its op-codes and not the hex-encoding that the tests use.
+// To do so, we'll extend sort `JSON` with some EVM specific syntax, and provide a "pretti-fication" to the nicer input form.
 
 
-    syntax JSON ::= Int | WordStack | OpCodes | Map | Call | SubstateLogEntry | Account
+    syntax JSON ::= Int | WordStack | Ops | Map | Call | SubstateLogEntry | Account
  // -----------------------------------------------------------------------------------
 
     syntax JSONList ::= #sortJSONList ( JSONList )            [function]
@@ -63,10 +61,8 @@ module ETHEREUM-SIMULATION
 
 // ### Driving Execution
 
-// -   `start` places `#next` on the `<k>` cell so that execution of the loaded
-//     state begin.
-// -   `flush` places `#finalize` on the `<k>` cell once it sees `#end` in the
-//     `<k>` cell, clearing any exceptions it finds.
+// -   `start` places `#next` on the `<k>` cell so that execution of the loaded state begin.
+// -   `flush` places `#finalize` on the `<k>` cell once it sees `#end` in the `<k>` cell, clearing any exceptions it finds.
 
 
     syntax EthereumCommand ::= "start"
@@ -81,12 +77,9 @@ module ETHEREUM-SIMULATION
     rule <k> #exception ~> flush => #finalizeTx(false) ~> #exception ... </k>
 
 
-// -   `startTx` computes the sender of the transaction, and places loadTx on the
-//     `k` cell.
-// -   `loadTx(_)` loads the next transaction to be executed into the
-//     current state.
-// -   `finishTx` is a place-holder for performing necessary cleanup after
-//     a transaction.
+// -   `startTx` computes the sender of the transaction, and places loadTx on the `k` cell.
+// -   `loadTx(_)` loads the next transaction to be executed into the current state.
+// -   `finishTx` is a place-holder for performing necessary cleanup after a transaction.
 
 
     syntax EthereumCommand ::= "startTx"
@@ -171,7 +164,7 @@ module ETHEREUM-SIMULATION
     rule <k> #exception ~> #finishTx => #popCallStack ~> #popWorldState ~> #popSubstate ... </k>
     rule <k> #revert    ~> #finishTx => #popCallStack ~> #popWorldState ~> #popSubstate ~> #refund GAVAIL ... </k> <gas> GAVAIL </gas>       
 
-    rule <k> #end ~> #finishTx => #mkCodeDeposit ACCT ... </k>
+    rule <k> #end ~> #finishTx => #mkCodeDeposit ACCT %0 ... </k>
          <id> ACCT </id>
          <txPending> ListItem(TXID:Int) ... </txPending>
          <message>
@@ -192,10 +185,8 @@ module ETHEREUM-SIMULATION
       requires TT =/=K .Account
 
 
-// -   `#finalizeBlock` is used to signal that block finalization procedures should
-//     take place (after transactions have executed).
-// -   `#rewardOmmers(_)` pays out the reward to uncle blocks so that blocks are
-//     orphaned less often in Ethereum.
+// -   `#finalizeBlock` is used to signal that block finalization procedures should take place (after transactions have executed).
+// -   `#rewardOmmers(_)` pays out the reward to uncle blocks so that blocks are orphaned less often in Ethereum.
 
 
     syntax EthereumCommand ::= "#finalizeBlock" | #rewardOmmers ( JSONList )
@@ -234,8 +225,7 @@ module ETHEREUM-SIMULATION
          <activeAccounts> ... MINER |-> (_ => false) OMMER |-> (_ => false) ... </activeAccounts>
 
 
-// -   `exception` only clears from the `<k>` cell if there is an exception
-//     preceding it.
+// -   `exception` only clears from the `<k>` cell if there is an exception preceding it.
 // -   `failure_` holds the name of a test that failed if a test does fail.
 
 
@@ -250,8 +240,7 @@ module ETHEREUM-SIMULATION
 
 // -   `run` runs a given set of Ethereum tests (from the test-set).
 
-// Note that `TEST` is sorted here so that key `"network"` comes before key
-// `"pre"`.
+// Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`.
 
 
     syntax EthereumCommand ::= "run" JSON
@@ -269,8 +258,7 @@ module ETHEREUM-SIMULATION
     rule #hasPost? ({ (KEY:String) : _ , REST }) => (KEY in #postKeys) orBool #hasPost? ({ REST })
 
 
-// -   `#loadKeys` are all the JSON nodes which should be considered as loads
-//     before execution.
+// -   `#loadKeys` are all the JSON nodes which should be considered as loads before execution.
 
 
     syntax Set ::= "#loadKeys" [function]
@@ -283,8 +271,7 @@ module ETHEREUM-SIMULATION
     rule run TESTID : { "blocks" : [ { .JSONList }, .JSONList ] , REST } => run TESTID : { REST }
 
 
-// -   `#execKeys` are all the JSON nodes which should be considered for execution
-//     (between loading and checking).
+// -   `#execKeys` are all the JSON nodes which should be considered for execution (between loading and checking).
 
 
     syntax Set ::= "#execKeys" [function]
@@ -297,10 +284,8 @@ module ETHEREUM-SIMULATION
     rule run TESTID : { "lastblockhash" : (HASH:String) } => startTx
 
 
-// -   `#postKeys` are a subset of `#checkKeys` which correspond to post-state
-//     account checks.
-// -   `#checkKeys` are all the JSON nodes which should be considered as checks
-//     after execution.
+// -   `#postKeys` are a subset of `#checkKeys` which correspond to post-state account checks.
+// -   `#checkKeys` are all the JSON nodes which should be considered as checks after execution.
 
 
     syntax Set ::= "#postKeys" [function] | "#allPostKeys" [function] | "#checkKeys" [function]
@@ -315,8 +300,7 @@ module ETHEREUM-SIMULATION
     rule run TESTID : { KEY : (VAL:JSON) , REST } => run TESTID : { REST } ~> check TESTID : { KEY    : VAL } requires KEY in #checkKeys andBool notBool KEY in #allPostKeys
 
 
-// -   `#discardKeys` are all the JSON nodes in the tests which should just
-//     be ignored.
+// -   `#discardKeys` are all the JSON nodes in the tests which should just be ignored.
 
 
     syntax Set ::= "#discardKeys" [function]
@@ -343,27 +327,28 @@ module ETHEREUM-SIMULATION
     syntax EthreumCommand ::= "clearTX"
  // -----------------------------------
     rule <k> clearTX => . ... </k>
-         <output>       _ => .WordStack              </output>
-         <memoryUsed>   _ => 0                       </memoryUsed>
-         <callDepth>    _ => 0                       </callDepth>
-         <callStack>    _ => .List                   </callStack>
-         <callLog>      _ => .Set                    </callLog>
-         <program>      _ => .Map                    </program>
-         <programBytes> _ => .WordStack              </programBytes>
-         <id>           _ => 0                       </id>
-         <caller>       _ => 0                       </caller>
-         <callData>     _ => .WordStack              </callData>
-         <callValue>    _ => 0                       </callValue>
-         <wordStack>    _ => .WordStack              </wordStack>
-         <localMem>     _ => makeArray(2 ^Int 30, 0) </localMem>
-         <pc>           _ => 0                       </pc>
-         <gas>          _ => 0                       </gas>
-         <previousGas>  _ => 0                       </previousGas>
-         <selfDestruct> _ => .Set                    </selfDestruct>
-         <log>          _ => .List                   </log>
-         <refund>       _ => 0                       </refund>
-         <gasPrice>     _ => 0                       </gasPrice>
-         <origin>       _ => 0                       </origin>
+         <output>       _ => .WordStack </output>
+         <memoryUsed>   _ => 0          </memoryUsed>
+         <callDepth>    _ => 0          </callDepth>
+         <callStack>    _ => .List      </callStack>
+         <callLog>      _ => .Set       </callLog>
+         <program>      _ => .Map       </program>
+         <programBytes> _ => .WordStack </programBytes>
+         <jumpTable>    _ => .Map       </jumpTable>
+         <id>           _ => 0          </id>
+         <caller>       _ => 0          </caller>
+         <callData>     _ => .WordStack </callData>
+         <callValue>    _ => 0          </callValue>
+         <regs>         _ => .Array     </regs>
+         <localMem>     _ => .Array     </localMem>
+         <pc>           _ => 0          </pc>
+         <gas>          _ => 0          </gas>
+         <previousGas>  _ => 0          </previousGas>
+         <selfDestruct> _ => .Set       </selfDestruct>
+         <log>          _ => .List      </log>
+         <refund>       _ => 0          </refund>
+         <gasPrice>     _ => 0          </gasPrice>
+         <origin>       _ => 0          </origin>
 
     syntax EthreumCommand ::= "clearBLOCK"
  // --------------------------------------
@@ -397,8 +382,7 @@ module ETHEREUM-SIMULATION
 
 // ### Loading State
 
-// -   `mkAcct_` creates an account with the supplied ID (assuming it's already
-//     been chopped to 160 bits).
+// -   `mkAcct_` creates an account with the supplied ID (assuming it's already been chopped to 160 bits).
 
 
     syntax EthereumCommand ::= "mkAcct" Int
@@ -419,8 +403,7 @@ module ETHEREUM-SIMULATION
     rule load DATA : [ { TEST } , REST ] => load DATA : { TEST } ~> load DATA : [ REST ]
 
 
-// Here we perform pre-proccesing on account data which allows "pretty"
-// specification of input.
+// Here we perform pre-proccesing on account data which allows "pretty" specification of input.
 
 
     rule load "pre" : { (ACCTID:String) : ACCT } => mkAcct #parseAddr(ACCTID) ~> load "account" : { ACCTID : ACCT }
@@ -500,7 +483,11 @@ module ETHEREUM-SIMULATION
     rule load "exec" : { "data" : ((DATA:String) => #parseByteStack(DATA)) }
  // ------------------------------------------------------------------------
     rule <k> load "exec" : { "data" : (DATA:WordStack) } => . ... </k> <callData> _ => DATA </callData>
-    rule <k> load "exec" : { "code" : (CODE:WordStack) } => . ... </k> <program>  _ => #asMapOpCodes(#dasmOpCodes(CODE, SCHED)) </program> <programBytes> _ => CODE </programBytes> <schedule> SCHED </schedule>
+    rule <k> load "exec" : { "code" : (CODE:WordStack) } => . ... </k>
+         <program>  _ => #asMapOps(#dasmOps(CODE, SCHED)) </program>
+         <programBytes> _ => CODE </programBytes>
+         <jumpTable> _ => #computeJumpTable(#asMapOps(#dasmOps(CODE, SCHED))) </jumpTable>
+         <schedule> SCHED </schedule>
 
 
 // The `"network"` key allows setting the fee schedule inside the test.
@@ -529,25 +516,25 @@ module ETHEREUM-SIMULATION
           => load "transaction" : BT
          ...
          </k>
-         <previousHash>      _ => #asWord(#parseByteStackRaw(HP)) </previousHash>
-         <ommersHash>        _ => #asWord(#parseByteStackRaw(HO)) </ommersHash>
-         <coinbase>          _ => #asWord(#parseByteStackRaw(HC)) </coinbase>
-         <stateRoot>         _ => #asWord(#parseByteStackRaw(HR)) </stateRoot>
-         <transactionsRoot>  _ => #asWord(#parseByteStackRaw(HT)) </transactionsRoot>
-         <receiptsRoot>      _ => #asWord(#parseByteStackRaw(HE)) </receiptsRoot>
+         <previousHash>      _ => #asUnsigned(#parseByteStackRaw(HP)) </previousHash>
+         <ommersHash>        _ => #asUnsigned(#parseByteStackRaw(HO)) </ommersHash>
+         <coinbase>          _ => #asUnsigned(#parseByteStackRaw(HC)) </coinbase>
+         <stateRoot>         _ => #asUnsigned(#parseByteStackRaw(HR)) </stateRoot>
+         <transactionsRoot>  _ => #asUnsigned(#parseByteStackRaw(HT)) </transactionsRoot>
+         <receiptsRoot>      _ => #asUnsigned(#parseByteStackRaw(HE)) </receiptsRoot>
          <logsBloom>         _ => #parseByteStackRaw(HB)          </logsBloom>
-         <difficulty>        _ => #asWord(#parseByteStackRaw(HD)) </difficulty>
-         <number>            _ => #asWord(#parseByteStackRaw(HI)) </number>
-         <gasLimit>          _ => #asWord(#parseByteStackRaw(HL)) </gasLimit>
-         <gasUsed>           _ => #asWord(#parseByteStackRaw(HG)) </gasUsed>
-         <timestamp>         _ => #asWord(#parseByteStackRaw(HS)) </timestamp>
+         <difficulty>        _ => #asUnsigned(#parseByteStackRaw(HD)) </difficulty>
+         <number>            _ => #asUnsigned(#parseByteStackRaw(HI)) </number>
+         <gasLimit>          _ => #asUnsigned(#parseByteStackRaw(HL)) </gasLimit>
+         <gasUsed>           _ => #asUnsigned(#parseByteStackRaw(HG)) </gasUsed>
+         <timestamp>         _ => #asUnsigned(#parseByteStackRaw(HS)) </timestamp>
          <extraData>         _ => #parseByteStackRaw(HX)          </extraData>
-         <mixHash>           _ => #asWord(#parseByteStackRaw(HM)) </mixHash>
-         <blockNonce>        _ => #asWord(#parseByteStackRaw(HN)) </blockNonce>
+         <mixHash>           _ => #asUnsigned(#parseByteStackRaw(HM)) </mixHash>
+         <blockNonce>        _ => #asUnsigned(#parseByteStackRaw(HN)) </blockNonce>
          <ommerBlockHeaders> _ => BU                              </ommerBlockHeaders>
 
     rule <k> load "genesisRLP": [ [ HP, HO, HC, HR, HT, HE:String, HB, HD, HI, HL, HG, HS, HX, HM, HN, .JSONList ], _, _, .JSONList ] => .K ... </k>
-         <blockhash> .List => ListItem(#blockHeaderHash(HP, HO, HC, HR, HT, HE, HB, HD, HI, HL, HG, HS, HX, HM, HN)) ListItem(#asWord(#parseByteStackRaw(HP))) ... </blockhash>
+         <blockhash> .List => ListItem(#blockHeaderHash(HP, HO, HC, HR, HT, HE, HB, HD, HI, HL, HG, HS, HX, HM, HN)) ListItem(#asUnsigned(#parseByteStackRaw(HP))) ... </blockhash>
 
     rule <k> load "transaction" : [ [ TN , TP , TG , TT , TV , TI , TW , TR , TS ] , REST => REST ] ... </k>
          <txOrder>   ... .List => ListItem(!ID) </txOrder>
@@ -556,12 +543,12 @@ module ETHEREUM-SIMULATION
            ( .Bag
           => <message>
                <msgID>      !ID:Int                                 </msgID>
-               <txNonce>    #asWord(#parseByteStackRaw(TN))         </txNonce>
-               <txGasPrice> #asWord(#parseByteStackRaw(TP))         </txGasPrice>
-               <txGasLimit> #asWord(#parseByteStackRaw(TG))         </txGasLimit>
+               <txNonce>    #asUnsigned(#parseByteStackRaw(TN))         </txNonce>
+               <txGasPrice> #asUnsigned(#parseByteStackRaw(TP))         </txGasPrice>
+               <txGasLimit> #asUnsigned(#parseByteStackRaw(TG))         </txGasLimit>
                <to>         #asAccount(#parseByteStackRaw(TT))      </to>
-               <value>      #asWord(#parseByteStackRaw(TV))         </value>
-               <v>          #asWord(#parseByteStackRaw(TW))         </v>
+               <value>      #asUnsigned(#parseByteStackRaw(TV))         </value>
+               <v>          #asUnsigned(#parseByteStackRaw(TW))         </v>
                <r>          #padToWidth(32, #parseByteStackRaw(TR)) </r>
                <s>          #padToWidth(32, #parseByteStackRaw(TS)) </s>
                <data>       #parseByteStackRaw(TI)                  </data>
@@ -573,8 +560,7 @@ module ETHEREUM-SIMULATION
 
 // ### Checking State
 
-// -   `check_` checks if an account/transaction appears in the world-state
-//     as stated.
+// -   `check_` checks if an account/transaction appears in the world-state as stated.
 
 
     syntax EthereumCommand ::= "check" JSON
@@ -620,7 +606,7 @@ module ETHEREUM-SIMULATION
            <storage> ACCTSTORAGE </storage>
            ...
          </account>
-      requires #removeZeros(ACCTSTORAGE) ==K STORAGE
+      requires #removeZeros(#adjustStorageValues(ACCTSTORAGE)) ==K STORAGE
 
     rule <k> check "account" : { ACCT : { "code" : (CODE:WordStack) } } => . ... </k>
          <account>
@@ -628,6 +614,11 @@ module ETHEREUM-SIMULATION
            <code> CODE </code>
            ...
          </account>
+
+    syntax Map ::= #adjustStorageValues(Map) [function]
+ // ---------------------------------------------------
+    rule #adjustStorageValues(K |-> V M) => K |-> chop(V) #adjustStorageValues(M)
+    rule #adjustStorageValues(.Map) => .Map
 
 
 // Here we check the other post-conditions associated with an EVM test.
@@ -649,19 +640,20 @@ module ETHEREUM-SIMULATION
     rule #rlpEncodeLogs(SL) => #rlpEncodeLength(#rlpEncodeLogsAux(SL), 192)
     rule #rlpEncodeLogsAux(ListItem({ ACCT | TOPICS | DATA }) SL) => #rlpEncodeLength(#rlpEncodeBytes(ACCT, 20) +String #rlpEncodeLength(#rlpEncodeTopics(TOPICS), 192) +String #rlpEncodeString(#unparseByteStack(DATA)), 192) +String #rlpEncodeLogsAux(SL)
     rule #rlpEncodeLogsAux(.List) => ""
-    rule #rlpEncodeTopics(TOPIC : TOPICS) => #rlpEncodeBytes(TOPIC, 32) +String #rlpEncodeTopics(TOPICS)
+    rule #rlpEncodeTopics(TOPIC : TOPICS) => #rlpEncodeBytes(chop(TOPIC), 32) +String #rlpEncodeTopics(TOPICS)
     rule #rlpEncodeTopics(.WordStack) => ""
 
     rule check TESTID : { "gas" : GLEFT } => check "gas" : GLEFT ~> failure TESTID
  // ------------------------------------------------------------------------------
     rule check "gas" : ((GLEFT:String) => #parseWord(GLEFT))
-    rule <k> check "gas" : GLEFT => . ... </k> <gas> GLEFT </gas>
+    rule <k> check "gas" : GLEFT => . ... </k> //<gas> GLEFT </gas>
 
     rule check TESTID : { "callcreates" : CCREATES } => check "callcreates" : CCREATES ~> failure TESTID
  // ----------------------------------------------------------------------------------------------------
     rule check "callcreates" : { ("data" : (DATA:String)) , ("destination" : (ACCTTO:String)) , ("gasLimit" : (GLIMIT:String)) , ("value" : (VAL:String)) , .JSONList }
-      => check "callcreates" : { #parseAddr(ACCTTO) | #parseWord(GLIMIT) | #parseWord(VAL) | #parseByteStack(DATA) }
+      => check "callcreates" : { #parseAddr(ACCTTO) | 0 | #parseWord(VAL) | #parseByteStack(DATA) }
     rule <k> check "callcreates" : C:Call => . ... </k> <callLog> CL </callLog> requires C in CL
+    rule <callLog> SetItem({ _ | GLIMIT => 0 | _ | _ }) ... </callLog> requires GLIMIT =/=Int 0
 
     rule check TESTID : { "blockHeader" : BLOCKHEADER } => check "blockHeader" : BLOCKHEADER ~> failure TESTID
  // ----------------------------------------------------------------------------------------------------------
@@ -669,7 +661,7 @@ module ETHEREUM-SIMULATION
 
     rule check "blockHeader" : { KEY : (VALUE:String => #parseByteStack(VALUE)) }
 
-    rule check "blockHeader" : { KEY : (VALUE:WordStack => #asWord(VALUE)) }
+    rule check "blockHeader" : { KEY : (VALUE:WordStack => #asUnsigned(VALUE)) }
       requires KEY in ( SetItem("coinbase") SetItem("difficulty") SetItem("gasLimit") SetItem("gasUsed")
                         SetItem("mixHash") SetItem("nonce") SetItem("number") SetItem("parentHash")
                         SetItem("receiptTrie") SetItem("stateRoot") SetItem("timestamp")
@@ -708,14 +700,14 @@ module ETHEREUM-SIMULATION
          <extraData>        HX </extraData>
          <mixHash>          HM </mixHash>
          <blockNonce>       HN </blockNonce>
-      requires #blockHeaderHash(HP, HO, HC, HR, HT, HE, HB, HD, HI, HL, HG, HS, HX, HM, HN) ==Int #asWord(HASH)
+      requires #blockHeaderHash(HP, HO, HC, HR, HT, HE, HB, HD, HI, HL, HG, HS, HX, HM, HN) ==Int #asUnsigned(HASH)
 
     rule check TESTID : { "genesisBlockHeader" : BLOCKHEADER } => check "genesisBlockHeader" : BLOCKHEADER ~> failure TESTID
  // ------------------------------------------------------------------------------------------------------------------------
     rule check "genesisBlockHeader" : { KEY : VALUE , REST } => check "genesisBlockHeader" : { KEY : VALUE } ~> check "genesisBlockHeader" : { REST } requires REST =/=K .JSONList
     rule check "genesisBlockHeader" : { KEY : VALUE } => .K requires KEY =/=String "hash"
 
-    rule check "genesisBlockHeader" : { "hash": (HASH:String => #asWord(#parseByteStack(HASH))) }
+    rule check "genesisBlockHeader" : { "hash": (HASH:String => #asUnsigned(#parseByteStack(HASH))) }
     rule <k> check "genesisBlockHeader" : { "hash": HASH } => . ... </k>
          <blockhash> ... ListItem(HASH) ListItem(_) </blockhash>
 
@@ -732,7 +724,7 @@ module ETHEREUM-SIMULATION
 
     rule check "transactions" : ("to" : (VALUE:WordStack => #asAccount(VALUE)))
 
-    rule check "transactions" : (KEY : (VALUE:WordStack => #asWord(VALUE)))
+    rule check "transactions" : (KEY : (VALUE:WordStack => #asUnsigned(VALUE)))
       requires KEY in ( SetItem("gasLimit") SetItem("gasPrice") SetItem("nonce")
                         SetItem("v") SetItem("value")
                       )
