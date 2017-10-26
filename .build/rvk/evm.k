@@ -588,8 +588,7 @@ module EVM
     syntax Bool ::= isJumpOrReturnOp ( OpCode ) [function]
  // ------------------------------------------------------
     rule isJumpOrReturnOp(LOCALRETURN) => true
-    rule isJumpOrReturnOp(OP) => true requires isJumpOp(OP)
-    rule isJumpOrReturnOp(...) => false [owise]
+    rule isJumpOrReturnOp(OP) => isJumpOp(OP) [owise]
 
 
 // ### Substate Log

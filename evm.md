@@ -596,8 +596,7 @@ Some of them require an argument to be interpereted as an address (modulo 160 bi
     syntax Bool ::= isJumpOrReturnOp ( OpCode ) [function]
  // ------------------------------------------------------
     rule isJumpOrReturnOp(LOCALRETURN) => true
-    rule isJumpOrReturnOp(OP) => true requires isJumpOp(OP)
-    rule isJumpOrReturnOp(...) => false [owise]
+    rule isJumpOrReturnOp(OP) => isJumpOp(OP) [owise]
 ```
 
 ### Substate Log
