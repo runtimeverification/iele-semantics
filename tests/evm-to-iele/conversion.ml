@@ -19,6 +19,8 @@ let rec preprocess_evm (evm: evm_op list) : intermediate_op list = match evm wit
 | (`JUMP|`JUMPI) :: tl -> `INVALID :: preprocess_evm tl
 | `PUSH(_,pc) :: `JUMP :: tl when Z.lt pc _65536 -> `JUMP(Z.to_int pc) :: preprocess_evm tl
 | `PUSH(_,pc) :: `JUMPI :: tl when Z.lt pc _65536 -> `JUMPI(Z.to_int pc) :: preprocess_evm tl
+| `PC(pc) :: `JUMP :: tl when compatibility && pc < 65536 -> `JUMP(pc) :: preprocess_evm tl
+| `PC(pc) :: `JUMPI :: tl when compatibility && pc < 65536 -> `JUMPI(pc) :: preprocess_evm tl
 | `PUSH(_,byte) :: `SIGNEXTEND :: tl -> `PUSH(Z.min byte _31) :: `SIGNEXTEND :: preprocess_evm tl
 | _ :: (`JUMP|`JUMPI) :: _ -> failwith "dynamic jumps detected"
 | `PUSH(n,v) :: op2 :: tl -> `PUSH(v) :: preprocess_evm (op2 :: tl)
