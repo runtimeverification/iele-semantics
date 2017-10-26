@@ -11,6 +11,8 @@ def decodeShort(i):
   return [i // 256, i % 256]
 
 def convertCodeToIele(evm_code):
+  if len(evm_code) == 0:
+    return ""
   assert evm_code[0:2] == "0x"
   p = subprocess.Popen([dir_path + "/evm-to-iele"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
   stdout, stderr = p.communicate(evm_code[2:])
@@ -21,8 +23,12 @@ def convertCodeToIele(evm_code):
 def convertToIele(json):
     if isinstance(json, dict):
         res = {}
+        isCreateTx = False
+        if "to" in json.keys():
+          if json["to"] == "":
+            isCreateTx = True
         for key, value in json.iteritems():
-            if key == "code":
+            if key == "code" or (key == "data" and isCreateTx):
                 res[key] = convertCodeToIele(value)
             else:
                 res[key] = convertToIele(value)
