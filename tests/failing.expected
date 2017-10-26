@@ -107,3 +107,4 @@ tests/ethereum-tests/VMTests/vmEnvironmentalInfo/extcodecopy0.json
 tests/ethereum-tests/VMTests/vmEnvironmentalInfo/ExtCodeSizeAddressInputTooBigLeftMyAddress.json
 tests/ethereum-tests/VMTests/vmEnvironmentalInfo/codesize.json
 tests/ethereum-tests/VMTests/vmEnvironmentalInfo/codecopy0.json
+tests/ethereum-tests/VMTests/vmIOandFlowOperations/jumpi1.json
