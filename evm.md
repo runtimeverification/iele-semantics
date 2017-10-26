@@ -407,11 +407,10 @@ Some checks if an opcode will throw an exception are relatively quick and done u
     rule <k> #badJumpDest? [ JUMP (LABEL)      ] => . ... </k> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
     rule <k> #badJumpDest? [ LOCALCALL (LABEL) ] => . ... </k> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
     rule <k> #badJumpDest? [ JUMPI(LABEL) _    ] => . ... </k> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ JUMPI(_)     % R  ] => . ... </k> <regs> REGS </regs> requires REGS [ R ] ==K 0
 
     rule <k> #badJumpDest? [ JUMP (LABEL)      ] => #exception ... </k> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
     rule <k> #badJumpDest? [ LOCALCALL (LABEL) ] => #exception ... </k> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ JUMPI(LABEL) % R  ] => #exception ... </k> <jumpTable> JUMPS </jumpTable> <regs> REGS </regs> requires notBool LABEL in_keys(JUMPS) andBool REGS [ R ] =/=K 0
+    rule <k> #badJumpDest? [ JUMPI(LABEL) _    ] => #exception ... </k> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
 ```
 
 -   `#static?` determines if the opcode should throw an exception due to the static flag.
