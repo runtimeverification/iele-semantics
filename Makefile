@@ -1,13 +1,11 @@
-ifndef K_VERSION
-$(error K_VERSION not set. Please use the Build script, instead of running make directly)
-endif
+K_VERSION=rvk
 
 # Common to all versions of K
 # ===========================
 
 .PHONY: all clean build tangle defn proofs split-tests test
 
-all: build split-tests
+all: build vm-tests
 
 clean:
 	rm -r .build
@@ -60,14 +58,17 @@ tests/proofs/bad/hkg-token-buggy-spec.k: proofs/token-buggy-spec.md
 
 split-tests: split-vm-tests split-blockchain-tests
 
+invalid_iele_tests_file=tests/failing.expected
+invalid_iele_tests= $(shell cat ${invalid_iele_tests_file})
+
 split-vm-tests: \
-		  $(patsubst tests/ethereum-tests/%.json,tests/%/make.timestamp, $(wildcard tests/ethereum-tests/VMTests/*/*.json)) \
+		  $(patsubst tests/ethereum-tests/%.json,tests/%/make.timestamp, $(filter-out ${invalid_iele_tests}, $(wildcard tests/ethereum-tests/VMTests/*/*.json))) \
 
 split-blockchain-tests: \
 				  $(patsubst tests/ethereum-tests/%.json,tests/%/make.timestamp, $(wildcard tests/ethereum-tests/BlockchainTests/GeneralStateTests/*/*.json)) \
 
-blockchain_tests=$(wildcard tests/BlockchainTests/*/*/*/*.json)
-vm_tests=$(wildcard tests/VMTests/*/*/*.json)
+vm_tests=$(wildcard tests/VMTests/*/*/*.iele.json)
+blockchain_tests=$(wildcard tests/BlockchainTests/*/*/*/*.iele.json)
 all_tests=${vm_tests} ${blockchain_tests}
 skipped_tests=$(wildcard tests/VMTests/vmPerformance/*/*.json) \
    $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Constantinople.json) \
@@ -83,7 +84,7 @@ passing_targets=${passing_tests:=.test}
 passing_vm_targets=${passing_vm_tests:=.test}
 passing_blockchain_targets=${passing_blockchain_tests:=.test}
 
-test: $(passing_targets)
+test: $(passing_vm_targets)
 vm-test: $(passing_vm_targets)
 blockchain-test: $(passing_blockchain_targets)
 
@@ -92,11 +93,14 @@ tests/VMTests/%.test: tests/VMTests/% build
 tests/BlockchainTests/%.test: tests/BlockchainTests/% build
 	./blockchaintest $<
 
-tests/%/make.timestamp: tests/ethereum-tests/%.json
+tests/%/make.timestamp: tests/ethereum-tests/%.json tests/evm-to-iele/evm-to-iele
 	@echo "==   split: $@"
 	mkdir -p $(dir $@)
 	tests/split-test.py $< $(dir $@)
 	touch $@
+
+tests/evm-to-iele/evm-to-iele: $(wildcard tests/evm-to-iele/*.ml tests/evm-to-iele/*.mli)
+	cd tests/evm-to-iele && ocamlfind opt -g ieleUtil.mli ieleUtil.ml evm.mli evm.ml iele.mli iele.ml conversion.mli conversion.ml main.ml -package zarith -package hex -linkpkg -o evm-to-iele
 
 tests/ethereum-tests/%.json:
 	@echo "==  git submodule: cloning upstreams test repository"
