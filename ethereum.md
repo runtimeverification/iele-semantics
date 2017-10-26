@@ -140,7 +140,7 @@ To do so, we'll extend sort `JSON` with some EVM specific syntax, and provide a 
          <activeAccounts> ... ACCTFROM |-> (_ => false) ... </activeAccounts>
 
     rule <k> loadTx(ACCTFROM)
-          => #call ACCTFROM ACCTTO ACCTTO (GLIMIT -Int G0(SCHED, DATA, false)) VALUE VALUE DATA false
+          => #call ACCTFROM ACCTTO ACCTTO (GLIMIT -Int G0(SCHED, DATA, false)) VALUE VALUE (#asUnsigned(DATA) .Regs) false
           ~> #execute ~> #finishTx ~> #finalizeTx(false) ~> startTx
          ...
          </k>
@@ -335,7 +335,7 @@ State Manipulation
     syntax EthreumCommand ::= "clearTX"
  // -----------------------------------
     rule <k> clearTX => . ... </k>
-         <output>       _ => .WordStack </output>
+         <output>       _ => .Regs      </output>
          <memoryUsed>   _ => 0          </memoryUsed>
          <callDepth>    _ => 0          </callDepth>
          <callStack>    _ => .List      </callStack>
@@ -345,7 +345,7 @@ State Manipulation
          <jumpTable>    _ => .Map       </jumpTable>
          <id>           _ => 0          </id>
          <caller>       _ => 0          </caller>
-         <callData>     _ => .WordStack </callData>
+         <callData>     _ => .Regs      </callData>
          <callValue>    _ => 0          </callValue>
          <regs>         _ => .Array     </regs>
          <localMem>     _ => .Array     </localMem>
@@ -489,9 +489,9 @@ Here we load the environmental information.
     rule <k> load "exec" : { "origin"   : (ORIG:Int)     } => . ... </k> <origin>    _ => ORIG     </origin>
     rule <k> load "exec" : { "code"     : ((CODE:String)   => #parseByteStack(CODE)) } ... </k>
 
-    rule load "exec" : { "data" : ((DATA:String) => #parseByteStack(DATA)) }
+    rule load "exec" : { "data" : ((DATA:String) => #parseHexWord(DATA)) }
  // ------------------------------------------------------------------------
-    rule <k> load "exec" : { "data" : (DATA:WordStack) } => . ... </k> <callData> _ => DATA </callData>
+    rule <k> load "exec" : { "data" : (DATA:Int) } => . ... </k> <callData> _ => DATA .Regs </callData>
     rule <k> load "exec" : { "code" : (CODE:WordStack) } => . ... </k>
          <program>  _ => #asMapOps(#dasmOps(CODE, SCHED)) </program>
          <programBytes> _ => CODE </programBytes>
@@ -635,8 +635,9 @@ Here we check the other post-conditions associated with an EVM test.
 ```{.k .uiuck .rvk}
     rule check TESTID : { "out" : OUT } => check "out" : OUT ~> failure TESTID
  // --------------------------------------------------------------------------
-    rule check "out" : ((OUT:String) => #parseByteStack(OUT))
-    rule <k> check "out" : OUT => . ... </k> <output> OUT </output>
+    rule check "out" : ((OUT:String) => #parseHexWord(OUT))
+    rule <k> check "out" : OUT => . ... </k> <output> OUT .Regs </output>
+    rule <k> check "out" : 0   => . ... </k> <output> .Regs </output>
 
     rule check TESTID : { "logs" : LOGS } => check "logs" : LOGS ~> failure TESTID
  // ------------------------------------------------------------------------------
@@ -660,7 +661,7 @@ Here we check the other post-conditions associated with an EVM test.
     rule check TESTID : { "callcreates" : CCREATES } => check "callcreates" : CCREATES ~> failure TESTID
  // ----------------------------------------------------------------------------------------------------
     rule check "callcreates" : { ("data" : (DATA:String)) , ("destination" : (ACCTTO:String)) , ("gasLimit" : (GLIMIT:String)) , ("value" : (VAL:String)) , .JSONList }
-      => check "callcreates" : { #parseAddr(ACCTTO) | 0 | #parseWord(VAL) | #parseByteStack(DATA) }
+      => check "callcreates" : { #parseAddr(ACCTTO) | 0 | #parseWord(VAL) | #parseHexWord(DATA) .Regs }
     rule <k> check "callcreates" : C:Call => . ... </k> <callLog> CL </callLog> requires C in CL
     rule <callLog> SetItem({ _ | GLIMIT => 0 | _ | _ }) ... </callLog> requires GLIMIT =/=Int 0
 
