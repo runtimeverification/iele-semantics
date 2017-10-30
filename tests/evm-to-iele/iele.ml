@@ -53,6 +53,7 @@ type iele_opcode = [
 | `PC
 | `MSIZE
 | `GAS
+| `MOVE
 | `LOADPOS
 | `LOADNEG
 | `JUMP of int
@@ -132,6 +133,7 @@ let asm_iele_opcode op = match op with
 | `PC -> "\x58"
 | `MSIZE -> "\x59"
 | `GAS -> "\x5a"
+| `MOVE -> "\x60"
 | `LOADPOS -> "\x61"
 | `LOADNEG -> "\x62"
 | `REGISTERS i -> "\x63" ^ (IeleUtil.string_of_char (Char.chr i))

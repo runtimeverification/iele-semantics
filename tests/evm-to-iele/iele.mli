@@ -53,6 +53,7 @@ type iele_opcode = [
 | `PC
 | `MSIZE
 | `GAS
+| `MOVE
 | `LOADPOS
 | `LOADNEG
 | `JUMP of int
