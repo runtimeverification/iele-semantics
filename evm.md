@@ -1322,7 +1322,7 @@ The various `CALL*` (and other inter-contract control flow) operations will be d
          <localCalls> _ => .List  </localCalls>
 
     syntax KItem ::= "#return" Regs Reg
- // --------------------------------------
+ // -----------------------------------
     rule <k> #exception ~> #return _ REG
           => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG 0
          ...

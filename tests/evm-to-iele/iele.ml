@@ -106,9 +106,6 @@ let asm_iele_opcode op = match op with
 | `ORIGIN -> "\x32"
 | `CALLER -> "\x33"
 | `CALLVALUE -> "\x34"
-| `CALLDATALOAD -> "\x35"
-| `CALLDATASIZE -> "\x36"
-| `CALLDATACOPY -> "\x37"
 | `CODESIZE -> "\x38"
 | `CODECOPY -> "\x39"
 | `GASPRICE -> "\x3a"
@@ -154,6 +151,7 @@ let asm_iele_opcode op = match op with
 | `LOCALRETURN -> "\xf9"
 | `INVALID -> "\xfe"
 | `SELFDESTRUCT -> "\xff"
+| `LOCALCALLI _ | `CALLDATALOAD | `CALLDATASIZE | `CALLDATACOPY -> invalid_arg "needs postprocessing"
 
 let asm_iele_regs regs buf nregs =
   let z = List.fold_right (fun reg accum -> Z.add (Z.shift_left accum nregs) (Z.of_int reg)) regs Z.zero in

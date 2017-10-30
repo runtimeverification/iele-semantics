@@ -75,9 +75,9 @@ To do so, we'll extend sort `JSON` with some EVM specific syntax, and provide a 
 ```{.k .uiuck .rvk}
     syntax EthereumCommand ::= "start"
  // ----------------------------------
-    rule <mode> NORMAL     </mode> <k> start => #execute    ... </k>
-    rule <mode> VMTESTS    </mode> <k> start => #execute    ... </k>
-    rule <mode> GASANALYZE </mode> <k> start => #gasAnalyze ... </k>
+    rule <mode> NORMAL     </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData>
+    rule <mode> VMTESTS    </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData>
+    rule <mode> GASANALYZE </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #gasAnalyze ... </k> <callData> VALUES </callData>
 
     syntax EthereumCommand ::= "flush"
  // ----------------------------------
@@ -489,9 +489,10 @@ Here we load the environmental information.
     rule <k> load "exec" : { "origin"   : (ORIG:Int)     } => . ... </k> <origin>    _ => ORIG     </origin>
     rule <k> load "exec" : { "code"     : ((CODE:String)   => #parseByteStack(CODE)) } ... </k>
 
-    rule load "exec" : { "data" : ((DATA:String) => #parseHexWord(DATA)) }
- // ------------------------------------------------------------------------
-    rule <k> load "exec" : { "data" : (DATA:Int) } => . ... </k> <callData> _ => DATA .Regs </callData>
+    rule load "exec" : { "data" : ((DATA:String) => #parseByteStack(DATA)) }
+    rule load "exec" : { "data" : ((DATA:WordStack) => [#asUnsigned(DATA), #sizeWordStack(DATA)]) } 
+ // -----------------------------------------------------------------------------------------------
+    rule <k> load "exec" : { "data" : [DATA:Int, LEN:Int] } => . ... </k> <callData> _ => LEN DATA .Regs </callData>
     rule <k> load "exec" : { "code" : (CODE:WordStack) } => . ... </k>
          <program>  _ => #asMapOps(#dasmOps(CODE, SCHED)) </program>
          <programBytes> _ => CODE </programBytes>
