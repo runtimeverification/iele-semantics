@@ -116,8 +116,10 @@ type intermediate_op = [
 | `GASLIMIT
 | `POP
 | `MLOAD
+| `MLOAD256
 | `MSTORE
 | `MSTORE8
+| `MSTORE256
 | `SLOAD
 | `SSTORE
 | `JUMP of int

@@ -896,21 +896,31 @@ Some operators don't calculate anything, they just manipulate the state of regis
 These operations are getters/setters of the local execution memory.
 
 ```{.k .uiuck .rvk}
-    syntax UnOp ::= "MLOAD8" | "MLOAD256" | "MLOAD"
- // -----------------------------------------------
+    syntax UnOp ::= "MLOAD8" | "MLOAD256"
+ // -------------------------------------
     rule <k> MLOAD256 REG INDEX => #load REG #asSigned(#range(LM, INDEX, 32)) ... </k>
          <localMem> LM </localMem>
 
     rule <k> MLOAD8 REG INDEX => #load REG #asSigned(#range(LM, INDEX, 1)) ... </k>
          <localMem> LM </localMem>
 
-    syntax BinVoidOp ::= "MSTORE8" | "MSTORE256" | "MSTORE"
- // -------------------------------------------------------
+    syntax BinOp ::= "MLOAD"
+ // ------------------------
+    rule <k> MLOAD REG INDEX WIDTH => #load REG #asSigned(#range(LM, INDEX, WIDTH)) ... </k>
+         <localMem> LM </localMem>
+
+    syntax BinVoidOp ::= "MSTORE8" | "MSTORE256"
+ // --------------------------------------------
     rule <k> MSTORE256 INDEX VALUE => . ... </k>
          <localMem> LM => LM [ INDEX := #padToWidth(32, #asUnsignedBytes(chop(VALUE))) ] </localMem>
 
     rule <k> MSTORE8 INDEX VALUE => . ... </k>
          <localMem> LM => LM [ INDEX <- (VALUE modInt 256) ]    </localMem>
+
+    syntax TernVoidOp ::= "MSTORE"
+ // ------------------------------
+    rule <k> MSTORE INDEX VALUE WIDTH => . ... </k>
+         <localMem> LM => LM [ INDEX := #padToWidth(WIDTH, #asUnsignedBytes(VALUE modInt (2 ^Int (WIDTH *Int 8)))) ] </localMem>
 ```
 
 ### Expressions
@@ -1737,9 +1747,11 @@ In the yellowpaper, each opcode is defined to consume zero gas unless specified 
 ```{.k .uiuck .rvk}
     syntax Int ::= #memory ( Op , Int ) [function]
  // --------------------------------------------------
-    rule #memory ( MLOAD256 _ INDEX   , MU ) => #memoryUsageUpdate(MU, INDEX, 32)
-    rule #memory ( MSTORE256 INDEX _  , MU ) => #memoryUsageUpdate(MU, INDEX, 32)
-    rule #memory ( MSTORE8 INDEX _ , MU ) => #memoryUsageUpdate(MU, INDEX, 1)
+    rule #memory ( MLOAD _ INDEX WIDTH  , MU ) => #memoryUsageUpdate(MU, INDEX, WIDTH)
+    rule #memory ( MLOAD256 _ INDEX     , MU ) => #memoryUsageUpdate(MU, INDEX, 32)
+    rule #memory ( MSTORE INDEX _ WIDTH , MU ) => #memoryUsageUpdate(MU, INDEX, WIDTH)
+    rule #memory ( MSTORE256 INDEX _    , MU ) => #memoryUsageUpdate(MU, INDEX, 32)
+    rule #memory ( MSTORE8 INDEX _      , MU ) => #memoryUsageUpdate(MU, INDEX, 1)
 
     rule #memory ( SHA3 _ START WIDTH       , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
     rule #memory ( LOG0 START WIDTH         , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
@@ -1858,7 +1870,9 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     rule <k> #gasExec(SCHED, EVMOR _ _ _)        => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, XOR _ _ _)          => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, BYTE _ _ _)         => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, MLOAD _ _ _)        => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, MLOAD256 _ _)       => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, MSTORE _ _ _)       => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, MSTORE256 _ _)      => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, MSTORE8 _ _)        => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, LOADPOS(_, _) _)    => Gverylow < SCHED > ... </k>
