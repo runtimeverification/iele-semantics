@@ -134,6 +134,7 @@ type intermediate_op = [
 | `CALL
 | `CALLCODE
 | `RETURN
+| `LOCALRETURN
 | `DELEGATECALL
 | `STATICCALL
 | `REVERT

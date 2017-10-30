@@ -161,9 +161,15 @@ let asm_iele_regs regs buf nregs =
 
 let asm_iele_op op buf nregs = match op with
 | Nop -> ()
-| Op(opcode,regs) -> 
+| Op(opcode,reg,regs) -> 
+  Buffer.add_string buf (asm_iele_opcode opcode);
+  asm_iele_regs (reg::regs) buf nregs
+| VoidOp(opcode,regs) -> 
   Buffer.add_string buf (asm_iele_opcode opcode);
   asm_iele_regs regs buf nregs
+| CallOp(opcode,regs1,regs2) ->
+  Buffer.add_string buf (asm_iele_opcode opcode);
+  asm_iele_regs (regs1 @ regs2) buf nregs
 | LiOp(opcode,r,payload) ->
   Buffer.add_string buf (asm_iele_opcode opcode);
   asm_iele_regs [r] buf nregs;
@@ -176,7 +182,7 @@ let rec asm_iele_aux ops buf nregs = match ops with
 
 let asm_iele ops =
   let nregs = match ops with
-  | Op(`REGISTERS n,[]) :: tail -> n
+  | VoidOp(`REGISTERS n,[]) :: tail -> n
   | _ -> 5
   in
   let buf = Buffer.create ((List.length ops) * 2) in
