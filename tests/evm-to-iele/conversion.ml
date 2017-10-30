@@ -27,15 +27,24 @@ let rec preprocess_evm (evm: evm_op list) : intermediate_op list = match evm wit
 | `PC(pc) :: `JUMP :: tl when compatibility && pc < 65536 -> `JUMP(pc) :: preprocess_evm tl
 | `PC(pc) :: `JUMPI :: tl when compatibility && pc < 65536 -> `JUMPI(pc) :: preprocess_evm tl
 | `PUSH(_,byte) :: `SIGNEXTEND :: tl -> `PUSH(Z.min byte _31) :: `SIGNEXTEND :: preprocess_evm tl
-| _ :: (`JUMP|`JUMPI) :: _ -> failwith "dynamic jumps detected"
+| (`CALL|`CALLCODE) as op :: tl -> `DUP(5) :: `SWAP(1) :: `SWAP(4) :: `MLOAD :: `SWAP(4) :: `SWAP(1) :: `SWAP(4) :: `SWAP(1) :: `TWOS :: `SWAP(3) :: `SWAP(1) :: `SWAP(2) :: op :: `SWAP(3) :: `SWAP(1) :: `SWAP(2) :: `MSTORE :: preprocess_evm tl
+| (`DELEGATECALL|`STATICCALL) as op :: tl -> `DUP(4) :: `SWAP(1) :: `SWAP(3) :: `MLOAD :: `SWAP(3) :: `SWAP(1) :: `SWAP(3) :: `SWAP(1) :: `TWOS :: `SWAP(2) :: `SWAP(1) :: op :: `SWAP(3) :: `SWAP(1) :: `SWAP(2) :: `MSTORE :: preprocess_evm tl
+| (`RETURN|`REVERT) as op :: tl -> `DUP(2) :: `SWAP(1) :: `MLOAD :: `SWAP(1) :: `TWOS :: op :: preprocess_evm tl
+| _ :: (`JUMPI) :: _ -> failwith "dynamic jumps detected"
+| `LOG(_) | `EXTCODECOPY | `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY
+| `SSTORE | `ADDMOD | `MULMOD | `CREATE | `POP | `SELFDESTRUCT | `MSTORE8 | `ADD | `MUL 
+| `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND | `AND | `OR | `XOR | `LT | `GT | `EQ | `SHA3 | `SWAP(_) | `INVALID
+| `STOP | `ISZERO | `NOT | `BLOCKHASH | `CALLDATALOAD | `BALANCE | `EXTCODESIZE | `SLOAD | `DUP(_)
+| `GAS | `GASPRICE | `GASLIMIT | `COINBASE | `TIMESTAMP | `NUMBER | `DIFFICULTY | `ADDRESS | `ORIGIN | `CALLER 
+| `CALLVALUE | `MSIZE | `CODESIZE | `CALLDATASIZE | `RETURNDATASIZE | `JUMPDEST _ as hd :: (`JUMP) :: tl -> hd :: `LOCALRETURN :: preprocess_evm tl
 | `PUSH(n,v) :: op2 :: tl -> `PUSH(v) :: preprocess_evm (op2 :: tl)
 | `PUSH(n,v) :: [] -> `PUSH(v) :: []
 | `PC(pc) :: tl when compatibility -> `PUSH(Z.of_int pc) :: preprocess_evm tl
 | `PC(_) :: tl -> `PC :: preprocess_evm tl
-| `LOG(_) | `CALL | `CALLCODE | `DELEGATECALL | `STATICCALL | `EXTCODECOPY | `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY
-| `RETURN | `REVERT | `SSTORE | `ADDMOD | `MULMOD | `CREATE | `POP | `SELFDESTRUCT | `MSTORE | `MSTORE8 | `ADD | `MUL 
+| `LOG(_) | `EXTCODECOPY | `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY
+| `SSTORE | `ADDMOD | `MULMOD | `CREATE | `POP | `SELFDESTRUCT | `MSTORE8 | `ADD | `MUL 
 | `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND | `AND | `OR | `XOR | `LT | `GT | `EQ | `SHA3 | `SWAP(_) | `INVALID
-| `STOP | `MLOAD | `ISZERO | `NOT | `BLOCKHASH | `CALLDATALOAD | `BALANCE | `EXTCODESIZE | `SLOAD | `DUP(_)
+| `STOP | `ISZERO | `NOT | `BLOCKHASH | `CALLDATALOAD | `BALANCE | `EXTCODESIZE | `SLOAD | `DUP(_)
 | `GAS | `GASPRICE | `GASLIMIT | `COINBASE | `TIMESTAMP | `NUMBER | `DIFFICULTY | `ADDRESS | `ORIGIN | `CALLER 
 | `CALLVALUE | `MSIZE | `CODESIZE | `CALLDATASIZE | `RETURNDATASIZE | `JUMPDEST _ as op :: tl-> op :: preprocess_evm tl
 
@@ -43,23 +52,26 @@ let rec set_nth l i v = match i with
 | 0 -> v :: List.tl l
 | _ -> (List.hd l) :: set_nth (List.tl l) (i-1) v
 
-type evm_graph = (int * intermediate_op list * bool * int option) list
+type successor = Jump of int | Jumpi of int | Call of {call: int; ret_addr: int; ret_block: int; delta: int; reg: int; return_block: int } | Calli of {call: int; ret_addr: int; ret_block: int; delta: int; reg: int; return_block: int } | Fallthrough | Halt | Return
+
+type evm_graph = (int * intermediate_op list * successor) list
 
 let stack_needed op = match op with
 | `LOG(n) -> n + 2
 | `DUP(n) -> n
 | `SWAP(n) -> n + 1
-| `CALL | `CALLCODE -> 7
-| `DELEGATECALL | `STATICCALL -> 6
+| `CALL | `CALLCODE -> 4
+| `DELEGATECALL | `STATICCALL -> 3
 | `EXTCODECOPY -> 4
-| `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY | `ADDMOD | `MULMOD | `CREATE -> 3
-| `RETURN | `REVERT | `SSTORE | `MSTORE | `MSTORE8 | `ADD | `MUL | `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND
-| `TWOS | `AND | `OR | `XOR | `LT | `GT | `EQ | `SHA3 -> 2
-| `SELFDESTRUCT | `JUMPI(_) | `MLOAD | `ISZERO | `NOT | `BLOCKHASH | `CALLDATALOAD | `BALANCE | `EXTCODESIZE 
-| `SLOAD | `POP -> 1
+| `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY | `ADDMOD | `MULMOD | `CREATE | `MSTORE -> 3
+| `SSTORE | `MSTORE256 | `MSTORE8 | `ADD | `MUL | `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND
+| `TWOS | `AND | `OR | `XOR | `LT | `GT | `EQ | `SHA3 | `MLOAD -> 2
+| `SELFDESTRUCT | `LOCALRETURN | `JUMPI(_) | `MLOAD256 | `ISZERO | `NOT | `BLOCKHASH | `CALLDATALOAD | `BALANCE | `EXTCODESIZE 
+| `SLOAD | `POP | `RETURN | `REVERT -> 1
 | `INVALID | `STOP | `JUMPDEST(_) | `JUMP(_) | `PC | `GAS | `GASPRICE | `GASLIMIT | `COINBASE | `TIMESTAMP
 | `NUMBER | `DIFFICULTY  | `ADDRESS | `ORIGIN | `CALLER | `CALLVALUE | `MSIZE | `CODESIZE | `CALLDATASIZE 
 | `RETURNDATASIZE | `PUSH(_) -> 0
+
 
 let compute_cfg (intermediate: intermediate_op list) : evm_graph =
   let output = ref [] in
@@ -74,14 +86,14 @@ let compute_cfg (intermediate: intermediate_op list) : evm_graph =
     max_needed := max !max_needed diff_needed;
     (match op with
     | `LOG(n) -> delta := !delta - 2 - n
-    | `CALL | `CALLCODE -> delta := !delta - 6
-    | `DELEGATECALL | `STATICCALL -> delta := !delta - 5
+    | `CALL | `CALLCODE -> delta := !delta - 2
+    | `DELEGATECALL | `STATICCALL -> delta := !delta - 1
     | `EXTCODECOPY -> delta := !delta - 4
-    | `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY -> delta := !delta - 3
-    | `SSTORE | `ADDMOD | `MULMOD | `CREATE | `MSTORE | `MSTORE8 -> delta := !delta - 2
+    | `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY | `MSTORE -> delta := !delta - 3
+    | `SSTORE | `ADDMOD | `MULMOD | `CREATE | `MSTORE256 | `MSTORE8 -> delta := !delta - 2
     | `POP | `ADD | `MUL | `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND | `TWOS
-    | `AND | `OR | `XOR | `LT | `GT | `EQ | `SHA3  -> delta := !delta - 1
-    | `SWAP(_) | `MLOAD | `ISZERO | `NOT | `BLOCKHASH | `CALLDATALOAD | `BALANCE
+    | `AND | `OR | `XOR | `LT | `GT | `EQ | `SHA3  | `MLOAD -> delta := !delta - 1
+    | `SWAP(_) | `MLOAD256 | `ISZERO | `NOT | `BLOCKHASH | `CALLDATALOAD | `BALANCE
     | `EXTCODESIZE | `SLOAD -> ()
     | `DUP(_) | `PUSH(_) | `PC | `GAS | `GASPRICE | `GASLIMIT | `COINBASE | `TIMESTAMP | `NUMBER | `DIFFICULTY
     | `ADDRESS | `ORIGIN | `CALLER | `CALLVALUE | `MSIZE | `CODESIZE | `CALLDATASIZE 
@@ -207,17 +219,25 @@ let convert_to_registers (cfg : evm_graph) : iele_graph * int =
     stack := tl;
     op) (* 6-ary consumer *)
   | `LOG(_) -> failwith "invalid LOG operand"
+  | `RETURN | `REVERT as op ->
+    let new_op = match op with | `RETURN -> `RETURN(1) | `REVERT -> `REVERT(1) in
+    (match curr_stack with [] -> VoidOp(`INVALID,[])
+    | r1 :: tl -> let op = VoidOp(new_op,[r1]) in
+    stack := tl;
+    op) (* RETURN/REVERT *)
   | `DELEGATECALL | `STATICCALL as op ->
-    (match curr_stack with []|_::[]|_::_::[]|_::_::_::[]|_::_::_::_::[]|_::_::_::_::_::[] -> Op(`INVALID,[])
-    | r1 :: r2 :: r3 :: r4 :: r5 :: r6 :: tl -> let op = Op(op,[!regcount;r1;r2;r3;r4;r5;r6]) in
-    stack := !regcount :: tl;
-    regcount := !regcount + 1;
+    let new_op = match op with | `DELEGATECALL -> `DELEGATECALL(1, 1) | `STATICCALL -> `STATICCALL(1, 1) in
+    (match curr_stack with []|_::[]|_::_::[] -> VoidOp(`INVALID,[])
+    | r1 :: r2 :: r3 :: tl -> let op = CallOp(new_op,[!regcount;!regcount + 1],[r1;r2;r3]) in
+    stack := !regcount :: (!regcount + 1) :: tl;
+    regcount := !regcount + 2;
     op) (* 6-ary operator *)
   | `CALL | `CALLCODE as op ->
-    (match curr_stack with []|_::[]|_::_::[]|_::_::_::[]|_::_::_::_::[]|_::_::_::_::_::[]|_::_::_::_::_::_::[] -> Op(`INVALID,[])
-    | r1 :: r2 :: r3 :: r4 :: r5 :: r6 :: r7 :: tl -> let op = Op(op,[!regcount;r1;r2;r3;r4;r5;r6;r7]) in
-    stack := !regcount :: tl;
-    regcount := !regcount + 1;
+    let new_op = match op with | `CALL -> `CALL(1, 1) | `CALLCODE -> `CALLCODE(1, 1) in
+    (match curr_stack with []|_::[]|_::_::[]|_::_::_::[] -> VoidOp(`INVALID,[])
+    | r1 :: r2 :: r3 :: r4 :: tl -> let op = CallOp(new_op,[!regcount;!regcount + 1],[r1;r2;r3;r4]) in
+    stack := !regcount :: (!regcount + 1) :: tl;
+    regcount := !regcount + 2;
     op) (* 7-ary operator *)
   | `LOCALRETURN ->
     VoidOp(`LOCALRETURN(List.length curr_stack),curr_stack)

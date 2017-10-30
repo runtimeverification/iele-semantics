@@ -61,21 +61,23 @@ type iele_opcode = [
 | `REGISTERS of int
 | `LOG of int
 | `CREATE
-| `CALL
-| `CALLCODE
-| `DELEGATECALL
-| `STATICCALL
-| `LOCALCALL of int
-| `RETURN
-| `LOCALRETURN
-| `REVERT
+| `CALL of int * int
+| `CALLCODE of int * int
+| `DELEGATECALL of int * int
+| `STATICCALL of int * int
+| `LOCALCALL of int * int * int
+| `RETURN of int
+| `LOCALRETURN of int
+| `REVERT of int
 | `INVALID
 | `SELFDESTRUCT
 ]
 
 type iele_op =
 | Nop
-| Op of iele_opcode * int list
+| Op of iele_opcode * int * int list
+| VoidOp of iele_opcode * int list
+| CallOp of iele_opcode * int list * int list
 | LiOp of iele_opcode * int * Z.t
 
 val asm_iele : iele_op list -> string

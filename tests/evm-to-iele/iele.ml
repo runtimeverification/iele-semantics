@@ -61,21 +61,23 @@ type iele_opcode = [
 | `REGISTERS of int
 | `LOG of int
 | `CREATE
-| `CALL
-| `CALLCODE
-| `DELEGATECALL
-| `STATICCALL
-| `LOCALCALL of int
-| `RETURN
-| `LOCALRETURN
-| `REVERT
+| `CALL of int * int
+| `CALLCODE of int * int
+| `DELEGATECALL of int * int
+| `STATICCALL of int * int
+| `LOCALCALL of int * int * int
+| `RETURN of int
+| `LOCALRETURN of int
+| `REVERT of int
 | `INVALID
 | `SELFDESTRUCT
 ]
 
 type iele_op =
 | Nop
-| Op of iele_opcode * int list
+| Op of iele_opcode * int * int list
+| VoidOp of iele_opcode * int list
+| CallOp of iele_opcode * int list * int list
 | LiOp of iele_opcode * int * Z.t
 
 let asm_iele_opcode op = match op with
@@ -141,14 +143,14 @@ let asm_iele_opcode op = match op with
   let ch = Char.chr byte in
   IeleUtil.string_of_char ch
 | `CREATE -> "\xf0"
-| `CALL -> "\xf1"
-| `CALLCODE -> "\xf2"
-| `DELEGATECALL -> "\xf3"
-| `STATICCALL -> "\xf4"
-| `RETURN -> "\xf5"
-| `REVERT -> "\xf6"
-| `LOCALCALL (call) -> "\xf7" ^ (IeleUtil.be_int_width (Z.of_int call) 16)
-| `LOCALRETURN -> "\xf9"
+| `CALL(nargs,nreturn) -> "\xf1" ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `CALLCODE(nargs,nreturn) -> "\xf2" ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `DELEGATECALL(nargs,nreturn) -> "\xf3" ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `STATICCALL(nargs,nreturn) -> "\xf4" ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `RETURN(nreturn) -> "\xf5" ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `REVERT(nreturn) -> "\xf6" ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `LOCALCALL (call,nargs,nreturn) -> "\xf7" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `LOCALRETURN(nreturn) -> "\xf5" ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
 | `INVALID -> "\xfe"
 | `SELFDESTRUCT -> "\xff"
 | `LOCALCALLI _ | `CALLDATALOAD | `CALLDATASIZE | `CALLDATACOPY -> invalid_arg "needs postprocessing"
