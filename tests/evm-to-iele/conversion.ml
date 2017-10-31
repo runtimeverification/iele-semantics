@@ -567,6 +567,13 @@ let resolve_phi ((graph,regcount) : iele_graph * int) : iele_op list list =
     | _ -> List.iter (discover_phi phi_web pre_stack ops post_stack) incoming_edges; ops) annotated_graph in
   List.map (fun ops -> List.map (replace_registers (IeleUtil.UnionFind.find phi_web)) ops) preprocessed_graph
 
+let find_jumpdest_labels ops =
+  let rec aux ops res = match ops with
+  | [] -> res
+  | VoidOp(`JUMPDEST(lbl), []) :: tl -> aux tl (IntSet.add lbl res)
+  | _ :: tl -> aux tl res
+  in aux ops IntSet.empty
+
 let alloc_registers (ops: iele_op list) : iele_op list = 
   let regs = Hashtbl.create 32 in
   let lbls = Hashtbl.create 32 in
@@ -576,13 +583,17 @@ let alloc_registers (ops: iele_op list) : iele_op list =
   let lblcount = ref 0 in
   let reg_ops = List.map (replace_registers (fun reg -> try Hashtbl.find regs reg with Not_found -> let new_reg = !regcount in Hashtbl.add regs reg new_reg; regcount := new_reg + 1; new_reg)) ops in
   let lbl_ops = List.map (replace_labels (fun lbl -> try Hashtbl.find lbls lbl with Not_found -> let new_lbl = !lblcount in Hashtbl.add lbls lbl new_lbl; lblcount := new_lbl + 1; new_lbl)) reg_ops in
+  let all_labels = Hashtbl.fold (fun _ v set -> IntSet.add v set) lbls IntSet.empty in
+  let all_jumpdest_labels = find_jumpdest_labels lbl_ops in
+  let all_dangling_labels = IntSet.diff all_labels all_jumpdest_labels in
+  let dangling_jumpdests = IntSet.fold (fun lbl ops -> VoidOp(`JUMPDEST(lbl), []) :: ops) all_dangling_labels (VoidOp(`INVALID, []) :: []) in
   let regbits = ref 0 in
   regcount := !regcount - 1;
   while !regcount > 0 do
     regbits := !regbits + 1;
     regcount := !regcount asr 1
   done;
-  VoidOp(`REGISTERS !regbits,[]) :: lbl_ops
+  VoidOp(`REGISTERS !regbits,[]) :: (lbl_ops @ (VoidOp(`STOP, []) :: dangling_jumpdests))
 
 let max_val = Z.sub (Z.shift_left Z.one 255) Z.one
 
