@@ -511,13 +511,53 @@ let rec discover_phi phi_web pre_stack ops post_stack incoming_edge = match pre_
     let contains_any = List.fold_left (||) false contains in
     if contains_any then failwith "found a predecessor basic block where registers cannot be inferred"
 
+let get_incoming_edges predecessors annotated_graph idx =
+  List.flatten (List.map (fun predecessor_id -> 
+      let (_,_,_,ops,post_stack,succ) = List.nth annotated_graph predecessor_id in
+      match succ with 
+      | Jump _ | Jumpi _ | Call _ | Fallthrough | Halt | Return -> [post_stack]
+      | Calli _ -> 
+      let len = List.length ops in
+      let last = List.nth ops (len-1) in
+      match last with
+      | CallOp(`LOCALCALLI (_,_,_,ret) , _, _ :: args) ->
+        if idx = ret && predecessor_id + 1 = idx then [args; post_stack]
+        else if idx = ret then [post_stack]
+        else [args]
+      | _ -> failwith "invalid calli block not ending in LOCALCALLI"
+      ) predecessors)
+
+let expand_phi ((graph,regcount) : iele_graph * int) : iele_graph * int =
+  let regcount = ref regcount in
+  let graph_step graph =
+    let annotated_graph = annotate_graph_with_predecessors graph in
+    let preprocessed_graph = List.map (fun (idx,predecessors,pre_stack,ops,post_stack,succ) ->
+      let incoming_edges = get_incoming_edges predecessors annotated_graph idx in
+      let incoming_edge_lens = List.map List.length incoming_edges in
+      match incoming_edge_lens with
+      | [] -> (pre_stack,ops,post_stack,succ)
+      | hd :: tl ->
+        let min_len = List.fold_left min hd tl in
+        let curr_len = List.length pre_stack in
+        if curr_len >= min_len then (pre_stack,ops,post_stack,succ) else
+        let new_regs = range !regcount (!regcount + min_len - curr_len - 1) in
+        regcount := !regcount + min_len - curr_len;
+        (pre_stack @ new_regs,ops,post_stack @ new_regs,succ)
+    ) annotated_graph in
+    preprocessed_graph in
+  let rec recompute_graph old_graph =
+    let new_graph = graph_step old_graph in
+    if new_graph = old_graph then new_graph else
+    recompute_graph new_graph
+  in
+  let new_graph = recompute_graph graph in
+  new_graph,!regcount
+
 let resolve_phi ((graph,regcount) : iele_graph * int) : iele_op list list =
   let annotated_graph = annotate_graph_with_predecessors graph in
   let phi_web = IeleUtil.UnionFind.create regcount in
-  let preprocessed_graph = List.map (fun (_,predecessors,pre_stack,ops,post_stack,_) ->
-    let incoming_edges = List.map (fun predecessor_id -> 
-        let (_,_,_,_,post_stack,_) = List.nth annotated_graph predecessor_id in
-        post_stack) predecessors in
+  let preprocessed_graph = List.map (fun (idx,predecessors,pre_stack,ops,post_stack,_) ->
+    let incoming_edges = get_incoming_edges predecessors annotated_graph idx in
     let is_target = match ops with
     | VoidOp(`JUMPDEST(_),_) :: _ -> true
     | _ -> false
@@ -554,6 +594,7 @@ let rec postprocess_iele iele label = match iele with
 | Op(`CALLDATASIZE, reg, []) :: tl -> Op(`MOVE, reg, [0]) :: postprocess_iele tl label
 | Op(`EXP, reg, [v1;v2]) :: tl when compatibility -> LiOp(`LOADPOS, -1, pow256) :: Op(`EXPMOD, reg, [v1;v2;-1]) :: postprocess_iele tl label
 | LiOp(`LOADPOS, reg, z) :: tl when compatibility && Z.gt z max_val -> LiOp(`LOADNEG, reg, Z.signed_extract z 0 256) :: postprocess_iele tl label
+| CallOp(`LOCALCALLI(target,nargs,nreturn,ret_addr), rets, reg :: args) :: tl -> Op(`ISZERO, reg, [reg]) :: VoidOp(`JUMPI(label), [reg]) :: CallOp(`LOCALCALL(target,nargs,nreturn), rets, args) :: VoidOp(`JUMP(ret_addr), []) :: VoidOp(`JUMPDEST(label), []) :: postprocess_iele tl (label-1)
 | hd :: tl -> hd :: postprocess_iele tl label
 | [] -> []
 
@@ -562,7 +603,8 @@ let evm_to_iele (evm:evm_op list) : iele_op list =
   let cfg = compute_cfg preprocessed in
   let with_registers = convert_to_registers cfg in
   let with_call = convert_to_call_return with_registers in
-  let resolved = resolve_phi with_call in
+  let expanded = expand_phi with_call in
+  let resolved = resolve_phi expanded in
   let flattened = List.flatten resolved in
   let postprocessed = postprocess_iele flattened (-1) in
   match postprocessed with

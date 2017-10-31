@@ -67,6 +67,7 @@ type iele_opcode = [
 | `DELEGATECALL of int * int
 | `STATICCALL of int * int
 | `LOCALCALL of int * int * int
+| `LOCALCALLI of int * int * int * int
 | `RETURN of int
 | `LOCALRETURN of int
 | `REVERT of int
