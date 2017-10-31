@@ -399,7 +399,11 @@ I suppose the semantics currently loads `INVALID` where `N` is the position in t
          </k>
          <pc> PCOUNT </pc>
          <program> ... PCOUNT |-> OP ... </program>
-      requires EXECMODE in (SetItem(NORMAL) SetItem(VMTESTS))
+      requires EXECMODE in #normalModes
+
+    syntax Set ::= "#normalModes" [function]
+ // ----------------------------------------
+    rule #normalModes => (SetItem(NORMAL) SetItem(VMTESTS))
 ```
 
 ### Exceptional Ops
