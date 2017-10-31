@@ -65,7 +65,7 @@ split-vm-tests: \
 		  $(patsubst tests/ethereum-tests/%.json,tests/%/make.timestamp, $(filter-out ${invalid_iele_tests}, $(wildcard tests/ethereum-tests/VMTests/*/*.json))) \
 
 split-blockchain-tests: \
-				  $(patsubst tests/ethereum-tests/%.json,tests/%/make.timestamp, $(wildcard tests/ethereum-tests/BlockchainTests/GeneralStateTests/*/*.json)) \
+				  $(patsubst tests/ethereum-tests/%.json,tests/%/make.timestamp, $(filter-out ${invalid_iele_tests}, $(wildcard tests/ethereum-tests/BlockchainTests/GeneralStateTests/*/*.json))) \
 
 vm_tests=$(wildcard tests/VMTests/*/*/*.iele.json)
 blockchain_tests=$(wildcard tests/BlockchainTests/*/*/*/*.iele.json)
