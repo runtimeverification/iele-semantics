@@ -71,6 +71,10 @@ vm_tests=$(wildcard tests/VMTests/*/*/*.iele.json)
 blockchain_tests=$(wildcard tests/BlockchainTests/*/*/*/*.iele.json)
 all_tests=${vm_tests} ${blockchain_tests}
 skipped_tests=$(wildcard tests/VMTests/vmPerformance/*/*.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Frontier.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Homestead.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_EIP150.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_EIP158.json) \
    $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Constantinople.json) \
    $(wildcard tests/BlockchainTests/GeneralStateTests/stQuadraticComplexityTest/*/*.json) \
    $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Call50000*/*_Byzantium.json) \
