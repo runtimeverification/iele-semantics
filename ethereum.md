@@ -114,7 +114,7 @@ To do so, we'll extend sort `JSON` with some EVM specific syntax, and provide a 
  // -----------------------------------------
     rule <k> loadTx(ACCTFROM)
           => #create ACCTFROM #newAddr(ACCTFROM, NONCE) (GLIMIT -Int G0(SCHED, CODE, true)) VALUE CODE
-          ~> #execute ~> #finishTx ~> #finalizeTx(false) ~> startTx
+          ~> #execute ~> #finishTx ~> #adjustGas ~> #finalizeTx(false) ~> startTx
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -140,8 +140,8 @@ To do so, we'll extend sort `JSON` with some EVM specific syntax, and provide a 
          <activeAccounts> ... ACCTFROM |-> (_ => false) ... </activeAccounts>
 
     rule <k> loadTx(ACCTFROM)
-          => #call ACCTFROM ACCTTO ACCTTO (GLIMIT -Int G0(SCHED, DATA, false)) VALUE VALUE (#asUnsigned(DATA) .Regs) false
-          ~> #execute ~> #finishTx ~> #finalizeTx(false) ~> startTx
+          => #call ACCTFROM ACCTTO ACCTTO (GLIMIT -Int G0(SCHED, DATA, false)) VALUE VALUE (#sizeWordStack(DATA) #asUnsigned(DATA) .Regs) false
+          ~> #execute ~> #finishTx ~> #adjustGas ~> #finalizeTx(false) ~> startTx
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -166,6 +166,18 @@ To do so, we'll extend sort `JSON` with some EVM specific syntax, and provide a 
          </account>
          <activeAccounts> ... ACCTFROM |-> (_ => false) ... </activeAccounts>
       requires ACCTTO =/=K .Account
+
+    syntax EthereumCommand ::= "#adjustGas"
+ // ---------------------------------------
+    rule <k> #adjustGas => . ... </k>
+         <gas> _ => GLIMIT -Int GUSED </gas>
+         <gasUsed> GUSED </gasUsed>
+         <txPending> ListItem(TXID:Int) ... </txPending>
+         <message>
+           <msgID> TXID </msgID>
+           <txGasLimit> GLIMIT </txGasLimit>
+           ...
+         </message>
 
     syntax EthereumCommand ::= "#finishTx"
  // --------------------------------------
