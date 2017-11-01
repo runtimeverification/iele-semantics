@@ -1,15 +1,15 @@
 Analysis Tools
 ==============
 
-Here, we define analysis tools specific to EVM.
+Here, we define analysis tools specific to IELE.
 These tools are defined as extensions of the semantics, utilizing the underlying machinery to do execution.
 One benefit of K is that we do not have to re-specify properties about the operational behavior in our analysis tools; instead we can take the operational behavior directly.
 
 ```{.k .uiuck .rvk}
-requires "evm.k"
+requires "iele.k"
 
-module EVM-ANALYSIS
-    imports EVM
+module IELE-ANALYSIS
+    imports IELE
 ```
 
 Gas Analysis

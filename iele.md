@@ -1,16 +1,16 @@
-EVM Execution
-=============
+IELE Execution
+==============
 
-The EVM is a stack machine over some simple opcodes.
+IELE is a register-based abstract machine over some simple opcodes.
 Most of the opcodes are "local" to the execution state of the machine, but some of them must interact with the world state.
 This file only defines the local execution operations, the file `ethereum.md` will define the interactions with the world state.
 
 ```{.k .uiuck .rvk}
 requires "data.k"
 
-module EVM
+module IELE
     imports STRING
-    imports EVM-DATA
+    imports IELE-DATA
 ```
 
 Configuration
@@ -29,150 +29,146 @@ In the comments next to each cell, we've marked which component of the yellowpap
                   <schedule> $SCHEDULE:Schedule </schedule>
                   <analysis> .Map </analysis>
 
-                  <ethereum>
+                  // IELE Specific
+                  // ============
 
-                    // EVM Specific
-                    // ============
+                  <iele>
 
-                    <evm>
+                    // Mutable during a single transaction
+                    // -----------------------------------
 
-                      // Mutable during a single transaction
-                      // -----------------------------------
+                    <output>        .Regs:Ints </output>                   // H_RETURN
+                    <callStack>     .List      </callStack>
+                    <interimStates> .List      </interimStates>
+                    <substateStack> .List      </substateStack>
+                    <callLog>       .Set       </callLog>
 
-                      <output>        .Regs:Ints </output>                   // H_RETURN
-                      <callStack>     .List      </callStack>
-                      <interimStates> .List      </interimStates>
-                      <substateStack> .List      </substateStack>
-                      <callLog>       .Set       </callLog>
+                    <callFrame>
+                      <program>      .Map       </program>                 // I_b
+                      <programBytes> .WordStack </programBytes>
+                      <callDepth>    0          </callDepth>
+                      <jumpTable>    .Map       </jumpTable>
+                      <localCalls>   .List      </localCalls>
 
-                      <callFrame>
-                        <program>      .Map       </program>                 // I_b
-                        <programBytes> .WordStack </programBytes>
-                        <callDepth>    0          </callDepth>
-                        <jumpTable>    .Map       </jumpTable>
-                        <localCalls>   .List      </localCalls>
+                      // I_*
+                      <id>        0          </id>                         // I_a
+                      <caller>    0          </caller>                     // I_s
+                      <callData>  .Regs:Ints </callData>                   // I_d
+                      <callValue> 0          </callValue>                  // I_v
 
-                        // I_*
-                        <id>        0          </id>                         // I_a
-                        <caller>    0          </caller>                     // I_s
-                        <callData>  .Regs:Ints </callData>                   // I_d
-                        <callValue> 0          </callValue>                  // I_v
+                      // \mu_*
+                      <regs>        .Array </regs>                         // \mu_s
+                      <globalRegs>  .Array </globalRegs>                   // \mu_s
+                      <nregs>       5      </nregs>
+                      <localMem>    .Array </localMem>                     // \mu_m
+                      <memoryUsed>  0      </memoryUsed>                   // \mu_i
+                      <pc>          0      </pc>                           // \mu_pc
+                      <gas>         0      </gas>                          // \mu_g
+                      <previousGas> 0      </previousGas>
 
-                        // \mu_*
-                        <regs>        .Array </regs>                         // \mu_s
-                        <globalRegs>  .Array </globalRegs>                   // \mu_s
-                        <nregs>       5      </nregs>
-                        <localMem>    .Array </localMem>                     // \mu_m
-                        <memoryUsed>  0      </memoryUsed>                   // \mu_i
-                        <pc>          0      </pc>                           // \mu_pc
-                        <gas>         0      </gas>                          // \mu_g
-                        <previousGas> 0      </previousGas>
+                      <static> false </static>
+                    </callFrame>
 
-                        <static> false </static>
-                      </callFrame>
+                    // A_* (execution substate)
+                    <substate>
+                      <selfDestruct> .Set  </selfDestruct>                 // A_s
+                      <log>          .List </log>                          // A_l
+                      <refund>       0     </refund>                       // A_r
+                    </substate>
 
-                      // A_* (execution substate)
-                      <substate>
-                        <selfDestruct> .Set  </selfDestruct>                 // A_s
-                        <log>          .List </log>                          // A_l
-                        <refund>       0     </refund>                       // A_r
-                      </substate>
+                    // Immutable during a single transaction
+                    // -------------------------------------
 
-                      // Immutable during a single transaction
-                      // -------------------------------------
+                    <gasPrice> 0 </gasPrice>                               // I_p
+                    <origin>   0 </origin>                                 // I_o
 
-                      <gasPrice> 0 </gasPrice>                               // I_p
-                      <origin>   0 </origin>                                 // I_o
+                    // I_H* (block information)
+                    <previousHash>     0          </previousHash>          // I_Hp
+                    <ommersHash>       0          </ommersHash>            // I_Ho
+                    <coinbase>         0          </coinbase>              // I_Hc
+                    <stateRoot>        0          </stateRoot>             // I_Hr
+                    <transactionsRoot> 0          </transactionsRoot>      // I_Ht
+                    <receiptsRoot>     0          </receiptsRoot>          // I_He
+                    <logsBloom>        .WordStack </logsBloom>             // I_Hb
+                    <difficulty>       0          </difficulty>            // I_Hd
+                    <number>           0          </number>                // I_Hi
+                    <gasLimit>         0          </gasLimit>              // I_Hl
+                    <gasUsed>          0          </gasUsed>               // I_Hg
+                    <timestamp>        0          </timestamp>             // I_Hs
+                    <extraData>        .WordStack </extraData>             // I_Hx
+                    <mixHash>          0          </mixHash>               // I_Hm
+                    <blockNonce>       0          </blockNonce>            // I_Hn
 
-                      // I_H* (block information)
-                      <previousHash>     0          </previousHash>          // I_Hp
-                      <ommersHash>       0          </ommersHash>            // I_Ho
-                      <coinbase>         0          </coinbase>              // I_Hc
-                      <stateRoot>        0          </stateRoot>             // I_Hr
-                      <transactionsRoot> 0          </transactionsRoot>      // I_Ht
-                      <receiptsRoot>     0          </receiptsRoot>          // I_He
-                      <logsBloom>        .WordStack </logsBloom>             // I_Hb
-                      <difficulty>       0          </difficulty>            // I_Hd
-                      <number>           0          </number>                // I_Hi
-                      <gasLimit>         0          </gasLimit>              // I_Hl
-                      <gasUsed>          0          </gasUsed>               // I_Hg
-                      <timestamp>        0          </timestamp>             // I_Hs
-                      <extraData>        .WordStack </extraData>             // I_Hx
-                      <mixHash>          0          </mixHash>               // I_Hm
-                      <blockNonce>       0          </blockNonce>            // I_Hn
+                    <ommerBlockHeaders> [ .JSONList ] </ommerBlockHeaders>
+                    <blockhash>         .List         </blockhash>
 
-                      <ommerBlockHeaders> [ .JSONList ] </ommerBlockHeaders>
-                      <blockhash>         .List         </blockhash>
+                  </iele>
 
-                    </evm>
+                  // Ethereum Network
+                  // ================
 
-                    // Ethereum Network
-                    // ================
+                  <network>
 
-                    <network>
+                    // Accounts Record
+                    // ---------------
 
-                      // Accounts Record
-                      // ---------------
-
-                      <activeAccounts> .Map </activeAccounts>
-                      <accounts>
+                    <activeAccounts> .Map </activeAccounts>
+                    <accounts>
 ```
 
--   UIUC-K and RV-K have slight differences of opinion here.
+- UIUC-K and RV-K have slight differences of opinion here.
 
 ```{.k .uiuck}
-                        <account multiplicity="*" type="Bag">
+                      <account multiplicity="*" type="Bag">
 ```
 
 ```{.k .rvk}
-                        <account multiplicity="*" type="Map">
+                      <account multiplicity="*" type="Map">
 ```
 
 ```{.k .uiuck .rvk}
-                          <acctID>  0          </acctID>
-                          <balance> 0          </balance>
-                          <code>    .WordStack </code>
-                          <storage> .Map       </storage>
-                          <nonce>   0          </nonce>
-                        </account>
-                      </accounts>
+                        <acctID>  0          </acctID>
+                        <balance> 0          </balance>
+                        <code>    .WordStack </code>
+                        <storage> .Map       </storage>
+                        <nonce>   0          </nonce>
+                      </account>
+                    </accounts>
 
-                      // Transactions Record
-                      // -------------------
+                    // Transactions Record
+                    // -------------------
 
-                      <txOrder>   .List </txOrder>
-                      <txPending> .List </txPending>
+                    <txOrder>   .List </txOrder>
+                    <txPending> .List </txPending>
 
-                      <messages>
+                    <messages>
 ```
 
--   UIUC-K and RV-K have slight differences of opinion here.
+- UIUC-K and RV-K have slight differences of opinion here.
 
 ```{.k .uiuck}
-                        <message multiplicity="*" type="Bag">
+                      <message multiplicity="*" type="Bag">
 ```
 
 ```{.k .rvk}
-                        <message multiplicity="*" type="Map">
+                      <message multiplicity="*" type="Map">
 ```
 
 ```{.k .uiuck .rvk}
-                          <msgID>      0          </msgID>
-                          <txNonce>    0          </txNonce>            // T_n
-                          <txGasPrice> 0          </txGasPrice>         // T_p
-                          <txGasLimit> 0          </txGasLimit>         // T_g
-                          <to>         .Account   </to>                 // T_t
-                          <value>      0          </value>              // T_v
-                          <v>          0          </v>                  // T_w
-                          <r>          .WordStack </r>                  // T_r
-                          <s>          .WordStack </s>                  // T_s
-                          <data>       .WordStack </data>               // T_i/T_e
-                        </message>
-                      </messages>
+                        <msgID>      0          </msgID>
+                        <txNonce>    0          </txNonce>            // T_n
+                        <txGasPrice> 0          </txGasPrice>         // T_p
+                        <txGasLimit> 0          </txGasLimit>         // T_g
+                        <to>         .Account   </to>                 // T_t
+                        <value>      0          </value>              // T_v
+                        <v>          0          </v>                  // T_w
+                        <r>          .WordStack </r>                  // T_r
+                        <s>          .WordStack </s>                  // T_s
+                        <data>       .WordStack </data>               // T_i/T_e
+                      </message>
+                    </messages>
 
-                    </network>
-
-                  </ethereum>
+                  </network>
 
     syntax EthereumSimulation
  // -------------------------
@@ -731,8 +727,8 @@ After executing a transaction, it's necessary to have the effect of the substate
          </accounts>
 ```
 
-EVM Programs
-============
+IELE Programs
+=============
 
 Lists of opcodes form programs.
 Deciding if an opcode is in a list will be useful for modeling gas, and converting a program into a map of program-counter to opcode is useful for execution.
@@ -753,8 +749,8 @@ Note that `_in_` ignores the arguments to operators that are parametric.
     rule #asMapOps( N , OP:Op ; OCS , MAP, NREGS ) => #asMapOps(N +Int #opWidth(#code(OP), NREGS), OCS, MAP (N |-> OP), NREGS)
 ```
 
-EVM Ops
------------
+IELE Ops
+--------
 
 Each subsection has a different class of opcodes.
 Organization is based roughly on what parts of the execution state are needed to compute the result of each operator.
@@ -931,8 +927,6 @@ These operations are getters/setters of the local execution memory.
 
 Expression calculations are simple and don't require anything but the arguments from the `regs` to operate.
 
-NOTE: We have to call the opcode `OR` by `EVMOR` instead, because K has trouble parsing it/compiling the definition otherwise.
-
 ```{.k .uiuck .rvk}
     syntax UnOp ::= "ISZERO" | "NOT"
  // --------------------------------
@@ -965,11 +959,11 @@ NOTE: We have to call the opcode `OR` by `EVMOR` instead, because K has trouble 
     rule <k> SIGNEXTEND REG W0 W1 => #load REG signextend(chop(W0), W1) ... </k>
     rule <k> TWOS REG W0 W1       => #load REG twos(chop(W0), W1)       ... </k>
 
-    syntax BinOp ::= "AND" | "EVMOR" | "XOR"
- // ----------------------------------------
-    rule <k> AND   REG W0 W1 => #load REG W0 &Int W1   ... </k>
-    rule <k> EVMOR REG W0 W1 => #load REG W0 |Int W1   ... </k>
-    rule <k> XOR   REG W0 W1 => #load REG W0 xorInt W1 ... </k>
+    syntax BinOp ::= "AND" | "OR" | "XOR"
+ // -------------------------------------
+    rule <k> AND REG W0 W1 => #load REG W0 &Int W1   ... </k>
+    rule <k> OR  REG W0 W1 => #load REG W0 |Int W1   ... </k>
+    rule <k> XOR REG W0 W1 => #load REG W0 xorInt W1 ... </k>
 
     syntax BinOp ::= "LT" | "GT" | "EQ"
  // -----------------------------------
@@ -1126,8 +1120,8 @@ This is a right cons-list of `SubstateLogEntry` (which contains the account ID a
          <log> ... (.List => ListItem({ ACCT | WS | #range(LM, MEMSTART, MEMWIDTH) })) </log>
 ```
 
-Ethereum Network Ops
-------------------------
+Network Ops
+-----------
 
 Operators that require access to the rest of the Ethereum network world-state can be taken as a first draft of a "blockchain generic" language.
 
@@ -1871,7 +1865,7 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     rule <k> #gasExec(SCHED, EQ _ _ _)           => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, ISZERO _ _)         => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, AND _ _ _)          => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, EVMOR _ _ _)        => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, OR _ _ _)           => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, XOR _ _ _)          => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, BYTE _ _ _)         => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, MLOAD _ _ _)        => Gverylow < SCHED > ... </k>
@@ -2287,12 +2281,12 @@ static const EVMSchedule ConstantinopleSchedule = []
 }();
 ```
 
-EVM Program Representations
-===========================
+IELE Program Representations
+============================
 
-EVM programs are represented algebraically in K, but programs can load and manipulate program data directly.
+IELE programs are represented algebraically in K, but programs can load and manipulate program data directly.
 The opcodes `CODECOPY` and `EXTCODECOPY` rely on the assembled form of the programs being present.
-The opcode `CREATE` relies on being able to interperet EVM data as a program.
+The opcode `CREATE` relies on being able to interperet IELE data as a program.
 
 This is a program representation dependence, which we might want to avoid.
 Perhaps the only program representation dependence we should have is the hash of the program; doing so achieves:
@@ -2304,7 +2298,7 @@ Perhaps the only program representation dependence we should have is the hash of
 Disassembler
 ------------
 
-After interpreting the strings representing programs as a `WordStack`, it should be changed into an `Ops` for use by the EVM semantics.
+After interpreting the strings representing programs as a `WordStack`, it should be changed into an `Ops` for use by the IELE semantics.
 
 -   `#dasmOps` interperets `WordStack` as an `Ops`.
 -   `#dasmOpCode` interperets a `Int` as an `OpCode`.
@@ -2439,7 +2433,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmOpCode(  20,     _ ) => EQ
     rule #dasmOpCode(  21,     _ ) => ISZERO
     rule #dasmOpCode(  22,     _ ) => AND
-    rule #dasmOpCode(  23,     _ ) => EVMOR
+    rule #dasmOpCode(  23,     _ ) => OR
     rule #dasmOpCode(  24,     _ ) => XOR
     rule #dasmOpCode(  25,     _ ) => NOT
     rule #dasmOpCode(  26,     _ ) => BYTE

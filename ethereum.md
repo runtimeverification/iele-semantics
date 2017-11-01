@@ -1,20 +1,20 @@
-Ethereum Simulations
-====================
+Ethereum Backwards-Compatibility Testing
+========================================
 
-Ethereum is using the EVM to drive updates over the world state.
-Actual execution of the EVM is defined in [the EVM file](evm.md).
+Here we test the Ethereum test suite against the new IELE VM.
+Actual execution of IELE is defined in [the IELE file](iele.md).
 
 ```{.k .uiuck}
 requires "verification.k"
 ```
 
 ```{.k .uiuck .rvk}
-requires "evm.k"
+requires "iele.k"
 requires "analysis.k"
 
 module ETHEREUM-SIMULATION
-    imports EVM
-    imports EVM-ANALYSIS
+    imports IELE
+    imports IELE-ANALYSIS
 ```
 
 ```{.k .uiuck}
@@ -41,7 +41,7 @@ Some Ethereum commands take an Ethereum specification (eg. for an account or tra
 ```
 
 For verification purposes, it's much easier to specify a program in terms of its op-codes and not the hex-encoding that the tests use.
-To do so, we'll extend sort `JSON` with some EVM specific syntax, and provide a "pretti-fication" to the nicer input form.
+To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a "pretti-fication" to the nicer input form.
 
 ```{.k .uiuck .rvk}
     syntax JSON ::= Int | WordStack | Ops | Map | Call | SubstateLogEntry | Account
