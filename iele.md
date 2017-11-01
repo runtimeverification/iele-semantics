@@ -1489,10 +1489,10 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
          <callValue> _ => VALUE </callValue>
          <account>
            <acctID> ACCTTO </acctID>
-           <nonce> NONCE => #ifInt Gemptyisnonexistent << SCHED >> #then NONCE +Int 1 #else NONCE #fi </nonce>
+           <nonce> NONCE => NONCE +Int 1 </nonce>
            ...
          </account>
-         <activeAccounts> ... ACCTTO |-> (EMPTY => #if Gemptyisnonexistent << SCHED >> #then false #else EMPTY #fi) ... </activeAccounts>
+         <activeAccounts> ... ACCTTO |-> (EMPTY => false) ... </activeAccounts>
 
     syntax KItem ::= "#codeDeposit" Int Reg
                    | "#mkCodeDeposit" Int Reg
@@ -1540,18 +1540,7 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
          </account>
          <activeAccounts> ... ACCT |-> (EMPTY => #if LEN =/=Int 0 #then false #else EMPTY #fi) ... </activeAccounts>
 
-    rule <k> #exception ~> #finishCodeDeposit ACCT _ _ REG
-          => #popCallStack ~> #if EXECMODE ==K VMTESTS #then #popWorldState #else #dropWorldState #fi ~> #dropSubstate
-          ~> #refund GAVAIL ~> #load REG ACCT
-         ...
-         </k>
-         <mode> EXECMODE </mode>
-         <gas> GAVAIL </gas>
-         <schedule> FRONTIER </schedule>
-
     rule <k> #exception ~> #finishCodeDeposit _ _ _ REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG 0 ... </k>
-         <schedule> SCHED </schedule>
-      requires SCHED =/=K FRONTIER
 ```
 
 `CREATE` will attempt to `#create` the account using the initialization code and cleans up the result with `#codeDeposit`.
@@ -1631,13 +1620,8 @@ Precompiled Contracts
 
     syntax Set ::= #precompiledAccounts ( Schedule ) [function]
  // -----------------------------------------------------------
-    rule #precompiledAccounts(DEFAULT) => SetItem(1) SetItem(2) SetItem(3) SetItem(4)
-    rule #precompiledAccounts(FRONTIER) => #precompiledAccounts(DEFAULT)
-    rule #precompiledAccounts(HOMESTEAD) => #precompiledAccounts(FRONTIER)
-    rule #precompiledAccounts(EIP150) => #precompiledAccounts(HOMESTEAD)
-    rule #precompiledAccounts(EIP158) => #precompiledAccounts(EIP150)
-    rule #precompiledAccounts(BYZANTIUM) => #precompiledAccounts(EIP158) SetItem(5) SetItem(6) SetItem(7)
-    rule #precompiledAccounts(CONSTANTINOPLE) => #precompiledAccounts(BYZANTIUM)
+    rule #precompiledAccounts(DEFAULT) => SetItem(1) SetItem(2) SetItem(3) SetItem(4) SetItem(5) SetItem(6) SetItem(7)
+    rule #precompiledAccounts(ALBE) => #precompiledAccounts(DEFAULT)
 ```
 
 -   `ECREC` performs ECDSA public key recovery.
@@ -1940,23 +1924,23 @@ Note: These are all functions as the operator `#gasExec` has already loaded all 
     rule Cxfer(SCHED, N) => Gcallvalue < SCHED > requires N =/=K 0
 
     rule Cnew(SCHED, ACCT, ACCTS, VALUE) => Gnewaccount < SCHED >
-      requires         #accountNonexistent(SCHED, ACCT, ACCTS) andBool (VALUE =/=Int 0 orBool          Gzerovaluenewaccountgas << SCHED >>)
+      requires         #accountNonexistent(SCHED, ACCT, ACCTS) andBool VALUE =/=Int 0
     rule Cnew(SCHED, ACCT, ACCTS, VALUE) => 0
-      requires notBool #accountNonexistent(SCHED, ACCT, ACCTS) orBool  (VALUE  ==Int 0 andBool notBool Gzerovaluenewaccountgas << SCHED >>)
+      requires notBool #accountNonexistent(SCHED, ACCT, ACCTS) orBool  VALUE  ==Int 0
 
     syntax Int ::= Cselfdestruct ( Schedule , Int , Map , Int ) [function]
  // ----------------------------------------------------------------------
     rule Cselfdestruct(SCHED, ACCT, ACCTS, BAL) => Gselfdestruct < SCHED > +Int Gnewaccount < SCHED >
-      requires (#accountNonexistent(SCHED, ACCT, ACCTS)) andBool (        Gselfdestructnewaccount << SCHED >>) andBool (BAL =/=Int 0 orBool          Gzerovaluenewaccountgas << SCHED >>)
+      requires (#accountNonexistent(SCHED, ACCT, ACCTS)) andBool (        Gselfdestructnewaccount << SCHED >>) andBool BAL =/=Int 0
     rule Cselfdestruct(SCHED, ACCT, ACCTS, BAL) => Gselfdestruct < SCHED >
-      requires (#accountNonexistent(SCHED, ACCT, ACCTS)) andBool (notBool Gselfdestructnewaccount << SCHED >>  orBool  (BAL  ==Int 0 andBool notBool Gzerovaluenewaccountgas << SCHED >>))
+      requires (#accountNonexistent(SCHED, ACCT, ACCTS)) andBool (notBool Gselfdestructnewaccount << SCHED >>  orBool  BAL  ==Int 0)
     rule Cselfdestruct(SCHED, ACCT, ACCTS, BAL) => Gselfdestruct < SCHED >
       requires notBool #accountNonexistent(SCHED, ACCT, ACCTS)
 
     syntax Bool ::= #accountNonexistent ( Schedule , Int , Map ) [function]
                   | #accountEmpty ( Int , Map )                  [function]
  // -----------------------------------------------------------------------
-    rule #accountNonexistent(SCHED, ACCT, ACCTS) => notBool ACCT in_keys(ACCTS) orBool (#accountEmpty(ACCT, ACCTS) andBool Gemptyisnonexistent << SCHED >>)
+    rule #accountNonexistent(SCHED, ACCT, ACCTS) => notBool ACCT in_keys(ACCTS) orBool #accountEmpty(ACCT, ACCTS)
     rule #accountEmpty(ACCT, (ACCT |-> EMPTY) _) => EMPTY
 
     syntax Int ::= #allBut64th ( Int ) [function]
@@ -1989,9 +1973,8 @@ A `ScheduleFlag` is a boolean determined by the fee schedule; applying a `Schedu
     syntax Bool ::= ScheduleFlag "<<" Schedule ">>" [function]
  // ----------------------------------------------------------
 
-    syntax ScheduleFlag ::= "Gselfdestructnewaccount" | "Gstaticcalldepth" | "Gemptyisnonexistent" | "Gzerovaluenewaccountgas"
-                          | "hasRevert" | "hasReturnData" | "hasStaticCall"
- // --------------------------------------------------------------------------------------------------------------------------
+    syntax ScheduleFlag ::= "Gselfdestructnewaccount" | "Gstaticcalldepth"
+ // ----------------------------------------------------------------------
 ```
 
 A `ScheduleConst` is a constant determined by the fee schedule; applying a `ScheduleConst` to a `Schedule` yields the correct constant for that schedule.
@@ -2022,11 +2005,11 @@ A `ScheduleConst` is a constant determined by the fee schedule; applying a `Sche
     rule Ghigh    < DEFAULT > => 10
 
     rule Gexp      < DEFAULT > => 10
-    rule Gexpbyte  < DEFAULT > => 10
+    rule Gexpbyte  < DEFAULT > => 50
     rule Gsha3     < DEFAULT > => 30
     rule Gsha3word < DEFAULT > => 6
 
-    rule Gsload       < DEFAULT > => 50
+    rule Gsload       < DEFAULT > => 200
     rule Gsstoreset   < DEFAULT > => 20000
     rule Gsstorereset < DEFAULT > => 5000
     rule Rsstoreclear < DEFAULT > => 15000
@@ -2056,21 +2039,16 @@ A `ScheduleConst` is a constant determined by the fee schedule; applying a `Sche
     rule Gtxdatanonzero < DEFAULT > => 68
 
     rule Gjumpdest    < DEFAULT > => 1
-    rule Gbalance     < DEFAULT > => 20
+    rule Gbalance     < DEFAULT > => 400
     rule Gblockhash   < DEFAULT > => 20
-    rule Gextcodesize < DEFAULT > => 20
-    rule Gextcodecopy < DEFAULT > => 20
+    rule Gextcodesize < DEFAULT > => 700
+    rule Gextcodecopy < DEFAULT > => 700
 
-    rule maxCodeSize < DEFAULT > => 2 ^Int 32 -Int 1
-    rule Rb          < DEFAULT > => 5 *Int (10 ^Int 18)
+    rule maxCodeSize < DEFAULT > => 2 ^Int 16
+    rule Rb          < DEFAULT > => 3 *Int (10 ^Int 18)
 
     rule Gselfdestructnewaccount << DEFAULT >> => false
     rule Gstaticcalldepth        << DEFAULT >> => true
-    rule Gemptyisnonexistent     << DEFAULT >> => false
-    rule Gzerovaluenewaccountgas << DEFAULT >> => true
-    rule hasRevert               << DEFAULT >> => false
-    rule hasReturnData           << DEFAULT >> => false
-    rule hasStaticCall           << DEFAULT >> => false
 ```
 
 ```c++
@@ -2137,59 +2115,25 @@ struct EVMSchedule
 };
 ```
 
-### Frontier Schedule
+### Albe Schedule
 
 ```{.k .uiuck .rvk}
-    syntax Schedule ::= "FRONTIER"
- // ------------------------------
-    rule Gtxcreate  < FRONTIER > => 21000
-    rule SCHEDCONST < FRONTIER > => SCHEDCONST < DEFAULT > requires SCHEDCONST =/=K Gtxcreate
+    syntax Schedule ::= "ALBE"
+ // --------------------------
+    rule Gcall         < ALBE > => 700
+    rule Gselfdestruct < ALBE > => 5000
+    rule SCHEDCONST    < ALBE > => SCHEDCONST < DEFAULT > [owise]
 
-    rule SCHEDFLAG << FRONTIER >> => SCHEDFLAG << DEFAULT >>
-```
+    rule Gselfdestructnewaccount << ALBE >> => true
+    rule Gstaticcalldepth        << ALBE >> => false
+    rule SCHEDCONST              << ALBE >> => SCHEDCONST << DEFAULT >> [owise]
 
-```c++
-static const EVMSchedule FrontierSchedule = EVMSchedule(false, false, 21000);
-```
 
-### Homestead Schedule
-
-```{.k .uiuck .rvk}
-    syntax Schedule ::= "HOMESTEAD"
- // -------------------------------
-    rule SCHEDCONST < HOMESTEAD > => SCHEDCONST < DEFAULT >
-
-    rule SCHEDFLAG << HOMESTEAD >> => SCHEDFLAG << DEFAULT >>
 ```
 
 ```c++
 static const EVMSchedule HomesteadSchedule = EVMSchedule(true, true, 53000);
-```
 
-### EIP150 Schedule
-
-```{.k .uiuck .rvk}
-    syntax Schedule ::= "EIP150"
- // ----------------------------
-    rule Gbalance      < EIP150 > => 400
-    rule Gsload        < EIP150 > => 200
-    rule Gcall         < EIP150 > => 700
-    rule Gselfdestruct < EIP150 > => 5000
-    rule Gextcodesize  < EIP150 > => 700
-    rule Gextcodecopy  < EIP150 > => 700
-
-    rule SCHEDCONST    < EIP150 > => SCHEDCONST < HOMESTEAD >
-      requires notBool      ( SCHEDCONST ==K Gbalance      orBool SCHEDCONST ==K Gsload       orBool SCHEDCONST ==K Gcall
-                       orBool SCHEDCONST ==K Gselfdestruct orBool SCHEDCONST ==K Gextcodesize orBool SCHEDCONST ==K Gextcodecopy
-                            )
-
-    rule Gselfdestructnewaccount << EIP150 >> => true
-    rule Gstaticcalldepth        << EIP150 >> => false
-    rule SCHEDCONST              << EIP150 >> => SCHEDCONST << HOMESTEAD >>
-      requires notBool      ( SCHEDCONST ==K Gselfdestructnewaccount orBool SCHEDCONST ==K Gstaticcalldepth )
-```
-
-```c++
 static const EVMSchedule EIP150Schedule = []
 {
     EVMSchedule schedule = HomesteadSchedule;
@@ -2202,25 +2146,7 @@ static const EVMSchedule EIP150Schedule = []
     schedule.suicideGas = 5000;
     return schedule;
 }();
-```
 
-### EIP158 Schedule
-
-```{.k .uiuck .rvk}
-    syntax Schedule ::= "EIP158"
- // ----------------------------
-    rule Gexpbyte    < EIP158 > => 50
-    rule maxCodeSize < EIP158 > => 24576
-
-    rule SCHEDCONST  < EIP158 > => SCHEDCONST < EIP150 > requires SCHEDCONST =/=K Gexpbyte andBool SCHEDCONST =/=K maxCodeSize
-
-    rule Gemptyisnonexistent     << EIP158 >> => true
-    rule Gzerovaluenewaccountgas << EIP158 >> => false
-    rule SCHEDCONST              << EIP158 >> => SCHEDCONST << EIP150 >>
-      requires notBool      ( SCHEDCONST ==K Gemptyisnonexistent orBool SCHEDCONST ==K Gzerovaluenewaccountgas )
-```
-
-```c++
 static const EVMSchedule EIP158Schedule = []
 {
     EVMSchedule schedule = EIP150Schedule;
@@ -2229,25 +2155,7 @@ static const EVMSchedule EIP158Schedule = []
     schedule.maxCodeSize = 0x6000;
     return schedule;
 }();
-```
 
-### Byzantium Schedule
-
-```{.k .uiuck .rvk}
-    syntax Schedule ::= "BYZANTIUM"
- // -------------------------------
-    rule Rb         < BYZANTIUM > => 3 *Int (10 ^Int 18)
-    rule SCHEDCONST < BYZANTIUM > => SCHEDCONST < EIP158 >
-      requires notBool ( SCHEDCONST ==K Rb )
-
-    rule hasRevert     << BYZANTIUM >> => true
-    rule hasReturnData << BYZANTIUM >> => true
-    rule hasStaticCall << BYZANTIUM >> => true
-    rule SCHEDFLAG     << BYZANTIUM >> => SCHEDFLAG << EIP158 >>
-      requires notBool ( SCHEDFLAG ==K hasRevert orBool SCHEDFLAG ==K hasReturnData orBool SCHEDFLAG ==K hasStaticCall )
-```
-
-```c++
 static const EVMSchedule ByzantiumSchedule = []
 {
     EVMSchedule schedule = EIP158Schedule;
@@ -2255,28 +2163,6 @@ static const EVMSchedule ByzantiumSchedule = []
     schedule.haveReturnData = true;
     schedule.haveStaticCall = true;
     schedule.blockRewardOverwrite = {3 * ether};
-    return schedule;
-}();
-```
-
-### Constantinople Schedule
-
-```{.k .uiuck .rvk}
-    syntax Schedule ::= "CONSTANTINOPLE"
- // ------------------------------------
-    rule Gblockhash < CONSTANTINOPLE > => 800
-    rule SCHEDCONST < CONSTANTINOPLE > => SCHEDCONST < BYZANTIUM >
-      requires SCHEDCONST =/=K Gblockhash
-
-    rule SCHEDFLAG << CONSTANTINOPLE >> => SCHEDFLAG << BYZANTIUM >>
-```
-
-```c++
-static const EVMSchedule ConstantinopleSchedule = []
-{
-    EVMSchedule schedule = ByzantiumSchedule;
-    schedule.blockhashGas = 800;
-    schedule.haveCreate2 = true;
     return schedule;
 }();
 ```
