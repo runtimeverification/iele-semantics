@@ -145,3 +145,4 @@ type intermediate_op = [
 ]
 
 val dasm_evm : string -> evm_op list
+val dasm_hex_string : string -> evm_op list

@@ -252,3 +252,7 @@ let dasm_evm str =
   in
   let res = List.rev (dasm_evm_aux str strlen 0 []) in
   res
+
+let dasm_hex_string evm =
+  let bytes = Hex.to_string (`Hex evm) in
+  dasm_evm bytes

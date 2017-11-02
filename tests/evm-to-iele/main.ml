@@ -1,8 +1,6 @@
 let pgm = try read_line () with End_of_file -> ""
 
-let bytes = Hex.to_string (`Hex pgm)
-
-let dasm = Evm.dasm_evm bytes
+let dasm = Evm.dasm_hex_string pgm
 
 let iele = Conversion.evm_to_iele dasm
 
