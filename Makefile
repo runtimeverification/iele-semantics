@@ -71,15 +71,15 @@ vm_tests=$(wildcard tests/VMTests/*/*/*.iele.json)
 blockchain_tests=$(wildcard tests/BlockchainTests/*/*/*/*.iele.json)
 all_tests=${vm_tests} ${blockchain_tests}
 skipped_tests=$(wildcard tests/VMTests/vmPerformance/*/*.json) \
-   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Frontier.json) \
-   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Homestead.json) \
-   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_EIP150.json) \
-   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_EIP158.json) \
-   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Constantinople.json) \
-   $(wildcard tests/BlockchainTests/GeneralStateTests/stQuadraticComplexityTest/*/*.json) \
-   $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Call50000*/*_Byzantium.json) \
-   $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Return50000*/*_Byzantium.json) \
-   $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Call1MB1024Calldepth_d1g0v0/*_Byzantium.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Frontier.iele.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Homestead.iele.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_EIP150.iele.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_EIP158.iele.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Constantinople.iele.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/stQuadraticComplexityTest/*/*.iele.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Call50000*/*_Byzantium.iele.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Return50000*/*_Byzantium.iele.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Call1MB1024Calldepth_d1g0v0/*_Byzantium.iele.json) \
 
 passing_tests=$(filter-out ${skipped_tests}, ${all_tests})
 passing_vm_tests=$(filter-out ${skipped_tests}, ${vm_tests})
