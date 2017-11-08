@@ -41,7 +41,6 @@ In the comments next to each cell, we've marked which component of the yellowpap
                     <callStack>     .List      </callStack>
                     <interimStates> .List      </interimStates>
                     <substateStack> .List      </substateStack>
-                    <callLog>       .Set       </callLog>
 
                     <callFrame>
                       <program>      .Map       </program>                 // I_b
@@ -1241,12 +1240,7 @@ These operations interact with the account storage.
 
 The various `CALL*` (and other inter-contract control flow) operations will be desugared into these `InternalOp`s.
 
--   The `callLog` is used to store the `CALL*`/`CREATE` operations so that we can compare them against the test-set.
-
 ```{.k .uiuck .rvk}
-    syntax Call ::= "{" Int "|" Int "|" Int "|" Ints "}"
- // ---------------------------------------------------------
-```
 
 -   `#call_____` takes the calling account, the account to execute as, the account whose code should execute, the gas limit, the amount to transfer, and the arguments.
 -   `#callWithCode______` takes the calling account, the accout to execute as, the code to execute (as a map), the gas limit, the amount to transfer, and the arguments.
@@ -1311,7 +1305,6 @@ The various `CALL*` (and other inter-contract control flow) operations will be d
           => #initVM(ARGS) ~> #if EXECMODE ==K VMTESTS #then #end #else #execute #fi
          ...
          </k>
-         <callLog> ... (.Set => #ifSet EXECMODE ==K VMTESTS #then SetItem({ ACCTTO | GLIMIT | VALUE | ARGS }) #else .Set #fi) </callLog>
          <callDepth> CD => CD +Int 1 </callDepth>
          <callData> _ => ARGS </callData>
          <callValue> _ => APPVALUE </callValue>
@@ -1488,7 +1481,6 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
          <programBytes> _ => INITCODE </programBytes>
          <jumpTable> _ => #computeJumpTable(#asMapOps(#dasmOps(INITCODE, SCHED))) </jumpTable>
          <caller> _ => ACCTFROM </caller>
-         <callLog> ... (.Set => #ifSet EXECMODE ==K VMTESTS #then SetItem({ 0 | OLDGAVAIL +Int GAVAIL | VALUE | #asUnsigned(INITCODE) .Regs }) #else .Set #fi) </callLog>
          <callDepth> CD => CD +Int 1 </callDepth>
          <callData> _ => .Regs </callData>
          <callValue> _ => VALUE </callValue>

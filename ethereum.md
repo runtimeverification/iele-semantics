@@ -42,7 +42,7 @@ For verification purposes, it's much easier to specify a program in terms of its
 To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a "pretti-fication" to the nicer input form.
 
 ```{.k .uiuck .rvk}
-    syntax JSON ::= Int | WordStack | Ops | Map | Call | SubstateLogEntry | Account
+    syntax JSON ::= Int | WordStack | Ops | Map | SubstateLogEntry | Account
  // -----------------------------------------------------------------------------------
 
     syntax JSONList ::= #sortJSONList ( JSONList )            [function]
@@ -667,9 +667,7 @@ Here we check the other post-conditions associated with an EVM test.
     rule check TESTID : { "callcreates" : CCREATES } => check "callcreates" : CCREATES ~> failure TESTID
  // ----------------------------------------------------------------------------------------------------
     rule check "callcreates" : { ("data" : (DATA:String)) , ("destination" : (ACCTTO:String)) , ("gasLimit" : (GLIMIT:String)) , ("value" : (VAL:String)) , .JSONList }
-      => check "callcreates" : { #parseAddr(ACCTTO) | 0 | #parseWord(VAL) | #parseHexWord(DATA) .Regs }
-    rule <k> check "callcreates" : C:Call => . ... </k> <callLog> CL </callLog> requires C in CL
-    rule <callLog> SetItem({ _ | GLIMIT => 0 | _ | _ }) ... </callLog> requires GLIMIT =/=Int 0
+      => .
 
     rule check TESTID : { "blockHeader" : BLOCKHEADER } => check "blockHeader" : BLOCKHEADER ~> failure TESTID
  // ----------------------------------------------------------------------------------------------------------
