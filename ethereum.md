@@ -330,63 +330,8 @@ State Manipulation
 ```{.k .uiuck .rvk}
     syntax EthereumCommand ::= "clear"
  // ----------------------------------
-    rule <k> clear => clearTX ~> clearBLOCK ~> clearNETWORK ... </k>
+    rule <k> clear => . ... </k>
          <analysis> _ => .Map </analysis>
-
-    syntax EthreumCommand ::= "clearTX"
- // -----------------------------------
-    rule <k> clearTX => . ... </k>
-         <output>       _ => .Regs      </output>
-         <memoryUsed>   _ => 0          </memoryUsed>
-         <callDepth>    _ => 0          </callDepth>
-         <callStack>    _ => .List      </callStack>
-         <callLog>      _ => .Set       </callLog>
-         <program>      _ => .Map       </program>
-         <programBytes> _ => .WordStack </programBytes>
-         <jumpTable>    _ => .Map       </jumpTable>
-         <id>           _ => 0          </id>
-         <caller>       _ => 0          </caller>
-         <callData>     _ => .Regs      </callData>
-         <callValue>    _ => 0          </callValue>
-         <regs>         _ => .Array     </regs>
-         <localMem>     _ => .Array     </localMem>
-         <pc>           _ => 0          </pc>
-         <gas>          _ => 0          </gas>
-         <previousGas>  _ => 0          </previousGas>
-         <selfDestruct> _ => .Set       </selfDestruct>
-         <log>          _ => .List      </log>
-         <refund>       _ => 0          </refund>
-         <gasPrice>     _ => 0          </gasPrice>
-         <origin>       _ => 0          </origin>
-
-    syntax EthreumCommand ::= "clearBLOCK"
- // --------------------------------------
-    rule <k> clearBLOCK => . ... </k>
-         <previousHash>      _ => 0             </previousHash>
-         <ommersHash>        _ => 0             </ommersHash>
-         <coinbase>          _ => 0             </coinbase>
-         <stateRoot>         _ => 0             </stateRoot>
-         <transactionsRoot>  _ => 0             </transactionsRoot>
-         <receiptsRoot>      _ => 0             </receiptsRoot>
-         <logsBloom>         _ => .WordStack    </logsBloom>
-         <difficulty>        _ => 0             </difficulty>
-         <number>            _ => 0             </number>
-         <gasLimit>          _ => 0             </gasLimit>
-         <gasUsed>           _ => 0             </gasUsed>
-         <timestamp>         _ => 0             </timestamp>
-         <extraData>         _ => .WordStack    </extraData>
-         <mixHash>           _ => 0             </mixHash>
-         <blockNonce>        _ => 0             </blockNonce>
-         <ommerBlockHeaders> _ => [ .JSONList ] </ommerBlockHeaders>
-         <blockhash>         _ => .List         </blockhash>
-
-    syntax EthreumCommand ::= "clearNETWORK"
- // ----------------------------------------
-    rule <k> clearNETWORK => . ... </k>
-         <activeAccounts> _ => .Map    </activeAccounts>
-         <accounts>       _ => .Bag    </accounts>
-         <messages>       _ => .Bag    </messages>
-         <schedule>       _ => DEFAULT </schedule>
 ```
 
 ### Loading State
