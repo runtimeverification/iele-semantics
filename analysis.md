@@ -32,20 +32,20 @@ We'll need to make summaries of the state which collect information about how mu
 -   `#endSummary` looks for an unfinished summary entry by the key `"gasAnalyze"` and performs the substraction necessary to state how much gas has been used since the corresponding `#beginSummary`.
 
 ```{.k .uiuck .rvk}
-    syntax Summary ::= "{" Int "|" Int "|" Int "}"
-                     | "{" Int "==>" Int "|" Int "|" Int "}"
+    syntax Summary ::= "{" Int "|" String "|" Int "|" Int "}"
+                     | "{" Int "==>" Int "|" String "==>" String "|" Int "|" Int "}"
  // --------------------------------------------------------
 
     syntax InternalOp ::= "#beginSummary"
  // -------------------------------------
-    rule <k> #beginSummary => . ... </k> <pc> PCOUNT </pc> <gas> GAVAIL </gas> <memoryUsed> MEMUSED </memoryUsed>
-         <analysis> ... "blocks" |-> ((.List => ListItem({ PCOUNT | GAVAIL | MEMUSED })) REST) ... </analysis>
+    rule <k> #beginSummary => . ... </k> <pc> PCOUNT </pc> <fid> FUNC </fid> <gas> GAVAIL </gas> <memoryUsed> MEMUSED </memoryUsed>
+         <analysis> ... "blocks" |-> ((.List => ListItem({ PCOUNT | FUNC | GAVAIL | MEMUSED })) REST) ... </analysis>
 
     syntax KItem ::= "#endSummary"
  // ------------------------------
     rule <k> (#end => .) ~> #endSummary ... </k>
-    rule <k> #endSummary => . ... </k> <pc> PCOUNT </pc> <gas> GAVAIL </gas> <memoryUsed> MEMUSED </memoryUsed>
-         <analysis> ... "blocks" |-> (ListItem({ PCOUNT1 | GAVAIL1 | MEMUSED1 } => { PCOUNT1 ==> PCOUNT | GAVAIL1 -Int GAVAIL | MEMUSED -Int MEMUSED1 }) REST) ... </analysis>
+    rule <k> #endSummary => . ... </k> <pc> PCOUNT </pc> <fid> FUNC </fid> <gas> GAVAIL </gas> <memoryUsed> MEMUSED </memoryUsed>
+         <analysis> ... "blocks" |-> (ListItem({ PCOUNT1 | FUNC1 | GAVAIL1 | MEMUSED1 } => { PCOUNT1 ==> PCOUNT | FUNC1 ==> FUNC | GAVAIL1 -Int GAVAIL | MEMUSED -Int MEMUSED1 }) REST) ... </analysis>
 ```
 
 -   In `GASANALYZE` mode, summaries of the state are taken at each `#gasBreaks` opcode, otherwise execution is as in `NORMAL`.
@@ -54,13 +54,17 @@ We'll need to make summaries of the state which collect information about how mu
     rule <mode> GASANALYZE </mode>
          <k> #next => #setMode NORMAL ~> #execTo #klabel(`#gasBreaks`) ~> #setMode GASANALYZE ... </k>
          <pc> PCOUNT </pc>
-         <program> ... PCOUNT |-> OP ... </program>
+         <fid> FUNC </fid>
+         <funcName> FUNC </funcName>
+         <instructions> ... PCOUNT |-> OP ... </instructions>
       requires notBool #gasBreaks(OP)
 
     rule <mode> GASANALYZE </mode>
          <k> #next => #endSummary ~> #setPC (PCOUNT +Int 1) ~> #setGas 1000000000 ~> #beginSummary ~> #next ... </k>
          <pc> PCOUNT </pc>
-         <program> ... PCOUNT |-> OP ... </program>
+         <fid> FUNC </fid>
+         <funcName> FUNC </funcName>
+         <instructions> ... PCOUNT |-> OP ... </instructions>
       requires #gasBreaks(OP)
 
     syntax Bool ::= #gasBreaks(OpCode) [function]

@@ -10,11 +10,9 @@ requires "verification.k"
 
 ```{.k .uiuck .rvk}
 requires "iele.k"
-requires "analysis.k"
 
 module ETHEREUM-SIMULATION
     imports IELE
-    imports IELE-ANALYSIS
 ```
 
 ```{.k .uiuck}
@@ -77,7 +75,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
  // ----------------------------------
     rule <mode> NORMAL     </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData>
     rule <mode> VMTESTS    </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData>
-    rule <mode> GASANALYZE </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #gasAnalyze ... </k> <callData> VALUES </callData>
+ // rule <mode> GASANALYZE </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #gasAnalyze ... </k> <callData> VALUES </callData>
 
     syntax EthereumCommand ::= "flush"
  // ----------------------------------
