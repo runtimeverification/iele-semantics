@@ -43,8 +43,21 @@ In the comments next to each cell, we've marked which component of the yellowpap
                     <substateStack> .List      </substateStack>
 
                     <callFrame>
-                      <program>      .Map       </program>                 // I_b
-                      <programBytes> .WordStack </programBytes>
+                      <program>
+                        <functions>
+                          <function multiplicity="*" type="Map">
+                            <funcName>     ""    </funcName>
+                            <nargs>        0     </nargs>
+                            <instructions> .Ops  </instructions>
+                            <jumpTable>    .Map  </jumpTable>
+                            <exported>     true </exported>
+                          </function>
+                        </functions>
+                        <funcNames>   .Set </funcNames>
+                        <constants>   .Map </constants>
+                        <nregs>       5    </nregs>
+                        <programSize> 0    </programSize>
+                      </program>
                       <callDepth>    0          </callDepth>
                       <jumpTable>    .Map       </jumpTable>
                       <localCalls>   .List      </localCalls>
@@ -428,13 +441,13 @@ Some checks if an opcode will throw an exception are relatively quick and done u
     syntax InternalOp ::= "#badJumpDest?" "[" Op "]"
  // ----------------------------------------------------
     rule <k> #badJumpDest? [ OP                        ] => . ... </k> requires notBool isJumpOp(#code(OP))
-    rule <k> #badJumpDest? [ JUMP (LABEL)              ] => . ... </k> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ LOCALCALL (LABEL,_,_) _ _ ] => . ... </k> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ JUMPI(LABEL) _            ] => . ... </k> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ JUMP (LABEL)              ] => . ... </k> <fid> FUNC </fid> <funcName> FUNC </funcName> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ LOCALCALL (LABEL,_,_) _ _ ] => . ... </k> <fid> FUNC </fid> <funcName> FUNC </funcName> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ JUMPI(LABEL) _            ] => . ... </k> <fid> FUNC </fid> <funcName> FUNC </funcName> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
 
-    rule <k> #badJumpDest? [ JUMP (LABEL)              ] => #exception ... </k> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ LOCALCALL (LABEL,_,_) _ _ ] => #exception ... </k> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ JUMPI(LABEL) _            ] => #exception ... </k> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ JUMP (LABEL)              ] => #exception ... </k> <fid> FUNC </fid> <funcName> FUNC </funcName> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ LOCALCALL (LABEL,_,_) _ _ ] => #exception ... </k> <fid> FUNC </fid> <funcName> FUNC </funcName> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ JUMPI(LABEL) _            ] => #exception ... </k> <fid> FUNC </fid> <funcName> FUNC </funcName> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
 ```
 
 -   `#static?` determines if the opcode should throw an exception due to the static flag.
@@ -1047,24 +1060,24 @@ The `JUMP*` family of operations affect the current program counter.
 
     syntax NullVoidOp ::= JUMP ( Int )
  // ----------------------------------
-    rule <k> JUMP(LABEL) => . ... </k> <jumpTable> ... LABEL |-> DEST </jumpTable> <pc> _ => DEST </pc>
+    rule <k> JUMP(LABEL) ~> _:Ops => CODE ... </k> <fid> FUNC </fid> <funcName> FUNC </funcName> <jumpTable> ... LABEL |-> CODE </jumpTable>
 
     syntax UnVoidOp ::= JUMPI ( Int )
  // ---------------------------------
-    rule <k> JUMPI(LABEL) I => . ... </k> <pc> _      => DEST          </pc> <jumpTable> ... LABEL |-> DEST </jumpTable> requires I =/=K 0
-    rule <k> JUMPI(LABEL) 0 => . ... </k> <pc> PCOUNT => PCOUNT +Int #opWidth(JUMPI(LABEL), NREGS) </pc> <nregs> NREGS </nregs>
+    rule <k> JUMPI(LABEL) I ~> _:Ops => CODE ... </k> <fid> FUNC </fid> <funcName> FUNC </funcName> <jumpTable> ... LABEL |-> CODE </jumpTable> requires I =/=K 0
+    rule <k> JUMPI(LABEL) 0          => .    ... </k>
 
-    syntax LocalCall ::= "{" Int "|" Regs "|" Array "}"
- // ---------------------------------------------------
+    syntax LocalCall ::= "{" Ops "|" String "|" Regs "|" Array "}"
+ // --------------------------------------------------------------
 
     syntax LocalCallOp ::= LOCALCALL ( Int , Int , Int )
  // ----------------------------------------------------
-    rule <k> LOCALCALL(LABEL, NARGS, NRETURNS) RETURNS ARGS => #load #regRange(NARGS) ARGS ... </k>
-         <jumpTable> ... LABEL |-> CALLDEST </jumpTable>
-         <pc> PCOUNT => CALLDEST </pc>
+    rule <k> LOCALCALL(LABEL, NARGS, NRETURNS) RETURNS ARGS ~> OPS:Ops => #load #regRange(NARGS) ARGS ~> #execute ... </k>
+         <constants> ... LABEL |-> FUNCTION(FUNC) </constants>
+         <fid> _ => FUNC </fid>
          <regs> REGS => .Array </regs>
          <nregs> NREGS </nregs>
-         <localCalls> .List => ListItem({ PCOUNT +Int #opWidth(LOCALCALL(LABEL, NARGS, NRETURNS), NREGS) | RETURNS | REGS }) ... </localCalls>
+         <localCalls> .List => ListItem({ OPS | FUNC | RETURNS | REGS }) ... </localCalls>
 ```
 
 ### `STOP`, `REVERT`, and `RETURN`
@@ -1081,10 +1094,10 @@ The `JUMP*` family of operations affect the current program counter.
          <output> _ => VALUES </output>
          <localCalls> .List </localCalls>
 
-    rule <k> RETURN(NRETURNS) VALUES => #load RETURNS VALUES ... </k>
-         <pc> _ => DEST </pc>
+    rule <k> RETURN(NRETURNS) VALUES ~> _:Ops => #load RETURNS VALUES ~> OPS ... </k>
+         <fid> _ => FUNC </fid>
          <regs> _ => REGS </regs>
-         <localCalls> ListItem({ DEST | RETURNS | REGS }) => .List ... </localCalls>
+         <localCalls> ListItem({ OPS | FUNC | RETURNS | REGS }) => .List ... </localCalls>
 
     syntax ReturnOp ::= REVERT ( Int )
  // ----------------------------------
@@ -1248,11 +1261,11 @@ The various `CALL*` (and other inter-contract control flow) operations will be d
 
 ```{.k .uiuck .rvk}
     syntax InternalOp ::= "#checkCall" Int Int
-                        | "#call" Int Int Int Int Int Int Ints Bool
-                        | "#callWithCode" Int Int Map WordStack Int Int Int Ints Bool
-                        | "#mkCall" Int Int Map WordStack Int Int Int Ints Bool
+                        | "#call" Int Int Int String Int Int Int Ints Bool
+                        | "#callWithCode" Int Int ProgramCell String Ops Int Int Int Ints Bool
+                        | "#mkCall" Int Int ProgramCell String Ops Int Int Int Ints Bool
  // --------------------------------------------------------------------------------
-    rule <k> #checkCall ACCT VALUE ~> #call _ _ _ GLIMIT _ _ _ _ => #refund GLIMIT ~> #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception ... </k>
+    rule <k> #checkCall ACCT VALUE ~> #call _ _ _ _ GLIMIT _ _ _ _ => #refund GLIMIT ~> #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception ... </k>
          <callDepth> CD </callDepth>
          <output> _ => .Regs </output>
          <account>
@@ -1271,37 +1284,38 @@ The various `CALL*` (and other inter-contract control flow) operations will be d
          </account>
       requires notBool (VALUE >Int BAL orBool CD >=Int 1024)
 
-    rule <k> #call ACCTFROM ACCTTO ACCTCODE GLIMIT VALUE APPVALUE ARGS STATIC
-          => #callWithCode ACCTFROM ACCTTO (0 |-> #precompiled(ACCTCODE)) .WordStack GLIMIT VALUE APPVALUE ARGS STATIC
+    rule <k> #call ACCTFROM ACCTTO ACCTCODE FUNC GLIMIT VALUE APPVALUE ARGS STATIC
+          => #callWithCode ACCTFROM ACCTTO #precompiled FUNC .Ops GLIMIT VALUE APPVALUE ARGS STATIC
          ...
          </k>
          <schedule> SCHED </schedule>
-      requires ACCTCODE in #precompiledAccounts(SCHED)
+      requires ACCTCODE ==Int #precompiledAccount
 
-    rule <k> #call ACCTFROM ACCTTO ACCTCODE GLIMIT VALUE APPVALUE ARGS STATIC
-          => #callWithCode ACCTFROM ACCTTO #asMapOps(#dasmOps(CODE, SCHED)) CODE GLIMIT VALUE APPVALUE ARGS STATIC
+    rule <k> #call ACCTFROM ACCTTO ACCTCODE FUNC GLIMIT VALUE APPVALUE ARGS STATIC
+          => #callWithCode ACCTFROM ACCTTO #loadCode(CODE, SIZE) FUNC CODE GLIMIT VALUE APPVALUE ARGS STATIC
          ...
          </k>
          <schedule> SCHED </schedule>
          <acctID> ACCTCODE </acctID>
          <code> CODE </code>
-      requires notBool ACCTCODE in #precompiledAccounts(SCHED)
+         <codeSize> SIZE </codeSize>
+      requires ACCTCODE =/=Int #precompiledAccount
 
-    rule <k> #call ACCTFROM ACCTTO ACCTCODE GLIMIT VALUE APPVALUE ARGS STATIC
-          => #callWithCode ACCTFROM ACCTTO .Map .WordStack GLIMIT VALUE APPVALUE ARGS STATIC
+    rule <k> #call ACCTFROM ACCTTO ACCTCODE FUNC GLIMIT VALUE APPVALUE ARGS STATIC
+          => #callWithCode ACCTFROM ACCTTO #loadCode(.Ops, 0) FUNC .Ops GLIMIT VALUE APPVALUE ARGS STATIC
          ...
          </k>
          <activeAccounts> ACCTS </activeAccounts>
          <schedule> SCHED </schedule>
-      requires notBool ACCTCODE in #precompiledAccounts(SCHED) andBool notBool ACCTCODE in_keys(ACCTS)
+      requires ACCTCODE =/=Int #precompiledAccount andBool notBool ACCTCODE in_keys(ACCTS)
 
-    rule #callWithCode ACCTFROM ACCTTO CODE BYTES GLIMIT VALUE APPVALUE ARGS STATIC
+    rule #callWithCode ACCTFROM ACCTTO CODE FUNC BYTES GLIMIT VALUE APPVALUE ARGS STATIC
       => #pushCallStack ~> #pushWorldState ~> #pushSubstate
       ~> #transferFunds ACCTFROM ACCTTO VALUE
-      ~> #mkCall ACCTFROM ACCTTO CODE BYTES GLIMIT VALUE APPVALUE ARGS STATIC
+      ~> #mkCall ACCTFROM ACCTTO CODE FUNC BYTES GLIMIT VALUE APPVALUE ARGS STATIC
 
     rule <mode> EXECMODE </mode>
-         <k> #mkCall ACCTFROM ACCTTO CODE BYTES GLIMIT VALUE APPVALUE ARGS STATIC:Bool
+         <k> #mkCall ACCTFROM ACCTTO CODE FUNC BYTES GLIMIT VALUE APPVALUE ARGS STATIC:Bool
           => #initVM(ARGS) ~> #if EXECMODE ==K VMTESTS #then #end #else #execute #fi
          ...
          </k>
@@ -1368,18 +1382,19 @@ The various `CALL*` (and other inter-contract control flow) operations will be d
 For each `CALL*` operation, we make a corresponding call to `#call` and a state-change to setup the custom parts of the calling environment.
 
 ```{.k .uiuck .rvk}
-    syntax CallOp ::= CallOpCode "(" Int "," Int ")"
-    syntax CallSixOp ::= CallSixOpCode "(" Int "," Int ")"
+    syntax CallOp ::= CallOpCode "(" Int "," Int "," Int ")"
+    syntax CallSixOp ::= CallSixOpCode "(" Int "," Int "," Int ")"
  // ------------------------------------------------------
 
     syntax CallOpCode ::= "CALL"
  // ----------------------------
-    rule <k> CALL(_,_) REG GCAP ACCTTO VALUE REGS ARGS
+    rule <k> CALL(LABEL,_,_) REG GCAP ACCTTO VALUE REGS ARGS
           => #checkCall ACCTFROM VALUE
-          ~> #call ACCTFROM ACCTTO ACCTTO Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, VALUE) VALUE VALUE ARGS false
+          ~> #call ACCTFROM ACCTTO ACCTTO FUNC Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, VALUE) VALUE VALUE ARGS false
           ~> #return REGS REG
          ...
          </k>
+         <constants> ... LABEL |-> FUNCTION(FUNC) </constants>
          <schedule> SCHED </schedule>
          <id> ACCTFROM </id>
          <localMem> LM </localMem>
@@ -1388,12 +1403,13 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
 
     syntax CallOpCode ::= "CALLCODE"
  // --------------------------------
-    rule <k> CALLCODE(_,_) REG GCAP ACCTTO VALUE REGS ARGS
+    rule <k> CALLCODE(LABEL,_,_) REG GCAP ACCTTO VALUE REGS ARGS
           => #checkCall ACCTFROM VALUE
-          ~> #call ACCTFROM ACCTFROM ACCTTO Ccallgas(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, VALUE) VALUE VALUE ARGS false
+          ~> #call ACCTFROM ACCTFROM ACCTTO FUNC Ccallgas(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, VALUE) VALUE VALUE ARGS false
           ~> #return REGS REG
          ...
          </k>
+         <constants> ... LABEL |-> FUNCTION(FUNC) </constants>
          <schedule> SCHED </schedule>
          <id> ACCTFROM </id>
          <localMem> LM </localMem>
@@ -1402,12 +1418,13 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
 
     syntax CallSixOpCode ::= "DELEGATECALL"
  // ---------------------------------------
-    rule <k> DELEGATECALL(_,_) REG GCAP ACCTTO REGS ARGS
+    rule <k> DELEGATECALL(LABEL,_,_) REG GCAP ACCTTO REGS ARGS
           => #checkCall ACCTFROM 0
-          ~> #call ACCTAPPFROM ACCTFROM ACCTTO Ccallgas(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, 0) 0 VALUE ARGS false
+          ~> #call ACCTAPPFROM ACCTFROM ACCTTO FUNC Ccallgas(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, 0) 0 VALUE ARGS false
           ~> #return REGS REG
          ...
          </k>
+         <constants> ... LABEL |-> FUNCTION(FUNC) </constants>
          <schedule> SCHED </schedule>
          <id> ACCTFROM </id>
          <caller> ACCTAPPFROM </caller>
@@ -1418,12 +1435,13 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
 
     syntax CallSixOpCode ::= "STATICCALL"
  // -------------------------------------
-    rule <k> STATICCALL(_,_) REG GCAP ACCTTO REGS ARGS
+    rule <k> STATICCALL(LABEL,_,_) REG GCAP ACCTTO REGS ARGS
           => #checkCall ACCTFROM 0
-          ~> #call ACCTFROM ACCTTO ACCTTO Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0) 0 0 ARGS true
+          ~> #call ACCTFROM ACCTTO ACCTTO FUNC Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0) 0 0 ARGS true
           ~> #return REGS REG
          ...
          </k>
+         <constants> ... LABEL |-> FUNCTION(FUNC) </constants>
          <schedule> SCHED </schedule>
          <id> ACCTFROM </id>
          <localMem> LM </localMem>
@@ -1605,20 +1623,25 @@ Precompiled Contracts
 
 ```{.k .uiuck .rvk}
     syntax NullVoidOp   ::= PrecompiledOp
-    syntax PrecompiledOp ::= #precompiled ( Int ) [function]
- // --------------------------------------------------------
-    rule #precompiled(1) => ECREC
-    rule #precompiled(2) => SHA256
-    rule #precompiled(3) => RIP160
-    rule #precompiled(4) => ID
-    rule #precompiled(5) => ECADD
-    rule #precompiled(6) => ECMUL
-    rule #precompiled(7) => ECPAIRING
+    syntax Int ::= "#precompiledAccount" [function]
+ // -----------------------------------------------
+    rule #precompiledAccount => 1
 
-    syntax Set ::= #precompiledAccounts ( Schedule ) [function]
- // -----------------------------------------------------------
-    rule #precompiledAccounts(DEFAULT) => SetItem(1) SetItem(2) SetItem(3) SetItem(4) SetItem(5) SetItem(6) SetItem(7)
-    rule #precompiledAccounts(ALBE) => #precompiledAccounts(DEFAULT)
+    syntax ProgramCell ::= "#precompiled" [function]
+ // ------------------------------------------------
+    rule #precompiled =>
+         <program>
+           <functions>
+             <function> <funcName> "ECREC"     </funcName> <instructions> ECREC;     .Ops </instructions> ... </function>
+             <function> <funcName> "SHA256"    </funcName> <instructions> SHA256;    .Ops </instructions> ... </function>
+             <function> <funcName> "RIP160"    </funcName> <instructions> RIP160;    .Ops </instructions> ... </function>
+             <function> <funcName> "ID"        </funcName> <instructions> ID;        .Ops </instructions> ... </function>
+             <function> <funcName> "ECADD"     </funcName> <instructions> ECADD;     .Ops </instructions> ... </function>
+             <function> <funcName> "ECMUL"     </funcName> <instructions> ECMUL;     .Ops </instructions> ... </function>
+             <function> <funcName> "ECPAIRING" </funcName> <instructions> ECPAIRING; .Ops </instructions> ... </function>
+           </functions>
+           ...
+         </program>
 ```
 
 -   `ECREC` performs ECDSA public key recovery.
@@ -1782,21 +1805,21 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     rule <k> #gasExec(SCHED, LOG3 _ WIDTH _ _ _)   => (Glog < SCHED > +Int (Glogdata < SCHED > *Int chop(WIDTH)) +Int (3 *Int Glogtopic < SCHED >)) ... </k>
     rule <k> #gasExec(SCHED, LOG4 _ WIDTH _ _ _ _) => (Glog < SCHED > +Int (Glogdata < SCHED > *Int chop(WIDTH)) +Int (4 *Int Glogtopic < SCHED >)) ... </k>
 
-    rule <k> #gasExec(SCHED, CALL(_,_) _ GCAP ACCTTO VALUE _ _) => Ccall(SCHED, ACCTTO,   ACCTS, GCAP, GAVAIL, VALUE) ... </k>
+    rule <k> #gasExec(SCHED, CALL(_,_,_) _ GCAP ACCTTO VALUE _ _) => Ccall(SCHED, ACCTTO,   ACCTS, GCAP, GAVAIL, VALUE) ... </k>
          <activeAccounts> ACCTS </activeAccounts>
          <gas> GAVAIL </gas>
 
-    rule <k> #gasExec(SCHED, CALLCODE(_,_) _ GCAP _ VALUE _ _) => Ccall(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, VALUE) ... </k>
+    rule <k> #gasExec(SCHED, CALLCODE(_,_,_) _ GCAP _ VALUE _ _) => Ccall(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, VALUE) ... </k>
          <id> ACCTFROM </id>
          <activeAccounts> ACCTS </activeAccounts>
          <gas> GAVAIL </gas>
 
-    rule <k> #gasExec(SCHED, DELEGATECALL(_,_) _ GCAP _ _ _) => Ccall(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, 0) ... </k>
+    rule <k> #gasExec(SCHED, DELEGATECALL(_,_,_) _ GCAP _ _ _) => Ccall(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, 0) ... </k>
          <id> ACCTFROM </id>
          <activeAccounts> ACCTS </activeAccounts>
          <gas> GAVAIL </gas>
 
-    rule <k> #gasExec(SCHED, STATICCALL(_,_) _ GCAP ACCTTO _ _) => Ccall(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0) ... </k>
+    rule <k> #gasExec(SCHED, STATICCALL(_,_,_) _ GCAP ACCTTO _ _) => Ccall(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0) ... </k>
          <activeAccounts> ACCTS </activeAccounts>
          <gas> GAVAIL </gas>
 
@@ -1809,7 +1832,7 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
            ...
          </account>
 
-    rule <k> #gasExec(SCHED, CREATE _ _ _ _) => Gcreate < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, CREATE(_,_) _ _ _) => Gcreate < SCHED > ... </k>
 
     rule <k> #gasExec(SCHED, SHA3 _ _ WIDTH) => Gsha3 < SCHED > +Int (Gsha3word < SCHED > *Int (chop(WIDTH) up/Int 32)) ... </k>
 
