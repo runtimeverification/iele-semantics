@@ -965,14 +965,8 @@ These operators make queries about the current execution state.
 
     syntax NullOp ::= "MSIZE" | "CODESIZE"
  // --------------------------------------
-    rule <k> MSIZE    REG => #load REG 32 *Int MU         ... </k> <memoryUsed> MU </memoryUsed>
-    rule <k> CODESIZE REG => #load REG #sizeWordStack(PGM) ... </k> <programBytes> PGM </programBytes>
-
-    syntax TernVoidOp ::= "CODECOPY"
- // --------------------------------
-    rule <k> CODECOPY MEMSTART PGMSTART WIDTH => . ... </k>
-         <programBytes> PGM </programBytes>
-         <localMem> LM => LM [ MEMSTART := PGM [ PGMSTART .. WIDTH ] ] </localMem>
+    rule <k> MSIZE    REG => #load REG 32 *Int MU ... </k> <memoryUsed> MU </memoryUsed>
+    rule <k> CODESIZE REG => #load REG SIZE       ... </k> <programSize> SIZE </programSize>
 
     syntax UnOp ::= "BLOCKHASH"
  // ---------------------------
