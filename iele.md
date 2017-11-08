@@ -943,9 +943,8 @@ Expression calculations are simple and don't require anything but the arguments 
 These operators make queries about the current execution state.
 
 ```{.k .uiuck .rvk}
-    syntax NullOp ::= "PC" | "GAS" | "GASPRICE" | "GASLIMIT"
- // --------------------------------------------------------
-    rule <k> PC       REG => #load REG PCOUNT ... </k> <pc> PCOUNT </pc>
+    syntax NullOp ::= "GAS" | "GASPRICE" | "GASLIMIT"
+ // -------------------------------------------------
     rule <k> GAS      REG => #load REG GAVAIL ... </k> <gas> GAVAIL </gas>
     rule <k> GASPRICE REG => #load REG GPRICE ... </k> <gasPrice> GPRICE </gasPrice>
     rule <k> GASLIMIT REG => #load REG GLIMIT ... </k> <gasLimit> GLIMIT </gasLimit>
@@ -1804,7 +1803,6 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     rule <k> #gasExec(SCHED, NUMBER _)         => Gbase < SCHED > ... </k>
     rule <k> #gasExec(SCHED, DIFFICULTY _)     => Gbase < SCHED > ... </k>
     rule <k> #gasExec(SCHED, GASLIMIT _)       => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, PC _)             => Gbase < SCHED > ... </k>
     rule <k> #gasExec(SCHED, MSIZE _)          => Gbase < SCHED > ... </k>
     rule <k> #gasExec(SCHED, GAS _)            => Gbase < SCHED > ... </k>
 
