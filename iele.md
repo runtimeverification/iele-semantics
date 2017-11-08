@@ -526,7 +526,7 @@ Some of them require an argument to be interpereted as an address (modulo 160 bi
  // -------------------------------------------------
     rule #addr?(BALANCE REG W)                       => BALANCE REG #addr(W)
     rule #addr?(EXTCODESIZE REG W)                   => EXTCODESIZE REG #addr(W)
-    rule #addr?(EXTCODECOPY W0 W1 W2 W3)             => EXTCODECOPY #addr(W0) W1 W2 W3
+    rule #addr?(O:CopyCreateOp REG W0 W1 REGS1)      => O REG #addr(W0) W1 REGS1
     rule #addr?(SELFDESTRUCT W)                      => SELFDESTRUCT #addr(W)
     rule #addr?(CSO:CallSixOp REG W0 W1 REGS1 REGS2) => CSO REG W0 #addr(W1) REGS1 REGS2
     rule #addr?(CO:CallOp REG W0 W1 W2 REGS1 REGS2)  => CO  REG W0 #addr(W1) W2 REGS1 REGS2
@@ -1112,25 +1112,6 @@ For now, I assume that they instantiate an empty account and use the empty data.
          </account>
 
     rule <k> EXTCODESIZE REG ACCT => #newAccount ACCT ~> #load REG 0 ... </k>
-         <activeAccounts> ACCTS </activeAccounts>
-      requires notBool ACCT in_keys(ACCTS)
-```
-
-TODO: What should happen in the case that the account doesn't exist with `EXTCODECOPY`?
-Should we pad zeros (for the copied "program")?
-
-```{.k .uiuck .rvk}
-    syntax QuadVoidOp ::= "EXTCODECOPY"
- // -----------------------------------
-    rule <k> EXTCODECOPY ACCT MEMSTART PGMSTART WIDTH => . ... </k>
-         <localMem> LM => LM [ MEMSTART := PGM [ PGMSTART .. WIDTH ] ] </localMem>
-         <account>
-           <acctID> ACCT </acctID>
-           <code> PGM </code>
-           ...
-         </account>
-
-    rule <k> EXTCODECOPY ACCT MEMSTART PGMSTART WIDTH => #newAccount ACCT ... </k>
          <activeAccounts> ACCTS </activeAccounts>
       requires notBool ACCT in_keys(ACCTS)
 ```
@@ -1736,11 +1717,6 @@ In the yellowpaper, each opcode is defined to consume zero gas unless specified 
     rule #memory ( LOG3 START WIDTH _ _ _   , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
     rule #memory ( LOG4 START WIDTH _ _ _ _ , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
 
-    rule #memory ( CODECOPY START _ WIDTH       , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
-    rule #memory ( EXTCODECOPY _ START _ WIDTH  , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
-
-    rule #memory ( CREATE _ _ START WIDTH , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
-
     rule #memory(_, MU) => MU [owise]
 
     syntax Int ::= #memoryUsageUpdate ( Int , Int , Int ) [function]
@@ -1770,8 +1746,6 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     rule <k> #gasExec(SCHED, EXP _ W0 0)  => Gexp < SCHED > ... </k>
     rule <k> #gasExec(SCHED, EXP _ W0 W1) => Gexp < SCHED > +Int (Gexpbyte < SCHED > *Int (1 +Int (log256Int(W1)))) ... </k> requires W1 =/=K 0
 
-    rule <k> #gasExec(SCHED, CODECOPY        _ _ WIDTH) => Gverylow     < SCHED > +Int (Gcopy < SCHED > *Int (chop(WIDTH) up/Int 32)) ... </k>
-    rule <k> #gasExec(SCHED, EXTCODECOPY   _ _ _ WIDTH) => Gextcodecopy < SCHED > +Int (Gcopy < SCHED > *Int (chop(WIDTH) up/Int 32)) ... </k>
 
     rule <k> #gasExec(SCHED, LOG0 _ WIDTH)         => (Glog < SCHED > +Int (Glogdata < SCHED > *Int chop(WIDTH)) +Int (0 *Int Glogtopic < SCHED >)) ... </k>
     rule <k> #gasExec(SCHED, LOG1 _ WIDTH _)       => (Glog < SCHED > +Int (Glogdata < SCHED > *Int chop(WIDTH)) +Int (1 *Int Glogtopic < SCHED >)) ... </k>
