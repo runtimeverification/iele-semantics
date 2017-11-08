@@ -311,10 +311,10 @@ Here all `OpCode`s are subsorted into `KItem` (allowing sequentialization), and 
 
 ```{.k .uiuck .rvk}
     syntax KItem  ::= OpCode
-    syntax Op ::= InternalOp
+    syntax Op ::= InternalOp | HeaderOp
     syntax OpCode ::= NullOp | NullVoidOp | UnOp | UnVoidOp | BinOp | BinVoidOp | TernOp
                     | TernVoidOp | QuadVoidOp | FiveVoidOp | SixVoidOp | CallOp | CallSixOp
-                    | LocalCallOp | ReturnOp
+                    | LocalCallOp | ReturnOp | CreateOp | CopyCreateOp | HeaderOp
  // ---------------------------------------------------------------------------------------
 ```
 
@@ -409,8 +409,9 @@ Some checks if an opcode will throw an exception are relatively quick and done u
     rule #changesState(LOG3, _, _) => true
     rule #changesState(LOG4, _, _) => true
     rule #changesState(SSTORE, _, _) => true
-    rule #changesState(_, CALL(_,_) _ _ _ VALUE _ _, _) => true requires VALUE =/=Int 0
-    rule #changesState(CREATE, _, _) => true
+    rule #changesState(_, CALL(_,_,_) _ _ _ VALUE _ _, _) => true requires VALUE =/=Int 0
+    rule #changesState(CREATE(_,_), _, _) => true
+    rule #changesState(COPYCREATE(_), _, _) => true
     rule #changesState(SELFDESTRUCT, _, _) => true
     rule #changesState(...) => false [owise]
 ```
@@ -496,6 +497,13 @@ Some of them require an argument to be interpereted as an address (modulo 160 bi
     context #exec [ _::LocalCallOp _ HOLE:Regs ]
     context #exec [ _::ReturnOp HOLE:Regs ]
 
+    context #exec [ _::CreateOp _ HOLE:Reg _  ]
+    context #exec [ _::CreateOp _ _ HOLE:Regs ]
+
+    context #exec [ _::CopyCreateOp _ HOLE:Reg _ _  ]
+    context #exec [ _::CopyCreateOp _ _ HOLE:Reg _  ]
+    context #exec [ _::CopyCreateOp _ _ _ HOLE:Regs ]
+
     syntax Op ::= LoadedOp
 
     syntax LoadedOp ::= UnOp Reg Int                           [klabel(unOp)]
@@ -509,6 +517,8 @@ Some of them require an argument to be interpereted as an address (modulo 160 bi
                       | SixVoidOp Int Int Int Int Int Int      [klabel(sixVoidOp)]
                       | CallSixOp Reg Int Int Regs Ints        [klabel(callSixOp)]
                       | CallOp Reg Int Int Int Regs Ints       [klabel(callOp)]
+                      | CreateOp Reg Int Ints                  [klabel(createOp)]
+                      | CopyCreateOp Reg Int Int Ints          [klabel(copyCreateOp)]
                       | LocalCallOp Regs Ints                  [klabel(localCallOp)]
                       | ReturnOp Ints                          [klabel(returnOp)]
 
@@ -1382,11 +1392,11 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
 -   `#codeDeposit_` checks the result of initialization code and whether the code deposit can be paid, indicating an error if not.
 
 ```{.k .uiuck .rvk}
-    syntax InternalOp ::= "#create" Int Int Int Int WordStack
-                        | "#mkCreate" Int Int WordStack Int Int
+    syntax InternalOp ::= "#create" Int Int Int Int Ops Int Ints
+                        | "#mkCreate" Int Int Ops Int Int Int Ints
                         | "#checkCreate" Int Int
  // --------------------------------------------
-    rule <k> #checkCreate ACCT VALUE ~> #create _ _ GAVAIL _ _ => #refund GAVAIL ~> #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception ... </k>
+    rule <k> #checkCreate ACCT VALUE ~> #create _ _ GAVAIL _ _ _ _ => #refund GAVAIL ~> #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception ... </k>
          <callDepth> CD </callDepth>
          <output> _ => .Regs </output>
          <account>
@@ -1408,23 +1418,21 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
          <activeAccounts> ... ACCT |-> (EMPTY => #if EXECMODE ==K VMTESTS #then EMPTY #else false #fi) ... </activeAccounts>
       requires notBool (VALUE >Int BAL orBool CD >=Int 1024)
 
-    rule #create ACCTFROM ACCTTO GAVAIL VALUE INITCODE
+    rule #create ACCTFROM ACCTTO GAVAIL VALUE CODE SIZE ARGS
       => #pushCallStack ~> #pushWorldState ~> #pushSubstate
       ~> #newAccount ACCTTO
       ~> #transferFunds ACCTFROM ACCTTO VALUE
-      ~> #mkCreate ACCTFROM ACCTTO INITCODE GAVAIL VALUE
+      ~> #mkCreate ACCTFROM ACCTTO CODE SIZE GAVAIL VALUE ARGS
 
     rule <mode> EXECMODE </mode>
-         <k> #mkCreate ACCTFROM ACCTTO INITCODE GAVAIL VALUE
-          => #initVM(.Regs) ~> #if EXECMODE ==K VMTESTS #then #end #else #execute #fi
+         <k> #mkCreate ACCTFROM ACCTTO CODE LEN GAVAIL VALUE ARGS
+          => #initVM(ARGS) ~> #if EXECMODE ==K VMTESTS #then #end #else #execute #fi
          ...
          </k>
          <schedule> SCHED </schedule>
          <id> ACCT => ACCTTO </id>
          <gas> OLDGAVAIL => GAVAIL </gas>
-         <program> _ => #asMapOps(#dasmOps(INITCODE, SCHED)) </program>
-         <programBytes> _ => INITCODE </programBytes>
-         <jumpTable> _ => #computeJumpTable(#asMapOps(#dasmOps(INITCODE, SCHED))) </jumpTable>
+         (<program> _ </program> => #loadCode(CODE, LEN))
          <caller> _ => ACCTFROM </caller>
          <callDepth> CD => CD +Int 1 </callDepth>
          <callData> _ => .Regs </callData>
@@ -1436,39 +1444,33 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
          </account>
          <activeAccounts> ... ACCTTO |-> (EMPTY => false) ... </activeAccounts>
 
-    syntax KItem ::= "#codeDeposit" Int Reg
-                   | "#mkCodeDeposit" Int Reg
-                   | "#finishCodeDeposit" Int Int Int Reg
+    syntax KItem ::= "#codeDeposit" Int Int Ops Reg
+                   | "#mkCodeDeposit" Int Int Ops Reg
+                   | "#finishCodeDeposit" Int Ops Reg
  // -------------------------------------------------------
-    rule <k> #exception ~> #codeDeposit _ REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG 0 ... </k> <output> _ => .Regs </output>
-    rule <k> #revert ~> #codeDeposit _ REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #refund GAVAIL ~> #load REG 0 ... </k>
+    rule <k> #exception ~> #codeDeposit _ _ _ REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG 0 ... </k> <output> _ => .Regs </output>
+    rule <k> #revert ~> #codeDeposit _ _ _ REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #refund GAVAIL ~> #load REG 0 ... </k>
          <gas> GAVAIL </gas>
 
     rule <mode> EXECMODE </mode>
-         <k> #end ~> #codeDeposit ACCT REG => #mkCodeDeposit ACCT REG ... </k>
+         <k> #end ~> #codeDeposit ACCT LEN CODE REG => #mkCodeDeposit ACCT LEN CODE REG ... </k>
 
-    rule <k> #mkCodeDeposit _ _ ... </k>
-         <output> .Regs => 0 .Regs </output>
-
-    rule <k> #mkCodeDeposit ACCT REG
-          => #if EXECMODE ==K VMTESTS #then . #else Gcodedeposit < SCHED > *Int #sizeWordStack(#asUnsignedBytes(CODE)) ~> #deductGas #fi
-          ~> #finishCodeDeposit ACCT #sizeWordStack(#asUnsignedBytes(CODE)) CODE REG
+    rule <k> #mkCodeDeposit ACCT LEN CODE REG
+          => #if EXECMODE ==K VMTESTS #then . #else Gcodedeposit < SCHED > *Int LEN ~> #deductGas #fi
+          ~> #finishCodeDeposit ACCT CODE REG
          ...
          </k>
          <mode> EXECMODE </mode>
          <schedule> SCHED </schedule>
-         <output> CODE .Regs => .Regs </output>
-      requires #sizeWordStack(#asUnsignedBytes(CODE)) <=Int maxCodeSize < SCHED >
+         <output> .Regs </output>
+      requires LEN <=Int maxCodeSize < SCHED >
 
-    rule <k> #mkCodeDeposit ACCT REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG 0 ... </k>
+    rule <k> #mkCodeDeposit ACCT LEN _ REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG 0 ... </k>
          <schedule> SCHED </schedule>
-         <output> CODE .Regs => .Regs </output>
-      requires #sizeWordStack(#asUnsignedBytes(CODE)) >Int maxCodeSize < SCHED >
+         <output> .Regs </output>
+      requires LEN >Int maxCodeSize < SCHED >
 
-    rule <k> #mkCodeDeposit ACCT REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG 0 ... </k>
-         <output> _ _ _ => .Regs </output>
-
-    rule <k> #finishCodeDeposit ACCT LEN CODE REG
+    rule <k> #finishCodeDeposit ACCT CODE REG
           => #popCallStack ~> #if EXECMODE ==K VMTESTS #then #popWorldState #else #dropWorldState #fi ~> #dropSubstate
           ~> #refund GAVAIL ~> #load REG ACCT
          ...
@@ -1477,23 +1479,43 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
          <gas> GAVAIL </gas>
          <account>
            <acctID> ACCT </acctID>
-           <code> _ => #padToWidth(LEN, #asUnsignedBytes(CODE)) </code>
+           <code> _ => CODE </code>
            ...
          </account>
-         <activeAccounts> ... ACCT |-> (EMPTY => #if LEN =/=Int 0 #then false #else EMPTY #fi) ... </activeAccounts>
+         <activeAccounts> ... ACCT |-> (EMPTY => #if CODE =/=K .Ops #then false #else EMPTY #fi) ... </activeAccounts>
 
-    rule <k> #exception ~> #finishCodeDeposit _ _ _ REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG 0 ... </k>
+    rule <k> #exception ~> #finishCodeDeposit _ _ REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG 0 ... </k>
 ```
 
 `CREATE` will attempt to `#create` the account using the initialization code and cleans up the result with `#codeDeposit`.
 
 ```{.k .uiuck .rvk}
-    syntax TernOp ::= "CREATE"
- // --------------------------
-    rule <k> CREATE REG VALUE MEMSTART MEMWIDTH
+    syntax CreateOp ::= CREATE ( Int , Int )
+    syntax Contract ::= "{" Ops "|" Int "}"
+ // ---------------------------------------
+    rule <k> CREATE(LABEL,_) REG VALUE ARGS
           => #checkCreate ACCT VALUE
-          ~> #create ACCT #newAddr(ACCT, NONCE) #ifInt Gstaticcalldepth << SCHED >> #then GAVAIL #else #allBut64th(GAVAIL) #fi VALUE #range(LM, MEMSTART, MEMWIDTH)
-          ~> #codeDeposit #newAddr(ACCT, NONCE) REG
+          ~> #create ACCT #newAddr(ACCT, NONCE) #ifInt Gstaticcalldepth << SCHED >> #then GAVAIL #else #allBut64th(GAVAIL) #fi VALUE CODE LEN ARGS
+          ~> #codeDeposit #newAddr(ACCT, NONCE) LEN CODE REG
+         ...
+         </k>
+         <constants> ... LABEL |-> CONTRACT(CODE, LEN) </constants>
+         <schedule> SCHED </schedule>
+         <id> ACCT </id>
+         <gas> GAVAIL => #ifInt Gstaticcalldepth << SCHED >> #then 0 #else GAVAIL /Int 64 #fi </gas>
+         <localMem> LM </localMem>
+         <account>
+           <acctID> ACCT </acctID>
+           <nonce> NONCE </nonce>
+           ...
+         </account>
+
+    syntax CopyCreateOp ::= COPYCREATE ( Int )
+ // ------------------------------------------
+    rule <k> COPYCREATE(_) REG ACCTCODE VALUE ARGS
+          => #checkCreate ACCT VALUE
+          ~> #create ACCT #newAddr(ACCT, NONCE) #ifInt Gstaticcalldepth << SCHED >> #then GAVAIL #else #allBut64th(GAVAIL) #fi VALUE CODE LEN ARGS
+          ~> #codeDeposit #newAddr(ACCT, NONCE) LEN CODE REG
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -1503,6 +1525,31 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
          <account>
            <acctID> ACCT </acctID>
            <nonce> NONCE </nonce>
+           ...
+         </account>
+         <account>
+           <acctID> ACCTCODE </acctID>
+           <code> CODE </code>
+           <codeSize> LEN </codeSize>
+           ...
+         </account>
+         requires ACCT =/=Int ACCTCODE
+
+    rule <k> COPYCREATE(_) REG ACCT VALUE ARGS
+          => #checkCreate ACCT VALUE
+          ~> #create ACCT #newAddr(ACCT, NONCE) #ifInt Gstaticcalldepth << SCHED >> #then GAVAIL #else #allBut64th(GAVAIL) #fi VALUE CODE LEN ARGS
+          ~> #codeDeposit #newAddr(ACCT, NONCE) LEN CODE REG
+         ...
+         </k>
+         <schedule> SCHED </schedule>
+         <id> ACCT </id>
+         <gas> GAVAIL => #ifInt Gstaticcalldepth << SCHED >> #then 0 #else GAVAIL /Int 64 #fi </gas>
+         <localMem> LM </localMem>
+         <account>
+           <acctID> ACCT </acctID>
+           <nonce> NONCE </nonce>
+           <code> CODE </code>
+           <codeSize> LEN </codeSize>
            ...
          </account>
 ```
