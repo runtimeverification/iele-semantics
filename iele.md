@@ -812,10 +812,11 @@ We use `INVALID` both for marking the designated invalid operator and for garbag
 ### Program Header
 
 ```{.k .uiuck .rvk}
-    syntax NullVoidOp ::= REGISTERS(Int)
- // ------------------------------------
-    rule <k> REGISTERS(NREGS) => .          ... </k> <pc>      0 </pc> <nregs> _ => NREGS </nregs>
-    rule <k> REGISTERS(NREGS) => #exception ... </k> <pc> PCOUNT </pc> requires PCOUNT =/=K 0
+    syntax HeaderOp ::= REGISTERS ( Int )
+                      | CALLDEST ( Int , Int )
+                      | ConstantOp
+    syntax ConstantOp ::= FUNCTION ( String )
+                        | CONTRACT ( Ops , Int )
 ```
 
 ### Register Manipulations
@@ -1790,7 +1791,6 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     // Wzero
     rule <k> #gasExec(SCHED, STOP)         => Gzero < SCHED > ... </k>
     rule <k> #gasExec(SCHED, REVERT(_) _)  => Gzero < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, REGISTERS(_)) => Gzero < SCHED > ... </k>
 
     // Wbase
     rule <k> #gasExec(SCHED, ADDRESS _)        => Gbase < SCHED > ... </k>
