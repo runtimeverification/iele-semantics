@@ -60,6 +60,9 @@ type iele_opcode = [
 | `JUMPI of int
 | `JUMPDEST of int
 | `REGISTERS of int
+| `CALLDEST of int * int
+| `EXTCALLDEST of int * int
+| `FUNCTION of string
 | `LOG of int
 | `CREATE
 | `CALL of int * int
@@ -141,6 +144,9 @@ let asm_iele_opcode op = match op with
 | `JUMP i -> "\x64" ^ (IeleUtil.be_int_width (Z.of_int i) 16)
 | `JUMPI i -> "\x65" ^ (IeleUtil.be_int_width (Z.of_int i) 16)
 | `JUMPDEST i -> "\x66" ^ (IeleUtil.be_int_width (Z.of_int i) 16)
+| `CALLDEST (lbl,args) -> "\x67" ^ (IeleUtil.be_int_width (Z.of_int lbl) 16) ^ (IeleUtil.be_int_width (Z.of_int args) 16)
+| `EXTCALLDEST (lbl,args) -> "\x68" ^ (IeleUtil.be_int_width (Z.of_int lbl) 16) ^ (IeleUtil.be_int_width (Z.of_int args) 16)
+| `FUNCTION (name) -> "\x69" ^ (IeleUtil.be_int_width (Z.of_int (String.length name)) 16) ^ name
 | `LOG(n) ->
   let byte = 0xa0 + n in
   let ch = Char.chr byte in

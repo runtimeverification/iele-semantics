@@ -60,6 +60,9 @@ type iele_opcode = [
 | `JUMPI of int
 | `JUMPDEST of int
 | `REGISTERS of int
+| `CALLDEST of int * int
+| `EXTCALLDEST of int * int
+| `FUNCTION of string
 | `LOG of int
 | `CREATE
 | `CALL of int * int

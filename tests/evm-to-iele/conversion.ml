@@ -131,7 +131,7 @@ let compute_cfg (intermediate: intermediate_op list) : evm_graph =
       delta := 0
     )) intermediate;
   let component = List.rev !rev_component in
-  output := (!max_needed,component,Fallthrough) :: !output;
+  output := (!max_needed,component @ [`STOP],Halt) :: !output;
   List.filter (fun (_,ops,_) -> ops <> []) (List.rev !output)
 
 type iele_block = {pre: int list; ops: iele_op list; post: int list; successors: successor}
@@ -516,6 +516,8 @@ let aux opcode = match opcode with
 | `JUMPI(lbl) -> `JUMPI(find lbl)
 | `JUMPDEST(lbl) -> `JUMPDEST(find lbl)
 | `LOCALCALL(lbl,a,r) -> `LOCALCALL(find lbl,a,r)
+| `CALLDEST(lbl,a) -> `CALLDEST(find lbl,a)
+| `EXTCALLDEST(lbl,a) -> `EXTCALLDEST(find lbl,a)
 | _ -> opcode
 in match op with
 | Nop -> Nop
@@ -582,10 +584,82 @@ let expand_phi ((graph,regcount) : iele_graph * int) : iele_graph * int =
   let new_graph = recompute_graph graph in
   new_graph,!regcount
 
+let add_calldest ((graph,regcount) : iele_graph * int) : iele_graph * int =
+  let all_calls = List.flatten (List.map (fun ({successors=succ;_}  : iele_block) ->
+      match succ with
+      | Call {ret_addr=addr;_} | Calli { ret_addr=addr;_} -> [addr]
+      | Jump _ | Jumpi _ | Fallthrough | Halt | Return -> []
+  ) graph) in
+  let new_graph = List.map (fun (({pre=pre_stack;ops=ops;_} : iele_block) as component) ->
+      match ops with
+      | VoidOp(`JUMPDEST(lbl),[]) :: _ -> 
+        if not (List.mem lbl all_calls) then component else
+        {component with ops=VoidOp(`CALLDEST(lbl,List.length pre_stack),[]) :: (List.tl ops)}
+      | _ -> component
+  ) graph in
+  new_graph,regcount
+
+let get_block_id annotated_graph pc =
+  let targets = List.filter (fun component -> match component.ops with
+      | VoidOp(`JUMPDEST(lbl),[]) :: _ -> pc = lbl
+      | _ -> false
+  ) annotated_graph in
+  match targets with
+  | [{id=idx;_}] -> idx
+  | [] -> raise Not_found
+  | _ -> failwith "invalid jump label with multiple JUMPDESTs"
+
+let resolve_functions ((graph,regcount) : iele_graph * int) : iele_graph * int =
+  let annotated_graph = annotate_graph_with_predecessors graph in
+  match annotated_graph with
+  | [] -> [], regcount
+  | main_entry_block :: tl ->
+    let real_main_entry_block = {main_entry_block with ops = VoidOp(`EXTCALLDEST(0, 2), []) :: main_entry_block.ops } in
+    let is_entry component = match component.ops with
+    | VoidOp(`CALLDEST(_,_), []) :: _ -> true
+    | _ -> false
+    in
+    let compute_closure entry_block =
+      let visited = ref IntSet.empty in
+      let queue = ref [entry_block] in
+      let result = ref [] in
+      while !queue <> [] do
+        let curr_block = List.hd !queue in
+        queue := List.tl !queue;
+        if IntSet.mem curr_block.id !visited then () else begin
+          visited := IntSet.add curr_block.id !visited;
+          result := curr_block :: !result;
+          match curr_block.successors with
+          | Fallthrough ->
+            queue := List.nth annotated_graph (curr_block.id + 1) :: !queue
+          | Halt | Return -> ()
+          | Call {ret_block=idx;_} ->
+            queue := List.nth annotated_graph idx :: !queue
+          | Calli {ret_block=idx;_} ->
+            (try queue := List.nth annotated_graph idx :: !queue with Invalid_argument _ -> ());
+             queue := List.nth annotated_graph (curr_block.id + 1) :: !queue
+          | Jump pc ->
+            (try queue := List.nth annotated_graph (get_block_id annotated_graph pc) :: !queue with Not_found -> ())
+          | Jumpi pc ->
+            (try queue := List.nth annotated_graph (get_block_id annotated_graph pc) :: !queue with Not_found -> ());
+            queue := List.nth annotated_graph (curr_block.id + 1) :: !queue
+        end
+      done;
+      List.rev !result
+    in
+    let entry_blocks = List.filter is_entry tl in
+    let main_func = compute_closure real_main_entry_block in
+    let other_funcs = List.map compute_closure entry_blocks in
+    let annotated_blocks = main_func @ (List.flatten other_funcs) in
+    let result = List.map (fun {pre=pre_stack;ops=ops;post=post_stack;successors=succ;_} -> {pre=pre_stack;ops=ops;post=post_stack;successors=succ}) annotated_blocks in
+    result, regcount
+
+type finalized_block = iele_op list * successor
+
 let resolve_phi ((graph,regcount) : iele_graph * int) : iele_op list list =
   let annotated_graph = annotate_graph_with_predecessors graph in
   let phi_web = IeleUtil.UnionFind.create regcount in
-  let preprocessed_graph = List.map (fun {id=idx;predecessors=predecessors;pre=pre_stack;ops=ops;post=post_stack;_} ->
+  let preprocessed_graph = List.map (fun {id=idx;predecessors=predecessors;pre=pre_stack;ops=ops;post=post_stack;successors=succ} ->
     let incoming_edges = get_incoming_edges predecessors annotated_graph idx in
     let is_target = match ops with
     | VoidOp(`JUMPDEST(_),_) :: _ -> true
@@ -609,7 +683,8 @@ let alloc_registers (ops: iele_op list) : iele_op list =
   Hashtbl.add regs 0 0;
   Hashtbl.add regs 1 1;
   let regcount = ref 2 in
-  let lblcount = ref 0 in
+  let lblcount = ref 2 in
+  Hashtbl.add lbls 0 1;
   let reg_ops = List.map (replace_registers (fun reg -> try Hashtbl.find regs reg with Not_found -> let new_reg = !regcount in Hashtbl.add regs reg new_reg; regcount := new_reg + 1; new_reg)) ops in
   let lbl_ops = List.map (replace_labels (fun lbl -> try Hashtbl.find lbls lbl with Not_found -> let new_lbl = !lblcount in Hashtbl.add lbls lbl new_lbl; lblcount := new_lbl + 1; new_lbl)) reg_ops in
   let all_labels = Hashtbl.fold (fun _ v set -> IntSet.add v set) lbls IntSet.empty in
@@ -622,7 +697,7 @@ let alloc_registers (ops: iele_op list) : iele_op list =
     regbits := !regbits + 1;
     regcount := !regcount asr 1
   done;
-  VoidOp(`REGISTERS !regbits,[]) :: (lbl_ops @ (VoidOp(`STOP, []) :: dangling_jumpdests))
+  VoidOp(`REGISTERS !regbits,[]) :: VoidOp(`FUNCTION("init"),[]) :: VoidOp(`FUNCTION("main"),[]) :: VoidOp(`EXTCALLDEST(0, 0), []) :: (lbl_ops @ dangling_jumpdests) 
 
 let max_val = Z.sub (Z.shift_left Z.one 255) Z.one
 
@@ -652,7 +727,9 @@ let evm_to_iele (evm:evm_op list) : iele_op list =
   let with_calls_found = identify_calls with_registers in
   let with_calls = convert_to_call_return with_calls_found in
   let expanded = expand_phi with_calls in
-  let resolved = resolve_phi expanded in
+  let with_calldest = add_calldest expanded in
+  let with_functions = resolve_functions with_calldest in
+  let resolved = resolve_phi with_functions in
   let flattened = List.flatten resolved in
   let postprocessed = postprocess_iele flattened (-1) in
   match postprocessed with
