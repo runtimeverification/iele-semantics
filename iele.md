@@ -814,6 +814,7 @@ We use `INVALID` both for marking the designated invalid operator and for garbag
 ```{.k .uiuck .rvk}
     syntax HeaderOp ::= REGISTERS ( Int )
                       | CALLDEST ( Int , Int )
+                      | EXTCALLDEST ( Int , Int )
                       | ConstantOp
     syntax ConstantOp ::= FUNCTION ( String )
                         | CONTRACT ( Ops , Int )
@@ -2139,25 +2140,30 @@ IELE Program Representations
 
     rule #loadCode(NREGS, I, CONSTANTS, SIZE, O:ConstantOp ; OPS) => #loadCode(NREGS, I +Int 1, CONSTANTS I |-> O, SIZE, OPS)
     rule #loadCode(NREGS, _, CONSTANTS, SIZE, OPS)
-      => <program>
-           #loadFunctions(OPS, CONSTANTS, <functions> .Bag </functions>)
+      => #loadFunctions(OPS, CONSTANTS, 
+         <program>
+           <functions> .Bag </functions>
+           <funcNames> .Set </funcNames>
            <constants> CONSTANTS </constants>
            <nregs> NREGS </nregs>
            <programSize> SIZE </programSize>
-         </program>
+         </program>) [owise]
 
-    syntax FunctionsCell ::= #loadFunctions(Ops, Map, FunctionsCell) [function]
-                           | #loadFunction(Ops, Map, FunctionsCell, FunctionCell) [function]
- // ----------------------------------------------------------------------------------------
-    rule #loadFunctions(CALLDEST(LABEL, ARGS) ; OPS, CONSTANTS LABEL |-> FUNCTION(FUNC), <functions> FUNCS </functions>)
-      => #loadFunction(OPS, CONSTANTS, <functions> FUNCS </functions>, <function> <funcName> FUNC </funcName> <nargs> ARGS </nargs> <exported> false </exported> ... </function>)
-    rule #loadFunctions(EXTCALLDEST(LABEL, ARGS) ; OPS, CONSTANTS LABEL |-> FUNCTION(FUNC), <functions> FUNCS </functions>)
-      => #loadFunction(OPS, CONSTANTS, <functions> FUNCS </functions>, <function> <funcName> FUNC </funcName> <nargs> ARGS </nargs> <exported> true </exported> ... </function>)
+    syntax ProgramCell ::= #loadFunctions ( Ops , Map , ProgramCell ) [function]
+                         | #loadFunction  ( Ops , Map , ProgramCell , String , FunctionCell ) [function]
+ // ----------------------------------------------------------------------------------------------------
+    rule #loadFunctions(CALLDEST(LABEL, ARGS) ; OPS, CONSTANTS LABEL |-> FUNCTION(FUNC), <program> PROG </program>)
+      => #loadFunction(OPS, CONSTANTS, <program> PROG </program>, FUNC, <function> <funcName> FUNC </funcName> <nargs> ARGS </nargs> <exported> false </exported> ... </function>)
+    rule #loadFunctions(EXTCALLDEST(LABEL, ARGS) ; OPS, CONSTANTS LABEL |-> FUNCTION(FUNC), <program> PROG </program>)
+      => #loadFunction(OPS, CONSTANTS, <program> PROG </program>, FUNC, <function> <funcName> FUNC </funcName> <nargs> ARGS </nargs> <exported> true </exported> ... </function>)
+    rule #loadFunctions(.Ops, _, <program> PROG </program>) => <program> PROG </program>
 
-    rule #loadFunction(OP ; OPS => OPS, CONSTANTS, _, <function> FUNC <instructions> REST => OP ; REST </instructions> </function>)
+    rule #loadFunction(OP ; OPS => OPS, CONSTANTS, _, _, <function> FUNC <instructions> REST => OP ; REST </instructions> </function>)
       requires notBool isHeaderOp(OP)
-    rule #loadFunction(OP:HeaderOp ; OPS, CONSTANTS, <functions> FUNCS </functions>, <function> FUNC <instructions> INSTRUCTIONS </instructions> <jumpTable> _ </jumpTable> </function>)
-      => #loadFunctions(OP ; OPS, CONSTANTS, <functions> FUNCS <function> FUNC <instructions> #revOps(INSTRUCTIONS, .Ops) </instructions> <jumpTable> #computeJumpTable(#revOps(INSTRUCTIONS, .Ops)) </jumpTable> </function> </functions>)
+    rule #loadFunction(OP:HeaderOp ; OPS, CONSTANTS, <program> PROG <functions> FUNCS </functions> <funcNames> NAMES </funcNames> </program>, NAME, <function> FUNC <instructions> INSTRUCTIONS </instructions> <jumpTable> _ </jumpTable> </function>)
+      => #loadFunctions(OP ; OPS, CONSTANTS, <program> PROG <funcNames> NAMES SetItem(NAME) </funcNames> <functions> FUNCS <function> FUNC <instructions> #revOps(INSTRUCTIONS, .Ops) </instructions> <jumpTable> #computeJumpTable(#revOps(INSTRUCTIONS, .Ops)) </jumpTable> </function> </functions> </program>)
+    rule #loadFunction(.Ops, CONSTANTS, <program> PROG <functions> FUNCS </functions> <funcNames> NAMES </funcNames> </program>, NAME, <function> FUNC <instructions> INSTRUCTIONS </instructions> <jumpTable> _ </jumpTable> </function>)
+      => #loadFunctions(.Ops, CONSTANTS, <program> PROG <funcNames> NAMES SetItem(NAME) </funcNames> <functions> FUNCS <function> FUNC <instructions> #revOps(INSTRUCTIONS, .Ops) </instructions> <jumpTable> #computeJumpTable(#revOps(INSTRUCTIONS, .Ops)) </jumpTable> </function> </functions> </program>)
     
     syntax Map ::= #computeJumpTable ( Ops )             [function]
                  | #computeJumpTable ( Ops , Map , Set ) [function, klabel(#computeJumpTableAux)]
