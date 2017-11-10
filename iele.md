@@ -46,16 +46,17 @@ In the comments next to each cell, we've marked which component of the yellowpap
                       <program>
                         <functions>
                           <function multiplicity="*" type="Map">
-                            <funcName>     ""    </funcName>
+                            <funcId>       0     </funcId>
                             <nargs>        0     </nargs>
                             <instructions> .Ops  </instructions>
                             <jumpTable>    .Map  </jumpTable>
-                            <exported>     true </exported>
                           </function>
                         </functions>
-                        <constants>     .Map </constants>
-                        <nregs>         5    </nregs>
-                        <programSize>   0    </programSize>
+                        <funcIds>     .Set </funcIds>
+                        <constants>   .Map </constants>
+                        <exported>    .Map </exported>
+                        <nregs>       5    </nregs>
+                        <programSize> 0    </programSize>
                       </program>
                       <callDepth>    0          </callDepth>
                       <localCalls>   .List      </localCalls>
@@ -71,7 +72,7 @@ In the comments next to each cell, we've marked which component of the yellowpap
                       <globalRegs>  .Array </globalRegs>                   // \mu_s
                       <localMem>    .Array </localMem>                     // \mu_m
                       <memoryUsed>  0      </memoryUsed>                   // \mu_i
-                      <fid>         ""     </fid>
+                      <fid>         0      </fid>
                       <gas>         0      </gas>                          // \mu_g
                       <previousGas> 0      </previousGas>
 
@@ -324,8 +325,8 @@ Here all `OpCode`s are subsorted into `KItem` (allowing sequentialization), and 
 ```{.k .uiuck .rvk}
     syntax KItem ::= "#execute"
  // ---------------------------
-    rule <k> #execute => CODE       ... </k> <fid> FUNC </fid> <funcName> FUNC </funcName> <instructions> CODE </instructions>
-    rule <k> #execute => #exception ... </k> <fid> FUNC </fid> <funcNames> FUNCS </funcNames> requires notBool FUNC in FUNCS
+    rule <k> #execute => CODE       ... </k> <fid> FUNC </fid> <funcId> FUNC </funcId> <instructions> CODE </instructions>
+    rule <k> #execute => #exception ... </k> <fid> FUNC </fid> <funcIds> FUNCS </funcIds> requires notBool FUNC in FUNCS
 ```
 
 Execution follows a simple cycle where first the state is checked for exceptions, then if no exceptions will be thrown the opcode is run.
@@ -383,13 +384,13 @@ Some checks if an opcode will throw an exception are relatively quick and done u
     syntax InternalOp ::= "#badJumpDest?" "[" Op "]"
  // ----------------------------------------------------
     rule <k> #badJumpDest? [ OP                        ] => . ... </k> requires notBool isJumpOp(#code(OP))
-    rule <k> #badJumpDest? [ JUMP (LABEL)              ] => . ... </k> <fid> FUNC </fid> <funcName> FUNC </funcName> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ LOCALCALL (LABEL,_,_) _ _ ] => . ... </k> <fid> FUNC </fid> <funcName> FUNC </funcName> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ JUMPI(LABEL) _            ] => . ... </k> <fid> FUNC </fid> <funcName> FUNC </funcName> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ JUMP (LABEL)              ] => . ... </k> <fid> FUNC </fid> <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ LOCALCALL (LABEL,_,_) _ _ ] => . ... </k> <fid> FUNC </fid> <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ JUMPI(LABEL) _            ] => . ... </k> <fid> FUNC </fid> <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
 
-    rule <k> #badJumpDest? [ JUMP (LABEL)              ] => #exception ... </k> <fid> FUNC </fid> <funcName> FUNC </funcName> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ LOCALCALL (LABEL,_,_) _ _ ] => #exception ... </k> <fid> FUNC </fid> <funcName> FUNC </funcName> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ JUMPI(LABEL) _            ] => #exception ... </k> <fid> FUNC </fid> <funcName> FUNC </funcName> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ JUMP (LABEL)              ] => #exception ... </k> <fid> FUNC </fid> <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ LOCALCALL (LABEL,_,_) _ _ ] => #exception ... </k> <fid> FUNC </fid> <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ JUMPI(LABEL) _            ] => #exception ... </k> <fid> FUNC </fid> <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
 ```
 
 -   `#static?` determines if the opcode should throw an exception due to the static flag.
@@ -995,21 +996,20 @@ The `JUMP*` family of operations affect the current program counter.
 
     syntax NullVoidOp ::= JUMP ( Int )
  // ----------------------------------
-    rule <k> JUMP(LABEL) ~> _:Ops => CODE ... </k> <fid> FUNC </fid> <funcName> FUNC </funcName> <jumpTable> ... LABEL |-> CODE </jumpTable>
+    rule <k> JUMP(LABEL) ~> _:Ops => CODE ... </k> <fid> FUNC </fid> <funcId> FUNC </funcId> <jumpTable> ... LABEL |-> CODE </jumpTable>
 
     syntax UnVoidOp ::= JUMPI ( Int )
  // ---------------------------------
-    rule <k> JUMPI(LABEL) I ~> _:Ops => CODE ... </k> <fid> FUNC </fid> <funcName> FUNC </funcName> <jumpTable> ... LABEL |-> CODE </jumpTable> requires I =/=K 0
+    rule <k> JUMPI(LABEL) I ~> _:Ops => CODE ... </k> <fid> FUNC </fid> <funcId> FUNC </funcId> <jumpTable> ... LABEL |-> CODE </jumpTable> requires I =/=K 0
     rule <k> JUMPI(LABEL) 0          => .    ... </k>
 
-    syntax LocalCall ::= "{" Ops "|" String "|" Regs "|" Array "}"
- // --------------------------------------------------------------
+    syntax LocalCall ::= "{" Ops "|" Int "|" Regs "|" Array "}"
+ // -----------------------------------------------------------
 
     syntax LocalCallOp ::= LOCALCALL ( Int , Int , Int )
  // ----------------------------------------------------
     rule <k> LOCALCALL(LABEL, NARGS, NRETURNS) RETURNS ARGS ~> OPS:Ops => #load #regRange(NARGS) ARGS ~> #execute ... </k>
-         <constants> ... LABEL |-> FUNCTION(FUNC) </constants>
-         <fid> _ => FUNC </fid>
+         <fid> FUNC => LABEL </fid>
          <regs> REGS => .Array </regs>
          <nregs> NREGS </nregs>
          <localCalls> .List => ListItem({ OPS | FUNC | RETURNS | REGS }) ... </localCalls>
@@ -1582,14 +1582,24 @@ Precompiled Contracts
     rule #precompiled =>
          <program>
            <functions>
-             <function> <funcName> "ECREC"     </funcName> <instructions> ECREC;     .Ops </instructions> ... </function>
-             <function> <funcName> "SHA256"    </funcName> <instructions> SHA256;    .Ops </instructions> ... </function>
-             <function> <funcName> "RIP160"    </funcName> <instructions> RIP160;    .Ops </instructions> ... </function>
-             <function> <funcName> "ID"        </funcName> <instructions> ID;        .Ops </instructions> ... </function>
-             <function> <funcName> "ECADD"     </funcName> <instructions> ECADD;     .Ops </instructions> ... </function>
-             <function> <funcName> "ECMUL"     </funcName> <instructions> ECMUL;     .Ops </instructions> ... </function>
-             <function> <funcName> "ECPAIRING" </funcName> <instructions> ECPAIRING; .Ops </instructions> ... </function>
+             <function> <funcId> 1 </funcId> <instructions> ECREC;     .Ops </instructions> ... </function>
+             <function> <funcId> 2 </funcId> <instructions> SHA256;    .Ops </instructions> ... </function>
+             <function> <funcId> 3 </funcId> <instructions> RIP160;    .Ops </instructions> ... </function>
+             <function> <funcId> 4 </funcId> <instructions> ID;        .Ops </instructions> ... </function>
+             <function> <funcId> 5 </funcId> <instructions> ECADD;     .Ops </instructions> ... </function>
+             <function> <funcId> 6 </funcId> <instructions> ECMUL;     .Ops </instructions> ... </function>
+             <function> <funcId> 7 </funcId> <instructions> ECPAIRING; .Ops </instructions> ... </function>
            </functions>
+           <funcIds> SetItem(1) SetItem(2) SetItem(3) SetItem(4) SetItem(5) SetItem(6) SetItem(7) </funcIds>
+           <constants> 
+             1 |-> FUNCTION("ECREC")
+             2 |-> FUNCTION("SHA256")
+             3 |-> FUNCTION("RIP160")
+             4 |-> FUNCTION("ID")
+             5 |-> FUNCTION("ECADD")
+             6 |-> FUNCTION("ECMUL")
+             7 |-> FUNCTION("ECPAIRING")
+           </constants>
            ...
          </program>
 ```
@@ -2135,35 +2145,36 @@ IELE Program Representations
     syntax ProgramCell ::= #loadCode ( Ops , Int ) [function]
                          | #loadCode ( Int , Int , Map , Int , Ops ) [function, klabel(#loadCodeAux)]
  // -------------------------------------------------------------------------------------------------
-    rule #loadCode(REGISTERS(N) ; OPS, SIZE) => #loadCode(N, 0, .Map, SIZE, OPS)
-    rule #loadCode(OPS, SIZE) => #loadCode(5, 0, .Map, SIZE, OPS) [owise]
+    rule #loadCode(REGISTERS(N) ; OPS, SIZE) => #loadCode(N, 1, .Map, SIZE, OPS)
+    rule #loadCode(OPS, SIZE) => #loadCode(5, 1, .Map, SIZE, OPS) [owise]
 
     rule #loadCode(NREGS, I, CONSTANTS, SIZE, O:ConstantOp ; OPS) => #loadCode(NREGS, I +Int 1, CONSTANTS I |-> O, SIZE, OPS)
     rule #loadCode(NREGS, _, CONSTANTS, SIZE, OPS)
       => #loadFunctions(OPS, CONSTANTS, 
          <program>
            <functions> .Bag </functions>
-           <funcNames> .Set </funcNames>
+           <funcIds> .Set </funcIds>
            <constants> CONSTANTS </constants>
            <nregs> NREGS </nregs>
            <programSize> SIZE </programSize>
+           <exported> .Map </exported>
          </program>) [owise]
 
     syntax ProgramCell ::= #loadFunctions ( Ops , Map , ProgramCell ) [function]
-                         | #loadFunction  ( Ops , Map , ProgramCell , String , FunctionCell ) [function]
+                         | #loadFunction  ( Ops , Map , ProgramCell , Int , FunctionCell ) [function]
  // ----------------------------------------------------------------------------------------------------
-    rule #loadFunctions(CALLDEST(LABEL, ARGS) ; OPS, CONSTANTS LABEL |-> FUNCTION(FUNC), <program> PROG </program>)
-      => #loadFunction(OPS, CONSTANTS, <program> PROG </program>, FUNC, <function> <funcName> FUNC </funcName> <nargs> ARGS </nargs> <exported> false </exported> ... </function>)
-    rule #loadFunctions(EXTCALLDEST(LABEL, ARGS) ; OPS, CONSTANTS LABEL |-> FUNCTION(FUNC), <program> PROG </program>)
-      => #loadFunction(OPS, CONSTANTS, <program> PROG </program>, FUNC, <function> <funcName> FUNC </funcName> <nargs> ARGS </nargs> <exported> true </exported> ... </function>)
+    rule #loadFunctions(CALLDEST(LABEL, ARGS) ; OPS, CONSTANTS, <program> PROG </program>)
+      => #loadFunction(OPS, CONSTANTS, <program> PROG </program>, LABEL, <function> <funcId> LABEL </funcId> <nargs> ARGS </nargs> ... </function>)
+    rule #loadFunctions(EXTCALLDEST(LABEL, ARGS) ; OPS, CONSTANTS LABEL |-> FUNCTION(FUNC), <program> PROG <exported> EXPORTED </exported> </program>)
+      => #loadFunction(OPS, CONSTANTS, <program> PROG <exported> EXPORTED FUNC |-> LABEL </exported> </program>, LABEL, <function> <funcId> LABEL </funcId> <nargs> ARGS </nargs> ... </function>)
     rule #loadFunctions(.Ops, _, <program> PROG </program>) => <program> PROG </program>
 
     rule #loadFunction(OP ; OPS => OPS, CONSTANTS, _, _, <function> FUNC <instructions> REST => OP ; REST </instructions> </function>)
       requires notBool isHeaderOp(OP)
-    rule #loadFunction(OP:HeaderOp ; OPS, CONSTANTS, <program> PROG <functions> FUNCS </functions> <funcNames> NAMES </funcNames> </program>, NAME, <function> FUNC <instructions> INSTRUCTIONS </instructions> <jumpTable> _ </jumpTable> </function>)
-      => #loadFunctions(OP ; OPS, CONSTANTS, <program> PROG <funcNames> NAMES SetItem(NAME) </funcNames> <functions> FUNCS <function> FUNC <instructions> #revOps(INSTRUCTIONS, .Ops) </instructions> <jumpTable> #computeJumpTable(#revOps(INSTRUCTIONS, .Ops)) </jumpTable> </function> </functions> </program>)
-    rule #loadFunction(.Ops, CONSTANTS, <program> PROG <functions> FUNCS </functions> <funcNames> NAMES </funcNames> </program>, NAME, <function> FUNC <instructions> INSTRUCTIONS </instructions> <jumpTable> _ </jumpTable> </function>)
-      => #loadFunctions(.Ops, CONSTANTS, <program> PROG <funcNames> NAMES SetItem(NAME) </funcNames> <functions> FUNCS <function> FUNC <instructions> #revOps(INSTRUCTIONS, .Ops) </instructions> <jumpTable> #computeJumpTable(#revOps(INSTRUCTIONS, .Ops)) </jumpTable> </function> </functions> </program>)
+    rule #loadFunction(OP:HeaderOp ; OPS, CONSTANTS, <program> PROG <functions> FUNCS </functions> <funcIds> NAMES </funcIds> </program>, NAME, <function> FUNC <instructions> INSTRUCTIONS </instructions> <jumpTable> _ </jumpTable> </function>)
+      => #loadFunctions(OP ; OPS, CONSTANTS, <program> PROG <funcIds> NAMES SetItem(NAME) </funcIds> <functions> FUNCS <function> FUNC <instructions> #revOps(INSTRUCTIONS, .Ops) </instructions> <jumpTable> #computeJumpTable(#revOps(INSTRUCTIONS, .Ops)) </jumpTable> </function> </functions> </program>)
+    rule #loadFunction(.Ops, CONSTANTS, <program> PROG <functions> FUNCS </functions> <funcIds> NAMES </funcIds> </program>, NAME, <function> FUNC <instructions> INSTRUCTIONS </instructions> <jumpTable> _ </jumpTable> </function>)
+      => #loadFunctions(.Ops, CONSTANTS, <program> PROG <funcIds> NAMES SetItem(NAME) </funcIds> <functions> FUNCS <function> FUNC <instructions> #revOps(INSTRUCTIONS, .Ops) </instructions> <jumpTable> #computeJumpTable(#revOps(INSTRUCTIONS, .Ops)) </jumpTable> </function> </functions> </program>)
     
     syntax Map ::= #computeJumpTable ( Ops )             [function]
                  | #computeJumpTable ( Ops , Map , Set ) [function, klabel(#computeJumpTableAux)]

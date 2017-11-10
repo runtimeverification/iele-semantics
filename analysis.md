@@ -55,7 +55,7 @@ We'll need to make summaries of the state which collect information about how mu
          <k> #next => #setMode NORMAL ~> #execTo #klabel(`#gasBreaks`) ~> #setMode GASANALYZE ... </k>
          <pc> PCOUNT </pc>
          <fid> FUNC </fid>
-         <funcName> FUNC </funcName>
+         <funcId> FUNC </funcId>
          <instructions> ... PCOUNT |-> OP ... </instructions>
       requires notBool #gasBreaks(OP)
 
@@ -63,7 +63,7 @@ We'll need to make summaries of the state which collect information about how mu
          <k> #next => #endSummary ~> #setPC (PCOUNT +Int 1) ~> #setGas 1000000000 ~> #beginSummary ~> #next ... </k>
          <pc> PCOUNT </pc>
          <fid> FUNC </fid>
-         <funcName> FUNC </funcName>
+         <funcId> FUNC </funcId>
          <instructions> ... PCOUNT |-> OP ... </instructions>
       requires #gasBreaks(OP)
 

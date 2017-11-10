@@ -73,9 +73,9 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
 ```{.k .uiuck .rvk}
     syntax EthereumCommand ::= "start"
  // ----------------------------------
-    rule <mode> NORMAL     </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData> <fid> _ => "main" </fid>
-    rule <mode> VMTESTS    </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData> <fid> _ => "main" </fid>
- // rule <mode> GASANALYZE </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #gasAnalyze ... </k> <callData> VALUES </callData> <fid> _ => "main" </fid>
+    rule <mode> NORMAL     </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData> <fid> _ => 1 </fid>
+    rule <mode> VMTESTS    </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData> <fid> _ => 1 </fid>
+ // rule <mode> GASANALYZE </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #gasAnalyze ... </k> <callData> VALUES </callData> <fid> _ => 1 </fid>
 
     syntax EthereumCommand ::= "flush"
  // ----------------------------------
@@ -138,7 +138,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
          <activeAccounts> ... ACCTFROM |-> (_ => false) ... </activeAccounts>
 
     rule <k> loadTx(ACCTFROM)
-          => #call ACCTFROM ACCTTO ACCTTO "main" (GLIMIT -Int G0(SCHED, DATA, false)) VALUE VALUE (#sizeWordStack(DATA) #asUnsigned(DATA) .Regs) false
+          => #call ACCTFROM ACCTTO ACCTTO "deposit" (GLIMIT -Int G0(SCHED, DATA, false)) VALUE VALUE (#sizeWordStack(DATA) #asUnsigned(DATA) .Regs) false
           ~> #execute ~> #finishTx ~> #adjustGas ~> #finalizeTx(false) ~> startTx
          ...
          </k>
