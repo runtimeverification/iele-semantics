@@ -725,6 +725,9 @@ let rec postprocess_iele iele label = match iele with
 | [] -> []
 
 let evm_to_iele (evm:evm_op list) : iele_op list =
+  match evm with
+  | [] -> []
+  | _::_ ->
   let preprocessed = preprocess_evm evm in
   let cfg = compute_cfg preprocessed in
   let with_registers = convert_to_registers cfg in
@@ -736,6 +739,4 @@ let evm_to_iele (evm:evm_op list) : iele_op list =
   let resolved = resolve_phi with_functions in
   let flattened = List.flatten resolved in
   let postprocessed = postprocess_iele flattened (-1) in
-  match postprocessed with
-  | [] -> []
-  | _::_ -> alloc_registers postprocessed
+  alloc_registers postprocessed
