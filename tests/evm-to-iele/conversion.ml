@@ -591,7 +591,7 @@ let expand_phi ((graph,regcount) : iele_graph * int) : iele_graph * int =
 let add_calldest ((graph,regcount) : iele_graph * int) : iele_graph * int =
   let all_calls = List.flatten (List.map (fun ({successors=succ;_}  : iele_block) ->
       match succ with
-      | Call {ret_addr=addr;_} | Calli { ret_addr=addr;_} -> [addr]
+      | Call {call=addr;_} | Calli { call=addr;_} -> [addr]
       | Jump _ | Jumpi _ | Fallthrough | Halt | Return -> []
   ) graph) in
   let new_graph = List.map (fun (({pre=pre_stack;ops=ops;_} : iele_block) as component) ->
