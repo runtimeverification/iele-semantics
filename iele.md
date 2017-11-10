@@ -1232,27 +1232,43 @@ The various `CALL*` (and other inter-contract control flow) operations will be d
 
     rule <mode> EXECMODE </mode>
          <k> #mkCall ACCTFROM ACCTTO CODE FUNC BYTES GLIMIT VALUE APPVALUE ARGS STATIC:Bool
-          => #initVM(ARGS) ~> #if EXECMODE ==K VMTESTS #then #end #else #execute #fi
+          => #initVM(ARGS) ~> #initFun(FUNC) ~> #if EXECMODE ==K VMTESTS #then #end #else #execute #fi
          ...
          </k>
          <callDepth> CD => CD +Int 1 </callDepth>
          <callData> _ => ARGS </callData>
          <callValue> _ => APPVALUE </callValue>
          <id> _ => ACCTTO </id>
-         <fid> _ => FUNC </fid>
          <gas> _ => GLIMIT </gas>
          <caller> _ => ACCTFROM </caller>
          (<program> _ </program> => CODE:ProgramCell)
          <static> OLDSTATIC:Bool => OLDSTATIC orBool STATIC </static>
 
     syntax KItem ::= #initVM ( Ints )
- // ---------------------------------
+                   | #initFun ( String ) [klabel(initVMName)]
+                   | #initFun ( Int )    [klabel(initVMLabel)]
+ // ---------------------------------------------------------
     rule <k> #initVM(ARGS) => #load #regRange(#sizeRegs(ARGS)) ARGS ... </k>
          <memoryUsed> _ => 0      </memoryUsed>
          <output>     _ => .Regs  </output>
          <regs>       _ => .Array </regs>
          <localMem>   _ => .Array </localMem>
          <localCalls> _ => .List  </localCalls>
+
+    rule <k> #initFun(FUNC::String) => #initFun(LABEL::Int) ... </k>
+         <exported> ... FUNC |-> LABEL </exported>
+
+    rule <k> #initFun(FUNC::String) => #exception ... </k>
+         <exported> FUNCS </exported>
+      requires notBool FUNC in_keys(FUNCS)
+
+    rule <k> #initFun(LABEL::Int) => #exception ... </k>
+         <funcIds> LABELS </funcIds>
+      requires notBool LABEL in LABELS
+
+    rule <k> #initFun(LABEL::Int) => . ... </k>
+         <funcIds> ... SetItem(LABEL) </funcIds>
+         <fid> _ => LABEL </fid>
 
     syntax KItem ::= "#return" Regs Reg
  // -----------------------------------
@@ -1402,7 +1418,7 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
 
     rule <mode> EXECMODE </mode>
          <k> #mkCreate ACCTFROM ACCTTO CODE LEN GAVAIL VALUE ARGS
-          => #initVM(ARGS) ~> #if EXECMODE ==K VMTESTS #then #end #else #execute #fi
+          => #initVM(ARGS) ~> #initFun(0) ~> #if EXECMODE ==K VMTESTS #then #end #else #execute #fi
          ...
          </k>
          <schedule> SCHED </schedule>
