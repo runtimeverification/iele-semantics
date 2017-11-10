@@ -65,10 +65,11 @@ type iele_opcode = [
 | `FUNCTION of string
 | `LOG of int
 | `CREATE
-| `CALL of int * int
-| `CALLCODE of int * int
-| `DELEGATECALL of int * int
-| `STATICCALL of int * int
+| `COPYCREATE
+| `CALL of int * int * int
+| `CALLCODE of int * int * int
+| `DELEGATECALL of int * int * int
+| `STATICCALL of int * int * int
 | `LOCALCALL of int * int * int
 | `LOCALCALLI of int * int * int * int
 | `RETURN of int

@@ -238,7 +238,7 @@ let convert_to_registers (cfg : evm_graph) : iele_graph * int =
         stack := tl;
         op) (* RETURN/REVERT *)
       | `DELEGATECALL | `STATICCALL as op ->
-        let new_op = match op with | `DELEGATECALL -> `DELEGATECALL(1, 1) | `STATICCALL -> `STATICCALL(1, 1) in
+        let new_op = match op with | `DELEGATECALL -> `DELEGATECALL(0, 1, 1) | `STATICCALL -> `STATICCALL(0, 1, 1) in
         (match curr_stack with
         | []|_::[]|_::_::[] -> VoidOp(`INVALID,[])
         | r1 :: r2 :: r3 :: tl -> let op = CallOp(new_op,[!regcount;!regcount + 1],[r1;r2;r3]) in
@@ -246,7 +246,7 @@ let convert_to_registers (cfg : evm_graph) : iele_graph * int =
         regcount := !regcount + 2;
         op) (* 6-ary operator *)
       | `CALL | `CALLCODE as op ->
-        let new_op = match op with | `CALL -> `CALL(1, 1) | `CALLCODE -> `CALLCODE(1, 1) in
+        let new_op = match op with | `CALL -> `CALL(0, 1, 1) | `CALLCODE -> `CALLCODE(0, 1, 1) in
         (match curr_stack with
         | []|_::[]|_::_::[]|_::_::_::[] -> VoidOp(`INVALID,[])
         | r1 :: r2 :: r3 :: r4 :: tl -> let op = CallOp(new_op,[!regcount;!regcount + 1],[r1;r2;r3;r4]) in
@@ -518,6 +518,10 @@ let aux opcode = match opcode with
 | `LOCALCALL(lbl,a,r) -> `LOCALCALL(find lbl,a,r)
 | `CALLDEST(lbl,a) -> `CALLDEST(find lbl,a)
 | `EXTCALLDEST(lbl,a) -> `EXTCALLDEST(find lbl,a)
+| `CALL(lbl,a,r) -> `CALL(find lbl,a,r)
+| `CALLCODE(lbl,a,r) -> `CALLCODE(find lbl,a,r)
+| `DELEGATECALL(lbl,a,r) -> `DELEGATECALL(find lbl,a,r)
+| `STATICCALL(lbl,a,r) -> `STATICCALL(find lbl,a,r)
 | _ -> opcode
 in match op with
 | Nop -> Nop
