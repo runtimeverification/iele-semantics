@@ -1,4 +1,3 @@
-tests/ethereum-tests/VMTests/vmRandomTest/201503110526PYTHON.json
 tests/ethereum-tests/VMTests/vmPerformance/loop-exp-2b-100k.json
 tests/ethereum-tests/VMTests/vmPerformance/loop-exp-16b-100k.json
 tests/ethereum-tests/VMTests/vmPerformance/loop-mulmod-2M.json
