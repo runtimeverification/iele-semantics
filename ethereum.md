@@ -332,6 +332,9 @@ State Manipulation
  // ----------------------------------
     rule <k> clear => . ... </k>
          <analysis> _ => .Map </analysis>
+         <schedule> _ => DEFAULT </schedule>
+         (<iele> _ </iele> => <iele> ... .Bag </iele>)
+
 ```
 
 ### Loading State
