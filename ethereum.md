@@ -569,6 +569,12 @@ The `"rlp"` key loads the block information.
            ...
          </account>
          requires #dasmOps(CODE) ==K OPS andBool #sizeWordStack(CODE) ==Int SIZE
+    rule <k> check "account" : { ACCT : { "code" : .WordStack } } => . ... </k>
+         <account>
+           <acctID> ACCT </acctID>
+           <codeSize> 0 </codeSize>
+           ...
+         </account>
 
     syntax Map ::= #adjustStorageValues(Map) [function]
  // ---------------------------------------------------
@@ -715,6 +721,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
     syntax Ops ::= #dasmOps ( WordStack )       [function]
                  | #dasmOps ( Ops , WordStack , K , Int ) [function, klabel(#dasmOpsAux)]
  // -----------------------------------------------------------------------------
+    rule #dasmOps( .WordStack )      => FUNCTION("deposit") ; EXTCALLDEST(1, 0); .Ops
     rule #dasmOps( 99 : NBITS : WS ) => #revOps(#dasmOps(REGISTERS(NBITS) ; .Ops, WS, .K, NBITS), .Ops)
 
     rule #dasmOps( OPS, .WordStack, .K, _ ) => OPS
