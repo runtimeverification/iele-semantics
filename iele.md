@@ -1,205 +1,210 @@
-// EVM Execution
-// =============
+IELE Execution
+==============
 
-// The EVM is a stack machine over some simple opcodes.
-// Most of the opcodes are "local" to the execution state of the machine, but some of them must interact with the world state.
-// This file only defines the local execution operations, the file `ethereum.md` will define the interactions with the world state.
+IELE is a register-based abstract machine over some simple opcodes.
+Most of the opcodes are "local" to the execution state of the machine, but some of them must interact with the world state.
+This file only defines the local execution operations, the file `ethereum.md` will define the interactions with the world state.
 
-
+```{.k .uiuck .rvk}
 requires "data.k"
 
-module EVM
+module IELE
     imports STRING
-    imports EVM-DATA
+    imports IELE-DATA
+```
 
+Configuration
+-------------
 
-// Configuration
-// -------------
+The configuration has cells for the current account id, the current opcode, the program counter, the current gas, the gas price, the current program, the word stack, and the local memory.
+In addition, there are cells for the callstack and execution substate.
 
-// The configuration has cells for the current account id, the current opcode, the program counter, the current gas, the gas price, the current program, the word stack, and the local memory.
-// In addition, there are cells for the callstack and execution substate.
+We've broken up the configuration into two components; those parts of the state that mutate during execution of a single transaction and those that are static throughout.
+In the comments next to each cell, we've marked which component of the yellowpaper state corresponds to each cell.
 
-// We've broken up the configuration into two components; those parts of the state that mutate during execution of a single transaction and those that are static throughout.
-// In the comments next to each cell, we've marked which component of the yellowpaper state corresponds to each cell.
-
-
+```{.k .uiuck .rvk}
     configuration <k> $PGM:EthereumSimulation </k>
                   <exit-code exit=""> 1 </exit-code>
                   <mode> $MODE:Mode </mode>
                   <schedule> $SCHEDULE:Schedule </schedule>
                   <analysis> .Map </analysis>
 
-                  <ethereum>
+                  // IELE Specific
+                  // ============
 
-                    // EVM Specific
-                    // ============
+                  <iele>
 
-                    <evm>
+                    // Mutable during a single transaction
+                    // -----------------------------------
 
-                      // Mutable during a single transaction
-                      // -----------------------------------
+                    <output>        .Regs:Ints </output>                   // H_RETURN
+                    <callStack>     .List      </callStack>
+                    <interimStates> .List      </interimStates>
+                    <substateStack> .List      </substateStack>
+                    <callLog>       .Set       </callLog>
 
-                      <output>        .WordStack </output>                   // H_RETURN
-                      <callStack>     .List      </callStack>
-                      <interimStates> .List      </interimStates>
-                      <substateStack> .List      </substateStack>
-                      <callLog>       .Set       </callLog>
+                    <callFrame>
+                      <program>      .Map       </program>                 // I_b
+                      <programBytes> .WordStack </programBytes>
+                      <callDepth>    0          </callDepth>
+                      <jumpTable>    .Map       </jumpTable>
+                      <localCalls>   .List      </localCalls>
 
-                      <callFrame>
-                        <program>      .Map       </program>                 // I_b
-                        <programBytes> .WordStack </programBytes>
-                        <callDepth>    0          </callDepth>
-                        <jumpTable>    .Map       </jumpTable>
-                        <localCalls>   .List      </localCalls>
+                      // I_*
+                      <id>        0          </id>                         // I_a
+                      <caller>    0          </caller>                     // I_s
+                      <callData>  .Regs:Ints </callData>                   // I_d
+                      <callValue> 0          </callValue>                  // I_v
 
-                        // I_*
-                        <id>        0          </id>                         // I_a
-                        <caller>    0          </caller>                     // I_s
-                        <callData>  .WordStack </callData>                   // I_d
-                        <callValue> 0          </callValue>                  // I_v
+                      // \mu_*
+                      <regs>        .Array </regs>                         // \mu_s
+                      <globalRegs>  .Array </globalRegs>                   // \mu_s
+                      <nregs>       5      </nregs>
+                      <localMem>    .Array </localMem>                     // \mu_m
+                      <memoryUsed>  0      </memoryUsed>                   // \mu_i
+                      <pc>          0      </pc>                           // \mu_pc
+                      <gas>         0      </gas>                          // \mu_g
+                      <previousGas> 0      </previousGas>
 
-                        // \mu_*
-                        <regs>        .Array </regs>                         // \mu_s
-                        <nregs>       5      </nregs>
-                        <localMem>    .Array </localMem>                     // \mu_m
-                        <memoryUsed>  0      </memoryUsed>                   // \mu_i
-                        <pc>          0      </pc>                           // \mu_pc
-                        <gas>         0      </gas>                          // \mu_g
-                        <previousGas> 0      </previousGas>
+                      <static> false </static>
+                    </callFrame>
 
-                        <static> false </static>
-                      </callFrame>
+                    // A_* (execution substate)
+                    <substate>
+                      <selfDestruct> .Set  </selfDestruct>                 // A_s
+                      <log>          .List </log>                          // A_l
+                      <refund>       0     </refund>                       // A_r
+                    </substate>
 
-                      // A_* (execution substate)
-                      <substate>
-                        <selfDestruct> .Set  </selfDestruct>                 // A_s
-                        <log>          .List </log>                          // A_l
-                        <refund>       0     </refund>                       // A_r
-                      </substate>
+                    // Immutable during a single transaction
+                    // -------------------------------------
 
-                      // Immutable during a single transaction
-                      // -------------------------------------
+                    <gasPrice> 0 </gasPrice>                               // I_p
+                    <origin>   0 </origin>                                 // I_o
 
-                      <gasPrice> 0 </gasPrice>                               // I_p
-                      <origin>   0 </origin>                                 // I_o
+                    // I_H* (block information)
+                    <previousHash>     0          </previousHash>          // I_Hp
+                    <ommersHash>       0          </ommersHash>            // I_Ho
+                    <coinbase>         0          </coinbase>              // I_Hc
+                    <stateRoot>        0          </stateRoot>             // I_Hr
+                    <transactionsRoot> 0          </transactionsRoot>      // I_Ht
+                    <receiptsRoot>     0          </receiptsRoot>          // I_He
+                    <logsBloom>        .WordStack </logsBloom>             // I_Hb
+                    <difficulty>       0          </difficulty>            // I_Hd
+                    <number>           0          </number>                // I_Hi
+                    <gasLimit>         0          </gasLimit>              // I_Hl
+                    <gasUsed>          0          </gasUsed>               // I_Hg
+                    <timestamp>        0          </timestamp>             // I_Hs
+                    <extraData>        .WordStack </extraData>             // I_Hx
+                    <mixHash>          0          </mixHash>               // I_Hm
+                    <blockNonce>       0          </blockNonce>            // I_Hn
 
-                      // I_H* (block information)
-                      <previousHash>     0          </previousHash>          // I_Hp
-                      <ommersHash>       0          </ommersHash>            // I_Ho
-                      <coinbase>         0          </coinbase>              // I_Hc
-                      <stateRoot>        0          </stateRoot>             // I_Hr
-                      <transactionsRoot> 0          </transactionsRoot>      // I_Ht
-                      <receiptsRoot>     0          </receiptsRoot>          // I_He
-                      <logsBloom>        .WordStack </logsBloom>             // I_Hb
-                      <difficulty>       0          </difficulty>            // I_Hd
-                      <number>           0          </number>                // I_Hi
-                      <gasLimit>         0          </gasLimit>              // I_Hl
-                      <gasUsed>          0          </gasUsed>               // I_Hg
-                      <timestamp>        0          </timestamp>             // I_Hs
-                      <extraData>        .WordStack </extraData>             // I_Hx
-                      <mixHash>          0          </mixHash>               // I_Hm
-                      <blockNonce>       0          </blockNonce>            // I_Hn
+                    <ommerBlockHeaders> [ .JSONList ] </ommerBlockHeaders>
+                    <blockhash>         .List         </blockhash>
 
-                      <ommerBlockHeaders> [ .JSONList ] </ommerBlockHeaders>
-                      <blockhash>         .List         </blockhash>
+                  </iele>
 
-                    </evm>
+                  // Ethereum Network
+                  // ================
 
-                    // Ethereum Network
-                    // ================
+                  <network>
 
-                    <network>
+                    // Accounts Record
+                    // ---------------
 
-                      // Accounts Record
-                      // ---------------
+                    <activeAccounts> .Map </activeAccounts>
+                    <accounts>
+```
 
-                      <activeAccounts> .Map </activeAccounts>
-                      <accounts>
+- UIUC-K and RV-K have slight differences of opinion here.
 
+```{.k .uiuck}
+                      <account multiplicity="*" type="Bag">
+```
 
-// -   UIUC-K and RV-K have slight differences of opinion here.
+```{.k .rvk}
+                      <account multiplicity="*" type="Map">
+```
 
+```{.k .uiuck .rvk}
+                        <acctID>  0          </acctID>
+                        <balance> 0          </balance>
+                        <code>    .WordStack </code>
+                        <storage> .Map       </storage>
+                        <nonce>   0          </nonce>
+                      </account>
+                    </accounts>
 
-                        <account multiplicity="*" type="Map">
+                    // Transactions Record
+                    // -------------------
 
+                    <txOrder>   .List </txOrder>
+                    <txPending> .List </txPending>
 
+                    <messages>
+```
 
-                          <acctID>  0          </acctID>
-                          <balance> 0          </balance>
-                          <code>    .WordStack </code>
-                          <storage> .Map       </storage>
-                          <nonce>   0          </nonce>
-                        </account>
-                      </accounts>
+- UIUC-K and RV-K have slight differences of opinion here.
 
-                      // Transactions Record
-                      // -------------------
+```{.k .uiuck}
+                      <message multiplicity="*" type="Bag">
+```
 
-                      <txOrder>   .List </txOrder>
-                      <txPending> .List </txPending>
+```{.k .rvk}
+                      <message multiplicity="*" type="Map">
+```
 
-                      <messages>
+```{.k .uiuck .rvk}
+                        <msgID>      0          </msgID>
+                        <txNonce>    0          </txNonce>            // T_n
+                        <txGasPrice> 0          </txGasPrice>         // T_p
+                        <txGasLimit> 0          </txGasLimit>         // T_g
+                        <to>         .Account   </to>                 // T_t
+                        <value>      0          </value>              // T_v
+                        <v>          0          </v>                  // T_w
+                        <r>          .WordStack </r>                  // T_r
+                        <s>          .WordStack </s>                  // T_s
+                        <data>       .WordStack </data>               // T_i/T_e
+                      </message>
+                    </messages>
 
-
-// -   UIUC-K and RV-K have slight differences of opinion here.
-
-
-                        <message multiplicity="*" type="Map">
-
-
-
-                          <msgID>      0          </msgID>
-                          <txNonce>    0          </txNonce>            // T_n
-                          <txGasPrice> 0          </txGasPrice>         // T_p
-                          <txGasLimit> 0          </txGasLimit>         // T_g
-                          <to>         .Account   </to>                 // T_t
-                          <value>      0          </value>              // T_v
-                          <v>          0          </v>                  // T_w
-                          <r>          .WordStack </r>                  // T_r
-                          <s>          .WordStack </s>                  // T_s
-                          <data>       .WordStack </data>               // T_i/T_e
-                        </message>
-                      </messages>
-
-                    </network>
-
-                  </ethereum>
+                  </network>
 
     syntax EthereumSimulation
  // -------------------------
+```
 
+Modal Semantics
+---------------
 
-// Modal Semantics
-// ---------------
+Our semantics is modal, with the initial mode being set on the command line via `-cMODE=EXECMODE`.
 
-// Our semantics is modal, with the initial mode being set on the command line via `-cMODE=EXECMODE`.
+-   `NORMAL` executes as a client on the network would.
+-   `VMTESTS` skips `CALL*` and `CREATE` operations.
 
-// -   `NORMAL` executes as a client on the network would.
-// -   `VMTESTS` skips `CALL*` and `CREATE` operations.
-
-
+```{.k .uiuck .rvk}
     syntax Mode ::= "NORMAL" | "VMTESTS"
+```
 
+-   `#setMode_` sets the mode to the supplied one.
 
-// -   `#setMode_` sets the mode to the supplied one.
-
-
+```{.k .uiuck .rvk}
     syntax Mode ::= "#setMode" Mode
  // -------------------------------
     rule <k> #setMode EXECMODE => . ... </k> <mode> _ => EXECMODE </mode>
     rule <k> EX:Exception ~> (#setMode _ => .) ... </k>
+```
 
+Hardware
+--------
 
-// Hardware
-// --------
+The `callStack` cell stores a list of previous VM execution states.
 
-// The `callStack` cell stores a list of previous VM execution states.
+-   `#pushCallStack` saves a copy of VM execution state on the `callStack`.
+-   `#popCallStack` restores the top element of the `callStack`.
+-   `#dropCallStack` removes the top element of the `callStack`.
 
-// -   `#pushCallStack` saves a copy of VM execution state on the `callStack`.
-// -   `#popCallStack` restores the top element of the `callStack`.
-// -   `#dropCallStack` removes the top element of the `callStack`.
-
-
+```{.k .uiuck .rvk}
     syntax InternalOp ::= "#pushCallStack"
  // --------------------------------------
     rule <k> #pushCallStack => . ... </k>
@@ -215,15 +220,15 @@ module EVM
     syntax InternalOp ::= "#dropCallStack"
  // --------------------------------------
     rule <k> #dropCallStack => . ... </k> <callStack> (ListItem(_) => .List) ... </callStack>
+```
 
+The `interimStates` cell stores a list of previous world states.
 
-// The `interimStates` cell stores a list of previous world states.
+-   `#pushWorldState` stores a copy of the current accounts at the top of the `interimStates` cell.
+-   `#popWorldState` restores the top element of the `interimStates`.
+-   `#dropWorldState` removes the top element of the `interimStates`.
 
-// -   `#pushWorldState` stores a copy of the current accounts at the top of the `interimStates` cell.
-// -   `#popWorldState` restores the top element of the `interimStates`.
-// -   `#dropWorldState` removes the top element of the `interimStates`.
-
-
+```{.k .uiuck .rvk}
     syntax Accounts ::= "{" AccountsCell "|" Map "}"
  // ------------------------------------------------
 
@@ -244,15 +249,15 @@ module EVM
     syntax InternalOp ::= "#dropWorldState"
  // ---------------------------------------
     rule <k> #dropWorldState => . ... </k> <interimStates> (ListItem(_) => .List) ... </interimStates>
+```
 
+The `substateStack` cell stores a list of previous substate logs.
 
-// The `substateStack` cell stores a list of previous substate logs.
+-   `#pushSubstate` stores a copy of the current substate at the top of the `substateStack` cell.
+-   `#popSubstate` restores the top element of the `substateStack`.
+-   `#dropSubstate` removes the top element of the `substateStack`.
 
-// -   `#pushSubstate` stores a copy of the current substate at the top of the `substateStack` cell.
-// -   `#popSubstate` restores the top element of the `substateStack`.
-// -   `#dropSubstate` removes the top element of the `substateStack`.
-
-
+```{.k .uiuck .rvk}
     syntax InternalOp ::= "#pushSubstate"
  // -------------------------------------
     rule <k> #pushSubstate => .K ... </k>
@@ -268,15 +273,15 @@ module EVM
     syntax InternalOp ::= "#dropSubstate"
  // -------------------------------------
     rule <k> #dropSubstate => .K ... </k> <substateStack> (ListItem(_) => .List) ... </substateStack>
+```
 
+Simple commands controlling exceptions provide control-flow.
 
-// Simple commands controlling exceptions provide control-flow.
+-   `#end` is used to indicate the (non-exceptional) end of execution.
+-   `#exception` is used to indicate exceptional states (it consumes any operations to be performed after it).
+-   `#?_:_?#` allows for branching control-flow; if it reaches the front of the `op` cell it takes the first branch, if an exception runs into it it takes the second branch.
 
-// -   `#end` is used to indicate the (non-exceptional) end of execution.
-// -   `#exception` is used to indicate exceptional states (it consumes any operations to be performed after it).
-// -   `#?_:_?#` allows for branching control-flow; if it reaches the front of the `op` cell it takes the first branch, if an exception runs into it it takes the second branch.
-
-
+```{.k .uiuck .rvk}
     syntax KItem ::= Exception
     syntax Exception ::= "#exception" | "#end" | "#revert"
  // ------------------------------------------
@@ -290,30 +295,54 @@ module EVM
     rule <k> #revert    ~>  #? K : _ ?#  => K ~> #revert    ... </k>
     rule <k> #end       ~> (#? K : _ ?#) => K ~> #end       ... </k>
 
-    syntax Reg ::= "%" Int | Int
+    syntax Reg ::= "%" Int | "@" Int | Int
     syntax KResult ::= Int
  // ----------------------------
     rule <k> % REG => REGS [ REG ] ... </k> <regs> REGS </regs>
+    rule <k> @ REG => REGS [ REG ] ... </k> <globalRegs> REGS </globalRegs>
 
+    syntax Regs ::= NilRegs
+    syntax Ints ::= NilRegs
+    syntax NilRegs ::= ".Regs"
+    syntax Regs ::= Reg Regs [strict]
+    syntax Ints ::= Int Ints
+    syntax Regs ::= Ints
+    syntax KResult ::= NilRegs | Ints
 
-// OpCode Execution Cycle
-// ----------------------
+    syntax Regs ::= #regRange ( Int ) [function]
+                  | #regRange ( Int , Int ) [function, klabel(#regRangeAux)]
+ // ------------------------------------------------------------------------
+    rule #regRange(N) => #regRange(0, N)
+    rule #regRange(_, 0) => .Regs
+    rule #regRange(N, M) => % N #regRange(N +Int 1, M -Int 1) [owise]
 
-// `OpCode` is broken into several subsorts for easier handling.
-// Here all `OpCode`s are subsorted into `KItem` (allowing sequentialization), and the various sorts of opcodes are subsorted into `OpCode`.
+    syntax Int ::= #sizeRegs ( Regs ) [function]
+                 | #sizeRegs ( Regs , Int ) [function, klabel(#sizeRegsAux)]
+ // ------------------------------------------------------------------------
+    rule #sizeRegs(REGS) => #sizeRegs(REGS, 0)
+    rule #sizeRegs(REG REGS, N) => #sizeRegs(REGS, N +Int 1)
+    rule #sizeRegs(.Regs, N) => N
+```
 
+OpCode Execution Cycle
+----------------------
 
+`OpCode` is broken into several subsorts for easier handling.
+Here all `OpCode`s are subsorted into `KItem` (allowing sequentialization), and the various sorts of opcodes are subsorted into `OpCode`.
+
+```{.k .uiuck .rvk}
     syntax KItem  ::= OpCode
     syntax Op ::= InternalOp
     syntax OpCode ::= NullOp | NullVoidOp | UnOp | UnVoidOp | BinOp | BinVoidOp | TernOp
                     | TernVoidOp | QuadVoidOp | FiveVoidOp | SixVoidOp | CallOp | CallSixOp
+                    | LocalCallOp | ReturnOp
  // ---------------------------------------------------------------------------------------
+```
 
+-   `#execute` calls `#next` repeatedly until it recieves an `#end` or `#exception`.
+-   `#execTo` executes until the next opcode is one of the specified ones.
 
-// -   `#execute` calls `#next` repeatedly until it recieves an `#end` or `#exception`.
-// -   `#execTo` executes until the next opcode is one of the specified ones.
-
-
+```{.k .uiuck .rvk}
     syntax KItem ::= "#execute"
  // ---------------------------
     rule <k> (. => #next) ~> #execute ... </k>
@@ -335,28 +364,28 @@ module EVM
          <pc> PCOUNT </pc>
          <program> PGM </program>
       requires notBool PCOUNT in keys(PGM)
+```
 
+Execution follows a simple cycle where first the state is checked for exceptions, then if no exceptions will be thrown the opcode is run.
 
-// Execution follows a simple cycle where first the state is checked for exceptions, then if no exceptions will be thrown the opcode is run.
+-   Regardless of the mode, `#next` will throw `#end` or `#exception` if the current program counter is not pointing at an OpCode.
 
-// -   Regardless of the mode, `#next` will throw `#end` or `#exception` if the current program counter is not pointing at an OpCode.
+TODO: I think on `#next` we are supposed to pretend it's `STOP` if it's in the middle of the program somewhere but is invalid?
+I suppose the semantics currently loads `INVALID` where `N` is the position in the bytecode array.
 
-// TODO: I think on `#next` we are supposed to pretend it's `STOP` if it's in the middle of the program somewhere but is invalid?
-// I suppose the semantics currently loads `INVALID` where `N` is the position in the bytecode array.
-
-
+```{.k .uiuck .rvk}
     syntax InternalOp ::= "#next"
  // -----------------------------
     rule <k> #next => #end ... </k>
          <pc> PCOUNT </pc>
          <program> PGM </program>
-         <output> _ => .WordStack </output>
+         <output> _ => .Regs </output>
       requires notBool (PCOUNT in_keys(PGM))
+```
 
+-   In `NORMAL` or `VMTESTS` mode, `#next` checks if the opcode is exceptional, runs it if not, then increments the program counter.
 
-// -   In `NORMAL` or `VMTESTS` mode, `#next` checks if the opcode is exceptional, runs it if not, then increments the program counter.
-
-
+```{.k .uiuck .rvk}
     rule <mode> EXECMODE </mode>
          <k> #next
           => #pushCallStack
@@ -366,48 +395,52 @@ module EVM
          </k>
          <pc> PCOUNT </pc>
          <program> ... PCOUNT |-> OP ... </program>
-      requires EXECMODE in (SetItem(NORMAL) SetItem(VMTESTS))
+      requires EXECMODE in #normalModes
 
+    syntax Set ::= "#normalModes" [function]
+ // ----------------------------------------
+    rule #normalModes => (SetItem(NORMAL) SetItem(VMTESTS))
+```
 
-// ### Exceptional Ops
+### Exceptional Ops
 
-// Some checks if an opcode will throw an exception are relatively quick and done up front.
+Some checks if an opcode will throw an exception are relatively quick and done up front.
 
-// -   `#exceptional?` checks if the operator is invalid (this implements the function `Z` in the yellowpaper, section 9.4.2).
+-   `#exceptional?` checks if the operator is invalid  (this implements the function `Z` in the yellowpaper, section 9.4.2).
 
-
+```{.k .uiuck .rvk}
     syntax InternalOp ::= "#exceptional?" "[" Op "]"
  // ----------------------------------------------------
     rule <k> #exceptional? [ OP ] => #invalid? [ #code(OP) ] ~> #badJumpDest? [ OP ] ~> #static? [ OP ] ... </k>
+```
 
+-   `#invalid?` checks if it's the designated invalid opcode.
 
-// -   `#invalid?` checks if it's the designated invalid opcode.
-
-
+```{.k .uiuck .rvk}
     syntax InternalOp ::= "#invalid?" "[" OpCode "]"
  // ------------------------------------------------
     rule <k> #invalid? [ INVALID ] => #exception ... </k>
     rule <k> #invalid? [ OP      ] => .          ... </k> requires notBool isInvalidOp(OP)
+```
 
+-   `#badJumpDest?` determines if the opcode will result in a bad jump destination.
 
-// -   `#badJumpDest?` determines if the opcode will result in a bad jump destination.
-
-
+```{.k .uiuck .rvk}
     syntax InternalOp ::= "#badJumpDest?" "[" Op "]"
  // ----------------------------------------------------
-    rule <k> #badJumpDest? [ OP                ] => . ... </k> requires notBool isJumpOp(#code(OP))
-    rule <k> #badJumpDest? [ JUMP (LABEL)      ] => . ... </k> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ LOCALCALL (LABEL) ] => . ... </k> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ JUMPI(LABEL) _    ] => . ... </k> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ OP                        ] => . ... </k> requires notBool isJumpOp(#code(OP))
+    rule <k> #badJumpDest? [ JUMP (LABEL)              ] => . ... </k> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ LOCALCALL (LABEL,_,_) _ _ ] => . ... </k> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ JUMPI(LABEL) _            ] => . ... </k> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
 
-    rule <k> #badJumpDest? [ JUMP (LABEL)      ] => #exception ... </k> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ LOCALCALL (LABEL) ] => #exception ... </k> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ JUMPI(LABEL) _    ] => #exception ... </k> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ JUMP (LABEL)              ] => #exception ... </k> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ LOCALCALL (LABEL,_,_) _ _ ] => #exception ... </k> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ JUMPI(LABEL) _            ] => #exception ... </k> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
+```
 
+-   `#static?` determines if the opcode should throw an exception due to the static flag.
 
-// -   `#static?` determines if the opcode should throw an exception due to the static flag.
-
-
+```{.k .uiuck .rvk}
     syntax InternalOp ::= "#static?" "[" Op "]"
  // -----------------------------------------------
     rule <k> #static? [ OP ] => .          ... </k>                               <static> false </static>
@@ -422,26 +455,26 @@ module EVM
     rule #changesState(LOG3, _, _) => true
     rule #changesState(LOG4, _, _) => true
     rule #changesState(SSTORE, _, _) => true
-    rule #changesState(_, CALL _ _ _ VALUE _ _ _ _, _) => true requires VALUE =/=Int 0
+    rule #changesState(_, CALL(_,_) _ _ _ VALUE _ _, _) => true requires VALUE =/=Int 0
     rule #changesState(CREATE, _, _) => true
     rule #changesState(SELFDESTRUCT, _, _) => true
     rule #changesState(...) => false [owise]
+```
 
+### Execution Step
 
-// ### Execution Step
+-   `#exec` will load the arguments of the opcode and trigger the subsequent operations.
 
-// -   `#exec` will load the arguments of the opcode and trigger the subsequent operations.
-
-
+```{.k .uiuck .rvk}
     syntax InternalOp ::= "#exec" "[" Op "]"
  // ----------------------------------------
     rule <k> #exec [ OP:LoadedOp ] => #gas [ #addr?(OP) ] ~> #addr?(OP) ... </k>
+```
 
+Here we load the correct number of arguments from the `regs` based on the sort of the opcode.
+Some of them require an argument to be interpereted as an address (modulo 160 bits), so the `#addr?` function performs that check.
 
-// Here we load the correct number of arguments from the `regs` based on the sort of the opcode.
-// Some of them require an argument to be interpereted as an address (modulo 160 bits), so the `#addr?` function performs that check.
-
-
+```{.k .uiuck .rvk}
     syntax LoadedOp ::= NullOp Reg                      [klabel(nullOp)]
                       | NullVoidOp
 
@@ -454,8 +487,10 @@ module EVM
                 | QuadVoidOp Reg Reg Reg Reg             [klabel(quadVoidOp)]
                 | FiveVoidOp Reg Reg Reg Reg Reg         [klabel(fiveVoidOp)]
                 | SixVoidOp Reg Reg Reg Reg Reg Reg      [klabel(sixVoidOp)]
-                | CallSixOp Reg Reg Reg Reg Reg Reg Reg  [klabel(callSixOp)]
-                | CallOp Reg Reg Reg Reg Reg Reg Reg Reg [klabel(callOp)]
+                | CallSixOp Reg Reg Reg Regs Regs        [klabel(callSixOp)]
+                | CallOp Reg Reg Reg Reg Regs Regs       [klabel(callOp)]
+                | LocalCallOp Regs Regs                  [klabel(localCallOp)]
+                | ReturnOp Regs                          [klabel(returnOp)]
 
     context #exec [ _::UnOp _ HOLE:Reg ]
 
@@ -493,20 +528,17 @@ module EVM
     context #exec [ _::SixVoidOp _ _ _ _ HOLE:Reg _ ]
     context #exec [ _::SixVoidOp _ _ _ _ _ HOLE:Reg ]
 
-    context #exec [ _::CallSixOp _ HOLE:Reg _ _ _ _ _ ]
-    context #exec [ _::CallSixOp _ _ HOLE:Reg _ _ _ _ ]
-    context #exec [ _::CallSixOp _ _ _ HOLE:Reg _ _ _ ]
-    context #exec [ _::CallSixOp _ _ _ _ HOLE:Reg _ _ ]
-    context #exec [ _::CallSixOp _ _ _ _ _ HOLE:Reg _ ]
-    context #exec [ _::CallSixOp _ _ _ _ _ _ HOLE:Reg ]
+    context #exec [ _::CallSixOp _ HOLE:Reg _ _ _  ]
+    context #exec [ _::CallSixOp _ _ HOLE:Reg _ _  ]
+    context #exec [ _::CallSixOp _ _ _ _ HOLE:Regs ]
 
-    context #exec [ _::CallOp _ HOLE:Reg _ _ _ _ _ _ ]
-    context #exec [ _::CallOp _ _ HOLE:Reg _ _ _ _ _ ]
-    context #exec [ _::CallOp _ _ _ HOLE:Reg _ _ _ _ ]
-    context #exec [ _::CallOp _ _ _ _ HOLE:Reg _ _ _ ]
-    context #exec [ _::CallOp _ _ _ _ _ HOLE:Reg _ _ ]
-    context #exec [ _::CallOp _ _ _ _ _ _ HOLE:Reg _ ]
-    context #exec [ _::CallOp _ _ _ _ _ _ _ HOLE:Reg ]
+    context #exec [ _::CallOp _ HOLE:Reg _ _ _ _  ]
+    context #exec [ _::CallOp _ _ HOLE:Reg _ _ _  ]
+    context #exec [ _::CallOp _ _ _ HOLE:Reg _ _  ]
+    context #exec [ _::CallOp _ _ _ _ _ HOLE:Regs ]
+
+    context #exec [ _::LocalCallOp _ HOLE:Regs ]
+    context #exec [ _::ReturnOp HOLE:Regs ]
 
     syntax Op ::= LoadedOp
 
@@ -519,8 +551,10 @@ module EVM
                       | QuadVoidOp Int Int Int Int             [klabel(quadVoidOp)]
                       | FiveVoidOp Int Int Int Int Int         [klabel(fiveVoidOp)]
                       | SixVoidOp Int Int Int Int Int Int      [klabel(sixVoidOp)]
-                      | CallSixOp Reg Int Int Int Int Int Int  [klabel(callSixOp)]
-                      | CallOp Reg Int Int Int Int Int Int Int [klabel(callOp)]
+                      | CallSixOp Reg Int Int Regs Ints        [klabel(callSixOp)]
+                      | CallOp Reg Int Int Int Regs Ints       [klabel(callOp)]
+                      | LocalCallOp Regs Ints                  [klabel(localCallOp)]
+                      | ReturnOp Ints                          [klabel(returnOp)]
 
     syntax Op ::= "#addr?" "(" Op ")" [function]
  // -------------------------------------------------
@@ -528,29 +562,31 @@ module EVM
     rule #addr?(EXTCODESIZE REG W)                   => EXTCODESIZE REG #addr(W)
     rule #addr?(EXTCODECOPY W0 W1 W2 W3)             => EXTCODECOPY #addr(W0) W1 W2 W3
     rule #addr?(SELFDESTRUCT W)                      => SELFDESTRUCT #addr(W)
-    rule #addr?(CSO:CallSixOp REG W0 W1 W2 W3 W4 W5) => CSO REG W0 #addr(W1) W2 W3 W4 W5
-    rule #addr?(CO:CallOp REG W0 W1 W2 W3 W4 W5 W6)  => CO  REG W0 #addr(W1) W2 W3 W4 W5 W6
+    rule #addr?(CSO:CallSixOp REG W0 W1 REGS1 REGS2) => CSO REG W0 #addr(W1) REGS1 REGS2
+    rule #addr?(CO:CallOp REG W0 W1 W2 REGS1 REGS2)  => CO  REG W0 #addr(W1) W2 REGS1 REGS2
     rule #addr?(OP)                                  => OP [owise]
 
     syntax OpCode ::= #code ( Op ) [function]
-    rule #code(OP::NullOp _)                => OP
-    rule #code(OP:NullVoidOp)               => OP
-    rule #code(OP::UnOp _ _)                => OP
-    rule #code(OP::UnVoidOp _)              => OP
-    rule #code(OP::BinOp _ _ _)             => OP
-    rule #code(OP::BinVoidOp _ _)           => OP
-    rule #code(OP::TernOp _ _ _ _)          => OP
-    rule #code(OP::TernVoidOp _ _ _)        => OP
-    rule #code(OP::QuadVoidOp _ _ _ _)      => OP
-    rule #code(OP::FiveVoidOp _ _ _ _ _)    => OP
-    rule #code(OP::SixVoidOp _ _ _ _ _ _)   => OP
-    rule #code(OP::CallSixOp _ _ _ _ _ _ _) => OP
-    rule #code(OP::CallOp _ _ _ _ _ _ _ _)  => OP
+    rule #code(OP::NullOp _)              => OP
+    rule #code(OP:NullVoidOp)             => OP
+    rule #code(OP::UnOp _ _)              => OP
+    rule #code(OP::UnVoidOp _)            => OP
+    rule #code(OP::BinOp _ _ _)           => OP
+    rule #code(OP::BinVoidOp _ _)         => OP
+    rule #code(OP::TernOp _ _ _ _)        => OP
+    rule #code(OP::TernVoidOp _ _ _)      => OP
+    rule #code(OP::QuadVoidOp _ _ _ _)    => OP
+    rule #code(OP::FiveVoidOp _ _ _ _ _)  => OP
+    rule #code(OP::SixVoidOp _ _ _ _ _ _) => OP
+    rule #code(OP::CallSixOp _ _ _ _ _)   => OP
+    rule #code(OP::CallOp _ _ _ _ _ _)    => OP
+    rule #code(OP::LocalCallOp _ _)       => OP
+    rule #code(OP::ReturnOp _)            => OP
+```
 
+-   `#gas` calculates how much gas this operation costs, and takes into account the memory consumed.
 
-// -   `#gas` calculates how much gas this operation costs, and takes into account the memory consumed.
-
-
+```{.k .uiuck .rvk}
     syntax InternalOp ::= "#gas" "[" Op "]" | "#deductGas" | "#deductMemory"
  // ----------------------------------------------------------------------------
     rule <k> #gas [ OP ] => #memory(OP, MU) ~> #deductMemory ~> #gasExec(SCHED, OP) ~> #deductGas ... </k> <memoryUsed> MU </memoryUsed> <schedule> SCHED </schedule>
@@ -566,13 +602,13 @@ module EVM
     syntax Int ::= Cmem ( Schedule , Int ) [function, memo]
  // -------------------------------------------------------
     rule Cmem(SCHED, N) => (N *Int Gmemory < SCHED >) +Int ((N *Int N) /Int Gquadcoeff < SCHED >)
+```
 
+### Program Counter
 
-// ### Program Counter
+-   `#pc` calculates the next program counter of the given operator.
 
-// -   `#pc` calculates the next program counter of the given operator.
-
-
+```{.k .uiuck .rvk}
     syntax InternalOp ::= "#pc" "[" OpCode "]"
  // ------------------------------------------
     rule <k> #pc [ OP ] => . ... </k> requires isJumpOrReturnOp(OP)
@@ -582,22 +618,22 @@ module EVM
  // ----------------------------------------------
     rule isJumpOp(JUMP(_)) => true
     rule isJumpOp(JUMPI(_)) => true
-    rule isJumpOp(LOCALCALL(_)) => true
+    rule isJumpOp(LOCALCALL(_,_,_)) => true
     rule isJumpOp(...) => false [owise]
 
     syntax Bool ::= isJumpOrReturnOp ( OpCode ) [function]
  // ------------------------------------------------------
-    rule isJumpOrReturnOp(LOCALRETURN) => true
+    rule isJumpOrReturnOp(RETURN(_)) => true
     rule isJumpOrReturnOp(OP) => isJumpOp(OP) [owise]
+```
 
+### Substate Log
 
-// ### Substate Log
+After executing a transaction, it's necessary to have the effect of the substate log recorded.
 
-// After executing a transaction, it's necessary to have the effect of the substate log recorded.
+-   `#finalizeTx` makes the substate log actually have an effect on the state.
 
-// -   `#finalizeTx` makes the substate log actually have an effect on the state.
-
-
+```{.k .uiuck .rvk}
     syntax InternalOp ::= #finalizeTx ( Bool )
  // ------------------------------------------
     rule <k> #finalizeTx(true) => . ... </k>
@@ -689,17 +725,17 @@ module EVM
            )
            ...
          </accounts>
+```
 
+IELE Programs
+=============
 
-// EVM Programs
-// ============
+Lists of opcodes form programs.
+Deciding if an opcode is in a list will be useful for modeling gas, and converting a program into a map of program-counter to opcode is useful for execution.
 
-// Lists of opcodes form programs.
-// Deciding if an opcode is in a list will be useful for modeling gas, and converting a program into a map of program-counter to opcode is useful for execution.
+Note that `_in_` ignores the arguments to operators that are parametric.
 
-// Note that `_in_` ignores the arguments to operators that are parametric.
-
-
+```{.k .uiuck .rvk}
     syntax Ops ::= ".Ops" | Op ";" Ops
  // --------------------------------------------------
 
@@ -711,22 +747,22 @@ module EVM
 
     rule #asMapOps( _ , .Ops        , MAP, _ )     => MAP
     rule #asMapOps( N , OP:Op ; OCS , MAP, NREGS ) => #asMapOps(N +Int #opWidth(#code(OP), NREGS), OCS, MAP (N |-> OP), NREGS)
+```
 
+IELE Ops
+--------
 
-// EVM Ops
-// -------
+Each subsection has a different class of opcodes.
+Organization is based roughly on what parts of the execution state are needed to compute the result of each operator.
+This sometimes corresponds to the organization in the yellowpaper.
 
-// Each subsection has a different class of opcodes.
-// Organization is based roughly on what parts of the execution state are needed to compute the result of each operator.
-// This sometimes corresponds to the organization in the yellowpaper.
+### Internal Operations
 
-// ### Internal Operations
+-   `#newAccount_` allows declaring a new empty account with the given address (and assumes the rounding to 160 bits has already occured).
+    If the account already exists with non-zero nonce or non-empty code, an exception is thrown.
+    Otherwise, if the account already exists, the storage is cleared.
 
-// -   `#newAccount_` allows declaring a new empty account with the given address (and assumes the rounding to 160 bits has already occured).
-//     If the account already exists with non-zero nonce or non-empty code, an exception is thrown.
-//     Otherwise, if the account already exists, the storage is cleared.
-
-
+```{.k .uiuck .rvk}
     syntax InternalOp ::= "#newAccount" Int
  // ---------------------------------------
     rule <k> #newAccount ACCT => #exception ... </k>
@@ -762,11 +798,11 @@ module EVM
            ...
          </accounts>
       requires notBool ACCT in_keys(ACCTS)
+```
 
+-   `#transferFunds` moves money from one account into another, creating the destination account if it doesn't exist.
 
-// -   `#transferFunds` moves money from one account into another, creating the destination account if it doesn't exist.
-
-
+```{.k .uiuck .rvk}
     syntax InternalOp ::= "#transferFunds" Int Int Int
  // --------------------------------------------------
     rule <k> #transferFunds ACCTFROM ACCTTO VALUE => . ... </k>
@@ -804,32 +840,32 @@ module EVM
            ...
          </account>
       requires VALUE <=Int ORIGFROM
+```
 
+### Invalid Operator
 
-// ### Invalid Operator
+We use `INVALID` both for marking the designated invalid operator and for garbage bytes in the input program.
 
-// We use `INVALID` both for marking the designated invalid operator and for garbage bytes in the input program.
-
-
+```{.k .uiuck .rvk}
     syntax InvalidOp ::= "INVALID"
     syntax NullVoidOp ::= InvalidOp
  // -------------------------------
+```
 
+### Program Header
 
-// ### Program Header
-
-
+```{.k .uiuck .rvk}
     syntax NullVoidOp ::= REGISTERS(Int)
  // ------------------------------------
     rule <k> REGISTERS(NREGS) => .          ... </k> <pc>      0 </pc> <nregs> _ => NREGS </nregs>
     rule <k> REGISTERS(NREGS) => #exception ... </k> <pc> PCOUNT </pc> requires PCOUNT =/=K 0
+```
 
+### Register Manipulations
 
-// ### Register Manipulations
+Some operators don't calculate anything, they just manipulate the state of registers.
 
-// Some operators don't calculate anything, they just manipulate the state of registers.
-
-
+```{.k .uiuck .rvk}
     syntax NullOp ::= LOADPOS ( Int , Int )
  // ---------------------------------------
     rule <k> LOADPOS(_, W) REG => #load REG W ... </k> 
@@ -847,36 +883,51 @@ module EVM
     rule <k> #load % REG VALUE => . ... </k>
          <regs> REGS => REGS [ REG <- VALUE ] </regs>
 
+    syntax InternalOp ::= "#load" Regs Ints
+ // ---------------------------------------
+    rule <k> #load (REG REGS) (VALUE VALUES) => #load REG VALUE ~> #load REGS VALUES ... </k>
+    rule <k> #load .Regs      .Regs          => .                                    ... </k>
+    rule <k> #load (REG REGS) .Regs          => #exception                           ... </k>
+    rule <k> #load .Regs      (VALUE VALUES) => #exception                           ... </k>
+```
 
-// ### Local Memory
+### Local Memory
 
-// These operations are getters/setters of the local execution memory.
+These operations are getters/setters of the local execution memory.
 
-
-    syntax UnOp ::= "MLOAD8" | "MLOAD256" | "MLOAD"
- // -----------------------------------------------
+```{.k .uiuck .rvk}
+    syntax UnOp ::= "MLOAD8" | "MLOAD256"
+ // -------------------------------------
     rule <k> MLOAD256 REG INDEX => #load REG #asSigned(#range(LM, INDEX, 32)) ... </k>
          <localMem> LM </localMem>
 
     rule <k> MLOAD8 REG INDEX => #load REG #asSigned(#range(LM, INDEX, 1)) ... </k>
          <localMem> LM </localMem>
 
-    syntax BinVoidOp ::= "MSTORE8" | "MSTORE256" | "MSTORE"
- // -------------------------------------------------------
+    syntax BinOp ::= "MLOAD"
+ // ------------------------
+    rule <k> MLOAD REG INDEX WIDTH => #load REG #asSigned(#range(LM, INDEX, WIDTH)) ... </k>
+         <localMem> LM </localMem>
+
+    syntax BinVoidOp ::= "MSTORE8" | "MSTORE256"
+ // --------------------------------------------
     rule <k> MSTORE256 INDEX VALUE => . ... </k>
          <localMem> LM => LM [ INDEX := #padToWidth(32, #asUnsignedBytes(chop(VALUE))) ] </localMem>
 
     rule <k> MSTORE8 INDEX VALUE => . ... </k>
          <localMem> LM => LM [ INDEX <- (VALUE modInt 256) ]    </localMem>
 
+    syntax TernVoidOp ::= "MSTORE"
+ // ------------------------------
+    rule <k> MSTORE INDEX VALUE WIDTH => . ... </k>
+         <localMem> LM => LM [ INDEX := #padToWidth(WIDTH, #asUnsignedBytes(VALUE modInt (2 ^Int (WIDTH *Int 8)))) ] </localMem>
+```
 
-// ### Expressions
+### Expressions
 
-// Expression calculations are simple and don't require anything but the arguments from the `regs` to operate.
+Expression calculations are simple and don't require anything but the arguments from the `regs` to operate.
 
-// NOTE: We have to call the opcode `OR` by `EVMOR` instead, because K has trouble parsing it/compiling the definition otherwise.
-
-
+```{.k .uiuck .rvk}
     syntax UnOp ::= "ISZERO" | "NOT"
  // --------------------------------
     rule <k> ISZERO REG 0 => #load REG 1       ... </k>
@@ -908,11 +959,11 @@ module EVM
     rule <k> SIGNEXTEND REG W0 W1 => #load REG signextend(chop(W0), W1) ... </k>
     rule <k> TWOS REG W0 W1       => #load REG twos(chop(W0), W1)       ... </k>
 
-    syntax BinOp ::= "AND" | "EVMOR" | "XOR"
- // ----------------------------------------
-    rule <k> AND   REG W0 W1 => #load REG W0 &Int W1   ... </k>
-    rule <k> EVMOR REG W0 W1 => #load REG W0 |Int W1   ... </k>
-    rule <k> XOR   REG W0 W1 => #load REG W0 xorInt W1 ... </k>
+    syntax BinOp ::= "AND" | "OR" | "XOR"
+ // -------------------------------------
+    rule <k> AND REG W0 W1 => #load REG W0 &Int W1   ... </k>
+    rule <k> OR  REG W0 W1 => #load REG W0 |Int W1   ... </k>
+    rule <k> XOR REG W0 W1 => #load REG W0 xorInt W1 ... </k>
 
     syntax BinOp ::= "LT" | "GT" | "EQ"
  // -----------------------------------
@@ -927,13 +978,13 @@ module EVM
  // -----------------------
     rule <k> SHA3 REG MEMSTART MEMWIDTH => #load REG keccak(#range(LM, MEMSTART, MEMWIDTH)) ... </k>
          <localMem> LM </localMem>
+```
 
+### Local State
 
-// ### Local State
+These operators make queries about the current execution state.
 
-// These operators make queries about the current execution state.
-
-
+```{.k .uiuck .rvk}
     syntax NullOp ::= "PC" | "GAS" | "GASPRICE" | "GASLIMIT"
  // --------------------------------------------------------
     rule <k> PC       REG => #load REG PCOUNT ... </k> <pc> PCOUNT </pc>
@@ -979,13 +1030,13 @@ module EVM
     rule #blockhash(ListItem(0) _, _, _, _) => 0
     rule #blockhash(ListItem(H) _, N, N, _) => H
     rule #blockhash(ListItem(_) L, N, HI, A) => #blockhash(L, N, HI -Int 1, A +Int 1) [owise]
+```
 
+### `JUMP*`
 
-// ### `JUMP*`
+The `JUMP*` family of operations affect the current program counter.
 
-// The `JUMP*` family of operations affect the current program counter.
-
-
+```{.k .uiuck .rvk}
     syntax NullVoidOp ::= JUMPDEST ( Int )
  // --------------------------------------
     rule <k> JUMPDEST(_) => . ... </k>
@@ -999,92 +1050,55 @@ module EVM
     rule <k> JUMPI(LABEL) I => . ... </k> <pc> _      => DEST          </pc> <jumpTable> ... LABEL |-> DEST </jumpTable> requires I =/=K 0
     rule <k> JUMPI(LABEL) 0 => . ... </k> <pc> PCOUNT => PCOUNT +Int #opWidth(JUMPI(LABEL), NREGS) </pc> <nregs> NREGS </nregs>
 
-    syntax NullVoidOp ::= LOCALCALL ( Int )
- // ---------------------------------------------
-    rule <k> LOCALCALL(LABEL) => . ... </k> <jumpTable> ... LABEL |-> CALLDEST RET |-> RETDEST </jumpTable> <pc> PCOUNT => CALLDEST </pc> <localCalls> .List => ListItem(PCOUNT +Int 3) ... </localCalls>
+    syntax LocalCall ::= "{" Int "|" Regs "|" Array "}"
+ // ---------------------------------------------------
 
-    syntax NullVoidOp ::= "LOCALRETURN"
- // -----------------------------------
-    rule <k> LOCALRETURN => . ... </k> <pc> _ => DEST </pc> <localCalls> ListItem(DEST) => .List ... </localCalls>
-    rule <k> LOCALRETURN => #exception ... </k> <localCalls> .List </localCalls>
+    syntax LocalCallOp ::= LOCALCALL ( Int , Int , Int )
+ // ----------------------------------------------------
+    rule <k> LOCALCALL(LABEL, NARGS, NRETURNS) RETURNS ARGS => #load #regRange(NARGS) ARGS ... </k>
+         <jumpTable> ... LABEL |-> CALLDEST </jumpTable>
+         <pc> PCOUNT => CALLDEST </pc>
+         <regs> REGS => .Array </regs>
+         <nregs> NREGS </nregs>
+         <localCalls> .List => ListItem({ PCOUNT +Int #opWidth(LOCALCALL(LABEL, NARGS, NRETURNS), NREGS) | RETURNS | REGS }) ... </localCalls>
+```
 
+### `STOP`, `REVERT`, and `RETURN`
 
-// ### `STOP`, `REVERT`, and `RETURN`
-
-
+```{.k .uiuck .rvk}
     syntax NullVoidOp ::= "STOP"
  // ----------------------------
     rule <k> STOP => #end ... </k>
-         <output> _ => .WordStack </output>
+         <output> _ => .Regs </output>
 
-    syntax BinVoidOp ::= "RETURN"
- // -----------------------------
-    rule <k> RETURN RETSTART RETWIDTH => #end ... </k>
-         <output> _ => #range(LM, RETSTART, RETWIDTH) </output>
-         <localMem> LM </localMem>
+    syntax ReturnOp ::= RETURN ( Int )
+ // -----------------------------------
+    rule <k> RETURN (NRETURNS) VALUES => #end ... </k>
+         <output> _ => VALUES </output>
+         <localCalls> .List </localCalls>
 
-    syntax BinVoidOp ::= "REVERT"
- // -----------------------------
-    rule <k> REVERT RETSTART RETWIDTH => #revert ... </k>
-         <output> _ => #range(LM, RETSTART, RETWIDTH) </output>
-         <localMem> LM </localMem>
+    rule <k> RETURN(NRETURNS) VALUES => #load RETURNS VALUES ... </k>
+         <pc> _ => DEST </pc>
+         <regs> _ => REGS </regs>
+         <localCalls> ListItem({ DEST | RETURNS | REGS }) => .List ... </localCalls>
 
-
-// ### Call Data
-
-// These operators query about the current `CALL*` state.
-
-
-    syntax NullOp ::= "CALLDATASIZE"
- // --------------------------------
-    rule <k> CALLDATASIZE REG => #load REG #sizeWordStack(CD) ... </k>
-         <callData> CD </callData>
-
-    syntax BinOp ::= "CALLDATALOAD"
- // -------------------------------
-    rule <k> CALLDATALOAD REG DATASTART DATAWIDTH => #load REG #asSigned(CD [ DATASTART .. DATAWIDTH ]) ... </k>
-         <callData> CD </callData>
-
-    syntax TernVoidOp ::= "CALLDATACOPY"
- // ------------------------------------
-    rule <k> CALLDATACOPY MEMSTART DATASTART DATAWIDTH => . ... </k>
-         <localMem> LM => LM [ MEMSTART := CD [ DATASTART .. DATAWIDTH ] ] </localMem>
-         <callData> CD </callData>
-
-
-// ### Return Data
-
-// These operators query about the current return data buffer.
-
-
-    syntax NullOp ::= "RETURNDATASIZE"
+    syntax ReturnOp ::= REVERT ( Int )
  // ----------------------------------
-    rule <k> RETURNDATASIZE REG => #load REG #sizeWordStack(RD) ... </k>
-         <output> RD </output>
+    rule <k> REVERT(NRETURNS) VALUES => #revert ... </k>
+         <output> _ => VALUES </output>
+```
 
-    syntax TernVoidOp ::= "RETURNDATACOPY"
- // --------------------------------------
-    rule <k> RETURNDATACOPY MEMSTART DATASTART DATAWIDTH => . ... </k>
-         <localMem> LM => LM [ MEMSTART := RD [ DATASTART .. DATAWIDTH ] ] </localMem>
-         <output> RD </output>
-      requires chop(DATASTART) +Int chop(DATAWIDTH) <=Int #sizeWordStack(RD)
+### Log Operations
 
-    rule <k> RETURNDATACOPY MEMSTART DATASTART DATAWIDTH => #exception ... </k>
-         <output> RD </output>
-      requires chop(DATASTART) +Int chop(DATAWIDTH) >Int #sizeWordStack(RD)
+During execution of a transaction some things are recorded in the substate log (Section 6.1 in yellowpaper).
+This is a right cons-list of `SubstateLogEntry` (which contains the account ID along with the specified portions of the `wordStack` and `localMem`).
 
-
-// ### Log Operations
-
-// During execution of a transaction some things are recorded in the substate log (Section 6.1 in yellowpaper).
-// This is a right cons-list of `SubstateLogEntry` (which contains the account ID along with the specified portions of the `wordStack` and `localMem`).
-
-
+```{.k .uiuck .rvk}
     syntax SubstateLogEntry ::= "{" Int "|" WordStack "|" WordStack "}"
  // -------------------------------------------------------------------
+```
 
-
-
+```{.k .uiuck .rvk}
     syntax BinVoidOp  ::= "LOG0"
     syntax TernVoidOp ::= "LOG1"
     syntax QuadVoidOp ::= "LOG2"
@@ -1104,20 +1118,20 @@ module EVM
          <id> ACCT </id>
          <localMem> LM </localMem>
          <log> ... (.List => ListItem({ ACCT | WS | #range(LM, MEMSTART, MEMWIDTH) })) </log>
+```
 
+Network Ops
+-----------
 
-// Ethereum Network Ops
-// --------------------
+Operators that require access to the rest of the Ethereum network world-state can be taken as a first draft of a "blockchain generic" language.
 
-// Operators that require access to the rest of the Ethereum network world-state can be taken as a first draft of a "blockchain generic" language.
+### Account Queries
 
-// ### Account Queries
+TODO: It's unclear what to do in the case of an account not existing for these operators.
+`BALANCE` is specified to push 0 in this case, but the others are not specified.
+For now, I assume that they instantiate an empty account and use the empty data.
 
-// TODO: It's unclear what to do in the case of an account not existing for these operators.
-// `BALANCE` is specified to push 0 in this case, but the others are not specified.
-// For now, I assume that they instantiate an empty account and use the empty data.
-
-
+```{.k .uiuck .rvk}
     syntax UnOp ::= "BALANCE"
  // -------------------------
     rule <k> BALANCE REG ACCT => #load REG BAL ... </k>
@@ -1143,12 +1157,12 @@ module EVM
     rule <k> EXTCODESIZE REG ACCT => #newAccount ACCT ~> #load REG 0 ... </k>
          <activeAccounts> ACCTS </activeAccounts>
       requires notBool ACCT in_keys(ACCTS)
+```
 
+TODO: What should happen in the case that the account doesn't exist with `EXTCODECOPY`?
+Should we pad zeros (for the copied "program")?
 
-// TODO: What should happen in the case that the account doesn't exist with `EXTCODECOPY`?
-// Should we pad zeros (for the copied "program")?
-
-
+```{.k .uiuck .rvk}
     syntax QuadVoidOp ::= "EXTCODECOPY"
  // -----------------------------------
     rule <k> EXTCODECOPY ACCT MEMSTART PGMSTART WIDTH => . ... </k>
@@ -1162,13 +1176,13 @@ module EVM
     rule <k> EXTCODECOPY ACCT MEMSTART PGMSTART WIDTH => #newAccount ACCT ... </k>
          <activeAccounts> ACCTS </activeAccounts>
       requires notBool ACCT in_keys(ACCTS)
+```
 
+### Account Storage Operations
 
-// ### Account Storage Operations
+These operations interact with the account storage.
 
-// These operations interact with the account storage.
-
-
+```{.k .uiuck .rvk}
     syntax UnOp ::= "SLOAD"
  // -----------------------
     rule <k> SLOAD REG INDEX => #load REG 0 ... </k>
@@ -1216,32 +1230,32 @@ module EVM
 
     rule <k> SSTORE (INDEX => chop(INDEX)) _ ... </k>
       requires INDEX <Int 0 orBool INDEX >=Int pow256
+```
 
+### Call Operations
 
-// ### Call Operations
+The various `CALL*` (and other inter-contract control flow) operations will be desugared into these `InternalOp`s.
 
-// The various `CALL*` (and other inter-contract control flow) operations will be desugared into these `InternalOp`s.
+-   The `callLog` is used to store the `CALL*`/`CREATE` operations so that we can compare them against the test-set.
 
-// -   The `callLog` is used to store the `CALL*`/`CREATE` operations so that we can compare them against the test-set.
-
-
-    syntax Call ::= "{" Int "|" Int "|" Int "|" WordStack "}"
+```{.k .uiuck .rvk}
+    syntax Call ::= "{" Int "|" Int "|" Int "|" Ints "}"
  // ---------------------------------------------------------
+```
 
+-   `#call_____` takes the calling account, the account to execute as, the account whose code should execute, the gas limit, the amount to transfer, and the arguments.
+-   `#callWithCode______` takes the calling account, the accout to execute as, the code to execute (as a map), the gas limit, the amount to transfer, and the arguments.
+-   `#return__` is a placeholder for the calling program, specifying where to place the returned data in memory.
 
-// -   `#call_____` takes the calling account, the account to execute as, the account whose code should execute, the gas limit, the amount to transfer, and the arguments.
-// -   `#callWithCode______` takes the calling account, the accout to execute as, the code to execute (as a map), the gas limit, the amount to transfer, and the arguments.
-// -   `#return__` is a placeholder for the calling program, specifying where to place the returned data in memory.
-
-
+```{.k .uiuck .rvk}
     syntax InternalOp ::= "#checkCall" Int Int
-                        | "#call" Int Int Int Int Int Int WordStack Bool
-                        | "#callWithCode" Int Int Map WordStack Int Int Int WordStack Bool
-                        | "#mkCall" Int Int Map WordStack Int Int Int WordStack Bool
+                        | "#call" Int Int Int Int Int Int Ints Bool
+                        | "#callWithCode" Int Int Map WordStack Int Int Int Ints Bool
+                        | "#mkCall" Int Int Map WordStack Int Int Int Ints Bool
  // --------------------------------------------------------------------------------
     rule <k> #checkCall ACCT VALUE ~> #call _ _ _ GLIMIT _ _ _ _ => #refund GLIMIT ~> #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception ... </k>
          <callDepth> CD </callDepth>
-         <output> _ => .WordStack </output>
+         <output> _ => .Regs </output>
          <account>
            <acctID> ACCT </acctID>
            <balance> BAL </balance>
@@ -1289,7 +1303,7 @@ module EVM
 
     rule <mode> EXECMODE </mode>
          <k> #mkCall ACCTFROM ACCTTO CODE BYTES GLIMIT VALUE APPVALUE ARGS STATIC:Bool
-          => #initVM ~> #if EXECMODE ==K VMTESTS #then #end #else #execute #fi
+          => #initVM(ARGS) ~> #if EXECMODE ==K VMTESTS #then #end #else #execute #fi
          ...
          </k>
          <callLog> ... (.Set => #ifSet EXECMODE ==K VMTESTS #then SetItem({ ACCTTO | GLIMIT | VALUE | ARGS }) #else .Set #fi) </callLog>
@@ -1304,41 +1318,41 @@ module EVM
          <static> OLDSTATIC:Bool => OLDSTATIC orBool STATIC </static>
          <jumpTable> _ => #computeJumpTable(CODE) </jumpTable>
 
-    syntax KItem ::= "#initVM"
- // --------------------------
-    rule <k> #initVM    => . ...       </k>
-         <pc>         _ => 0           </pc>
-         <memoryUsed> _ => 0           </memoryUsed>
-         <output>     _ => .WordStack  </output>
-         <regs>       _ => .Array      </regs>
-         <nregs>      _ => 5           </nregs>
-         <localMem>   _ => .Array      </localMem>
-         <localCalls> _ => .List       </localCalls>
+    syntax KItem ::= #initVM ( Ints )
+ // ---------------------------------
+    rule <k> #initVM(ARGS) => #load #regRange(#sizeRegs(ARGS)) ARGS ... </k>
+         <pc>         _ => 0      </pc>
+         <memoryUsed> _ => 0      </memoryUsed>
+         <output>     _ => .Regs  </output>
+         <regs>       _ => .Array </regs>
+         <nregs>      _ => 5      </nregs>
+         <localMem>   _ => .Array </localMem>
+         <localCalls> _ => .List  </localCalls>
 
-    syntax KItem ::= "#return" Int Int Reg
- // --------------------------------------
-    rule <k> #exception ~> #return _ _ REG
+    syntax KItem ::= "#return" Regs Reg
+ // -----------------------------------
+    rule <k> #exception ~> #return _ REG
           => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG 0
          ...
          </k>
-         <output> _ => .WordStack </output>
+         <output> _ => .Regs </output>
 
-    rule <k> #revert ~> #return RETSTART RETWIDTH REG
+    rule <k> #revert ~> #return REGS REG
            => #popCallStack
            ~> #popWorldState
            ~> #popSubstate
-           ~> #load REG 0 ~> #refund GAVAIL ~> #setLocalMem RETSTART RETWIDTH OUT
+           ~> #load REG 0 ~> #refund GAVAIL ~> #load REGS OUT
           ...
          </k>
          <output> OUT </output>
          <gas> GAVAIL </gas>
 
     rule <mode> EXECMODE </mode>
-         <k> #end ~> #return RETSTART RETWIDTH REG
+         <k> #end ~> #return REGS REG
           => #popCallStack
           ~> #if EXECMODE ==K VMTESTS #then #popWorldState #else #dropWorldState #fi
           ~> #dropSubstate
-          ~> #load REG 1 ~> #refund GAVAIL ~> #setLocalMem RETSTART RETWIDTH OUT
+          ~> #load REG 1 ~> #refund GAVAIL ~> #if EXECMODE ==K VMTESTS #then .K #else #load REGS OUT #fi
          ...
          </k>
          <output> OUT </output>
@@ -1351,31 +1365,21 @@ module EVM
 
     rule <k> #setLocalMem START WIDTH WS => . ... </k>
          <localMem> LM => LM [ START := #take(minInt(chop(WIDTH), #sizeWordStack(WS)), WS) ] </localMem>
+```
 
+For each `CALL*` operation, we make a corresponding call to `#call` and a state-change to setup the custom parts of the calling environment.
 
-// For each `CALL*` operation, we make a corresponding call to `#call` and a state-change to setup the custom parts of the calling environment.
+```{.k .uiuck .rvk}
+    syntax CallOp ::= CallOpCode "(" Int "," Int ")"
+    syntax CallSixOp ::= CallSixOpCode "(" Int "," Int ")"
+ // ------------------------------------------------------
 
-
-    syntax CallOp ::= "CALL"
- // ------------------------
-    rule <k> CALL REG GCAP ACCTTO VALUE ARGSTART ARGWIDTH RETSTART RETWIDTH
-          => #checkCall ACCTFROM VALUE
-          ~> #call ACCTFROM ACCTTO ACCTTO Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, VALUE) VALUE VALUE #range(LM, ARGSTART, ARGWIDTH) false
-          ~> #return RETSTART RETWIDTH REG
-         ...
-         </k>
-         <schedule> SCHED </schedule>
-         <id> ACCTFROM </id>
-         <localMem> LM </localMem>
-         <activeAccounts> ACCTS </activeAccounts>
-         <previousGas> GAVAIL </previousGas>
-
-    syntax CallOp ::= "CALLCODE"
+    syntax CallOpCode ::= "CALL"
  // ----------------------------
-    rule <k> CALLCODE REG GCAP ACCTTO VALUE ARGSTART ARGWIDTH RETSTART RETWIDTH
+    rule <k> CALL(_,_) REG GCAP ACCTTO VALUE REGS ARGS
           => #checkCall ACCTFROM VALUE
-          ~> #call ACCTFROM ACCTFROM ACCTTO Ccallgas(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, VALUE) VALUE VALUE #range(LM, ARGSTART, ARGWIDTH) false
-          ~> #return RETSTART RETWIDTH REG
+          ~> #call ACCTFROM ACCTTO ACCTTO Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, VALUE) VALUE VALUE ARGS false
+          ~> #return REGS REG
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -1384,12 +1388,26 @@ module EVM
          <activeAccounts> ACCTS </activeAccounts>
          <previousGas> GAVAIL </previousGas>
 
-    syntax CallSixOp ::= "DELEGATECALL"
- // -----------------------------------
-    rule <k> DELEGATECALL REG GCAP ACCTTO ARGSTART ARGWIDTH RETSTART RETWIDTH
+    syntax CallOpCode ::= "CALLCODE"
+ // --------------------------------
+    rule <k> CALLCODE(_,_) REG GCAP ACCTTO VALUE REGS ARGS
+          => #checkCall ACCTFROM VALUE
+          ~> #call ACCTFROM ACCTFROM ACCTTO Ccallgas(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, VALUE) VALUE VALUE ARGS false
+          ~> #return REGS REG
+         ...
+         </k>
+         <schedule> SCHED </schedule>
+         <id> ACCTFROM </id>
+         <localMem> LM </localMem>
+         <activeAccounts> ACCTS </activeAccounts>
+         <previousGas> GAVAIL </previousGas>
+
+    syntax CallSixOpCode ::= "DELEGATECALL"
+ // ---------------------------------------
+    rule <k> DELEGATECALL(_,_) REG GCAP ACCTTO REGS ARGS
           => #checkCall ACCTFROM 0
-          ~> #call ACCTAPPFROM ACCTFROM ACCTTO Ccallgas(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, 0) 0 VALUE #range(LM, ARGSTART, ARGWIDTH) false
-          ~> #return RETSTART RETWIDTH REG
+          ~> #call ACCTAPPFROM ACCTFROM ACCTTO Ccallgas(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, 0) 0 VALUE ARGS false
+          ~> #return REGS REG
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -1400,12 +1418,12 @@ module EVM
          <activeAccounts> ACCTS </activeAccounts>
          <previousGas> GAVAIL </previousGas>
 
-    syntax CallSixOp ::= "STATICCALL"
- // ---------------------------------
-    rule <k> STATICCALL REG GCAP ACCTTO ARGSTART ARGWIDTH RETSTART RETWIDTH
+    syntax CallSixOpCode ::= "STATICCALL"
+ // -------------------------------------
+    rule <k> STATICCALL(_,_) REG GCAP ACCTTO REGS ARGS
           => #checkCall ACCTFROM 0
-          ~> #call ACCTFROM ACCTTO ACCTTO Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0) 0 0 #range(LM, ARGSTART, ARGWIDTH) true
-          ~> #return RETSTART RETWIDTH REG
+          ~> #call ACCTFROM ACCTTO ACCTTO Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0) 0 0 ARGS true
+          ~> #return REGS REG
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -1413,21 +1431,21 @@ module EVM
          <localMem> LM </localMem>
          <activeAccounts> ACCTS </activeAccounts>
          <previousGas> GAVAIL </previousGas>
+```
 
+### Account Creation/Deletion
 
-// ### Account Creation/Deletion
+-   `#create____` transfers the endowment to the new account and triggers the execution of the initialization code.
+-   `#codeDeposit_` checks the result of initialization code and whether the code deposit can be paid, indicating an error if not.
 
-// -   `#create____` transfers the endowment to the new account and triggers the execution of the initialization code.
-// -   `#codeDeposit_` checks the result of initialization code and whether the code deposit can be paid, indicating an error if not.
-
-
+```{.k .uiuck .rvk}
     syntax InternalOp ::= "#create" Int Int Int Int WordStack
                         | "#mkCreate" Int Int WordStack Int Int
                         | "#checkCreate" Int Int
  // --------------------------------------------
     rule <k> #checkCreate ACCT VALUE ~> #create _ _ GAVAIL _ _ => #refund GAVAIL ~> #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception ... </k>
          <callDepth> CD </callDepth>
-         <output> _ => .WordStack </output>
+         <output> _ => .Regs </output>
          <account>
            <acctID> ACCT </acctID>
            <balance> BAL </balance>
@@ -1455,7 +1473,7 @@ module EVM
 
     rule <mode> EXECMODE </mode>
          <k> #mkCreate ACCTFROM ACCTTO INITCODE GAVAIL VALUE
-          => #initVM ~> #if EXECMODE ==K VMTESTS #then #end #else #execute #fi
+          => #initVM(.Regs) ~> #if EXECMODE ==K VMTESTS #then #end #else #execute #fi
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -1465,44 +1483,50 @@ module EVM
          <programBytes> _ => INITCODE </programBytes>
          <jumpTable> _ => #computeJumpTable(#asMapOps(#dasmOps(INITCODE, SCHED))) </jumpTable>
          <caller> _ => ACCTFROM </caller>
-         <callLog> ... (.Set => #ifSet EXECMODE ==K VMTESTS #then SetItem({ 0 | OLDGAVAIL +Int GAVAIL | VALUE | INITCODE }) #else .Set #fi) </callLog>
+         <callLog> ... (.Set => #ifSet EXECMODE ==K VMTESTS #then SetItem({ 0 | OLDGAVAIL +Int GAVAIL | VALUE | #asUnsigned(INITCODE) .Regs }) #else .Set #fi) </callLog>
          <callDepth> CD => CD +Int 1 </callDepth>
-         <callData> _ => .WordStack </callData>
+         <callData> _ => .Regs </callData>
          <callValue> _ => VALUE </callValue>
          <account>
            <acctID> ACCTTO </acctID>
-           <nonce> NONCE => #ifInt Gemptyisnonexistent << SCHED >> #then NONCE +Int 1 #else NONCE #fi </nonce>
+           <nonce> NONCE => NONCE +Int 1 </nonce>
            ...
          </account>
-         <activeAccounts> ... ACCTTO |-> (EMPTY => #if Gemptyisnonexistent << SCHED >> #then false #else EMPTY #fi) ... </activeAccounts>
+         <activeAccounts> ... ACCTTO |-> (EMPTY => false) ... </activeAccounts>
 
     syntax KItem ::= "#codeDeposit" Int Reg
                    | "#mkCodeDeposit" Int Reg
-                   | "#finishCodeDeposit" Int WordStack Reg
+                   | "#finishCodeDeposit" Int Int Int Reg
  // -------------------------------------------------------
-    rule <k> #exception ~> #codeDeposit _ REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG 0 ... </k> <output> _ => .WordStack </output>
+    rule <k> #exception ~> #codeDeposit _ REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG 0 ... </k> <output> _ => .Regs </output>
     rule <k> #revert ~> #codeDeposit _ REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #refund GAVAIL ~> #load REG 0 ... </k>
          <gas> GAVAIL </gas>
 
     rule <mode> EXECMODE </mode>
          <k> #end ~> #codeDeposit ACCT REG => #mkCodeDeposit ACCT REG ... </k>
 
+    rule <k> #mkCodeDeposit _ _ ... </k>
+         <output> .Regs => 0 .Regs </output>
+
     rule <k> #mkCodeDeposit ACCT REG
-          => #if EXECMODE ==K VMTESTS #then . #else Gcodedeposit < SCHED > *Int #sizeWordStack(OUT) ~> #deductGas #fi
-          ~> #finishCodeDeposit ACCT OUT REG
+          => #if EXECMODE ==K VMTESTS #then . #else Gcodedeposit < SCHED > *Int #sizeWordStack(#asUnsignedBytes(CODE)) ~> #deductGas #fi
+          ~> #finishCodeDeposit ACCT #sizeWordStack(#asUnsignedBytes(CODE)) CODE REG
          ...
          </k>
          <mode> EXECMODE </mode>
          <schedule> SCHED </schedule>
-         <output> OUT => .WordStack </output>
-      requires #sizeWordStack(OUT) <=Int maxCodeSize < SCHED >
+         <output> CODE .Regs => .Regs </output>
+      requires #sizeWordStack(#asUnsignedBytes(CODE)) <=Int maxCodeSize < SCHED >
 
     rule <k> #mkCodeDeposit ACCT REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG 0 ... </k>
          <schedule> SCHED </schedule>
-         <output> OUT => .WordStack </output>
-      requires #sizeWordStack(OUT) >Int maxCodeSize < SCHED >
+         <output> CODE .Regs => .Regs </output>
+      requires #sizeWordStack(#asUnsignedBytes(CODE)) >Int maxCodeSize < SCHED >
 
-    rule <k> #finishCodeDeposit ACCT OUT REG
+    rule <k> #mkCodeDeposit ACCT REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG 0 ... </k>
+         <output> _ _ _ => .Regs </output>
+
+    rule <k> #finishCodeDeposit ACCT LEN CODE REG
           => #popCallStack ~> #if EXECMODE ==K VMTESTS #then #popWorldState #else #dropWorldState #fi ~> #dropSubstate
           ~> #refund GAVAIL ~> #load REG ACCT
          ...
@@ -1511,28 +1535,17 @@ module EVM
          <gas> GAVAIL </gas>
          <account>
            <acctID> ACCT </acctID>
-           <code> _ => OUT </code>
+           <code> _ => #padToWidth(LEN, #asUnsignedBytes(CODE)) </code>
            ...
          </account>
-         <activeAccounts> ... ACCT |-> (EMPTY => #if OUT =/=K .WordStack #then false #else EMPTY #fi) ... </activeAccounts>
+         <activeAccounts> ... ACCT |-> (EMPTY => #if LEN =/=Int 0 #then false #else EMPTY #fi) ... </activeAccounts>
 
-    rule <k> #exception ~> #finishCodeDeposit ACCT _ REG
-          => #popCallStack ~> #if EXECMODE ==K VMTESTS #then #popWorldState #else #dropWorldState #fi ~> #dropSubstate
-          ~> #refund GAVAIL ~> #load REG ACCT
-         ...
-         </k>
-         <mode> EXECMODE </mode>
-         <gas> GAVAIL </gas>
-         <schedule> FRONTIER </schedule>
+    rule <k> #exception ~> #finishCodeDeposit _ _ _ REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG 0 ... </k>
+```
 
-    rule <k> #exception ~> #finishCodeDeposit _ _ REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG 0 ... </k>
-         <schedule> SCHED </schedule>
-      requires SCHED =/=K FRONTIER
+`CREATE` will attempt to `#create` the account using the initialization code and cleans up the result with `#codeDeposit`.
 
-
-// `CREATE` will attempt to `#create` the account using the initialization code and cleans up the result with `#codeDeposit`.
-
-
+```{.k .uiuck .rvk}
     syntax TernOp ::= "CREATE"
  // --------------------------
     rule <k> CREATE REG VALUE MEMSTART MEMWIDTH
@@ -1550,12 +1563,12 @@ module EVM
            <nonce> NONCE </nonce>
            ...
          </account>
+```
 
+`SELFDESTRUCT` marks the current account for deletion and transfers funds out of the current account.
+Self destructing to yourself, unlike a regular transfer, destroys the balance in the account, irreparably losing it.
 
-// `SELFDESTRUCT` marks the current account for deletion and transfers funds out of the current account.
-// Self destructing to yourself, unlike a regular transfer, destroys the balance in the account, irreparably losing it.
-
-
+```{.k .uiuck .rvk}
     syntax UnVoidOp ::= "SELFDESTRUCT"
  // ----------------------------------
     rule <k> SELFDESTRUCT ACCTTO => #transferFunds ACCT ACCTTO BALFROM ~> #end ... </k>
@@ -1568,7 +1581,7 @@ module EVM
            <balance> BALFROM </balance>
            ...
          </account>
-         <output> _ => .WordStack </output>
+         <output> _ => .Regs </output>
       requires ACCT =/=Int ACCTTO
 
     rule <k> SELFDESTRUCT ACCT => #end ... </k>
@@ -1584,15 +1597,16 @@ module EVM
            ...
          </account>
          <activeAccounts> ... ACCT |-> (_ => NONCE ==Int 0 andBool CODE ==K .WordStack) ... </activeAccounts>
-         <output> _ => .WordStack </output>
+         <output> _ => .Regs </output>
 
+```
 
-// Precompiled Contracts
-// =====================
+Precompiled Contracts
+=====================
 
-// -   `#precompiled` is a placeholder for the 4 pre-compiled contracts at addresses 1 through 4.
+-   `#precompiled` is a placeholder for the 4 pre-compiled contracts at addresses 1 through 4.
 
-
+```{.k .uiuck .rvk}
     syntax NullVoidOp   ::= PrecompiledOp
     syntax PrecompiledOp ::= #precompiled ( Int ) [function]
  // --------------------------------------------------------
@@ -1606,43 +1620,38 @@ module EVM
 
     syntax Set ::= #precompiledAccounts ( Schedule ) [function]
  // -----------------------------------------------------------
-    rule #precompiledAccounts(DEFAULT) => SetItem(1) SetItem(2) SetItem(3) SetItem(4)
-    rule #precompiledAccounts(FRONTIER) => #precompiledAccounts(DEFAULT)
-    rule #precompiledAccounts(HOMESTEAD) => #precompiledAccounts(FRONTIER)
-    rule #precompiledAccounts(EIP150) => #precompiledAccounts(HOMESTEAD)
-    rule #precompiledAccounts(EIP158) => #precompiledAccounts(EIP150)
-    rule #precompiledAccounts(BYZANTIUM) => #precompiledAccounts(EIP158) SetItem(5) SetItem(6) SetItem(7)
-    rule #precompiledAccounts(CONSTANTINOPLE) => #precompiledAccounts(BYZANTIUM)
+    rule #precompiledAccounts(DEFAULT) => SetItem(1) SetItem(2) SetItem(3) SetItem(4) SetItem(5) SetItem(6) SetItem(7)
+    rule #precompiledAccounts(ALBE) => #precompiledAccounts(DEFAULT)
+```
 
+-   `ECREC` performs ECDSA public key recovery.
+-   `SHA256` performs the SHA2-257 hash function.
+-   `RIP160` performs the RIPEMD-160 hash function.
+-   `ID` is the identity function (copies input to output).
 
-// -   `ECREC` performs ECDSA public key recovery.
-// -   `SHA256` performs the SHA2-257 hash function.
-// -   `RIP160` performs the RIPEMD-160 hash function.
-// -   `ID` is the identity function (copies input to output).
-
-
+```{.k .uiuck .rvk}
     syntax PrecompiledOp ::= "ECREC"
  // --------------------------------
     rule <k> ECREC => #end ... </k>
-         <callData> DATA </callData>
-         <output> _ => #ecrec(#sender(#unparseByteStack(DATA [ 0 .. 32 ]), #asUnsigned(DATA [ 32 .. 32 ]), #unparseByteStack(DATA [ 64 .. 32 ]), #unparseByteStack(DATA [ 96 .. 32 ]))) </output>
+         <callData> HASH V R S .Regs </callData>
+         <output> _ => #ecrec(#sender(#unparseByteStack(#padToWidth(32, #asUnsignedBytes(HASH))), V, #unparseByteStack(#padToWidth(32, #asUnsignedBytes(R))), #unparseByteStack(#padToWidth(32, #asUnsignedBytes(S))))) </output>
 
-    syntax WordStack ::= #ecrec ( Account ) [function]
- // --------------------------------------------------
-    rule #ecrec(.Account) => .WordStack
-    rule #ecrec(N:Int)    => #padToWidth(32, #asUnsignedBytes(N))
+    syntax Ints ::= #ecrec ( Account ) [function]
+ // ---------------------------------------------
+    rule #ecrec(.Account) => -1 .Regs
+    rule #ecrec(N:Int)    => N .Regs
 
     syntax PrecompiledOp ::= "SHA256"
  // ---------------------------------
     rule <k> SHA256 => #end ... </k>
-         <callData> DATA </callData>
-         <output> _ => #parseHexBytes(Sha256(#unparseByteStack(DATA))) </output>
+         <callData> LEN DATA .Regs </callData>
+         <output> _ => #parseHexWord(Sha256(#unparseByteStack(#padToWidth(LEN, #asUnsignedBytes(DATA))))) .Regs </output>
 
     syntax PrecompiledOp ::= "RIP160"
  // ---------------------------------
     rule <k> RIP160 => #end ... </k>
-         <callData> DATA </callData>
-         <output> _ => #padToWidth(32, #parseHexBytes(RipEmd160(#unparseByteStack(DATA)))) </output>
+         <callData> LEN DATA .Regs </callData>
+         <output> _ => #parseHexWord(RipEmd160(#unparseByteStack(#padToWidth(LEN, #asUnsignedBytes(DATA))))) .Regs </output>
 
     syntax PrecompiledOp ::= "ID"
  // -----------------------------
@@ -1652,8 +1661,8 @@ module EVM
 
     syntax PrecompiledOp ::= "ECADD"
  // --------------------------------
-    rule <k> ECADD => #ecadd((#asUnsigned(DATA [ 0 .. 32 ]), #asUnsigned(DATA [ 32 .. 32 ])), (#asUnsigned(DATA [ 64 .. 32 ]), #asUnsigned(DATA [ 96 .. 32 ]))) ... </k>
-         <callData> DATA </callData>
+    rule <k> ECADD => #ecadd((X1, Y1), (X2, Y2)) ... </k>
+         <callData> X1 Y1 X2 Y2 .Regs </callData>
 
     syntax InternalOp ::= #ecadd(G1Point, G1Point)
  // ----------------------------------------------
@@ -1664,8 +1673,8 @@ module EVM
 
     syntax PrecompiledOp ::= "ECMUL"
  // --------------------------------
-    rule <k> ECMUL => #ecmul((#asUnsigned(DATA [ 0 .. 32 ]), #asUnsigned(DATA [ 32 .. 32 ])), #asUnsigned(DATA [ 64 .. 32 ])) ... </k>
-         <callData> DATA </callData>
+    rule <k> ECMUL => #ecmul((X, Y), S) ... </k>
+         <callData> X Y S .Regs </callData>
 
     syntax InternalOp ::= #ecmul(G1Point, Int)
  // ------------------------------------------
@@ -1674,55 +1683,57 @@ module EVM
     rule <k> #ecmul(P, S) => #end ... </k> <output> _ => #point(BN128Mul(P, S)) </output>
       requires isValidPoint(P)
 
-    syntax WordStack ::= #point(G1Point) [function]
- // -----------------------------------------------
-    rule #point((X, Y)) => #padToWidth(32, #asUnsignedBytes(X)) ++ #padToWidth(32, #asUnsignedBytes(Y))
+    syntax Ints ::= #point(G1Point) [function]
+ // ------------------------------------------
+    rule #point((X, Y)) => X Y .Regs
 
     syntax PrecompiledOp ::= "ECPAIRING"
  // ------------------------------------
-    rule <k> ECPAIRING => #ecpairing(.List, .List, 0, DATA, #sizeWordStack(DATA)) ... </k>
+    rule <k> ECPAIRING => #ecpairing(.List, .List, DATA) ... </k>
          <callData> DATA </callData>
-      requires #sizeWordStack(DATA) %Int 192 ==Int 0
+      requires #sizeRegs(DATA) %Int 6 ==Int 0
     rule <k> ECPAIRING => #exception ... </k>
          <callData> DATA </callData>
-      requires #sizeWordStack(DATA) %Int 192 =/=Int 0
+      requires #sizeRegs(DATA) %Int 6 =/=Int 0
 
-    syntax InternalOp ::= #ecpairing(List, List, Int, WordStack, Int)
- // -----------------------------------------------------------------
-    rule (.K => #checkPoint) ~> #ecpairing((.List => ListItem((#asUnsigned(DATA [ I .. 32 ]), #asUnsigned(DATA [ I +Int 32 .. 32 ])))) _, (.List => ListItem((#asUnsigned(DATA [ I +Int 96 .. 32 ]) x #asUnsigned(DATA [ I +Int 64 .. 32 ]) , #asUnsigned(DATA [ I +Int 160 .. 32 ]) x #asUnsigned(DATA [ I +Int 128 .. 32 ])))) _, I => I +Int 192, DATA, LEN)
-      requires I =/=Int LEN
-    rule <k> #ecpairing(A, B, LEN, _, LEN) => #end ... </k>
-         <output> _ => #padToWidth(32, #asUnsignedBytes(bool2Word(BN128AtePairing(A, B)))) </output>
+    syntax InternalOp ::= #ecpairing(List, List, Ints)
+ // --------------------------------------------------
+    rule (.K => #checkPoint) ~> #ecpairing((.List => ListItem((X, Y))) _, (.List => ListItem((A x B , C x D))) _, X Y A B C D REGS => REGS)
+    rule <k> #ecpairing(A, B, .Regs) => #end ... </k>
+         <output> _ => bool2Word(BN128AtePairing(A, B)) .Regs </output>
 
     syntax InternalOp ::= "#checkPoint"
  // -----------------------------------
-    rule (#checkPoint => .) ~> #ecpairing(ListItem(AK::G1Point) _, ListItem(BK::G2Point) _, _, _, _)
+    rule (#checkPoint => .) ~> #ecpairing(ListItem(AK::G1Point) _, ListItem(BK::G2Point) _, _)
       requires isValidPoint(AK) andBool isValidPoint(BK)
-    rule #checkPoint ~> #ecpairing(ListItem(AK::G1Point) _, ListItem(BK::G2Point) _, _, _, _) => #exception
+    rule #checkPoint ~> #ecpairing(ListItem(AK::G1Point) _, ListItem(BK::G2Point) _, _) => #exception
       requires notBool isValidPoint(AK) orBool notBool isValidPoint(BK)
+```
+    
 
+Ethereum Gas Calculation
+========================
 
-// Ethereum Gas Calculation
-// ========================
+The gas calculation is designed to mirror the style of the yellowpaper.
+Gas is consumed either by increasing the amount of memory being used, or by executing opcodes.
 
-// The gas calculation is designed to mirror the style of the yellowpaper.
-// Gas is consumed either by increasing the amount of memory being used, or by executing opcodes.
+Memory Consumption
+------------------
 
-// Memory Consumption
-// ------------------
+Memory consumed is tracked to determine the appropriate amount of gas to charge for each operation.
+In the yellowpaper, each opcode is defined to consume zero gas unless specified otherwise next to the semantics of the opcode (appendix H).
 
-// Memory consumed is tracked to determine the appropriate amount of gas to charge for each operation.
-// In the yellowpaper, each opcode is defined to consume zero gas unless specified otherwise next to the semantics of the opcode (appendix H).
+-   `#memory` computes the new memory size given the old size and next operator (with its arguments).
+-   `#memoryUsageUpdate` is the function `M` in appendix H of the yellowpaper which helps track the memory used.
 
-// -   `#memory` computes the new memory size given the old size and next operator (with its arguments).
-// -   `#memoryUsageUpdate` is the function `M` in appendix H of the yellowpaper which helps track the memory used.
-
-
+```{.k .uiuck .rvk}
     syntax Int ::= #memory ( Op , Int ) [function]
  // --------------------------------------------------
-    rule #memory ( MLOAD256 _ INDEX   , MU ) => #memoryUsageUpdate(MU, INDEX, 32)
-    rule #memory ( MSTORE256 INDEX _  , MU ) => #memoryUsageUpdate(MU, INDEX, 32)
-    rule #memory ( MSTORE8 INDEX _ , MU ) => #memoryUsageUpdate(MU, INDEX, 1)
+    rule #memory ( MLOAD _ INDEX WIDTH  , MU ) => #memoryUsageUpdate(MU, INDEX, WIDTH)
+    rule #memory ( MLOAD256 _ INDEX     , MU ) => #memoryUsageUpdate(MU, INDEX, 32)
+    rule #memory ( MSTORE INDEX _ WIDTH , MU ) => #memoryUsageUpdate(MU, INDEX, WIDTH)
+    rule #memory ( MSTORE256 INDEX _    , MU ) => #memoryUsageUpdate(MU, INDEX, 32)
+    rule #memory ( MSTORE8 INDEX _      , MU ) => #memoryUsageUpdate(MU, INDEX, 1)
 
     rule #memory ( SHA3 _ START WIDTH       , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
     rule #memory ( LOG0 START WIDTH         , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
@@ -1733,15 +1744,8 @@ module EVM
 
     rule #memory ( CODECOPY START _ WIDTH       , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
     rule #memory ( EXTCODECOPY _ START _ WIDTH  , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
-    rule #memory ( CALLDATACOPY START _ WIDTH   , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
-    rule #memory ( RETURNDATACOPY START _ WIDTH , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
 
     rule #memory ( CREATE _ _ START WIDTH , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
-    rule #memory ( RETURN START WIDTH     , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
-    rule #memory ( REVERT START WIDTH     , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
-
-    rule #memory ( COP:CallOp     _ _ _ _ ARGSTART ARGWIDTH RETSTART RETWIDTH , MU ) => #memoryUsageUpdate(#memoryUsageUpdate(MU, ARGSTART, ARGWIDTH), RETSTART, RETWIDTH)
-    rule #memory ( CSOP:CallSixOp _ _ _   ARGSTART ARGWIDTH RETSTART RETWIDTH , MU ) => #memoryUsageUpdate(#memoryUsageUpdate(MU, ARGSTART, ARGWIDTH), RETSTART, RETWIDTH)
 
     rule #memory(_, MU) => MU [owise]
 
@@ -1749,16 +1753,16 @@ module EVM
  // ----------------------------------------------------------------
     rule #memoryUsageUpdate(MU, START, 0)     => MU
     rule #memoryUsageUpdate(MU, START, WIDTH) => maxInt(MU, (chop(START) +Int chop(WIDTH)) up/Int 32) requires WIDTH =/=Int 0
+```
 
+Execution Gas
+-------------
 
-// Execution Gas
-// -------------
+Each opcode has an intrinsic gas cost of execution as well (appendix H of the yellowpaper).
 
-// Each opcode has an intrinsic gas cost of execution as well (appendix H of the yellowpaper).
+-   `#gasExec` loads all the relevant surronding state and uses that to compute the intrinsic execution gas of each opcode.
 
-// -   `#gasExec` loads all the relevant surronding state and uses that to compute the intrinsic execution gas of each opcode.
-
-
+```{.k .uiuck .rvk}
     syntax InternalOp ::= #gasExec ( Schedule , Op )
  // ----------------------------------------------------
     rule <k> #gasExec(SCHED, SSTORE INDEX VALUE) => Csstore(SCHED, VALUE, #lookup(STORAGE, INDEX)) ... </k>
@@ -1772,8 +1776,6 @@ module EVM
     rule <k> #gasExec(SCHED, EXP _ W0 0)  => Gexp < SCHED > ... </k>
     rule <k> #gasExec(SCHED, EXP _ W0 W1) => Gexp < SCHED > +Int (Gexpbyte < SCHED > *Int (1 +Int (log256Int(W1)))) ... </k> requires W1 =/=K 0
 
-    rule <k> #gasExec(SCHED, CALLDATACOPY    _ _ WIDTH) => Gverylow     < SCHED > +Int (Gcopy < SCHED > *Int (chop(WIDTH) up/Int 32)) ... </k>
-    rule <k> #gasExec(SCHED, RETURNDATACOPY  _ _ WIDTH) => Gverylow     < SCHED > +Int (Gcopy < SCHED > *Int (chop(WIDTH) up/Int 32)) ... </k>
     rule <k> #gasExec(SCHED, CODECOPY        _ _ WIDTH) => Gverylow     < SCHED > +Int (Gcopy < SCHED > *Int (chop(WIDTH) up/Int 32)) ... </k>
     rule <k> #gasExec(SCHED, EXTCODECOPY   _ _ _ WIDTH) => Gextcodecopy < SCHED > +Int (Gcopy < SCHED > *Int (chop(WIDTH) up/Int 32)) ... </k>
 
@@ -1783,21 +1785,21 @@ module EVM
     rule <k> #gasExec(SCHED, LOG3 _ WIDTH _ _ _)   => (Glog < SCHED > +Int (Glogdata < SCHED > *Int chop(WIDTH)) +Int (3 *Int Glogtopic < SCHED >)) ... </k>
     rule <k> #gasExec(SCHED, LOG4 _ WIDTH _ _ _ _) => (Glog < SCHED > +Int (Glogdata < SCHED > *Int chop(WIDTH)) +Int (4 *Int Glogtopic < SCHED >)) ... </k>
 
-    rule <k> #gasExec(SCHED, CALL _         GCAP ACCTTO VALUE _ _ _ _) => Ccall(SCHED, ACCTTO,   ACCTS, GCAP, GAVAIL, VALUE) ... </k>
+    rule <k> #gasExec(SCHED, CALL(_,_) _ GCAP ACCTTO VALUE _ _) => Ccall(SCHED, ACCTTO,   ACCTS, GCAP, GAVAIL, VALUE) ... </k>
          <activeAccounts> ACCTS </activeAccounts>
          <gas> GAVAIL </gas>
 
-    rule <k> #gasExec(SCHED, CALLCODE _     GCAP _      VALUE _ _ _ _) => Ccall(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, VALUE) ... </k>
+    rule <k> #gasExec(SCHED, CALLCODE(_,_) _ GCAP _ VALUE _ _) => Ccall(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, VALUE) ... </k>
          <id> ACCTFROM </id>
          <activeAccounts> ACCTS </activeAccounts>
          <gas> GAVAIL </gas>
 
-    rule <k> #gasExec(SCHED, DELEGATECALL _ GCAP _ _ _ _ _) => Ccall(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, 0) ... </k>
+    rule <k> #gasExec(SCHED, DELEGATECALL(_,_) _ GCAP _ _ _) => Ccall(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, 0) ... </k>
          <id> ACCTFROM </id>
          <activeAccounts> ACCTS </activeAccounts>
          <gas> GAVAIL </gas>
 
-    rule <k> #gasExec(SCHED, STATICCALL _ GCAP ACCTTO _ _ _ _) => Ccall(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0) ... </k>
+    rule <k> #gasExec(SCHED, STATICCALL(_,_) _ GCAP ACCTTO _ _) => Ccall(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0) ... </k>
          <activeAccounts> ACCTS </activeAccounts>
          <gas> GAVAIL </gas>
 
@@ -1819,8 +1821,7 @@ module EVM
 
     // Wzero
     rule <k> #gasExec(SCHED, STOP)         => Gzero < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, RETURN _ _)   => Gzero < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, REVERT _ _)   => Gzero < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, REVERT(_) _)  => Gzero < SCHED > ... </k>
     rule <k> #gasExec(SCHED, REGISTERS(_)) => Gzero < SCHED > ... </k>
 
     // Wbase
@@ -1828,8 +1829,6 @@ module EVM
     rule <k> #gasExec(SCHED, ORIGIN _)         => Gbase < SCHED > ... </k>
     rule <k> #gasExec(SCHED, CALLER _)         => Gbase < SCHED > ... </k>
     rule <k> #gasExec(SCHED, CALLVALUE _)      => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, CALLDATASIZE _)   => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, RETURNDATASIZE _) => Gbase < SCHED > ... </k>
     rule <k> #gasExec(SCHED, CODESIZE _)       => Gbase < SCHED > ... </k>
     rule <k> #gasExec(SCHED, GASPRICE _)       => Gbase < SCHED > ... </k>
     rule <k> #gasExec(SCHED, COINBASE _)       => Gbase < SCHED > ... </k>
@@ -1850,11 +1849,12 @@ module EVM
     rule <k> #gasExec(SCHED, EQ _ _ _)           => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, ISZERO _ _)         => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, AND _ _ _)          => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, EVMOR _ _ _)        => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, OR _ _ _)           => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, XOR _ _ _)          => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, BYTE _ _ _)         => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, CALLDATALOAD _ _ _) => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, MLOAD _ _ _)        => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, MLOAD256 _ _)       => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, MSTORE _ _ _)       => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, MSTORE256 _ _)      => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, MSTORE8 _ _)        => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, LOADPOS(_, _) _)    => Gverylow < SCHED > ... </k>
@@ -1873,8 +1873,8 @@ module EVM
     rule <k> #gasExec(SCHED, MULMOD _ _ _ _) => Gmid < SCHED > ... </k>
     rule <k> #gasExec(SCHED, EXPMOD _ _ _ _) => Gmid < SCHED > ... </k>
     rule <k> #gasExec(SCHED, JUMP(_))        => Gmid < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, LOCALCALL(_)) => Gmid < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, LOCALRETURN)    => Gmid < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, LOCALCALL(_,_,_) _ _) => Gmid < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, RETURN(_) _)    => Gmid < SCHED > ... </k>
 
     // Whigh
     rule <k> #gasExec(SCHED, JUMPI(_) _)        => Ghigh < SCHED > ... </k>
@@ -1885,20 +1885,20 @@ module EVM
 
     // Precompiled
     rule <k> #gasExec(_, ECREC)  => 3000 ... </k>
-    rule <k> #gasExec(_, SHA256) =>  60 +Int  12 *Int (#sizeWordStack(DATA) up/Int 32) ... </k> <callData> DATA </callData>
-    rule <k> #gasExec(_, RIP160) => 600 +Int 120 *Int (#sizeWordStack(DATA) up/Int 32) ... </k> <callData> DATA </callData>
-    rule <k> #gasExec(_, ID)     =>  15 +Int   3 *Int (#sizeWordStack(DATA) up/Int 32) ... </k> <callData> DATA </callData>
+    rule <k> #gasExec(_, SHA256) =>  60 +Int  12 *Int (LEN up/Int 32) ... </k> <callData> LEN DATA .Regs </callData>
+    rule <k> #gasExec(_, RIP160) => 600 +Int 120 *Int (LEN up/Int 32) ... </k> <callData> LEN DATA .Regs </callData>
+    rule <k> #gasExec(_, ID)     =>  15 +Int   3 *Int #sizeRegs(DATA) ... </k> <callData> DATA </callData>
 
     rule #gasExec(_, ECADD) => 500
     rule #gasExec(_, ECMUL) => 40000
-    rule <k> #gasExec(_, ECPAIRING) => 100000 +Int (#sizeWordStack(DATA) /Int 192) *Int 80000 ... </k> <callData> DATA </callData>
+    rule <k> #gasExec(_, ECPAIRING) => 100000 +Int (#sizeRegs(DATA) /Int 6) *Int 80000 ... </k> <callData> DATA </callData>
+```
 
+There are several helpers for calculating gas (most of them also specified in the yellowpaper).
 
-// There are several helpers for calculating gas (most of them also specified in the yellowpaper).
+Note: These are all functions as the operator `#gasExec` has already loaded all the relevant state.
 
-// Note: These are all functions as the operator `#gasExec` has already loaded all the relevant state.
-
-
+```{.k .uiuck .rvk}
     syntax Int ::= Csstore ( Schedule , Int , Int ) [function]
  // ----------------------------------------------------------
     rule Csstore(SCHED, VALUE, OLD) => #ifInt VALUE =/=Int 0 andBool OLD ==Int 0 #then Gsstoreset < SCHED > #else Gsstorereset < SCHED > #fi
@@ -1924,23 +1924,23 @@ module EVM
     rule Cxfer(SCHED, N) => Gcallvalue < SCHED > requires N =/=K 0
 
     rule Cnew(SCHED, ACCT, ACCTS, VALUE) => Gnewaccount < SCHED >
-      requires         #accountNonexistent(SCHED, ACCT, ACCTS) andBool (VALUE =/=Int 0 orBool          Gzerovaluenewaccountgas << SCHED >>)
+      requires         #accountNonexistent(SCHED, ACCT, ACCTS) andBool VALUE =/=Int 0
     rule Cnew(SCHED, ACCT, ACCTS, VALUE) => 0
-      requires notBool #accountNonexistent(SCHED, ACCT, ACCTS) orBool  (VALUE  ==Int 0 andBool notBool Gzerovaluenewaccountgas << SCHED >>)
+      requires notBool #accountNonexistent(SCHED, ACCT, ACCTS) orBool  VALUE  ==Int 0
 
     syntax Int ::= Cselfdestruct ( Schedule , Int , Map , Int ) [function]
  // ----------------------------------------------------------------------
     rule Cselfdestruct(SCHED, ACCT, ACCTS, BAL) => Gselfdestruct < SCHED > +Int Gnewaccount < SCHED >
-      requires (#accountNonexistent(SCHED, ACCT, ACCTS)) andBool (        Gselfdestructnewaccount << SCHED >>) andBool (BAL =/=Int 0 orBool          Gzerovaluenewaccountgas << SCHED >>)
+      requires (#accountNonexistent(SCHED, ACCT, ACCTS)) andBool (        Gselfdestructnewaccount << SCHED >>) andBool BAL =/=Int 0
     rule Cselfdestruct(SCHED, ACCT, ACCTS, BAL) => Gselfdestruct < SCHED >
-      requires (#accountNonexistent(SCHED, ACCT, ACCTS)) andBool (notBool Gselfdestructnewaccount << SCHED >>  orBool  (BAL  ==Int 0 andBool notBool Gzerovaluenewaccountgas << SCHED >>))
+      requires (#accountNonexistent(SCHED, ACCT, ACCTS)) andBool (notBool Gselfdestructnewaccount << SCHED >>  orBool  BAL  ==Int 0)
     rule Cselfdestruct(SCHED, ACCT, ACCTS, BAL) => Gselfdestruct < SCHED >
       requires notBool #accountNonexistent(SCHED, ACCT, ACCTS)
 
     syntax Bool ::= #accountNonexistent ( Schedule , Int , Map ) [function]
                   | #accountEmpty ( Int , Map )                  [function]
  // -----------------------------------------------------------------------
-    rule #accountNonexistent(SCHED, ACCT, ACCTS) => notBool ACCT in_keys(ACCTS) orBool (#accountEmpty(ACCT, ACCTS) andBool Gemptyisnonexistent << SCHED >>)
+    rule #accountNonexistent(SCHED, ACCT, ACCTS) => notBool ACCT in_keys(ACCTS) orBool #accountEmpty(ACCT, ACCTS)
     rule #accountEmpty(ACCT, (ACCT |-> EMPTY) _) => EMPTY
 
     syntax Int ::= #allBut64th ( Int ) [function]
@@ -1958,29 +1958,28 @@ module EVM
     syntax Int ::= "G*" "(" Int "," Int "," Int ")" [function]
  // ----------------------------------------------------------
     rule G*(GAVAIL, GLIMIT, REFUND) => GAVAIL +Int minInt((GLIMIT -Int GAVAIL)/Int 2, REFUND)
+```
 
+Fee Schedule from C++ Implementation
+------------------------------------
 
-// Fee Schedule from C++ Implementation
-// ------------------------------------
+The [C++ Implementation of EVM](https://github.com/ethereum/cpp-ethereum) specifies several different "profiles" for how the VM works.
+Here we provide each protocol from the C++ implementation, as the yellowpaper does not contain all the different profiles.
+Specify which profile by passing in the argument `-cSCHEDULE=<FEE_SCHEDULE>` when calling `krun` (the available `<FEE_SCHEDULE>` are supplied here).
 
-// The [C++ Implementation of EVM](https://github.com/ethereum/cpp-ethereum) specifies several different "profiles" for how the VM works.
-// Here we provide each protocol from the C++ implementation, as the yellowpaper does not contain all the different profiles.
-// Specify which profile by passing in the argument `-cSCHEDULE=<FEE_SCHEDULE>` when calling `krun` (the available `<FEE_SCHEDULE>` are supplied here).
+A `ScheduleFlag` is a boolean determined by the fee schedule; applying a `ScheduleFlag` to a `Schedule` yields whether the flag is set or not.
 
-// A `ScheduleFlag` is a boolean determined by the fee schedule; applying a `ScheduleFlag` to a `Schedule` yields whether the flag is set or not.
-
-
+```{.k .uiuck .rvk}
     syntax Bool ::= ScheduleFlag "<<" Schedule ">>" [function]
  // ----------------------------------------------------------
 
-    syntax ScheduleFlag ::= "Gselfdestructnewaccount" | "Gstaticcalldepth" | "Gemptyisnonexistent" | "Gzerovaluenewaccountgas"
-                          | "hasRevert" | "hasReturnData" | "hasStaticCall"
- // --------------------------------------------------------------------------------------------------------------------------
+    syntax ScheduleFlag ::= "Gselfdestructnewaccount" | "Gstaticcalldepth"
+ // ----------------------------------------------------------------------
+```
 
+A `ScheduleConst` is a constant determined by the fee schedule; applying a `ScheduleConst` to a `Schedule` yields the correct constant for that schedule.
 
-// A `ScheduleConst` is a constant determined by the fee schedule; applying a `ScheduleConst` to a `Schedule` yields the correct constant for that schedule.
-
-
+```{.k .uiuck .rvk}
     syntax Int ::= ScheduleConst "<" Schedule ">" [function]
  // --------------------------------------------------------
 
@@ -1991,11 +1990,11 @@ module EVM
                            | "Gtxdatazero"  | "Gtxdatanonzero" | "Gtransaction"  | "Glog"          | "Glogdata"    | "Glogtopic"     | "Gsha3"
                            | "Gsha3word"    | "Gcopy"          | "Gblockhash"    | "Gquadcoeff"    | "maxCodeSize" | "Rb"            | "Gquaddivisor"
  // -------------------------------------------------------------------------------------------------------------------------------------------------
+```
 
+### Defualt Schedule
 
-// ### Defualt Schedule
-
-
+```{.k .uiuck .rvk}
     syntax Schedule ::= "DEFAULT"
  // -----------------------------
     rule Gzero    < DEFAULT > => 0
@@ -2006,11 +2005,11 @@ module EVM
     rule Ghigh    < DEFAULT > => 10
 
     rule Gexp      < DEFAULT > => 10
-    rule Gexpbyte  < DEFAULT > => 10
+    rule Gexpbyte  < DEFAULT > => 50
     rule Gsha3     < DEFAULT > => 30
     rule Gsha3word < DEFAULT > => 6
 
-    rule Gsload       < DEFAULT > => 50
+    rule Gsload       < DEFAULT > => 200
     rule Gsstoreset   < DEFAULT > => 20000
     rule Gsstorereset < DEFAULT > => 5000
     rule Rsstoreclear < DEFAULT > => 15000
@@ -2040,135 +2039,158 @@ module EVM
     rule Gtxdatanonzero < DEFAULT > => 68
 
     rule Gjumpdest    < DEFAULT > => 1
-    rule Gbalance     < DEFAULT > => 20
+    rule Gbalance     < DEFAULT > => 400
     rule Gblockhash   < DEFAULT > => 20
-    rule Gextcodesize < DEFAULT > => 20
-    rule Gextcodecopy < DEFAULT > => 20
+    rule Gextcodesize < DEFAULT > => 700
+    rule Gextcodecopy < DEFAULT > => 700
 
-    rule maxCodeSize < DEFAULT > => 2 ^Int 32 -Int 1
-    rule Rb          < DEFAULT > => 5 *Int (10 ^Int 18)
+    rule maxCodeSize < DEFAULT > => 2 ^Int 16
+    rule Rb          < DEFAULT > => 3 *Int (10 ^Int 18)
 
     rule Gselfdestructnewaccount << DEFAULT >> => false
     rule Gstaticcalldepth        << DEFAULT >> => true
-    rule Gemptyisnonexistent     << DEFAULT >> => false
-    rule Gzerovaluenewaccountgas << DEFAULT >> => true
-    rule hasRevert               << DEFAULT >> => false
-    rule hasReturnData           << DEFAULT >> => false
-    rule hasStaticCall           << DEFAULT >> => false
+```
+
+```c++
+struct EVMSchedule
+{
+    EVMSchedule(): tierStepGas(std::array<unsigned, 8>{{0, 2, 3, 5, 8, 10, 20, 0}}) {}
+    EVMSchedule(bool _efcd, bool _hdc, unsigned const& _txCreateGas): exceptionalFailedCodeDeposit(_efcd), haveDelegateCall(_hdc), tierStepGas(std::array<unsigned, 8>{{0, 2, 3, 5, 8, 10, 20, 0}}), txCreateGas(_txCreateGas) {}
+    bool exceptionalFailedCodeDeposit = true;
+    bool haveDelegateCall = true;
+    bool eip150Mode = false;
+    bool eip158Mode = false;
+    bool haveRevert = false;
+    bool haveReturnData = false;
+    bool haveStaticCall = false;
+    bool haveCreate2 = false;
+    std::array<unsigned, 8> tierStepGas;
+
+    unsigned expGas = 10;
+    unsigned expByteGas = 10;
+    unsigned sha3Gas = 30;
+    unsigned sha3WordGas = 6;
+
+    unsigned sloadGas = 50;
+    unsigned sstoreSetGas = 20000;
+    unsigned sstoreResetGas = 5000;
+    unsigned sstoreRefundGas = 15000;
+
+    unsigned logGas = 375;
+    unsigned logDataGas = 8;
+    unsigned logTopicGas = 375;
+
+    unsigned callGas = 40;
+    unsigned callStipend = 2300;
+    unsigned callValueTransferGas = 9000;
+    unsigned callNewAccountGas = 25000;
+
+    unsigned createGas = 32000;
+    unsigned createDataGas = 200;
+    unsigned suicideGas = 0;
+    unsigned suicideRefundGas = 24000;
+
+    unsigned memoryGas = 3;
+    unsigned quadCoeffDiv = 512;
+    unsigned copyGas = 3;
+
+    unsigned txGas = 21000;
+    unsigned txCreateGas = 53000;
+    unsigned txDataZeroGas = 4;
+    unsigned txDataNonZeroGas = 68;
+
+    unsigned jumpdestGas = 1;
+    unsigned balanceGas = 20;
+    unsigned blockhashGas = 20;
+    unsigned extcodesizeGas = 20;
+    unsigned extcodecopyGas = 20;
+
+    unsigned maxCodeSize = unsigned(-1);
+
+    bool staticCallDepthLimit() const { return !eip150Mode; }
+    bool suicideNewAccountGas() const { return !eip150Mode; }
+    bool suicideChargesNewAccountGas() const { return eip150Mode; }
+    bool emptinessIsNonexistence() const { return eip158Mode; }
+    bool zeroValueTransferChargesNewAccountGas() const { return !eip158Mode; }
+};
+```
+
+### Albe Schedule
+
+```{.k .uiuck .rvk}
+    syntax Schedule ::= "ALBE"
+ // --------------------------
+    rule Gcall         < ALBE > => 700
+    rule Gselfdestruct < ALBE > => 5000
+    rule SCHEDCONST    < ALBE > => SCHEDCONST < DEFAULT > [owise]
+
+    rule Gselfdestructnewaccount << ALBE >> => true
+    rule Gstaticcalldepth        << ALBE >> => false
+    rule SCHEDCONST              << ALBE >> => SCHEDCONST << DEFAULT >> [owise]
 
 
-// ### Frontier Schedule
+```
 
+```c++
+static const EVMSchedule HomesteadSchedule = EVMSchedule(true, true, 53000);
 
-    syntax Schedule ::= "FRONTIER"
- // ------------------------------
-    rule Gtxcreate  < FRONTIER > => 21000
-    rule SCHEDCONST < FRONTIER > => SCHEDCONST < DEFAULT > requires SCHEDCONST =/=K Gtxcreate
+static const EVMSchedule EIP150Schedule = []
+{
+    EVMSchedule schedule = HomesteadSchedule;
+    schedule.eip150Mode = true;
+    schedule.extcodesizeGas = 700;
+    schedule.extcodecopyGas = 700;
+    schedule.balanceGas = 400;
+    schedule.sloadGas = 200;
+    schedule.callGas = 700;
+    schedule.suicideGas = 5000;
+    return schedule;
+}();
 
-    rule SCHEDFLAG << FRONTIER >> => SCHEDFLAG << DEFAULT >>
+static const EVMSchedule EIP158Schedule = []
+{
+    EVMSchedule schedule = EIP150Schedule;
+    schedule.expByteGas = 50;
+    schedule.eip158Mode = true;
+    schedule.maxCodeSize = 0x6000;
+    return schedule;
+}();
 
+static const EVMSchedule ByzantiumSchedule = []
+{
+    EVMSchedule schedule = EIP158Schedule;
+    schedule.haveRevert = true;
+    schedule.haveReturnData = true;
+    schedule.haveStaticCall = true;
+    schedule.blockRewardOverwrite = {3 * ether};
+    return schedule;
+}();
+```
 
-// ### Homestead Schedule
+IELE Program Representations
+============================
 
+IELE programs are represented algebraically in K, but programs can load and manipulate program data directly.
+The opcodes `CODECOPY` and `EXTCODECOPY` rely on the assembled form of the programs being present.
+The opcode `CREATE` relies on being able to interperet IELE data as a program.
 
-    syntax Schedule ::= "HOMESTEAD"
- // -------------------------------
-    rule SCHEDCONST < HOMESTEAD > => SCHEDCONST < DEFAULT >
+This is a program representation dependence, which we might want to avoid.
+Perhaps the only program representation dependence we should have is the hash of the program; doing so achieves:
 
-    rule SCHEDFLAG << HOMESTEAD >> => SCHEDFLAG << DEFAULT >>
+-   Program representation independence (different analysis tools on the language don't have to ensure they have a common representation of programs, just a common interperetation of the data-files holding programs).
+-   Programming language independence (we wouldn't even have to commit to a particular language or interperetation of the data-file).
+-   Only depending on the hash allows us to know that we have *exactly* the correct data-file (program), and nothing more.
 
+Disassembler
+------------
 
-// ### EIP150 Schedule
+After interpreting the strings representing programs as a `WordStack`, it should be changed into an `Ops` for use by the IELE semantics.
 
+-   `#dasmOps` interperets `WordStack` as an `Ops`.
+-   `#dasmOpCode` interperets a `Int` as an `OpCode`.
+-   `#computeJumpTable` fills in the jump table from a `Map` of `OpCode`.
 
-    syntax Schedule ::= "EIP150"
- // ----------------------------
-    rule Gbalance      < EIP150 > => 400
-    rule Gsload        < EIP150 > => 200
-    rule Gcall         < EIP150 > => 700
-    rule Gselfdestruct < EIP150 > => 5000
-    rule Gextcodesize  < EIP150 > => 700
-    rule Gextcodecopy  < EIP150 > => 700
-
-    rule SCHEDCONST    < EIP150 > => SCHEDCONST < HOMESTEAD >
-      requires notBool      ( SCHEDCONST ==K Gbalance      orBool SCHEDCONST ==K Gsload       orBool SCHEDCONST ==K Gcall
-                       orBool SCHEDCONST ==K Gselfdestruct orBool SCHEDCONST ==K Gextcodesize orBool SCHEDCONST ==K Gextcodecopy
-                            )
-
-    rule Gselfdestructnewaccount << EIP150 >> => true
-    rule Gstaticcalldepth        << EIP150 >> => false
-    rule SCHEDCONST              << EIP150 >> => SCHEDCONST << HOMESTEAD >>
-      requires notBool      ( SCHEDCONST ==K Gselfdestructnewaccount orBool SCHEDCONST ==K Gstaticcalldepth )
-
-
-// ### EIP158 Schedule
-
-
-    syntax Schedule ::= "EIP158"
- // ----------------------------
-    rule Gexpbyte    < EIP158 > => 50
-    rule maxCodeSize < EIP158 > => 24576
-
-    rule SCHEDCONST  < EIP158 > => SCHEDCONST < EIP150 > requires SCHEDCONST =/=K Gexpbyte andBool SCHEDCONST =/=K maxCodeSize
-
-    rule Gemptyisnonexistent     << EIP158 >> => true
-    rule Gzerovaluenewaccountgas << EIP158 >> => false
-    rule SCHEDCONST              << EIP158 >> => SCHEDCONST << EIP150 >>
-      requires notBool      ( SCHEDCONST ==K Gemptyisnonexistent orBool SCHEDCONST ==K Gzerovaluenewaccountgas )
-
-
-// ### Byzantium Schedule
-
-
-    syntax Schedule ::= "BYZANTIUM"
- // -------------------------------
-    rule Rb         < BYZANTIUM > => 3 *Int (10 ^Int 18)
-    rule SCHEDCONST < BYZANTIUM > => SCHEDCONST < EIP158 >
-      requires notBool ( SCHEDCONST ==K Rb )
-
-    rule hasRevert     << BYZANTIUM >> => true
-    rule hasReturnData << BYZANTIUM >> => true
-    rule hasStaticCall << BYZANTIUM >> => true
-    rule SCHEDFLAG     << BYZANTIUM >> => SCHEDFLAG << EIP158 >>
-      requires notBool ( SCHEDFLAG ==K hasRevert orBool SCHEDFLAG ==K hasReturnData orBool SCHEDFLAG ==K hasStaticCall )
-
-
-// ### Constantinople Schedule
-
-
-    syntax Schedule ::= "CONSTANTINOPLE"
- // ------------------------------------
-    rule Gblockhash < CONSTANTINOPLE > => 800
-    rule SCHEDCONST < CONSTANTINOPLE > => SCHEDCONST < BYZANTIUM >
-      requires SCHEDCONST =/=K Gblockhash
-
-    rule SCHEDFLAG << CONSTANTINOPLE >> => SCHEDFLAG << BYZANTIUM >>
-
-
-// EVM Program Representations
-// ===========================
-
-// EVM programs are represented algebraically in K, but programs can load and manipulate program data directly.
-// The opcodes `CODECOPY` and `EXTCODECOPY` rely on the assembled form of the programs being present.
-// The opcode `CREATE` relies on being able to interperet EVM data as a program.
-
-// This is a program representation dependence, which we might want to avoid.
-// Perhaps the only program representation dependence we should have is the hash of the program; doing so achieves:
-
-// -   Program representation independence (different analysis tools on the language don't have to ensure they have a common representation of programs, just a common interperetation of the data-files holding programs).
-// -   Programming language independence (we wouldn't even have to commit to a particular language or interperetation of the data-file).
-// -   Only depending on the hash allows us to know that we have *exactly* the correct data-file (program), and nothing more.
-
-// Disassembler
-// ------------
-
-// After interpreting the strings representing programs as a `WordStack`, it should be changed into an `Ops` for use by the EVM semantics.
-
-// -   `#dasmOps` interperets `WordStack` as an `Ops`.
-// -   `#dasmOpCode` interperets a `Int` as an `OpCode`.
-// -   `#computeJumpTable` fills in the jump table from a `Map` of `OpCode`.
-
-
+```{.k .uiuck .rvk}
     syntax Ops ::= #dasmOps ( WordStack , Schedule )       [function]
                  | #dasmOps ( Ops , WordStack , K , Schedule , Int ) [function, klabel(#dasmOpsAux)]
                  | #revOps  ( Ops , Ops )                        [function]
@@ -2180,8 +2202,8 @@ module EVM
 
     rule #dasmOps( OPS, W : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, #dasmOpCode(W, SCHED), SCHED, NREGS)
       requires (W >=Int 0   andBool W <=Int 96)
-        orBool (W >=Int 103 andBool W <=Int 246)
-        orBool (W >=Int 249 andBool W <=Int 255)
+        orBool (W >=Int 103 andBool W <=Int 240)
+        orBool (W >=Int 248 andBool W <=Int 255)
 
     rule #dasmOps( OPS, W : WS, .K,             SCHED, NREGS ) => #dasmOps(OPS, W : WS, #str(#pushLen(#drop(NREGS up/Int 8, WS)), #pushOffset(#drop(NREGS up/Int 8, WS))), SCHED, NREGS)
       requires W >=Int 97 andBool W <Int 99
@@ -2192,7 +2214,13 @@ module EVM
     rule #dasmOps( OPS, 100 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMP(W1 *Int 256 +Int W2),      SCHED, NREGS)
     rule #dasmOps( OPS, 101 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMPI(W1 *Int 256 +Int W2),     SCHED, NREGS)
     rule #dasmOps( OPS, 102 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, JUMPDEST(W1 *Int 256 +Int W2),  SCHED, NREGS)
-    rule #dasmOps( OPS, 247 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, LOCALCALL(W1 *Int 256 +Int W2), SCHED, NREGS)
+    rule #dasmOps( OPS, 241 : W1 : W2 : W3 : W4 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, CALL(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4), SCHED, NREGS)
+    rule #dasmOps( OPS, 242 : W1 : W2 : W3 : W4 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, CALLCODE(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4), SCHED, NREGS)
+    rule #dasmOps( OPS, 243 : W1 : W2 : W3 : W4 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, DELEGATECALL(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4), SCHED, NREGS)
+    rule #dasmOps( OPS, 244 : W1 : W2 : W3 : W4 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, STATICCALL(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4), SCHED, NREGS)
+    rule #dasmOps( OPS, 245 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, RETURN(W1 *Int 256 +Int W2), SCHED, NREGS)
+    rule #dasmOps( OPS, 246 : W1 : W2 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, REVERT(W1 *Int 256 +Int W2), SCHED, NREGS)
+    rule #dasmOps( OPS, 247 : W1 : W2 : W3 : W4 : W5 : W6 : WS, .K, SCHED, NREGS ) => #dasmOps(OPS, WS, LOCALCALL(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, W5 *Int 256 +Int W6), SCHED, NREGS)
 
     rule #dasmOps( OPS, WS, OP:OpCode, SCHED, NREGS) => #dasmOps(#dasmRegs(OP, WS, NREGS) ; OPS, #drop(#opWidth(OP, NREGS) -Int #opCodeWidth(OP), WS), .K, SCHED, NREGS)
 
@@ -2217,12 +2245,22 @@ module EVM
     rule #dasmRegs ( OP:QuadVoidOp, R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2) %(R, W, M, 3)
     rule #dasmRegs ( OP:FiveVoidOp, R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2) %(R, W, M, 3) %(R, W, M, 4)
     rule #dasmRegs ( OP:SixVoidOp,  R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2) %(R, W, M, 3) %(R, W, M, 4) %(R, W, M, 5)
-    rule #dasmRegs ( OP:CallSixOp,  R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2) %(R, W, M, 3) %(R, W, M, 4) %(R, W, M, 5) %(R, W, M, 6)
-    rule #dasmRegs ( OP:CallOp,     R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2) %(R, W, M, 3) %(R, W, M, 4) %(R, W, M, 5) %(R, W, M, 6) %(R, W, M, 7)
+
+    rule #dasmRegs ( _:CallSixOpCode (ARGS, RETS) #as OP::CallSixOp,   R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1 +Int RETS) %(R, W, M, 2 +Int RETS)                         %(R, W, M, 1, RETS) %(R, W, M, RETS +Int 3, ARGS)
+    rule #dasmRegs ( _:CallOpCode    (ARGS, RETS) #as OP::CallOp,      R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1 +Int RETS) %(R, W, M, 2 +Int RETS) %(R, W, M, 3 +Int RETS) %(R, W, M, 1, RETS) %(R, W, M, RETS +Int 4, ARGS)
+    rule #dasmRegs ( LOCALCALL(_,     ARGS, RETS) #as OP::LocalCallOp, R, W, M ) => OP                                                                                       %(R, W, M, 0, RETS) %(R, W, M, RETS,        ARGS)
+
+    rule #dasmRegs ( REVERT(RETS), R, W, M ) => REVERT(RETS) %(R, W, M, 0, RETS)
+    rule #dasmRegs ( RETURN(RETS), R, W, M ) => RETURN(RETS) %(R, W, M, 0, RETS)
 
     syntax Reg ::= "%" "(" Int "," Int "," Int "," Int ")" [function]
  // -----------------------------------------------------------------
     rule %(REGS, WIDTH, MASK, IDX) => % ((REGS >>Int (IDX *Int WIDTH)) &Int MASK)
+
+    syntax Regs ::= "%" "(" Int "," Int "," Int "," Int "," Int ")" [function]
+ // --------------------------------------------------------------------------
+    rule %(REGS, WIDTH, MASK, IDX, 0) => .Regs
+    rule %(REGS, WIDTH, MASK, IDX, COUNT) => %(REGS, WIDTH, MASK, IDX +Int COUNT -Int 1) %(REGS, WIDTH, MASK, IDX, COUNT -Int 1) [owise]
 
     syntax Int ::= #opWidth ( OpCode , Int ) [function]
  // ---------------------------------------------------
@@ -2232,12 +2270,16 @@ module EVM
 
     syntax Int ::= #opCodeWidth ( OpCode ) [function]
  // -------------------------------------------------
-    rule #opCodeWidth( JUMPDEST(_) )  => 3
-    rule #opCodeWidth( JUMP(_) )      => 3
-    rule #opCodeWidth( JUMPI(_) )     => 3
-    rule #opCodeWidth( LOCALCALL(_) ) => 3
-    rule #opCodeWidth( REGISTERS(_) ) => 2
-    rule #opCodeWidth( OP )           => 1 [owise]
+    rule #opCodeWidth( JUMPDEST(_) )      => 3
+    rule #opCodeWidth( JUMP(_) )          => 3
+    rule #opCodeWidth( JUMPI(_) )         => 3
+    rule #opCodeWidth( LOCALCALL(_,_,_) ) => 7
+    rule #opCodeWidth( RETURN(_) )        => 3
+    rule #opCodeWidth( REVERT(_) )        => 3
+    rule #opCodeWidth( REGISTERS(_) )     => 2
+    rule #opCodeWidth( _:CallOp )         => 5
+    rule #opCodeWidth( _:CallSixOp )      => 5
+    rule #opCodeWidth( OP )               => 1 [owise]
 
     syntax Int ::= #numArgs ( OpCode ) [function]
  // ---------------------------------------------
@@ -2252,8 +2294,11 @@ module EVM
     rule #numArgs ( _:QuadVoidOp ) => 4
     rule #numArgs ( _:FiveVoidOp ) => 5
     rule #numArgs ( _:SixVoidOp )  => 6
-    rule #numArgs ( _:CallSixOp )  => 7
-    rule #numArgs ( _:CallOp )     => 8
+    rule #numArgs ( _:CallSixOpCode(ARGS, RETS) ) => 3 +Int ARGS +Int RETS
+    rule #numArgs ( _:CallOpCode   (ARGS, RETS) ) => 4 +Int ARGS +Int RETS
+    rule #numArgs ( LOCALCALL    (_,ARGS, RETS) ) => ARGS +Int RETS
+    rule #numArgs ( RETURN(RETS) )                => RETS
+    rule #numArgs ( REVERT(RETS) )                => RETS
 
     syntax OpCode ::= #dasmOpCode ( Int , Schedule ) [function]
  // -----------------------------------------------------------
@@ -2274,7 +2319,7 @@ module EVM
     rule #dasmOpCode(  20,     _ ) => EQ
     rule #dasmOpCode(  21,     _ ) => ISZERO
     rule #dasmOpCode(  22,     _ ) => AND
-    rule #dasmOpCode(  23,     _ ) => EVMOR
+    rule #dasmOpCode(  23,     _ ) => OR
     rule #dasmOpCode(  24,     _ ) => XOR
     rule #dasmOpCode(  25,     _ ) => NOT
     rule #dasmOpCode(  26,     _ ) => BYTE
@@ -2284,16 +2329,11 @@ module EVM
     rule #dasmOpCode(  50,     _ ) => ORIGIN
     rule #dasmOpCode(  51,     _ ) => CALLER
     rule #dasmOpCode(  52,     _ ) => CALLVALUE
-    rule #dasmOpCode(  53,     _ ) => CALLDATALOAD
-    rule #dasmOpCode(  54,     _ ) => CALLDATASIZE
-    rule #dasmOpCode(  55,     _ ) => CALLDATACOPY
     rule #dasmOpCode(  56,     _ ) => CODESIZE
     rule #dasmOpCode(  57,     _ ) => CODECOPY
     rule #dasmOpCode(  58,     _ ) => GASPRICE
     rule #dasmOpCode(  59,     _ ) => EXTCODESIZE
     rule #dasmOpCode(  60,     _ ) => EXTCODECOPY
-    rule #dasmOpCode(  61, SCHED ) => RETURNDATASIZE requires hasReturnData << SCHED >>
-    rule #dasmOpCode(  62, SCHED ) => RETURNDATACOPY requires hasReturnData << SCHED >>
     rule #dasmOpCode(  64,     _ ) => BLOCKHASH
     rule #dasmOpCode(  65,     _ ) => COINBASE
     rule #dasmOpCode(  66,     _ ) => TIMESTAMP
@@ -2318,13 +2358,6 @@ module EVM
     rule #dasmOpCode( 163,     _ ) => LOG3
     rule #dasmOpCode( 164,     _ ) => LOG4
     rule #dasmOpCode( 240,     _ ) => CREATE
-    rule #dasmOpCode( 241,     _ ) => CALL
-    rule #dasmOpCode( 242,     _ ) => CALLCODE
-    rule #dasmOpCode( 243, SCHED ) => DELEGATECALL requires SCHED =/=K FRONTIER
-    rule #dasmOpCode( 244, SCHED ) => STATICCALL requires hasStaticCall << SCHED >>
-    rule #dasmOpCode( 245,     _ ) => RETURN
-    rule #dasmOpCode( 246, SCHED ) => REVERT requires hasRevert << SCHED >>
-    rule #dasmOpCode( 248,     _ ) => LOCALRETURN
     rule #dasmOpCode( 255,     _ ) => SELFDESTRUCT
     rule #dasmOpCode(   W,     _ ) => INVALID [owise]
 
@@ -2339,4 +2372,4 @@ module EVM
     rule #computeJumpTable(_    |-> JUMPDEST(LABEL) OPS, JUMPS, LABELS) => #computeJumpTable(OPS, JUMPS [ LABEL <- undef ], LABELS)                requires         LABEL in LABELS
     rule #computeJumpTable(_    |-> _               OPS, JUMPS, LABELS) => #computeJumpTable(OPS, JUMPS, LABELS)                                   [owise]
 endmodule
-
+```

@@ -53,6 +53,7 @@ type iele_opcode = [
 | `PC
 | `MSIZE
 | `GAS
+| `MOVE
 | `LOADPOS
 | `LOADNEG
 | `JUMP of int
@@ -61,21 +62,24 @@ type iele_opcode = [
 | `REGISTERS of int
 | `LOG of int
 | `CREATE
-| `CALL
-| `CALLCODE
-| `DELEGATECALL
-| `STATICCALL
-| `LOCALCALL of int
-| `RETURN
-| `LOCALRETURN
-| `REVERT
+| `CALL of int * int
+| `CALLCODE of int * int
+| `DELEGATECALL of int * int
+| `STATICCALL of int * int
+| `LOCALCALL of int * int * int
+| `LOCALCALLI of int * int * int * int
+| `RETURN of int
+| `LOCALRETURN of int
+| `REVERT of int
 | `INVALID
 | `SELFDESTRUCT
 ]
 
 type iele_op =
 | Nop
-| Op of iele_opcode * int list
+| Op of iele_opcode * int * int list
+| VoidOp of iele_opcode * int list
+| CallOp of iele_opcode * int list * int list
 | LiOp of iele_opcode * int * Z.t
 
 let asm_iele_opcode op = match op with
@@ -106,9 +110,6 @@ let asm_iele_opcode op = match op with
 | `ORIGIN -> "\x32"
 | `CALLER -> "\x33"
 | `CALLVALUE -> "\x34"
-| `CALLDATALOAD -> "\x35"
-| `CALLDATASIZE -> "\x36"
-| `CALLDATACOPY -> "\x37"
 | `CODESIZE -> "\x38"
 | `CODECOPY -> "\x39"
 | `GASPRICE -> "\x3a"
@@ -133,6 +134,7 @@ let asm_iele_opcode op = match op with
 | `PC -> "\x58"
 | `MSIZE -> "\x59"
 | `GAS -> "\x5a"
+| `MOVE -> "\x60"
 | `LOADPOS -> "\x61"
 | `LOADNEG -> "\x62"
 | `REGISTERS i -> "\x63" ^ (IeleUtil.string_of_char (Char.chr i))
@@ -144,16 +146,17 @@ let asm_iele_opcode op = match op with
   let ch = Char.chr byte in
   IeleUtil.string_of_char ch
 | `CREATE -> "\xf0"
-| `CALL -> "\xf1"
-| `CALLCODE -> "\xf2"
-| `DELEGATECALL -> "\xf3"
-| `STATICCALL -> "\xf4"
-| `RETURN -> "\xf5"
-| `REVERT -> "\xf6"
-| `LOCALCALL (call) -> "\xf7" ^ (IeleUtil.be_int_width (Z.of_int call) 16)
-| `LOCALRETURN -> "\xf9"
+| `CALL(nargs,nreturn) -> "\xf1" ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `CALLCODE(nargs,nreturn) -> "\xf2" ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `DELEGATECALL(nargs,nreturn) -> "\xf3" ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `STATICCALL(nargs,nreturn) -> "\xf4" ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `RETURN(nreturn) -> "\xf5" ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `REVERT(nreturn) -> "\xf6" ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `LOCALCALL (call,nargs,nreturn) -> "\xf7" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `LOCALRETURN(nreturn) -> "\xf5" ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
 | `INVALID -> "\xfe"
 | `SELFDESTRUCT -> "\xff"
+| `LOCALCALLI _ | `CALLDATALOAD | `CALLDATASIZE | `CALLDATACOPY -> invalid_arg "needs postprocessing"
 
 let asm_iele_regs regs buf nregs =
   let z = List.fold_right (fun reg accum -> Z.add (Z.shift_left accum nregs) (Z.of_int reg)) regs Z.zero in
@@ -161,9 +164,15 @@ let asm_iele_regs regs buf nregs =
 
 let asm_iele_op op buf nregs = match op with
 | Nop -> ()
-| Op(opcode,regs) -> 
+| Op(opcode,reg,regs) -> 
+  Buffer.add_string buf (asm_iele_opcode opcode);
+  asm_iele_regs (reg::regs) buf nregs
+| VoidOp(opcode,regs) -> 
   Buffer.add_string buf (asm_iele_opcode opcode);
   asm_iele_regs regs buf nregs
+| CallOp(opcode,regs1,regs2) ->
+  Buffer.add_string buf (asm_iele_opcode opcode);
+  asm_iele_regs (regs1 @ regs2) buf nregs
 | LiOp(opcode,r,payload) ->
   Buffer.add_string buf (asm_iele_opcode opcode);
   asm_iele_regs [r] buf nregs;
@@ -176,7 +185,7 @@ let rec asm_iele_aux ops buf nregs = match ops with
 
 let asm_iele ops =
   let nregs = match ops with
-  | Op(`REGISTERS n,[]) :: tail -> n
+  | VoidOp(`REGISTERS n,[]) :: tail -> n
   | _ -> 5
   in
   let buf = Buffer.create ((List.length ops) * 2) in

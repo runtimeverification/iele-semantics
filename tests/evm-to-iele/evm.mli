@@ -116,8 +116,10 @@ type intermediate_op = [
 | `GASLIMIT
 | `POP
 | `MLOAD
+| `MLOAD256
 | `MSTORE
 | `MSTORE8
+| `MSTORE256
 | `SLOAD
 | `SSTORE
 | `JUMP of int
@@ -134,6 +136,7 @@ type intermediate_op = [
 | `CALL
 | `CALLCODE
 | `RETURN
+| `LOCALRETURN
 | `DELEGATECALL
 | `STATICCALL
 | `REVERT
@@ -142,3 +145,4 @@ type intermediate_op = [
 ]
 
 val dasm_evm : string -> evm_op list
+val dasm_hex_string : string -> evm_op list

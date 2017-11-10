@@ -1,7 +1,7 @@
 Cryptographic Primitives
 ========================
 
-Here we implement the various cryptographic primitives needed for KEVM.
+Here we implement the various cryptographic primitives needed for IELE.
 
 ```{.k .uiuck .rvk}
 module KRYPTO

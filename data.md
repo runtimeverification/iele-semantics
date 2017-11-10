@@ -1,7 +1,7 @@
-EVM Words
+IELE Words
 =========
 
-EVM uses bounded 256 bit integer words, and sometimes also bytes (8 bit words).
+IELE uses arbitrary-precision integers, and sometimes also bytes (8 bit words).
 Here we provide the arithmetic of these words, as well as some data-structures over them.
 Both are implemented using K's `Int`.
 
@@ -9,7 +9,7 @@ Both are implemented using K's `Int`.
 requires "krypto.k"
 requires "domains.k"
 
-module EVM-DATA
+module IELE-DATA
     imports KRYPTO
     imports STRING-BUFFER
     imports ARRAY
@@ -49,7 +49,7 @@ Writing a JSON-ish parser in K takes 6 lines.
 Primitives
 ----------
 
-Primitives provide the basic conversion from K's sorts `Int` and `Bool` to EVM's words.
+Primitives provide the basic conversion from K's sorts `Int` and `Bool` to IELE's words.
 
 -   `chop` interperets an integers modulo $2^256$.
 
@@ -222,7 +222,7 @@ Several data-structures and operations over `Int` are useful to have around.
 Word Stack
 ----------
 
-EVM is a stack machine, and so needs a stack of words to operate on.
+IELE makes use of a stack in some places in order to represent lists of integers.
 The stack and some standard operations over it are provided here.
 This stack also serves as a cons-list, so we provide some standard cons-list manipulation tools.
 
@@ -448,7 +448,7 @@ Addresses
 Word Map
 --------
 
-Most of EVM data is held in finite maps.
+Most of IELE data is held in finite maps.
 We are using the polymorphic `Map` sort for these word maps.
 
 -   `WM [ N := WS ]` assigns a contiguous chunk of $WM$ to $WS$ starting at position $W$.
@@ -496,7 +496,7 @@ We are using the polymorphic `Map` sort for these word maps.
 Parsing/Unparsing
 =================
 
-The EVM test-sets are represented in JSON format with hex-encoding of the data and programs.
+The IELE test-sets are represented in JSON format with hex-encoding of the data and programs.
 Here we provide some standard parser/unparser functions for that format.
 
 Parsing
@@ -583,7 +583,7 @@ For details about RLP encoding, see the [YellowPaper Appendix B](http://gavwood.
 Encoding
 --------
 
--   `#rlpEncodeWord` RLP encodes a single EVM word.
+-   `#rlpEncodeWord` RLP encodes a single IELE word.
 -   `#rlpEncodeString` RLP encodes a single `String`.
 
 ```{.k .uiuck .rvk}

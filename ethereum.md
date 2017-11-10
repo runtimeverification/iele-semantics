@@ -1,20 +1,20 @@
-Ethereum Simulations
-====================
+Ethereum Backwards-Compatibility Testing
+========================================
 
-Ethereum is using the EVM to drive updates over the world state.
-Actual execution of the EVM is defined in [the EVM file](evm.md).
+Here we test the Ethereum test suite against the new IELE VM.
+Actual execution of IELE is defined in [the IELE file](iele.md).
 
 ```{.k .uiuck}
 requires "verification.k"
 ```
 
 ```{.k .uiuck .rvk}
-requires "evm.k"
+requires "iele.k"
 requires "analysis.k"
 
 module ETHEREUM-SIMULATION
-    imports EVM
-    imports EVM-ANALYSIS
+    imports IELE
+    imports IELE-ANALYSIS
 ```
 
 ```{.k .uiuck}
@@ -41,7 +41,7 @@ Some Ethereum commands take an Ethereum specification (eg. for an account or tra
 ```
 
 For verification purposes, it's much easier to specify a program in terms of its op-codes and not the hex-encoding that the tests use.
-To do so, we'll extend sort `JSON` with some EVM specific syntax, and provide a "pretti-fication" to the nicer input form.
+To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a "pretti-fication" to the nicer input form.
 
 ```{.k .uiuck .rvk}
     syntax JSON ::= Int | WordStack | Ops | Map | Call | SubstateLogEntry | Account
@@ -75,9 +75,9 @@ To do so, we'll extend sort `JSON` with some EVM specific syntax, and provide a 
 ```{.k .uiuck .rvk}
     syntax EthereumCommand ::= "start"
  // ----------------------------------
-    rule <mode> NORMAL     </mode> <k> start => #execute    ... </k>
-    rule <mode> VMTESTS    </mode> <k> start => #execute    ... </k>
-    rule <mode> GASANALYZE </mode> <k> start => #gasAnalyze ... </k>
+    rule <mode> NORMAL     </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData>
+    rule <mode> VMTESTS    </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData>
+    rule <mode> GASANALYZE </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #gasAnalyze ... </k> <callData> VALUES </callData>
 
     syntax EthereumCommand ::= "flush"
  // ----------------------------------
@@ -114,7 +114,7 @@ To do so, we'll extend sort `JSON` with some EVM specific syntax, and provide a 
  // -----------------------------------------
     rule <k> loadTx(ACCTFROM)
           => #create ACCTFROM #newAddr(ACCTFROM, NONCE) (GLIMIT -Int G0(SCHED, CODE, true)) VALUE CODE
-          ~> #execute ~> #finishTx ~> #finalizeTx(false) ~> startTx
+          ~> #execute ~> #finishTx ~> #adjustGas ~> #finalizeTx(false) ~> startTx
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -140,8 +140,8 @@ To do so, we'll extend sort `JSON` with some EVM specific syntax, and provide a 
          <activeAccounts> ... ACCTFROM |-> (_ => false) ... </activeAccounts>
 
     rule <k> loadTx(ACCTFROM)
-          => #call ACCTFROM ACCTTO ACCTTO (GLIMIT -Int G0(SCHED, DATA, false)) VALUE VALUE DATA false
-          ~> #execute ~> #finishTx ~> #finalizeTx(false) ~> startTx
+          => #call ACCTFROM ACCTTO ACCTTO (GLIMIT -Int G0(SCHED, DATA, false)) VALUE VALUE (#sizeWordStack(DATA) #asUnsigned(DATA) .Regs) false
+          ~> #execute ~> #finishTx ~> #adjustGas ~> #finalizeTx(false) ~> startTx
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -166,6 +166,18 @@ To do so, we'll extend sort `JSON` with some EVM specific syntax, and provide a 
          </account>
          <activeAccounts> ... ACCTFROM |-> (_ => false) ... </activeAccounts>
       requires ACCTTO =/=K .Account
+
+    syntax EthereumCommand ::= "#adjustGas"
+ // ---------------------------------------
+    rule <k> #adjustGas => . ... </k>
+         <gas> _ => GLIMIT -Int GUSED </gas>
+         <gasUsed> GUSED </gasUsed>
+         <txPending> ListItem(TXID:Int) ... </txPending>
+         <message>
+           <msgID> TXID </msgID>
+           <txGasLimit> GLIMIT </txGasLimit>
+           ...
+         </message>
 
     syntax EthereumCommand ::= "#finishTx"
  // --------------------------------------
@@ -335,7 +347,7 @@ State Manipulation
     syntax EthreumCommand ::= "clearTX"
  // -----------------------------------
     rule <k> clearTX => . ... </k>
-         <output>       _ => .WordStack </output>
+         <output>       _ => .Regs      </output>
          <memoryUsed>   _ => 0          </memoryUsed>
          <callDepth>    _ => 0          </callDepth>
          <callStack>    _ => .List      </callStack>
@@ -345,7 +357,7 @@ State Manipulation
          <jumpTable>    _ => .Map       </jumpTable>
          <id>           _ => 0          </id>
          <caller>       _ => 0          </caller>
-         <callData>     _ => .WordStack </callData>
+         <callData>     _ => .Regs      </callData>
          <callValue>    _ => 0          </callValue>
          <regs>         _ => .Array     </regs>
          <localMem>     _ => .Array     </localMem>
@@ -490,8 +502,9 @@ Here we load the environmental information.
     rule <k> load "exec" : { "code"     : ((CODE:String)   => #parseByteStack(CODE)) } ... </k>
 
     rule load "exec" : { "data" : ((DATA:String) => #parseByteStack(DATA)) }
- // ------------------------------------------------------------------------
-    rule <k> load "exec" : { "data" : (DATA:WordStack) } => . ... </k> <callData> _ => DATA </callData>
+    rule load "exec" : { "data" : ((DATA:WordStack) => [#asUnsigned(DATA), #sizeWordStack(DATA)]) } 
+ // -----------------------------------------------------------------------------------------------
+    rule <k> load "exec" : { "data" : [DATA:Int, LEN:Int] } => . ... </k> <callData> _ => LEN DATA .Regs </callData>
     rule <k> load "exec" : { "code" : (CODE:WordStack) } => . ... </k>
          <program>  _ => #asMapOps(#dasmOps(CODE, SCHED)) </program>
          <programBytes> _ => CODE </programBytes>
@@ -507,12 +520,7 @@ The `"network"` key allows setting the fee schedule inside the test.
 
     syntax Schedule ::= #asScheduleString ( String ) [function]
  // -----------------------------------------------------------
-    rule #asScheduleString("EIP150")         => EIP150
-    rule #asScheduleString("EIP158")         => EIP158
-    rule #asScheduleString("Frontier")       => FRONTIER
-    rule #asScheduleString("Homestead")      => HOMESTEAD
-    rule #asScheduleString("Byzantium")      => BYZANTIUM
-    rule #asScheduleString("Constantinople") => CONSTANTINOPLE
+    rule #asScheduleString("Byzantium")      => ALBE
 ```
 
 The `"rlp"` key loads the block information.
@@ -635,8 +643,9 @@ Here we check the other post-conditions associated with an EVM test.
 ```{.k .uiuck .rvk}
     rule check TESTID : { "out" : OUT } => check "out" : OUT ~> failure TESTID
  // --------------------------------------------------------------------------
-    rule check "out" : ((OUT:String) => #parseByteStack(OUT))
-    rule <k> check "out" : OUT => . ... </k> <output> OUT </output>
+    rule check "out" : ((OUT:String) => #parseHexWord(OUT))
+    rule <k> check "out" : OUT => . ... </k> <output> OUT .Regs </output>
+    rule <k> check "out" : 0   => . ... </k> <output> .Regs </output>
 
     rule check TESTID : { "logs" : LOGS } => check "logs" : LOGS ~> failure TESTID
  // ------------------------------------------------------------------------------
@@ -660,7 +669,7 @@ Here we check the other post-conditions associated with an EVM test.
     rule check TESTID : { "callcreates" : CCREATES } => check "callcreates" : CCREATES ~> failure TESTID
  // ----------------------------------------------------------------------------------------------------
     rule check "callcreates" : { ("data" : (DATA:String)) , ("destination" : (ACCTTO:String)) , ("gasLimit" : (GLIMIT:String)) , ("value" : (VAL:String)) , .JSONList }
-      => check "callcreates" : { #parseAddr(ACCTTO) | 0 | #parseWord(VAL) | #parseByteStack(DATA) }
+      => check "callcreates" : { #parseAddr(ACCTTO) | 0 | #parseWord(VAL) | #parseHexWord(DATA) .Regs }
     rule <k> check "callcreates" : C:Call => . ... </k> <callLog> CL </callLog> requires C in CL
     rule <callLog> SetItem({ _ | GLIMIT => 0 | _ | _ }) ... </callLog> requires GLIMIT =/=Int 0
 

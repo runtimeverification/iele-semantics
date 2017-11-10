@@ -5,7 +5,7 @@ K_VERSION=rvk
 
 .PHONY: all clean build tangle defn proofs split-tests test
 
-all: build vm-tests
+all: build split-vm-tests
 
 clean:
 	rm -r .build
@@ -19,7 +19,7 @@ build: tangle .build/${K_VERSION}/ethereum-kompiled/extras/timestamp
 tangle: defn proofs
 
 defn_dir=.build/${K_VERSION}
-defn_files=${defn_dir}/ethereum.k ${defn_dir}/data.k ${defn_dir}/evm.k ${defn_dir}/analysis.k ${defn_dir}/krypto.k ${defn_dir}/verification.k
+defn_files=${defn_dir}/ethereum.k ${defn_dir}/data.k ${defn_dir}/iele.k ${defn_dir}/analysis.k ${defn_dir}/krypto.k ${defn_dir}/verification.k
 defn: $(defn_files)
 
 .build/${K_VERSION}/%.k: %.md
@@ -65,17 +65,21 @@ split-vm-tests: \
 		  $(patsubst tests/ethereum-tests/%.json,tests/%/make.timestamp, $(filter-out ${invalid_iele_tests}, $(wildcard tests/ethereum-tests/VMTests/*/*.json))) \
 
 split-blockchain-tests: \
-				  $(patsubst tests/ethereum-tests/%.json,tests/%/make.timestamp, $(wildcard tests/ethereum-tests/BlockchainTests/GeneralStateTests/*/*.json)) \
+				  $(patsubst tests/ethereum-tests/%.json,tests/%/make.timestamp, $(filter-out ${invalid_iele_tests}, $(wildcard tests/ethereum-tests/BlockchainTests/GeneralStateTests/*/*.json))) \
 
 vm_tests=$(wildcard tests/VMTests/*/*/*.iele.json)
 blockchain_tests=$(wildcard tests/BlockchainTests/*/*/*/*.iele.json)
 all_tests=${vm_tests} ${blockchain_tests}
 skipped_tests=$(wildcard tests/VMTests/vmPerformance/*/*.json) \
-   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Constantinople.json) \
-   $(wildcard tests/BlockchainTests/GeneralStateTests/stQuadraticComplexityTest/*/*.json) \
-   $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Call50000*/*.json) \
-   $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Return50000*/*.json) \
-   $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Call1MB1024Calldepth_d1g0v0/*.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Frontier.iele.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Homestead.iele.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_EIP150.iele.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_EIP158.iele.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Constantinople.iele.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/stQuadraticComplexityTest/*/*.iele.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Call50000*/*.iele.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Return50000*/*.iele.json) \
+   $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Call1MB1024Calldepth_d1g0v0/*.iele.json) \
 
 passing_tests=$(filter-out ${skipped_tests}, ${all_tests})
 passing_vm_tests=$(filter-out ${skipped_tests}, ${vm_tests})

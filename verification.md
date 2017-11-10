@@ -1,14 +1,14 @@
-KEVM Verification
+IELE Verification
 =================
 
-Using K's reachability logic theorem prover, we're able to verify many properties about EVM programs as reachability claims.
+Using K's reachability logic theorem prover, we're able to verify many properties about IELE programs as reachability claims.
 This module defines some helpers which make writing specifications simpler.
 
 ```{.k .uiuck}
-requires "evm.k"
+requires "iele.k"
 
 module VERIFICATION
-    imports EVM
+    imports IELE
 ```
 
 This `smt-lemma` helps Z3 reason about stack over/under flow.

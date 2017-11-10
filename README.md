@@ -1,20 +1,15 @@
-KEVM: Semantics of EVM in K
-===========================
+IELE: Semantics of New Cryptocurrency VM in K
+==============================================
 
-In this repository we provide a model of the EVM in K.
-
-### Technical Report
-
-See [our technical report on KEVM 1.0](http://hdl.handle.net/2142/97207) for more expository explanation of KEVM.
-The paper is a good starting point for people wishing to dive into reading the semantics/other tools here (especially sections 3 and 5).
+In this repository we provide a model of IELE in K.
 
 ### Structure
 
-The file [data.md](data.md) explains the basic data of EVM (including the 256 bit words and some datastructures over them).
+The file [data.md](data.md) explains the basic data of IELE (including words and some datastructures over them).
 This data is defined functionally.
 
-[evm.md](evm.md) is the file containing the semantics of KEVM.
-This file contains the **configuration** (a map of the state), and a simple imperative execution machine which the EVM lives on top of.
+[iele.md](iele.md) is the file containing the semantics of IELE.
+This file contains the **configuration** (a map of the state), and a simple imperative execution machine which IELE lives on top of.
 It deals with the semantics of opcodes, the gas cost of execution, and parsing/unparsing/assembling/disassembling.
 
 ### Gas Analysis
@@ -213,40 +208,3 @@ These are soft requirements (review **may** start without these being met), and 
           requires A > 3
            andBool isPrime(A)
     ```
-
-Unfinished
-----------
-
-### Network vs. EVM
-
-Ethereum state consists of two parts, the network state and the EVM execution state.
-Right now the semantics declares the configuration for both of these components together, and many rules reach between these two subconfigurations.
-Separating the two subconfigurations and declaring an API for the network dynamics would provide a better understanding of the "necessary ingredients" for a consensus-driven distributed store.
-This would also allow us to experiment with alternative programming languages to EVM for future blockchain systems.
-
-### Full Transaction Execution
-
-Right now we are passing the VMTests, but haven't run tests on entire transactions.
-To have confidence in our semantics, we need to run the tests involving entire transactions (not just chunks of VM code).
-We are working on running the GeneralStateTests now as well.
-
-### TODOs
-
-More local problems are defined with a small *TODO* next to them in the semantics.
-
-Resources
-=========
-
--   [EVM Yellowpaper](https://github.com/ethereum/yellowpaper): Original specification of EVM.
--   [LEM Semantics of EVM](https://github.com/pirapira/eth-isabelle)
--   [Ethereum Test Set](https://github.com/ethereum/tests)
-
-For more information about [The K Framework](http://kframework.org), refer to these sources:
-
--   [The K Tutorial](https://github.com/kframework/k/tree/master/k-distribution/tutorial)
--   [Semantics-Based Program Verifiers for All Languages](http://fsl.cs.illinois.edu/index.php/Semantics-Based_Program_Verifiers_for_All_Languages)
--   [Reachability Logic Resources](http://fsl.cs.illinois.edu/index.php/Reachability_Logic_in_K)
--   [Matching Logic Resources](http://fsl.cs.illinois.edu/index.php/Matching_Logic)
--   [Logical Frameworks](http://dl.acm.org/citation.cfm?id=208700): Discussion of logical frameworks.
-
-We are using [GNU Parallel](https://www.gnu.org/software/parallel/) to assist in testing these semantics in parallel.

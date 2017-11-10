@@ -1,5 +1,5 @@
 ==============================================================================
-The EVM Semantics in K Release License
+The IELE Semantics in K Release License
 ==============================================================================
 University of Illinois/NCSA
 Open Source License
@@ -45,16 +45,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS WITH THE
 SOFTWARE.
 
 ==============================================================================
-Copyrights and Licenses for Third Party Software Distributed with the EVM
+Copyrights and Licenses for Third Party Software Distributed with the IELE
 Semantics in K:
 ==============================================================================
-The EVM Semantics in K software contains code written by third parties. 
+The IELE Semantics in K software contains code written by third parties. 
 Licenses for this software can be found in the licenses directory 
 in the file as specified below. These files will describe the copyrights,
 license, and restrictions which apply to that code.
 
 The disclaimer of warranty in the University of Illinois Open Source License
-applies to all code in the EVM Semantics in K Distribution, and nothing in any of
+applies to all code in the IELE Semantics in K Distribution, and nothing in any of
 the other licenses gives permission to use the names of the K Team, Runtime
 Verification, the University of Illinois, or the University Alexandru-Ioan Cuza
 to endorse or promote products derived from this Software.
