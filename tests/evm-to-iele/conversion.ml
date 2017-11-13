@@ -41,8 +41,7 @@ let rec preprocess_evm (evm: evm_op list) : intermediate_op list = match evm wit
 | `CALLVALUE | `MSIZE | `CODESIZE | `CALLDATASIZE | `RETURNDATASIZE | `JUMPDEST _ as hd :: (`JUMP) :: tl -> hd :: `LOCALRETURN :: preprocess_evm tl
 | `PUSH(n,v) :: op2 :: tl -> `PUSH(v) :: preprocess_evm (op2 :: tl)
 | `PUSH(n,v) :: [] -> `PUSH(v) :: []
-| `PC(pc) :: tl when compatibility -> `PUSH(Z.of_int pc) :: preprocess_evm tl
-| `PC(_) :: tl -> `PC :: preprocess_evm tl
+| `PC(pc) :: tl -> `PUSH(Z.of_int pc) :: preprocess_evm tl
 | `LOG(_) | `EXTCODECOPY | `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY
 | `SSTORE | `ADDMOD | `MULMOD | `CREATE | `POP | `SELFDESTRUCT | `ADD | `MUL 
 | `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND | `AND | `OR | `XOR | `LT | `GT | `EQ | `SHA3 | `SWAP(_) | `INVALID
@@ -97,7 +96,7 @@ let compute_cfg (intermediate: intermediate_op list) : evm_graph =
     | `AND | `OR | `XOR | `LT | `GT | `EQ | `SHA3 -> delta := !delta - 1
     | `SWAP(_) | `ISZERO | `NOT | `BLOCKHASH | `CALLDATALOAD | `BALANCE
     | `EXTCODESIZE | `SLOAD -> ()
-    | `DUP(_) | `PUSH(_) | `PC | `GAS | `GASPRICE | `GASLIMIT | `COINBASE | `TIMESTAMP | `NUMBER | `DIFFICULTY
+    | `DUP(_) | `PUSH(_) | `GAS | `GASPRICE | `GASLIMIT | `COINBASE | `TIMESTAMP | `NUMBER | `DIFFICULTY
     | `ADDRESS | `ORIGIN | `CALLER | `CALLVALUE | `MSIZE | `CODESIZE | `CALLDATASIZE 
     | `RETURNDATASIZE -> delta := !delta + 1
     | `JUMPDEST pc -> 
@@ -166,7 +165,7 @@ let convert_to_registers (cfg : evm_graph) : iele_graph * int =
         regcount := !regcount + 1;
         op
       | `INVALID | `STOP | `JUMPDEST(_) | `JUMP(_) as op -> VoidOp(op,[]) (* nullary consumer *)
-      | `PC | `GAS | `GASPRICE | `GASLIMIT | `COINBASE | `TIMESTAMP | `NUMBER | `DIFFICULTY | `ADDRESS | `ORIGIN
+      | `GAS | `GASPRICE | `GASLIMIT | `COINBASE | `TIMESTAMP | `NUMBER | `DIFFICULTY | `ADDRESS | `ORIGIN
       | `CALLER | `CALLVALUE | `MSIZE | `CODESIZE | `CALLDATASIZE | `RETURNDATASIZE as op-> 
         let op = Op(op,!regcount,[]) in
         stack := !regcount :: curr_stack;

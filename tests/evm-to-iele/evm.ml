@@ -121,7 +121,6 @@ type intermediate_op = [
 | `SSTORE
 | `JUMP of int
 | `JUMPI of int
-| `PC
 | `MSIZE
 | `GAS
 | `JUMPDEST of int

@@ -48,7 +48,6 @@ type iele_opcode = [
 | `MSTORE
 | `SLOAD
 | `SSTORE
-| `PC
 | `MSIZE
 | `GAS
 | `MOVE
