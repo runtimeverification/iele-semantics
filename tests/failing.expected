@@ -218,3 +218,11 @@ tests/ethereum-tests/BlockchainTests/GeneralStateTests/stRevertTest/RevertSubCal
 tests/ethereum-tests/BlockchainTests/GeneralStateTests/stRevertTest/RevertSubCallStorageOOG_d0g1v1.json
 tests/ethereum-tests/BlockchainTests/GeneralStateTests/stRevertTest/RevertRemoteSubCallStorageOOG2_d0g0v0.json
 tests/ethereum-tests/BlockchainTests/GeneralStateTests/stRevertTest/PythonRevertTestTue201814-1430_d0g0v0.json
+tests/ethereum-tests/VMTests/vmIOandFlowOperations/DynamicJumpJD_DependsOnJumps1.json
+tests/ethereum-tests/VMTests/vmIOandFlowOperations/gas0.json
+tests/ethereum-tests/VMTests/vmEnvironmentalInfo/extcodecopyZeroMemExpansion.json
+tests/ethereum-tests/VMTests/vmEnvironmentalInfo/extcodecopy0AddressTooBigRight.json
+tests/ethereum-tests/VMTests/vmEnvironmentalInfo/codecopyZeroMemExpansion.json
+tests/ethereum-tests/VMTests/vmEnvironmentalInfo/extcodecopy_DataIndexTooHigh.json
+tests/ethereum-tests/VMTests/vmEnvironmentalInfo/codecopy_DataIndexTooHigh.json
+tests/ethereum-tests/VMTests/vmEnvironmentalInfo/env1.json
