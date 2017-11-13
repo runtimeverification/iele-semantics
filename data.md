@@ -238,8 +238,8 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
 -   `WS [ N .. W ]` access the range of `WS` beginning with `N` of width `W`.
 
 ```{.k .uiuck .rvk}
-    syntax WordStack ::= WordStack "++" WordStack [function]
- // --------------------------------------------------------
+    syntax WordStack ::= WordStack "++" WordStack [function, left]
+ // --------------------------------------------------------------
     rule .WordStack ++ WS' => WS'
     rule (W : WS)   ++ WS' => W : (WS ++ WS')
 
@@ -272,9 +272,13 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
 
     syntax WordStack ::= WordStack "[" Int ":=" Int "]" [function]
  // --------------------------------------------------------------
-    rule (W0 : WS)  [ 0 := W ] => W  : WS
-    rule .WordStack [ N := W ] => 0  : (.WordStack [ N -Int 1 := W ]) requires N >Int 0
-    rule (W0 : WS)  [ N := W ] => W0 : (WS [ N -Int 1 := W ])         requires N >Int 0
+    rule (W0 : WS)  [ 0 := W::Int ] => W  : WS
+    rule .WordStack [ N := W::Int ] => 0  : (.WordStack [ N -Int 1 := W ]) requires N >Int 0
+    rule (W0 : WS)  [ N := W::Int ] => W0 : (WS [ N -Int 1 := W ])         requires N >Int 0
+
+    syntax WordStack ::= WordStack "[" Int ":=" WordStack "]" [function, klabel(assignWordStackRange)]
+ // --------------------------------------------------------------------------------------------------
+    rule WS1 [ N := WS2 ] => #take(N, WS1) ++ WS2 ++ #drop(N +Int #sizeWordStack(WS2), WS1)
 ```
 
 -   `#sizeWordStack` calculates the size of a `WordStack`.
@@ -311,8 +315,10 @@ Memory
 ```{.k .uiuck .rvk}
 
     syntax Array ::= ".Array" [function, impure]
- // ------------------------------------
+                   | ".Memory" [function, impure]
+ // ---------------------------------------------
     rule .Array => makeArray(pow30, 0)
+    rule .Memory => makeArray(pow30, .WordStack)
 ```
 
 Byte Arrays
@@ -457,8 +463,8 @@ We are using the polymorphic `Map` sort for these word maps.
 ```{.k .uiuck .rvk}
     syntax Array ::= Array "[" Int ":=" WordStack "]" [function]
  // --------------------------------------------------------
-    rule WM[ N := .WordStack ] => WM
-    rule WM[ N := W : WS     ] => (WM[chop(N) <- W])[chop(N) +Int 1 := WS]
+    rule WM::Array[ N := .WordStack ] => WM
+    rule WM::Array[ N := W : WS     ] => (WM[chop(N) <- W])[chop(N) +Int 1 := WS]
 
     syntax WordStack ::= #range ( Array , Int , Int )            [function]
     syntax WordStack ::= #range ( Array , Int , Int , WordStack) [function, klabel(#rangeAux)]
