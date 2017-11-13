@@ -1293,12 +1293,8 @@ The various `CALL*` (and other inter-contract control flow) operations will be d
          <gas> GAVAIL </gas>
 
     syntax InternalOp ::= "#refund" Int
-                        | "#setLocalMem" Int Int WordStack
  // ------------------------------------------------------
     rule <k> #refund G => . ... </k> <gas> GAVAIL => GAVAIL +Int G </gas>
-
-    rule <k> #setLocalMem START WIDTH WS => . ... </k>
-         <localMem> LM => LM [ START := #take(minInt(chop(WIDTH), #sizeWordStack(WS)), WS) ] </localMem>
 ```
 
 For each `CALL*` operation, we make a corresponding call to `#call` and a state-change to setup the custom parts of the calling environment.
@@ -1319,7 +1315,6 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
          <constants> ... LABEL |-> FUNCTION(FUNC) </constants>
          <schedule> SCHED </schedule>
          <id> ACCTFROM </id>
-         <localMem> LM </localMem>
          <activeAccounts> ACCTS </activeAccounts>
          <previousGas> GAVAIL </previousGas>
 
@@ -1334,7 +1329,6 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
          <constants> ... LABEL |-> FUNCTION(FUNC) </constants>
          <schedule> SCHED </schedule>
          <id> ACCTFROM </id>
-         <localMem> LM </localMem>
          <activeAccounts> ACCTS </activeAccounts>
          <previousGas> GAVAIL </previousGas>
 
@@ -1351,7 +1345,6 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
          <id> ACCTFROM </id>
          <caller> ACCTAPPFROM </caller>
          <callValue> VALUE </callValue>
-         <localMem> LM </localMem>
          <activeAccounts> ACCTS </activeAccounts>
          <previousGas> GAVAIL </previousGas>
 
@@ -1366,7 +1359,6 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
          <constants> ... LABEL |-> FUNCTION(FUNC) </constants>
          <schedule> SCHED </schedule>
          <id> ACCTFROM </id>
-         <localMem> LM </localMem>
          <activeAccounts> ACCTS </activeAccounts>
          <previousGas> GAVAIL </previousGas>
 ```
@@ -1488,7 +1480,6 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
          <schedule> SCHED </schedule>
          <id> ACCT </id>
          <gas> GAVAIL => #ifInt Gstaticcalldepth << SCHED >> #then 0 #else GAVAIL /Int 64 #fi </gas>
-         <localMem> LM </localMem>
          <account>
            <acctID> ACCT </acctID>
            <nonce> NONCE </nonce>
@@ -1506,7 +1497,6 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
          <schedule> SCHED </schedule>
          <id> ACCT </id>
          <gas> GAVAIL => #ifInt Gstaticcalldepth << SCHED >> #then 0 #else GAVAIL /Int 64 #fi </gas>
-         <localMem> LM </localMem>
          <account>
            <acctID> ACCT </acctID>
            <nonce> NONCE </nonce>
@@ -1529,7 +1519,6 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
          <schedule> SCHED </schedule>
          <id> ACCT </id>
          <gas> GAVAIL => #ifInt Gstaticcalldepth << SCHED >> #then 0 #else GAVAIL /Int 64 #fi </gas>
-         <localMem> LM </localMem>
          <account>
            <acctID> ACCT </acctID>
            <nonce> NONCE </nonce>
