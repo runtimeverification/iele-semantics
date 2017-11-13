@@ -796,9 +796,9 @@ let alloc_registers (ops: iele_op list) : iele_op list =
 
 let max_val = Z.sub (Z.shift_left Z.one 255) Z.one
 
-let rec postprocess_iele iele label = match iele with
-| Nop :: tl -> postprocess_iele tl label
-| Op(`BYTE, reg, [byte;v]) :: tl -> LiOp(`LOADPOS, -1, _31) :: Op(`SUB, byte, [-1; byte]) :: Op(`BYTE, reg, [byte;v]) :: postprocess_iele tl label
+let rec postprocess_iele iele label memcells = match iele with
+| Nop :: tl -> postprocess_iele tl label memcells
+| Op(`BYTE, reg, [byte;v]) :: tl -> LiOp(`LOADPOS, -1, _31) :: Op(`SUB, byte, [-1; byte]) :: Op(`BYTE, reg, [byte;v]) :: postprocess_iele tl label memcells
 (* CALLDATALOAD/CALLDATACOPY/CALLDATASIZE have been removed by IELE, replaced 
    by passing arguments directly in registers. Because the CALLDATA doesn't
    explicitly separate where arguments begin and end, we convert all functions
@@ -806,14 +806,15 @@ let rec postprocess_iele iele label = match iele with
    argument. CALLDATA* instructions are then converted into instructions that
    bitwise shift the data into the correct value so that you get back the same
    integer value. *)
-| Op(`CALLDATALOAD, reg, [datastart]) :: tl -> LiOp(`LOADPOS, -1, _32) :: Op(`TWOS, datastart, [-1; datastart]) :: Op(`SUB, datastart, [0; datastart]) :: LiOp(`LOADPOS, -2, Z.zero) :: Op(`GT, -2, [datastart; -2]) :: VoidOp(`JUMPI(label-2), [-2]) :: Op(`ADD, datastart, [0; -1]) :: VoidOp(`JUMPDEST(label-2), []) :: Op(`SUB, datastart, [datastart; -1]) :: LiOp(`LOADPOS, -1, Z.zero) :: Op(`LT, -1, [datastart; -1]) :: LiOp(`LOADPOS, -2, _256) :: VoidOp(`JUMPI(label), [-1]) :: Op(`EXP, datastart, [-2; datastart]) :: Op(`DIV, datastart, [1; datastart]) :: VoidOp(`JUMP(label-1), []) :: VoidOp(`JUMPDEST(label), []) :: LiOp(`LOADPOS, -1, Z.zero) :: Op(`SUB, datastart, [-1; datastart]) :: Op(`EXP, datastart, [-2; datastart]) :: Op(`MUL, datastart, [1; datastart]) :: VoidOp(`JUMPDEST(label-1), []) :: LiOp(`LOADPOS, -1, _mask) :: Op(`AND, reg, [datastart; -1]) :: postprocess_iele tl (label-3)
-| VoidOp(`CALLDATACOPY, [memstart; datastart; len]) :: tl -> LiOp(`LOADPOS, -1, _32) :: Op(`TWOS, datastart, [-1; datastart]) :: Op(`SUB, datastart, [0; datastart]) :: LiOp(`LOADPOS, -2, Z.zero) :: Op(`GT, -2, [datastart; -2]) :: VoidOp(`JUMPI(label-2), [-2]) :: Op(`ADD, datastart, [0; len]) :: VoidOp(`JUMPDEST(label-2), []) :: Op(`SUB, datastart, [datastart; len]) :: LiOp(`LOADPOS, -1, Z.zero) :: Op(`LT, -1, [datastart; -1]) :: LiOp(`LOADPOS, -2, _256) :: VoidOp(`JUMPI(label), [-1]) :: Op(`EXP, datastart, [-2; datastart]) :: Op(`DIV, datastart, [1; datastart]) :: VoidOp(`JUMP(label-1), []) :: VoidOp(`JUMPDEST(label), []) :: LiOp(`LOADPOS, -1, Z.zero) :: Op(`SUB, datastart, [-1; datastart]) :: Op(`EXP, datastart, [-2; datastart]) :: Op(`MUL, datastart, [1; datastart]) :: VoidOp(`JUMPDEST(label-1), []) :: LiOp(`LOADPOS, -1, _256) :: Op(`EXP, -1, [-1; len]) :: LiOp(`LOADPOS, -2, Z.one) :: Op(`SUB, -1, [-1; -2]) :: Op(`AND, -1, [datastart; -1]) :: LiOp(`LOADPOS, -2, Z.zero) :: VoidOp(`MSTOREN, [-2; memstart; -1; len]) :: postprocess_iele tl (label-3)
-| Op(`CALLDATASIZE, reg, []) :: tl -> Op(`MOVE, reg, [0]) :: postprocess_iele tl label
-| Op(`EXP, reg, [v1;v2]) :: tl when compatibility -> LiOp(`LOADPOS, -1, pow256) :: Op(`EXPMOD, reg, [v1;v2;-1]) :: postprocess_iele tl label
-| LiOp(`LOADPOS, reg, z) :: tl when compatibility && Z.gt z max_val -> LiOp(`LOADNEG, reg, Z.signed_extract z 0 256) :: postprocess_iele tl label
-| CallOp(`LOCALCALLI(target,nargs,nreturn,ret_addr), rets, reg :: args) :: tl -> Op(`ISZERO, reg, [reg]) :: VoidOp(`JUMPI(label), [reg]) :: CallOp(`LOCALCALL(target,nargs,nreturn), rets, args) :: VoidOp(`JUMP(ret_addr), []) :: VoidOp(`JUMPDEST(label), []) :: postprocess_iele tl (label-1)
-| Op(`SHA3, reg, [memstart; memwidth]) :: tl -> LiOp(`LOADPOS, -1, Z.zero) :: Op(`MLOADN, -2, [-1; memstart; memwidth]) :: LiOp(`LOADPOS, memstart, Z.one) :: VoidOp(`MSTOREN, [memstart; -1; -2; memwidth]) :: Op(`SHA3, reg, [memstart]) :: postprocess_iele tl label
-| hd :: tl -> hd :: postprocess_iele tl label
+| Op(`CALLDATALOAD, reg, [datastart]) :: tl -> LiOp(`LOADPOS, -1, _32) :: Op(`TWOS, datastart, [-1; datastart]) :: Op(`SUB, datastart, [0; datastart]) :: LiOp(`LOADPOS, -2, Z.zero) :: Op(`GT, -2, [datastart; -2]) :: VoidOp(`JUMPI(label-2), [-2]) :: Op(`ADD, datastart, [0; -1]) :: VoidOp(`JUMPDEST(label-2), []) :: Op(`SUB, datastart, [datastart; -1]) :: LiOp(`LOADPOS, -1, Z.zero) :: Op(`LT, -1, [datastart; -1]) :: LiOp(`LOADPOS, -2, _256) :: VoidOp(`JUMPI(label), [-1]) :: Op(`EXP, datastart, [-2; datastart]) :: Op(`DIV, datastart, [1; datastart]) :: VoidOp(`JUMP(label-1), []) :: VoidOp(`JUMPDEST(label), []) :: LiOp(`LOADPOS, -1, Z.zero) :: Op(`SUB, datastart, [-1; datastart]) :: Op(`EXP, datastart, [-2; datastart]) :: Op(`MUL, datastart, [1; datastart]) :: VoidOp(`JUMPDEST(label-1), []) :: LiOp(`LOADPOS, -1, _mask) :: Op(`AND, reg, [datastart; -1]) :: postprocess_iele tl (label-3) memcells
+| VoidOp(`CALLDATACOPY, [memstart; datastart; len]) :: tl -> LiOp(`LOADPOS, -1, _32) :: Op(`TWOS, datastart, [-1; datastart]) :: Op(`SUB, datastart, [0; datastart]) :: LiOp(`LOADPOS, -2, Z.zero) :: Op(`GT, -2, [datastart; -2]) :: VoidOp(`JUMPI(label-2), [-2]) :: Op(`ADD, datastart, [0; len]) :: VoidOp(`JUMPDEST(label-2), []) :: Op(`SUB, datastart, [datastart; len]) :: LiOp(`LOADPOS, -1, Z.zero) :: Op(`LT, -1, [datastart; -1]) :: LiOp(`LOADPOS, -2, _256) :: VoidOp(`JUMPI(label), [-1]) :: Op(`EXP, datastart, [-2; datastart]) :: Op(`DIV, datastart, [1; datastart]) :: VoidOp(`JUMP(label-1), []) :: VoidOp(`JUMPDEST(label), []) :: LiOp(`LOADPOS, -1, Z.zero) :: Op(`SUB, datastart, [-1; datastart]) :: Op(`EXP, datastart, [-2; datastart]) :: Op(`MUL, datastart, [1; datastart]) :: VoidOp(`JUMPDEST(label-1), []) :: LiOp(`LOADPOS, -1, _256) :: Op(`EXP, -1, [-1; len]) :: LiOp(`LOADPOS, -2, Z.one) :: Op(`SUB, -1, [-1; -2]) :: Op(`AND, -1, [datastart; -1]) :: LiOp(`LOADPOS, -2, Z.zero) :: VoidOp(`MSTOREN, [-2; memstart; -1; len]) :: postprocess_iele tl (label-3) memcells
+| Op(`CALLDATASIZE, reg, []) :: tl -> Op(`MOVE, reg, [0]) :: postprocess_iele tl label memcells
+| Op(`EXP, reg, [v1;v2]) :: tl when compatibility -> LiOp(`LOADPOS, -1, pow256) :: Op(`EXPMOD, reg, [v1;v2;-1]) :: postprocess_iele tl label memcells
+| LiOp(`LOADPOS, reg, z) :: tl when compatibility && Z.gt z max_val -> LiOp(`LOADNEG, reg, Z.signed_extract z 0 256) :: postprocess_iele tl label memcells
+| CallOp(`LOCALCALLI(target,nargs,nreturn,ret_addr), rets, reg :: args) :: tl -> Op(`ISZERO, reg, [reg]) :: VoidOp(`JUMPI(label), [reg]) :: CallOp(`LOCALCALL(target,nargs,nreturn), rets, args) :: VoidOp(`JUMP(ret_addr), []) :: VoidOp(`JUMPDEST(label), []) :: postprocess_iele tl (label-1) memcells
+| Op(`SHA3, reg, [memstart; memwidth]) :: tl -> LiOp(`LOADPOS, -1, Z.zero) :: Op(`MLOADN, -2, [-1; memstart; memwidth]) :: LiOp(`LOADPOS, memstart, memcells) :: VoidOp(`MSTOREN, [memstart; -1; -2; memwidth]) :: Op(`SHA3, reg, [memstart]) :: postprocess_iele tl label (Z.add memcells Z.one)
+| VoidOp(`LOG(n), memstart :: memwidth :: topics) :: tl -> LiOp(`LOADPOS, -1, Z.zero) :: Op(`MLOADN, -2, [-1; memstart; memwidth]) :: LiOp(`LOADPOS, memstart, memcells) :: VoidOp(`MSTOREN, [memstart; -1; -2; memwidth]) :: VoidOp(`LOG(n), memstart :: topics) :: postprocess_iele tl label (Z.add memcells Z.one)
+| hd :: tl -> hd :: postprocess_iele tl label memcells
 | [] -> []
 
 let evm_to_iele (evm:evm_op list) : iele_op list =
@@ -831,5 +832,5 @@ let evm_to_iele (evm:evm_op list) : iele_op list =
   let with_functions = resolve_functions with_calldest in
   let resolved = resolve_phi with_functions in
   let flattened = List.flatten resolved in
-  let postprocessed = postprocess_iele flattened (-1) in
+  let postprocessed = postprocess_iele flattened (-1) Z.one in
   alloc_registers postprocessed
