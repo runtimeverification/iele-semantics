@@ -68,13 +68,13 @@ In the comments next to each cell, we've marked which component of the yellowpap
                       <callValue> 0          </callValue>                  // I_v
 
                       // \mu_*
-                      <regs>        .Array </regs>                         // \mu_s
-                      <globalRegs>  .Array </globalRegs>                   // \mu_s
-                      <localMem>    .Array </localMem>                     // \mu_m
-                      <memoryUsed>  0      </memoryUsed>                   // \mu_i
-                      <fid>         0      </fid>
-                      <gas>         0      </gas>                          // \mu_g
-                      <previousGas> 0      </previousGas>
+                      <regs>        .Array  </regs>                        // \mu_s
+                      <globalRegs>  .Array  </globalRegs>                  // \mu_s
+                      <localMem>    .Memory </localMem>                    // \mu_m
+                      <memoryUsed>  .Map    </memoryUsed>                  // \mu_i
+                      <fid>         0       </fid>
+                      <gas>         0       </gas>                         // \mu_g
+                      <previousGas> 0       </previousGas>
 
                       <static> false </static>
                     </callFrame>
@@ -314,7 +314,7 @@ Here all `OpCode`s are subsorted into `KItem` (allowing sequentialization), and 
     syntax KItem  ::= OpCode
     syntax Op ::= InternalOp | HeaderOp
     syntax OpCode ::= NullOp | NullVoidOp | UnOp | UnVoidOp | BinOp | BinVoidOp | TernOp
-                    | TernVoidOp | QuadVoidOp | FiveVoidOp | SixVoidOp | CallOp | CallSixOp
+                    | TernVoidOp | QuadVoidOp | FiveVoidOp | CallOp | CallSixOp
                     | LocalCallOp | ReturnOp | CreateOp | CopyCreateOp | HeaderOp
  // ---------------------------------------------------------------------------------------
 ```
@@ -442,7 +442,6 @@ Some of them require an argument to be interpereted as an address (modulo 160 bi
                 | TernVoidOp Reg Reg Reg                 [klabel(ternVoidOp)]
                 | QuadVoidOp Reg Reg Reg Reg             [klabel(quadVoidOp)]
                 | FiveVoidOp Reg Reg Reg Reg Reg         [klabel(fiveVoidOp)]
-                | SixVoidOp Reg Reg Reg Reg Reg Reg      [klabel(sixVoidOp)]
                 | CallSixOp Reg Reg Reg Regs Regs        [klabel(callSixOp)]
                 | CallOp Reg Reg Reg Reg Regs Regs       [klabel(callOp)]
                 | CreateOp Reg Reg Regs                  [klabel(createOp)]
@@ -479,13 +478,6 @@ Some of them require an argument to be interpereted as an address (modulo 160 bi
     context #exec [ _::FiveVoidOp _ _ _ HOLE:Reg _ ]
     context #exec [ _::FiveVoidOp _ _ _ _ HOLE:Reg ]
 
-    context #exec [ _::SixVoidOp HOLE:Reg _ _ _ _ _ ]
-    context #exec [ _::SixVoidOp _ HOLE:Reg _ _ _ _ ]
-    context #exec [ _::SixVoidOp _ _ HOLE:Reg _ _ _ ]
-    context #exec [ _::SixVoidOp _ _ _ HOLE:Reg _ _ ]
-    context #exec [ _::SixVoidOp _ _ _ _ HOLE:Reg _ ]
-    context #exec [ _::SixVoidOp _ _ _ _ _ HOLE:Reg ]
-
     context #exec [ _::CallSixOp _ HOLE:Reg _ _ _  ]
     context #exec [ _::CallSixOp _ _ HOLE:Reg _ _  ]
     context #exec [ _::CallSixOp _ _ _ _ HOLE:Regs ]
@@ -515,7 +507,6 @@ Some of them require an argument to be interpereted as an address (modulo 160 bi
                       | TernVoidOp Int Int Int                 [klabel(ternVoidOp)]
                       | QuadVoidOp Int Int Int Int             [klabel(quadVoidOp)]
                       | FiveVoidOp Int Int Int Int Int         [klabel(fiveVoidOp)]
-                      | SixVoidOp Int Int Int Int Int Int      [klabel(sixVoidOp)]
                       | CallSixOp Reg Int Int Regs Ints        [klabel(callSixOp)]
                       | CallOp Reg Int Int Int Regs Ints       [klabel(callOp)]
                       | CreateOp Reg Int Ints                  [klabel(createOp)]
@@ -544,7 +535,6 @@ Some of them require an argument to be interpereted as an address (modulo 160 bi
     rule #code(OP::TernVoidOp _ _ _)      => OP
     rule #code(OP::QuadVoidOp _ _ _ _)    => OP
     rule #code(OP::FiveVoidOp _ _ _ _ _)  => OP
-    rule #code(OP::SixVoidOp _ _ _ _ _ _) => OP
     rule #code(OP::CallSixOp _ _ _ _ _)   => OP
     rule #code(OP::CallOp _ _ _ _ _ _)    => OP
     rule #code(OP::LocalCallOp _ _)       => OP
@@ -554,21 +544,30 @@ Some of them require an argument to be interpereted as an address (modulo 160 bi
 -   `#gas` calculates how much gas this operation costs, and takes into account the memory consumed.
 
 ```{.k .uiuck .rvk}
-    syntax InternalOp ::= "#gas" "[" Op "]" | "#deductGas" | "#deductMemory"
- // ----------------------------------------------------------------------------
-    rule <k> #gas [ OP ] => #memory(OP, MU) ~> #deductMemory ~> #gasExec(SCHED, OP) ~> #deductGas ... </k> <memoryUsed> MU </memoryUsed> <schedule> SCHED </schedule>
+    syntax InternalOp ::= "#gas" "[" Op "]" | "#deductGas" | #deductMemory ( Int )
+ // ------------------------------------------------------------------------------
+    rule <k> #gas [ OP ] => #memory(OP, MU, #memIndex(OP)) ~> #deductMemory(#memIndex(OP)) ~> #gasExec(SCHED, OP) ~> #deductGas ... </k> <memoryUsed> MU </memoryUsed> <schedule> SCHED </schedule>
+      requires #usesMemory(#code(OP))
+    rule <k> #gas [ OP ] => #gasExec(SCHED, OP) ~> #deductGas ... </k> <gas> GAVAIL </gas> <previousGas> _ => GAVAIL </previousGas> <schedule> SCHED </schedule>
+      requires notBool #usesMemory(#code(OP))
 
-    rule <k> MU':Int ~> #deductMemory => #exception ... </k> requires MU' >=Int pow256
-    rule <k> MU':Int ~> #deductMemory => (Cmem(SCHED, MU') -Int Cmem(SCHED, MU)) ~> #deductGas ... </k>
-         <memoryUsed> MU => MU' </memoryUsed> <schedule> SCHED </schedule>
+    rule <k> MU':Int ~> #deductMemory(_)        => #exception ... </k> requires MU' >=Int pow256
+    rule <k> MU':Int ~> #deductMemory(MEMINDEX) => (Cmem(SCHED, MU [ MEMINDEX <- MU' ]) -Int Cmem(SCHED, MU)) ~> #deductGas ... </k>
+         <memoryUsed> MU => MU [ MEMINDEX <- MU' ] </memoryUsed> <schedule> SCHED </schedule>
       requires MU' <Int pow256
 
     rule <k> G:Int ~> #deductGas => #exception ... </k> <gas> GAVAIL                  </gas> requires GAVAIL <Int G
     rule <k> G:Int ~> #deductGas => .          ... </k> <gas> GAVAIL => GAVAIL -Int G </gas> <previousGas> _ => GAVAIL </previousGas> requires GAVAIL >=Int G
 
-    syntax Int ::= Cmem ( Schedule , Int ) [function, memo]
- // -------------------------------------------------------
-    rule Cmem(SCHED, N) => (N *Int Gmemory < SCHED >) +Int ((N *Int N) /Int Gquadcoeff < SCHED >)
+    syntax Int ::= Cmem ( Schedule , Map ) [function]
+                 | Cmem ( Schedule , Int ) [function, memo, klabel(CmemAux)]
+                 | #msize ( Map )          [function]
+ // -------------------------------------------------
+    rule Cmem(SCHED, MU) => Cmem(SCHED, #msize(MU))
+    rule Cmem(SCHED, N)  => (N *Int Gmemory < SCHED >) +Int ((N *Int N) /Int Gquadcoeff < SCHED >)
+
+    rule #msize(_ |-> N MU) => N +Int #msize(MU)
+    rule #msize(.Map)       => 0
 ```
 
 ### Program Counter
@@ -856,31 +855,25 @@ Some operators don't calculate anything, they just manipulate the state of regis
 These operations are getters/setters of the local execution memory.
 
 ```{.k .uiuck .rvk}
-    syntax UnOp ::= "MLOAD8" | "MLOAD256"
- // -------------------------------------
-    rule <k> MLOAD256 REG INDEX => #load REG #asSigned(#range(LM, INDEX, 32)) ... </k>
+    syntax TernOp ::= "MLOADN"
+ // --------------------------
+    rule <k> MLOADN REG INDEX1 INDEX2 WIDTH => #load REG #asSigned({LM [ INDEX1 ]}:>WordStack [ INDEX2 .. WIDTH ]) ... </k>
          <localMem> LM </localMem>
 
-    rule <k> MLOAD8 REG INDEX => #load REG #asSigned(#range(LM, INDEX, 1)) ... </k>
+    syntax UnOp ::= "MLOAD"
+ // -----------------------
+    rule <k> MLOAD REG INDEX => #load REG #asSigned({LM [ INDEX ]}:>WordStack) ... </k>
          <localMem> LM </localMem>
 
-    syntax BinOp ::= "MLOAD"
- // ------------------------
-    rule <k> MLOAD REG INDEX WIDTH => #load REG #asSigned(#range(LM, INDEX, WIDTH)) ... </k>
-         <localMem> LM </localMem>
+    syntax QuadVoidOp ::= "MSTOREN"
+ // -------------------------------
+    rule <k> MSTOREN INDEX1 INDEX2 VALUE WIDTH => . ... </k>
+         <localMem> LM => LM [ INDEX1 <- {LM [ INDEX1 ]}:>WordStack [ INDEX2 := #padToWidth(WIDTH, #asUnsignedBytes(VALUE modInt (2 ^Int (WIDTH *Int 8)))) ] ] </localMem>
 
-    syntax BinVoidOp ::= "MSTORE8" | "MSTORE256"
- // --------------------------------------------
-    rule <k> MSTORE256 INDEX VALUE => . ... </k>
-         <localMem> LM => LM [ INDEX := #padToWidth(32, #asUnsignedBytes(chop(VALUE))) ] </localMem>
-
-    rule <k> MSTORE8 INDEX VALUE => . ... </k>
-         <localMem> LM => LM [ INDEX <- (VALUE modInt 256) ]    </localMem>
-
-    syntax TernVoidOp ::= "MSTORE"
- // ------------------------------
-    rule <k> MSTORE INDEX VALUE WIDTH => . ... </k>
-         <localMem> LM => LM [ INDEX := #padToWidth(WIDTH, #asUnsignedBytes(VALUE modInt (2 ^Int (WIDTH *Int 8)))) ] </localMem>
+    syntax BinVoidOp ::= "MSTORE"
+ // -----------------------------
+    rule <k> MSTORE INDEX VALUE => . ... </k>
+         <localMem> LM => LM [ INDEX <- #asSignedBytes(VALUE) ] </localMem>
 ```
 
 ### Expressions
@@ -934,9 +927,9 @@ Expression calculations are simple and don't require anything but the arguments 
     rule <k> EQ REG W0 W1 => #load REG 1 ... </k>  requires W0 ==Int  W1
     rule <k> EQ REG W0 W1 => #load REG 0 ... </k>  requires W0 =/=Int W1
 
-    syntax BinOp ::= "SHA3"
- // -----------------------
-    rule <k> SHA3 REG MEMSTART MEMWIDTH => #load REG keccak(#range(LM, MEMSTART, MEMWIDTH)) ... </k>
+    syntax UnOp ::= "SHA3"
+ // ----------------------
+    rule <k> SHA3 REG MEMINDEX => #load REG keccak({LM [ MEMINDEX ]}:>WordStack) ... </k>
          <localMem> LM </localMem>
 ```
 
@@ -967,8 +960,8 @@ These operators make queries about the current execution state.
 
     syntax NullOp ::= "MSIZE" | "CODESIZE"
  // --------------------------------------
-    rule <k> MSIZE    REG => #load REG 32 *Int MU ... </k> <memoryUsed> MU </memoryUsed>
-    rule <k> CODESIZE REG => #load REG SIZE       ... </k> <programSize> SIZE </programSize>
+    rule <k> MSIZE    REG => #load REG 32 *Int #msize(MU) ... </k> <memoryUsed> MU </memoryUsed>
+    rule <k> CODESIZE REG => #load REG SIZE               ... </k> <programSize> SIZE </programSize>
 
     syntax UnOp ::= "BLOCKHASH"
  // ---------------------------
@@ -1051,25 +1044,25 @@ This is a right cons-list of `SubstateLogEntry` (which contains the account ID a
 ```
 
 ```{.k .uiuck .rvk}
-    syntax BinVoidOp  ::= "LOG0"
-    syntax TernVoidOp ::= "LOG1"
-    syntax QuadVoidOp ::= "LOG2"
-    syntax FiveVoidOp ::= "LOG3"
-    syntax SixVoidOp  ::= "LOG4"
- // ----------------------------
+    syntax UnVoidOp  ::= "LOG0"
+    syntax BinVoidOp ::= "LOG1"
+    syntax TernVoidOp ::= "LOG2"
+    syntax QuadVoidOp ::= "LOG3"
+    syntax FiveVoidOp  ::= "LOG4"
+ // -----------------------------
 
-    rule LOG0 MEMSTART MEMWIDTH => #log MEMSTART MEMWIDTH .WordStack
-    rule LOG1 MEMSTART MEMWIDTH W0 => #log MEMSTART MEMWIDTH W0 : .WordStack
-    rule LOG2 MEMSTART MEMWIDTH W0 W1 => #log MEMSTART MEMWIDTH W0 : W1 : .WordStack
-    rule LOG3 MEMSTART MEMWIDTH W0 W1 W2 => #log MEMSTART MEMWIDTH W0 : W1 : W2 : .WordStack
-    rule LOG4 MEMSTART MEMWIDTH W0 W1 W2 W3 => #log MEMSTART MEMWIDTH W0 : W1 : W2 : W3 : .WordStack
+    rule LOG0 MEMINDEX => #log MEMINDEX .WordStack
+    rule LOG1 MEMINDEX W0 => #log MEMINDEX W0 : .WordStack
+    rule LOG2 MEMINDEX W0 W1 => #log MEMINDEX W0 : W1 : .WordStack
+    rule LOG3 MEMINDEX W0 W1 W2 => #log MEMINDEX W0 : W1 : W2 : .WordStack
+    rule LOG4 MEMINDEX W0 W1 W2 W3 => #log MEMINDEX W0 : W1 : W2 : W3 : .WordStack
 
-    syntax InternalOp ::= "#log" Int Int WordStack
+    syntax InternalOp ::= "#log" Int WordStack
  // ----------------------------------------------
-    rule <k> #log MEMSTART MEMWIDTH WS => . ... </k>
+    rule <k> #log MEMINDEX WS => . ... </k>
          <id> ACCT </id>
          <localMem> LM </localMem>
-         <log> ... (.List => ListItem({ ACCT | WS | #range(LM, MEMSTART, MEMWIDTH) })) </log>
+         <log> ... (.List => ListItem({ ACCT | WS | {LM [ MEMINDEX ]}:>WordStack })) </log>
 ```
 
 Network Ops
@@ -1249,11 +1242,11 @@ The various `CALL*` (and other inter-contract control flow) operations will be d
                    | #initFun ( Int )    [klabel(initVMLabel)]
  // ---------------------------------------------------------
     rule <k> #initVM(ARGS) => #load #regRange(#sizeRegs(ARGS)) ARGS ... </k>
-         <memoryUsed> _ => 0      </memoryUsed>
-         <output>     _ => .Regs  </output>
-         <regs>       _ => .Array </regs>
-         <localMem>   _ => .Array </localMem>
-         <localCalls> _ => .List  </localCalls>
+         <memoryUsed> _ => .Map    </memoryUsed>
+         <output>     _ => .Regs   </output>
+         <regs>       _ => .Array  </regs>
+         <localMem>   _ => .Memory </localMem>
+         <localCalls> _ => .List   </localCalls>
 
     rule <k> #initFun(FUNC::String) => #initFun(LABEL::Int) ... </k>
          <exported> ... FUNC |-> LABEL </exported>
@@ -1723,22 +1716,39 @@ In the yellowpaper, each opcode is defined to consume zero gas unless specified 
 -   `#memoryUsageUpdate` is the function `M` in appendix H of the yellowpaper which helps track the memory used.
 
 ```{.k .uiuck .rvk}
-    syntax Int ::= #memory ( Op , Int ) [function]
- // --------------------------------------------------
-    rule #memory ( MLOAD _ INDEX WIDTH  , MU ) => #memoryUsageUpdate(MU, INDEX, WIDTH)
-    rule #memory ( MLOAD256 _ INDEX     , MU ) => #memoryUsageUpdate(MU, INDEX, 32)
-    rule #memory ( MSTORE INDEX _ WIDTH , MU ) => #memoryUsageUpdate(MU, INDEX, WIDTH)
-    rule #memory ( MSTORE256 INDEX _    , MU ) => #memoryUsageUpdate(MU, INDEX, 32)
-    rule #memory ( MSTORE8 INDEX _      , MU ) => #memoryUsageUpdate(MU, INDEX, 1)
+    syntax Int ::= #memory ( Op , Map , Int ) [function]
+                 | #memIndex ( Op )           [function]
+    syntax Bool ::= #usesMemory ( OpCode )    [function]
+ // ----------------------------------------------------
+    rule #memory(MLOADN  _ INDEX1 INDEX2   WIDTH, _::Map MEMINDEX |-> MU, MEMINDEX) => #memoryUsageUpdate(MU, INDEX2, WIDTH)
+    rule #memory(MSTOREN   INDEX1 INDEX2 _ WIDTH, _::Map MEMINDEX |-> MU, MEMINDEX) => #memoryUsageUpdate(MU, INDEX2, WIDTH)
+    rule #memory(MSTORE INDEX VALUE,              _::Map MEMINDEX |-> MU, MEMINDEX) => #memoryUsageUpdate(MU, 0, #sizeWordStack(#asSignedBytes(VALUE)))
 
-    rule #memory ( SHA3 _ START WIDTH       , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
-    rule #memory ( LOG0 START WIDTH         , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
-    rule #memory ( LOG1 START WIDTH _       , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
-    rule #memory ( LOG2 START WIDTH _ _     , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
-    rule #memory ( LOG3 START WIDTH _ _ _   , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
-    rule #memory ( LOG4 START WIDTH _ _ _ _ , MU ) => #memoryUsageUpdate(MU, START, WIDTH)
+    rule #memIndex(MLOADN _ INDEX _ _)  => INDEX
+    rule #memIndex(MLOAD _ INDEX)       => INDEX
+    rule #memIndex(MSTOREN INDEX _ _ _) => INDEX
+    rule #memIndex(MSTORE INDEX _)      => INDEX
+    rule #memIndex(SHA3 _ INDEX)        => INDEX
+    rule #memIndex(LOG0 INDEX)          => INDEX
+    rule #memIndex(LOG1 INDEX _)        => INDEX
+    rule #memIndex(LOG2 INDEX _ _)      => INDEX
+    rule #memIndex(LOG3 INDEX _ _ _)    => INDEX
+    rule #memIndex(LOG4 INDEX _ _ _ _)  => INDEX
 
-    rule #memory(_, MU) => MU [owise]
+    rule #usesMemory(MLOADN)  => true
+    rule #usesMemory(MLOAD)   => true
+    rule #usesMemory(MSTOREN) => true
+    rule #usesMemory(MSTORE)  => true
+    rule #usesMemory(SHA3)    => true
+    rule #usesMemory(LOG0)    => true
+    rule #usesMemory(LOG1)    => true
+    rule #usesMemory(LOG2)    => true
+    rule #usesMemory(LOG3)    => true
+    rule #usesMemory(LOG4)    => true
+    rule #usesMemory(...)     => false [owise]
+
+    rule #memory(OP, MU,                     MEMINDEX) => #memory(OP, MU MEMINDEX |-> 0, MEMINDEX) requires notBool MEMINDEX in_keys(MU)
+    rule #memory(_,  _::Map MEMINDEX |-> MU, MEMINDEX) => MU [owise]
 
     syntax Int ::= #memoryUsageUpdate ( Int , Int , Int ) [function]
  // ----------------------------------------------------------------
@@ -1768,11 +1778,11 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     rule <k> #gasExec(SCHED, EXP _ W0 W1) => Gexp < SCHED > +Int (Gexpbyte < SCHED > *Int (1 +Int (log256Int(W1)))) ... </k> requires W1 =/=K 0
 
 
-    rule <k> #gasExec(SCHED, LOG0 _ WIDTH)         => (Glog < SCHED > +Int (Glogdata < SCHED > *Int chop(WIDTH)) +Int (0 *Int Glogtopic < SCHED >)) ... </k>
-    rule <k> #gasExec(SCHED, LOG1 _ WIDTH _)       => (Glog < SCHED > +Int (Glogdata < SCHED > *Int chop(WIDTH)) +Int (1 *Int Glogtopic < SCHED >)) ... </k>
-    rule <k> #gasExec(SCHED, LOG2 _ WIDTH _ _)     => (Glog < SCHED > +Int (Glogdata < SCHED > *Int chop(WIDTH)) +Int (2 *Int Glogtopic < SCHED >)) ... </k>
-    rule <k> #gasExec(SCHED, LOG3 _ WIDTH _ _ _)   => (Glog < SCHED > +Int (Glogdata < SCHED > *Int chop(WIDTH)) +Int (3 *Int Glogtopic < SCHED >)) ... </k>
-    rule <k> #gasExec(SCHED, LOG4 _ WIDTH _ _ _ _) => (Glog < SCHED > +Int (Glogdata < SCHED > *Int chop(WIDTH)) +Int (4 *Int Glogtopic < SCHED >)) ... </k>
+    rule <k> #gasExec(SCHED, LOG0 IDX)         => (Glog < SCHED > +Int (Glogdata < SCHED > *Int #sizeWordStack({LM [ IDX ]}:>WordStack)) +Int (0 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
+    rule <k> #gasExec(SCHED, LOG1 IDX _)       => (Glog < SCHED > +Int (Glogdata < SCHED > *Int #sizeWordStack({LM [ IDX ]}:>WordStack)) +Int (1 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
+    rule <k> #gasExec(SCHED, LOG2 IDX _ _)     => (Glog < SCHED > +Int (Glogdata < SCHED > *Int #sizeWordStack({LM [ IDX ]}:>WordStack)) +Int (2 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
+    rule <k> #gasExec(SCHED, LOG3 IDX _ _ _)   => (Glog < SCHED > +Int (Glogdata < SCHED > *Int #sizeWordStack({LM [ IDX ]}:>WordStack)) +Int (3 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
+    rule <k> #gasExec(SCHED, LOG4 IDX _ _ _ _) => (Glog < SCHED > +Int (Glogdata < SCHED > *Int #sizeWordStack({LM [ IDX ]}:>WordStack)) +Int (4 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
 
     rule <k> #gasExec(SCHED, CALL(_,_,_) _ GCAP ACCTTO VALUE _ _) => Ccall(SCHED, ACCTTO,   ACCTS, GCAP, GAVAIL, VALUE) ... </k>
          <activeAccounts> ACCTS </activeAccounts>
@@ -1803,7 +1813,7 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
 
     rule <k> #gasExec(SCHED, CREATE(_,_) _ _ _) => Gcreate < SCHED > ... </k>
 
-    rule <k> #gasExec(SCHED, SHA3 _ _ WIDTH) => Gsha3 < SCHED > +Int (Gsha3word < SCHED > *Int (chop(WIDTH) up/Int 32)) ... </k>
+    rule <k> #gasExec(SCHED, SHA3 _ IDX) => Gsha3 < SCHED > +Int (Gsha3word < SCHED > *Int (#sizeWordStack({LM [ IDX ]}:>WordStack) up/Int 32)) ... </k> <localMem> LM </localMem>
 
     rule <k> #gasExec(SCHED, JUMPDEST(_)) => Gjumpdest < SCHED > ... </k>
     rule <k> #gasExec(SCHED, SLOAD _ _)     => Gsload    < SCHED > ... </k>
@@ -1839,11 +1849,10 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     rule <k> #gasExec(SCHED, OR _ _ _)           => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, XOR _ _ _)          => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, BYTE _ _ _)         => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, MLOAD _ _ _)        => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, MLOAD256 _ _)       => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, MSTORE _ _ _)       => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, MSTORE256 _ _)      => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, MSTORE8 _ _)        => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, MLOADN _ _ _ _)     => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, MSTOREN _ _ _ _)    => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, MLOAD _ _)          => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, MSTORE _ _)         => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, LOADPOS(_, _) _)    => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, LOADNEG(_, _) _)    => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, MOVE _ _)           => Gverylow < SCHED > ... </k>

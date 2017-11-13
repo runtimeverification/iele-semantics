@@ -772,7 +772,6 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmRegs ( OP:TernVoidOp, R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2)
     rule #dasmRegs ( OP:QuadVoidOp, R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2) %(R, W, M, 3)
     rule #dasmRegs ( OP:FiveVoidOp, R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2) %(R, W, M, 3) %(R, W, M, 4)
-    rule #dasmRegs ( OP:SixVoidOp,  R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2) %(R, W, M, 3) %(R, W, M, 4) %(R, W, M, 5)
 
     rule #dasmRegs ( _:CallSixOpCode (_, ARGS, RETS) #as OP::CallSixOp,   R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1 +Int RETS) %(R, W, M, 2 +Int RETS)                         %(R, W, M, 1, RETS) %(R, W, M, RETS +Int 3, ARGS)
     rule #dasmRegs ( _:CallOpCode    (_, ARGS, RETS) #as OP::CallOp,      R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1 +Int RETS) %(R, W, M, 2 +Int RETS) %(R, W, M, 3 +Int RETS) %(R, W, M, 1, RETS) %(R, W, M, RETS +Int 4, ARGS)
@@ -821,7 +820,6 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #numArgs ( _:TernVoidOp ) => 3
     rule #numArgs ( _:QuadVoidOp ) => 4
     rule #numArgs ( _:FiveVoidOp ) => 5
-    rule #numArgs ( _:SixVoidOp )  => 6
     rule #numArgs ( _:CallSixOpCode(_, ARGS, RETS) ) => 3 +Int ARGS +Int RETS
     rule #numArgs ( _:CallOpCode   (_, ARGS, RETS) ) => 4 +Int ARGS +Int RETS
     rule #numArgs ( LOCALCALL      (_, ARGS, RETS) ) => ARGS +Int RETS
@@ -866,16 +864,14 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmOpCode(  67 ) => NUMBER
     rule #dasmOpCode(  68 ) => DIFFICULTY
     rule #dasmOpCode(  69 ) => GASLIMIT
-    rule #dasmOpCode(  80 ) => MLOAD8
-    rule #dasmOpCode(  81 ) => MLOAD256
-    rule #dasmOpCode(  82 ) => MLOAD
-    rule #dasmOpCode(  83 ) => MSTORE8
-    rule #dasmOpCode(  84 ) => MSTORE256
-    rule #dasmOpCode(  85 ) => MSTORE
-    rule #dasmOpCode(  86 ) => SLOAD
-    rule #dasmOpCode(  87 ) => SSTORE
-    rule #dasmOpCode(  89 ) => MSIZE
-    rule #dasmOpCode(  90 ) => GAS
+    rule #dasmOpCode(  80 ) => MLOADN
+    rule #dasmOpCode(  81 ) => MLOAD
+    rule #dasmOpCode(  82 ) => MSTOREN
+    rule #dasmOpCode(  83 ) => MSTORE
+    rule #dasmOpCode(  84 ) => SLOAD
+    rule #dasmOpCode(  85 ) => SSTORE
+    rule #dasmOpCode(  86 ) => MSIZE
+    rule #dasmOpCode(  87 ) => GAS
     rule #dasmOpCode(  96 ) => MOVE
     rule #dasmOpCode( 160 ) => LOG0
     rule #dasmOpCode( 161 ) => LOG1
