@@ -42,11 +42,9 @@ type iele_opcode = [
 | `NUMBER
 | `DIFFICULTY
 | `GASLIMIT
-| `MLOAD8
-| `MLOAD256
+| `MLOADN
 | `MLOAD
-| `MSTORE8
-| `MSTORE256
+| `MSTOREN
 | `MSTORE
 | `SLOAD
 | `SSTORE

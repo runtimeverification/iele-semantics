@@ -19,8 +19,9 @@ let rec preprocess_evm (evm: evm_op list) : intermediate_op list = match evm wit
 | (`ADDMOD | `MULMOD as op) :: tl when compatibility -> `PUSH(_32) :: `TWOS :: `SWAP(1) :: `PUSH(_32) :: `TWOS :: `SWAP(1) :: `SWAP(2) :: `PUSH(_32) :: `TWOS :: `SWAP(2) :: op :: preprocess_evm tl
 | `SLT :: tl -> `LT :: preprocess_evm tl
 | `SGT :: tl -> `GT :: preprocess_evm tl
-| `MLOAD :: tl -> `MLOAD256 :: preprocess_evm tl
-| `MSTORE :: tl -> `MSTORE256 :: preprocess_evm tl
+| `MLOAD :: tl -> `PUSH(_32) :: `SWAP(1) :: `PUSH(Z.zero) :: `MLOADN :: preprocess_evm tl
+| `MSTORE :: tl -> `PUSH(_32) :: `SWAP(2) :: `SWAP(1) :: `PUSH(Z.zero) :: `MSTOREN :: preprocess_evm tl
+| `MSTORE8 :: tl -> `PUSH(Z.one) :: `SWAP(2) :: `SWAP(1) :: `PUSH(Z.zero) :: `MSTOREN :: preprocess_evm tl
 | (`JUMP|`JUMPI) :: tl -> `INVALID :: preprocess_evm tl
 | `PUSH(_,pc) :: `JUMP :: tl when Z.lt pc _65536 -> `JUMP(Z.to_int pc) :: preprocess_evm tl
 | `PUSH(_,pc) :: `JUMPI :: tl when Z.lt pc _65536 -> `JUMPI(Z.to_int pc) :: preprocess_evm tl
@@ -28,12 +29,12 @@ let rec preprocess_evm (evm: evm_op list) : intermediate_op list = match evm wit
 | `PC(pc) :: `JUMPI :: tl when compatibility && pc < 65536 -> `JUMPI(pc) :: preprocess_evm tl
 | `PUSH(_,byte) :: `SIGNEXTEND :: tl -> `PUSH(Z.min byte _31) :: `SIGNEXTEND :: preprocess_evm tl
 (* here we preprocess calls by converting them into a sequenceo f MLOADing the arguments, CALLing the contract, then MSTOREing the returned value *)
-| (`CALL|`CALLCODE) as op :: tl -> `DUP(5) :: `SWAP(1) :: `SWAP(4) :: `MLOAD :: `SWAP(4) :: `SWAP(1) :: `SWAP(4) :: `SWAP(1) :: `TWOS :: `SWAP(3) :: `SWAP(1) :: `SWAP(2) :: op :: `SWAP(3) :: `SWAP(1) :: `SWAP(2) :: `MSTORE :: preprocess_evm tl
-| (`DELEGATECALL|`STATICCALL) as op :: tl -> `DUP(4) :: `SWAP(1) :: `SWAP(3) :: `MLOAD :: `SWAP(3) :: `SWAP(1) :: `SWAP(3) :: `SWAP(1) :: `TWOS :: `SWAP(2) :: `SWAP(1) :: op :: `SWAP(3) :: `SWAP(1) :: `SWAP(2) :: `MSTORE :: preprocess_evm tl
-| (`RETURN|`REVERT) as op :: tl -> `DUP(2) :: `SWAP(1) :: `MLOAD :: `SWAP(1) :: `TWOS :: op :: preprocess_evm tl
+| (`CALL|`CALLCODE) as op :: tl -> `DUP(5) :: `SWAP(1) :: `SWAP(4) :: `PUSH(Z.zero) :: `MLOADN :: `SWAP(4) :: `SWAP(1) :: `SWAP(4) :: `SWAP(1) :: `TWOS :: `SWAP(3) :: `SWAP(1) :: `SWAP(2) :: op :: `SWAP(3) :: `SWAP(1) :: `SWAP(2) :: `PUSH(Z.zero) :: `MSTOREN :: preprocess_evm tl
+| (`DELEGATECALL|`STATICCALL) as op :: tl -> `DUP(4) :: `SWAP(1) :: `SWAP(3) :: `PUSH(Z.zero) :: `MLOADN :: `SWAP(3) :: `SWAP(1) :: `SWAP(3) :: `SWAP(1) :: `TWOS :: `SWAP(2) :: `SWAP(1) :: op :: `SWAP(3) :: `SWAP(1) :: `SWAP(2) :: `PUSH(Z.zero) :: `MSTOREN :: preprocess_evm tl
+| (`RETURN|`REVERT) as op :: tl -> `DUP(2) :: `SWAP(1) :: `PUSH(Z.zero) :: `MLOADN :: `SWAP(1) :: `TWOS :: op :: preprocess_evm tl
 | _ :: (`JUMPI) :: _ -> failwith "dynamic jumps detected"
 | `LOG(_) | `EXTCODECOPY | `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY
-| `SSTORE | `ADDMOD | `MULMOD | `CREATE | `POP | `SELFDESTRUCT | `MSTORE8 | `ADD | `MUL 
+| `SSTORE | `ADDMOD | `MULMOD | `CREATE | `POP | `SELFDESTRUCT | `ADD | `MUL 
 | `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND | `AND | `OR | `XOR | `LT | `GT | `EQ | `SHA3 | `SWAP(_) | `INVALID
 | `STOP | `ISZERO | `NOT | `BLOCKHASH | `CALLDATALOAD | `BALANCE | `EXTCODESIZE | `SLOAD | `DUP(_)
 | `GAS | `GASPRICE | `GASLIMIT | `COINBASE | `TIMESTAMP | `NUMBER | `DIFFICULTY | `ADDRESS | `ORIGIN | `CALLER 
@@ -43,7 +44,7 @@ let rec preprocess_evm (evm: evm_op list) : intermediate_op list = match evm wit
 | `PC(pc) :: tl when compatibility -> `PUSH(Z.of_int pc) :: preprocess_evm tl
 | `PC(_) :: tl -> `PC :: preprocess_evm tl
 | `LOG(_) | `EXTCODECOPY | `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY
-| `SSTORE | `ADDMOD | `MULMOD | `CREATE | `POP | `SELFDESTRUCT | `MSTORE8 | `ADD | `MUL 
+| `SSTORE | `ADDMOD | `MULMOD | `CREATE | `POP | `SELFDESTRUCT | `ADD | `MUL 
 | `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND | `AND | `OR | `XOR | `LT | `GT | `EQ | `SHA3 | `SWAP(_) | `INVALID
 | `STOP | `ISZERO | `NOT | `BLOCKHASH | `CALLDATALOAD | `BALANCE | `EXTCODESIZE | `SLOAD | `DUP(_)
 | `GAS | `GASPRICE | `GASLIMIT | `COINBASE | `TIMESTAMP | `NUMBER | `DIFFICULTY | `ADDRESS | `ORIGIN | `CALLER 
@@ -63,11 +64,11 @@ let stack_needed op = match op with
 | `SWAP(n) -> n + 1
 | `CALL | `CALLCODE -> 4
 | `DELEGATECALL | `STATICCALL -> 3
-| `EXTCODECOPY -> 4
-| `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY | `ADDMOD | `MULMOD | `CREATE | `MSTORE -> 3
-| `SSTORE | `MSTORE256 | `MSTORE8 | `ADD | `MUL | `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND
-| `TWOS | `AND | `OR | `XOR | `LT | `GT | `EQ | `SHA3 | `MLOAD -> 2
-| `SELFDESTRUCT | `LOCALRETURN | `JUMPI(_) | `MLOAD256 | `ISZERO | `NOT | `BLOCKHASH | `CALLDATALOAD | `BALANCE | `EXTCODESIZE 
+| `EXTCODECOPY | `MSTOREN -> 4
+| `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY | `ADDMOD | `MULMOD | `CREATE | `MLOADN -> 3
+| `SSTORE | `ADD | `MUL | `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND
+| `TWOS | `AND | `OR | `XOR | `LT | `GT | `EQ | `SHA3 -> 2
+| `SELFDESTRUCT | `LOCALRETURN | `JUMPI(_) | `ISZERO | `NOT | `BLOCKHASH | `CALLDATALOAD | `BALANCE | `EXTCODESIZE 
 | `SLOAD | `POP | `RETURN | `REVERT -> 1
 | `INVALID | `STOP | `JUMPDEST(_) | `JUMP(_) | `PC | `GAS | `GASPRICE | `GASLIMIT | `COINBASE | `TIMESTAMP
 | `NUMBER | `DIFFICULTY  | `ADDRESS | `ORIGIN | `CALLER | `CALLVALUE | `MSIZE | `CODESIZE | `CALLDATASIZE 
@@ -89,12 +90,12 @@ let compute_cfg (intermediate: intermediate_op list) : evm_graph =
     | `LOG(n) -> delta := !delta - 2 - n
     | `CALL | `CALLCODE -> delta := !delta - 2
     | `DELEGATECALL | `STATICCALL -> delta := !delta - 1
-    | `EXTCODECOPY -> delta := !delta - 4
-    | `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY | `MSTORE -> delta := !delta - 3
-    | `SSTORE | `ADDMOD | `MULMOD | `CREATE | `MSTORE256 | `MSTORE8 -> delta := !delta - 2
+    | `EXTCODECOPY | `MSTOREN -> delta := !delta - 4
+    | `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY -> delta := !delta - 3
+    | `SSTORE | `ADDMOD | `MULMOD | `CREATE | `MLOADN -> delta := !delta - 2
     | `POP | `ADD | `MUL | `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND | `TWOS
-    | `AND | `OR | `XOR | `LT | `GT | `EQ | `SHA3  | `MLOAD -> delta := !delta - 1
-    | `SWAP(_) | `MLOAD256 | `ISZERO | `NOT | `BLOCKHASH | `CALLDATALOAD | `BALANCE
+    | `AND | `OR | `XOR | `LT | `GT | `EQ | `SHA3 -> delta := !delta - 1
+    | `SWAP(_) | `ISZERO | `NOT | `BLOCKHASH | `CALLDATALOAD | `BALANCE
     | `EXTCODESIZE | `SLOAD -> ()
     | `DUP(_) | `PUSH(_) | `PC | `GAS | `GASPRICE | `GASLIMIT | `COINBASE | `TIMESTAMP | `NUMBER | `DIFFICULTY
     | `ADDRESS | `ORIGIN | `CALLER | `CALLVALUE | `MSIZE | `CODESIZE | `CALLDATASIZE 
@@ -171,7 +172,7 @@ let convert_to_registers (cfg : evm_graph) : iele_graph * int =
         stack := !regcount :: curr_stack;
         regcount := !regcount + 1;
         op (* nullary operator *)
-      | `MLOAD256 | `ISZERO | `NOT | `BLOCKHASH | `CALLDATALOAD | `BALANCE | `EXTCODESIZE | `SLOAD as op ->
+      | `ISZERO | `NOT | `BLOCKHASH | `CALLDATALOAD | `BALANCE | `EXTCODESIZE | `SLOAD as op ->
         (match curr_stack with 
         | [] -> VoidOp(`INVALID,[])
         | hd :: tl -> let op = Op(op,!regcount,[hd]) in
@@ -185,33 +186,33 @@ let convert_to_registers (cfg : evm_graph) : iele_graph * int =
         stack := tl;
         op) (* unary consumer *)
       | `ADD | `MUL | `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND | `TWOS | `AND | `OR | `XOR
-      | `LT | `GT | `EQ | `SHA3 | `MLOAD as op->
+      | `LT | `GT | `EQ | `SHA3 as op->
         (match curr_stack with
         | [] | _ :: [] -> VoidOp(`INVALID,[])
         | r1 :: r2 :: tl -> let op = Op(op,!regcount,[r1;r2]) in
         stack := !regcount :: tl;
         regcount := !regcount + 1;
         op) (* binary operator *)
-      | `MSTORE256 | `MSTORE8 | `LOG(0) | `SSTORE as op-> 
+      | `LOG(0) | `SSTORE as op-> 
         (match curr_stack with 
         | [] | _ :: [] -> VoidOp(`INVALID,[])
         | r1 :: r2 :: tl -> let op = VoidOp(op,[r1;r2]) in
         stack := tl;
         op) (* binary consumer *)
-      | `ADDMOD | `MULMOD | `CREATE as op ->
+      | `ADDMOD | `MULMOD | `CREATE | `MLOADN as op ->
         (match curr_stack with 
         | [] | _ :: [] | _ :: _ :: [] -> VoidOp(`INVALID,[])
         | r1 :: r2 :: r3 :: tl -> let op = Op(op,!regcount,[r1;r2;r3]) in
         stack := !regcount :: tl;
         regcount := !regcount + 1;
         op) (* ternary operator *)
-      | `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY | `MSTORE | `LOG(1) as op ->
+      | `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY | `LOG(1) as op ->
         (match curr_stack with
         | [] | _ :: [] | _ :: _ :: [] -> VoidOp(`INVALID,[])
         | r1 :: r2 :: r3 :: tl -> let op = VoidOp(op,[r1;r2;r3]) in
         stack := tl;
         op) (* ternary consumer *)
-      | `EXTCODECOPY | `LOG(2) as op ->
+      | `EXTCODECOPY | `LOG(2) | `MSTOREN as op ->
         (match curr_stack with
         | [] | _ :: [] | _ :: _ :: [] | _ :: _ :: _ :: [] -> VoidOp(`INVALID,[])
         | r1 :: r2 :: r3 :: r4 :: tl -> let op = VoidOp(op,[r1;r2;r3;r4]) in
@@ -716,11 +717,12 @@ let rec postprocess_iele iele label = match iele with
    bitwise shift the data into the correct value so that you get back the same
    integer value. *)
 | Op(`CALLDATALOAD, reg, [datastart]) :: tl -> LiOp(`LOADPOS, -1, _32) :: Op(`TWOS, datastart, [-1; datastart]) :: Op(`SUB, datastart, [0; datastart]) :: LiOp(`LOADPOS, -2, Z.zero) :: Op(`GT, -2, [datastart; -2]) :: VoidOp(`JUMPI(label-2), [-2]) :: Op(`ADD, datastart, [0; -1]) :: VoidOp(`JUMPDEST(label-2), []) :: Op(`SUB, datastart, [datastart; -1]) :: LiOp(`LOADPOS, -1, Z.zero) :: Op(`LT, -1, [datastart; -1]) :: LiOp(`LOADPOS, -2, _256) :: VoidOp(`JUMPI(label), [-1]) :: Op(`EXP, datastart, [-2; datastart]) :: Op(`DIV, datastart, [1; datastart]) :: VoidOp(`JUMP(label-1), []) :: VoidOp(`JUMPDEST(label), []) :: LiOp(`LOADPOS, -1, Z.zero) :: Op(`SUB, datastart, [-1; datastart]) :: Op(`EXP, datastart, [-2; datastart]) :: Op(`MUL, datastart, [1; datastart]) :: VoidOp(`JUMPDEST(label-1), []) :: LiOp(`LOADPOS, -1, _mask) :: Op(`AND, reg, [datastart; -1]) :: postprocess_iele tl (label-3)
-| VoidOp(`CALLDATACOPY, [memstart; datastart; len]) :: tl -> LiOp(`LOADPOS, -1, _32) :: Op(`TWOS, datastart, [-1; datastart]) :: Op(`SUB, datastart, [0; datastart]) :: LiOp(`LOADPOS, -2, Z.zero) :: Op(`GT, -2, [datastart; -2]) :: VoidOp(`JUMPI(label-2), [-2]) :: Op(`ADD, datastart, [0; len]) :: VoidOp(`JUMPDEST(label-2), []) :: Op(`SUB, datastart, [datastart; len]) :: LiOp(`LOADPOS, -1, Z.zero) :: Op(`LT, -1, [datastart; -1]) :: LiOp(`LOADPOS, -2, _256) :: VoidOp(`JUMPI(label), [-1]) :: Op(`EXP, datastart, [-2; datastart]) :: Op(`DIV, datastart, [1; datastart]) :: VoidOp(`JUMP(label-1), []) :: VoidOp(`JUMPDEST(label), []) :: LiOp(`LOADPOS, -1, Z.zero) :: Op(`SUB, datastart, [-1; datastart]) :: Op(`EXP, datastart, [-2; datastart]) :: Op(`MUL, datastart, [1; datastart]) :: VoidOp(`JUMPDEST(label-1), []) :: LiOp(`LOADPOS, -1, _256) :: Op(`EXP, -1, [-1; len]) :: LiOp(`LOADPOS, -2, Z.one) :: Op(`SUB, -1, [-1; -2]) :: Op(`AND, -1, [datastart; -1]) :: VoidOp(`MSTORE, [memstart; -1; len]) :: postprocess_iele tl (label-3)
+| VoidOp(`CALLDATACOPY, [memstart; datastart; len]) :: tl -> LiOp(`LOADPOS, -1, _32) :: Op(`TWOS, datastart, [-1; datastart]) :: Op(`SUB, datastart, [0; datastart]) :: LiOp(`LOADPOS, -2, Z.zero) :: Op(`GT, -2, [datastart; -2]) :: VoidOp(`JUMPI(label-2), [-2]) :: Op(`ADD, datastart, [0; len]) :: VoidOp(`JUMPDEST(label-2), []) :: Op(`SUB, datastart, [datastart; len]) :: LiOp(`LOADPOS, -1, Z.zero) :: Op(`LT, -1, [datastart; -1]) :: LiOp(`LOADPOS, -2, _256) :: VoidOp(`JUMPI(label), [-1]) :: Op(`EXP, datastart, [-2; datastart]) :: Op(`DIV, datastart, [1; datastart]) :: VoidOp(`JUMP(label-1), []) :: VoidOp(`JUMPDEST(label), []) :: LiOp(`LOADPOS, -1, Z.zero) :: Op(`SUB, datastart, [-1; datastart]) :: Op(`EXP, datastart, [-2; datastart]) :: Op(`MUL, datastart, [1; datastart]) :: VoidOp(`JUMPDEST(label-1), []) :: LiOp(`LOADPOS, -1, _256) :: Op(`EXP, -1, [-1; len]) :: LiOp(`LOADPOS, -2, Z.one) :: Op(`SUB, -1, [-1; -2]) :: Op(`AND, -1, [datastart; -1]) :: LiOp(`LOADPOS, -2, Z.zero) :: VoidOp(`MSTOREN, [-2; memstart; -1; len]) :: postprocess_iele tl (label-3)
 | Op(`CALLDATASIZE, reg, []) :: tl -> Op(`MOVE, reg, [0]) :: postprocess_iele tl label
 | Op(`EXP, reg, [v1;v2]) :: tl when compatibility -> LiOp(`LOADPOS, -1, pow256) :: Op(`EXPMOD, reg, [v1;v2;-1]) :: postprocess_iele tl label
 | LiOp(`LOADPOS, reg, z) :: tl when compatibility && Z.gt z max_val -> LiOp(`LOADNEG, reg, Z.signed_extract z 0 256) :: postprocess_iele tl label
 | CallOp(`LOCALCALLI(target,nargs,nreturn,ret_addr), rets, reg :: args) :: tl -> Op(`ISZERO, reg, [reg]) :: VoidOp(`JUMPI(label), [reg]) :: CallOp(`LOCALCALL(target,nargs,nreturn), rets, args) :: VoidOp(`JUMP(ret_addr), []) :: VoidOp(`JUMPDEST(label), []) :: postprocess_iele tl (label-1)
+| Op(`SHA3, reg, [memstart; memwidth]) :: tl -> LiOp(`LOADPOS, -1, Z.zero) :: Op(`MLOADN, -2, [-1; memstart; memwidth]) :: LiOp(`LOADPOS, memstart, Z.one) :: VoidOp(`MSTOREN, [memstart; -1; -2; memwidth]) :: Op(`SHA3, reg, [memstart]) :: postprocess_iele tl label
 | hd :: tl -> hd :: postprocess_iele tl label
 | [] -> []
 

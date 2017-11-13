@@ -42,11 +42,9 @@ type iele_opcode = [
 | `NUMBER
 | `DIFFICULTY
 | `GASLIMIT
-| `MLOAD8
-| `MLOAD256
+| `MLOADN
 | `MLOAD
-| `MSTORE8
-| `MSTORE256
+| `MSTOREN
 | `MSTORE
 | `SLOAD
 | `SSTORE
@@ -127,17 +125,14 @@ let asm_iele_opcode op = match op with
 | `NUMBER -> "\x43"
 | `DIFFICULTY -> "\x44"
 | `GASLIMIT -> "\x45"
-| `MLOAD8 -> "\x50"
-| `MLOAD256 -> "\x51"
-| `MLOAD -> "\x52"
-| `MSTORE8 -> "\x53"
-| `MSTORE256 -> "\x54"
-| `MSTORE -> "\x55"
-| `SLOAD -> "\x56"
-| `SSTORE -> "\x57"
-| `PC -> "\x58"
-| `MSIZE -> "\x59"
-| `GAS -> "\x5a"
+| `MLOADN -> "\x50"
+| `MLOAD -> "\x51"
+| `MSTOREN -> "\x52"
+| `MSTORE -> "\x53"
+| `SLOAD -> "\x54"
+| `SSTORE -> "\x55"
+| `MSIZE -> "\x56"
+| `GAS -> "\x57"
 | `MOVE -> "\x60"
 | `LOADPOS -> "\x61"
 | `LOADNEG -> "\x62"

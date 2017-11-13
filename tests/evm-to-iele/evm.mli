@@ -115,11 +115,8 @@ type intermediate_op = [
 | `DIFFICULTY
 | `GASLIMIT
 | `POP
-| `MLOAD
-| `MLOAD256
-| `MSTORE
-| `MSTORE8
-| `MSTORE256
+| `MLOADN
+| `MSTOREN
 | `SLOAD
 | `SSTORE
 | `JUMP of int
