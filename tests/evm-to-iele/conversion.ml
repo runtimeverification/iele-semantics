@@ -29,10 +29,9 @@ let rec preprocess_evm (evm: evm_op list) : intermediate_op list = match evm wit
 | `PC(pc) :: `JUMPI :: tl when compatibility && pc < 65536 -> `JUMPI(pc) :: preprocess_evm tl
 | `PUSH(_,byte) :: `SIGNEXTEND :: tl -> `PUSH(Z.min byte _31) :: `SIGNEXTEND :: preprocess_evm tl
 (* here we preprocess calls by converting them into a sequenceo f MLOADing the arguments, CALLing the contract, then MSTOREing the returned value *)
-| (`CALL|`CALLCODE) as op :: tl -> `DUP(5) :: `SWAP(1) :: `SWAP(4) :: `PUSH(Z.zero) :: `MLOADN :: `SWAP(4) :: `SWAP(1) :: `SWAP(4) :: `SWAP(1) :: `TWOS :: `SWAP(3) :: `SWAP(1) :: `SWAP(2) :: op :: `SWAP(3) :: `SWAP(1) :: `SWAP(2) :: `PUSH(Z.zero) :: `MSTOREN :: preprocess_evm tl
-| (`DELEGATECALL|`STATICCALL) as op :: tl -> `DUP(4) :: `SWAP(1) :: `SWAP(3) :: `PUSH(Z.zero) :: `MLOADN :: `SWAP(3) :: `SWAP(1) :: `SWAP(3) :: `SWAP(1) :: `TWOS :: `SWAP(2) :: `SWAP(1) :: op :: `SWAP(3) :: `SWAP(1) :: `SWAP(2) :: `PUSH(Z.zero) :: `MSTOREN :: preprocess_evm tl
 | (`RETURN|`REVERT) as op :: tl -> `DUP(2) :: `SWAP(1) :: `PUSH(Z.zero) :: `MLOADN :: `SWAP(1) :: `TWOS :: op :: preprocess_evm tl
 | _ :: (`JUMPI) :: _ -> failwith "dynamic jumps detected"
+| `CALL | `CALLCODE | `DELEGATECALL | `STATICCALL
 | `LOG(_) | `EXTCODECOPY | `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY
 | `SSTORE | `ADDMOD | `MULMOD | `CREATE | `POP | `SELFDESTRUCT | `ADD | `MUL 
 | `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND | `AND | `OR | `XOR | `LT | `GT | `EQ | `SHA3 | `SWAP(_) | `INVALID
@@ -42,6 +41,7 @@ let rec preprocess_evm (evm: evm_op list) : intermediate_op list = match evm wit
 | `PUSH(n,v) :: op2 :: tl -> `PUSH(v) :: preprocess_evm (op2 :: tl)
 | `PUSH(n,v) :: [] -> `PUSH(v) :: []
 | `PC(pc) :: tl -> `PUSH(Z.of_int pc) :: preprocess_evm tl
+| `CALL | `CALLCODE | `DELEGATECALL | `STATICCALL
 | `LOG(_) | `EXTCODECOPY | `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY
 | `SSTORE | `ADDMOD | `MULMOD | `CREATE | `POP | `SELFDESTRUCT | `ADD | `MUL 
 | `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND | `AND | `OR | `XOR | `LT | `GT | `EQ | `SHA3 | `SWAP(_) | `INVALID
@@ -61,8 +61,8 @@ let stack_needed op = match op with
 | `LOG(n) -> n + 2
 | `DUP(n) -> n
 | `SWAP(n) -> n + 1
-| `CALL | `CALLCODE -> 4
-| `DELEGATECALL | `STATICCALL -> 3
+| `CALL | `CALLCODE -> 7
+| `DELEGATECALL | `STATICCALL -> 6
 | `EXTCODECOPY | `MSTOREN -> 4
 | `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY | `ADDMOD | `MULMOD | `CREATE | `MLOADN -> 3
 | `SSTORE | `ADD | `MUL | `SUB | `DIV | `EXP | `MOD | `BYTE | `SIGNEXTEND
@@ -87,8 +87,8 @@ let compute_cfg (intermediate: intermediate_op list) : evm_graph =
     max_needed := max !max_needed diff_needed;
     (match op with
     | `LOG(n) -> delta := !delta - 2 - n
-    | `CALL | `CALLCODE -> delta := !delta - 2
-    | `DELEGATECALL | `STATICCALL -> delta := !delta - 1
+    | `CALL | `CALLCODE -> delta := !delta - 6
+    | `DELEGATECALL | `STATICCALL -> delta := !delta - 5
     | `EXTCODECOPY | `MSTOREN -> delta := !delta - 4
     | `CODECOPY | `CALLDATACOPY | `RETURNDATACOPY -> delta := !delta - 3
     | `SSTORE | `ADDMOD | `MULMOD | `CREATE | `MLOADN -> delta := !delta - 2
@@ -240,18 +240,18 @@ let convert_to_registers (cfg : evm_graph) : iele_graph * int =
       | `DELEGATECALL | `STATICCALL as op ->
         let new_op = match op with | `DELEGATECALL -> `DELEGATECALL(0, 1, 1) | `STATICCALL -> `STATICCALL(0, 1, 1) in
         (match curr_stack with
-        | []|_::[]|_::_::[] -> VoidOp(`INVALID,[])
-        | r1 :: r2 :: r3 :: tl -> let op = CallOp(new_op,[!regcount;!regcount + 1],[r1;r2;r3]) in
-        stack := !regcount :: (!regcount + 1) :: tl;
-        regcount := !regcount + 2;
+        | []|_::[]|_::_::[]|_::_::_::[]|_::_::_::_::[]|_::_::_::_::_::[] -> VoidOp(`INVALID,[])
+        | r1 :: r2 :: r3 :: r4 :: r5 :: r6 :: tl -> let op = Op(new_op,!regcount,[r1;r2;r3;r4;r5;r6]) in
+        stack := !regcount :: tl;
+        regcount := !regcount + 1;
         op) (* 6-ary operator *)
       | `CALL | `CALLCODE as op ->
         let new_op = match op with | `CALL -> `CALL(0, 1, 1) | `CALLCODE -> `CALLCODE(0, 1, 1) in
         (match curr_stack with
-        | []|_::[]|_::_::[]|_::_::_::[] -> VoidOp(`INVALID,[])
-        | r1 :: r2 :: r3 :: r4 :: tl -> let op = CallOp(new_op,[!regcount;!regcount + 1],[r1;r2;r3;r4]) in
-        stack := !regcount :: (!regcount + 1) :: tl;
-        regcount := !regcount + 2;
+        | []|_::[]|_::_::[]|_::_::_::[]|_::_::_::_::[]|_::_::_::_::_::[]|_::_::_::_::_::_::[] -> VoidOp(`INVALID,[])
+        | r1 :: r2 :: r3 :: r4 :: r5 :: r6 :: r7 :: tl -> let op = Op(new_op,!regcount,[r1;r2;r3;r4;r5;r6;r7]) in
+        stack := !regcount :: tl;
+        regcount := !regcount + 1;
         op) (* 7-ary operator *)
       | `LOCALRETURN ->
         VoidOp(`LOCALRETURN(List.length curr_stack),curr_stack)
@@ -262,6 +262,100 @@ let convert_to_registers (cfg : evm_graph) : iele_graph * int =
   in
   let components = List.map process_block cfg in
   components,!regcount
+
+let rec find_definition ops register = match ops with
+| LiOp(_,reg,payload) as op :: _ when reg = register -> Some op
+| Op(_,reg,_) as op :: _ when reg = register -> Some op
+| _ :: tl -> find_definition tl register
+| [] -> None
+
+let range i j = 
+    let rec aux n acc =
+      if n < i then acc else aux (n-1) (n :: acc)
+    in aux j []
+
+let process_precompiled ((graph,regcount) : iele_graph * int) : iele_graph * int =
+  let regcount = ref regcount in
+  let new_op op label nargs nreturn = match op with
+  | `CALL(_,_,_) -> `CALL(label,nargs,nreturn)
+  | `CALLCODE(_,_,_) -> `CALLCODE(label,nargs,nreturn)
+  | `DELEGATECALL(_,_,_) -> `DELEGATECALL(label,nargs,nreturn)
+  | `STATICCALL(_,_,_) -> `STATICCALL(label,nargs,nreturn)
+  in
+  let rec translate_calls ops all_ops =
+    match ops with
+    | Op((`CALL _|`CALLCODE _) as op, ret, [gas;addr;value;arg_idx;arg_width;ret_idx;ret_width]) :: tl ->
+      let new_addr = LiOp(`LOADPOS, !regcount, Z.one) in
+      regcount := !regcount + 1;
+      new_addr :: translate_call all_ops op ret addr [gas;!regcount;value] arg_idx arg_width ret_idx ret_width tl
+    | Op((`DELEGATECALL _|`STATICCALL _) as op, ret, [gas;addr;arg_idx;arg_width;ret_idx;ret_width]) :: tl ->
+      let new_addr = LiOp(`LOADPOS, !regcount, Z.one) in
+      regcount := !regcount + 1;
+      new_addr :: translate_call all_ops op ret addr [gas;!regcount] arg_idx arg_width ret_idx ret_width tl
+    | hd :: tl -> hd :: translate_calls tl all_ops
+    | [] -> []
+  and translate_call all_ops op ret addr args arg_idx arg_width ret_idx ret_width tl =
+      let retval = !regcount in
+      let def = find_definition all_ops addr in
+      let old_args = set_nth args 1 addr in
+      let old_call = 0, LiOp(`LOADPOS, !regcount, Z.zero) :: Op(`MLOADN, arg_idx, [!regcount;arg_idx;arg_width]) :: Op(`TWOS, arg_idx, [arg_width; arg_idx]) :: CallOp(new_op op 0 1 1, [ret;retval], old_args @ [arg_idx]) :: VoidOp(`MSTOREN, [!regcount;ret_idx;retval;ret_width]) :: [] in
+      regcount := !regcount + 2;
+      let new_regs,new_call = 
+      (match def with
+       | Some LiOp(_,_,payload) -> 
+         (try match Z.to_int payload with
+          | 1 -> 6, LiOp(`LOADPOS, !regcount, _32) :: LiOp(`LOADPOS, !regcount + 1, Z.zero)
+                                                   :: Op(`MLOADN, !regcount + 2, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 2, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: Op(`MLOADN, !regcount + 3, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 3, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: Op(`MLOADN, !regcount + 4, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 4, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: Op(`MLOADN, !regcount + 5, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 5, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: CallOp(new_op op (-1) 4 1, [ret;retval], args @ [!regcount + 2; !regcount + 3; !regcount + 4; !regcount + 5]) :: VoidOp(`MSTOREN, [!regcount + 1;ret_idx;ret_width;retval]) :: []
+          | 5 -> 8, LiOp(`LOADPOS, !regcount, _32) :: LiOp(`LOADPOS, !regcount + 1, Z.zero)
+                                                   :: Op(`MLOADN, !regcount + 2, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 2, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: Op(`MLOADN, !regcount + 3, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 3, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: Op(`MLOADN, !regcount + 4, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 4, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: Op(`MLOADN, !regcount + 5, [!regcount + 1; arg_idx; !regcount + 2]) :: Op(`TWOS, !regcount + 5, [!regcount + 2; !regcount + 5]) :: Op(`ADD, arg_idx, [arg_idx; !regcount + 2])
+                                                   :: Op(`MLOADN, !regcount + 6, [!regcount + 1; arg_idx; !regcount + 3]) :: Op(`TWOS, !regcount + 6, [!regcount + 3; !regcount + 6]) :: Op(`ADD, arg_idx, [arg_idx; !regcount + 3])
+                                                   :: Op(`MLOADN, !regcount + 7, [!regcount + 1; arg_idx; !regcount + 4]) :: Op(`TWOS, !regcount + 7, [!regcount + 4; !regcount + 7]) :: Op(`ADD, arg_idx, [arg_idx; !regcount + 4])
+                                                   :: Op(`EXPMOD, retval, [!regcount + 5; !regcount + 6; !regcount + 7]) :: VoidOp(`MSTOREN, [!regcount + 1; ret_idx; ret_width; retval]) :: []
+          | 6 -> 8, LiOp(`LOADPOS, !regcount, _32) :: LiOp(`LOADPOS, !regcount + 1, Z.zero)
+                                                   :: Op(`MLOADN, !regcount + 2, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 2, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: Op(`MLOADN, !regcount + 3, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 3, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: Op(`MLOADN, !regcount + 4, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 4, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: Op(`MLOADN, !regcount + 5, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 5, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: CallOp(new_op op (-2) 4 2, [ret;!regcount + 6;!regcount + 7], args @ [!regcount + 2; !regcount + 3; !regcount + 4; !regcount + 5]) 
+                                                   :: VoidOp(`MSTOREN, [!regcount + 1;ret_idx;!regcount + 6;!regcount]) :: Op(`ADD, ret_idx, [ret_idx; !regcount])
+                                                   :: VoidOp(`MSTOREN, [!regcount + 1;ret_idx;!regcount + 7;!regcount]) :: Op(`ADD, ret_idx, [ret_idx; !regcount]) :: []
+          | 7 -> 7, LiOp(`LOADPOS, !regcount, _32) :: LiOp(`LOADPOS, !regcount + 1, Z.zero)
+                                                   :: Op(`MLOADN, !regcount + 2, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 2, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: Op(`MLOADN, !regcount + 3, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 3, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: Op(`MLOADN, !regcount + 4, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 4, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: CallOp(new_op op (-3) 3 2, [ret;!regcount + 5;!regcount + 6], args @ [!regcount + 2; !regcount + 3; !regcount + 4]) 
+                                                   :: VoidOp(`MSTOREN, [!regcount + 1;ret_idx;!regcount + 5;!regcount]) :: Op(`ADD, ret_idx, [ret_idx; !regcount])
+                                                   :: VoidOp(`MSTOREN, [!regcount + 1;ret_idx;!regcount + 6;!regcount]) :: Op(`ADD, ret_idx, [ret_idx; !regcount]) :: []
+          | 8 -> 
+            let def = find_definition all_ops arg_width in
+            (match def with
+             | Some LiOp(_,_,payload) ->
+               let nregs = Z.to_int payload / 32 in
+               let res = ref (CallOp(new_op op (-4) nregs 1, [ret;retval], args @ (range (!regcount + 2) (!regcount + 1 + nregs))) :: VoidOp(`MSTOREN, [!regcount + 1;ret_idx;ret_width;retval]) :: []) in
+               for i = 1 to nregs do
+                 res := Op(`MLOADN, !regcount + 1 + i, [!regcount + 1;arg_idx;!regcount]) :: Op(`TWOS, !regcount + 1 + i, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) :: !res
+               done;
+               nregs + 1, (LiOp(`LOADPOS, !regcount, _32) :: LiOp(`LOADPOS, !regcount + 1, Z.zero) :: !res)
+             | _ -> failwith "non-constant ECPAIRING")
+          | _ -> old_call
+        with Z.Overflow -> old_call)
+      | _ -> old_call
+      ) in
+      regcount := !regcount + new_regs;
+      new_call @ translate_calls tl all_ops
+  in
+  let new_graph = List.map (fun ({ops=ops;_} as block) ->
+      let new_ops = translate_calls ops ops in
+      { block with ops=new_ops }
+   ) graph in
+   new_graph,!regcount
 
 let is_predecessor pre_idx idx succ jumpdest = 
 match succ,jumpdest with
@@ -287,11 +381,6 @@ type annotated_block = { id: int; predecessors: int list; pre: int list; ops: ie
 let annotate_graph_with_predecessors (graph : iele_graph) : annotated_block list =
  List.mapi (fun idx ({pre=pre_stack;ops=ops;post=post_stack;successors=succ} : iele_block) -> {id=idx;predecessors=get_predecessors graph idx ops;pre=pre_stack;ops=ops;post=post_stack;successors=succ}) graph
 
-let range i j = 
-    let rec aux n acc =
-      if n < i then acc else aux (n-1) (n :: acc)
-    in aux j []
-
 module IntMap = Map.Make(struct
   type t = int
   let compare = compare
@@ -306,12 +395,6 @@ let rec get_return_register ops = match ops with
 | VoidOp(`LOCALRETURN(_), reg :: _) :: [] -> reg
 | _ :: hd :: tl -> get_return_register (hd :: tl)
 | _ -> failwith "invalid return block not ending in RETURN"
-
-let rec find_definition ops register = match ops with
-| LiOp(_,reg,payload) as op :: _ when reg = register -> Some op
-| Op(_,reg,_) as op :: _ when reg = register -> Some op
-| _ :: tl -> find_definition tl register
-| [] -> None
 
 let index_of l v = 
   let rec index_of_aux l v i = match l with
@@ -687,8 +770,12 @@ let alloc_registers (ops: iele_op list) : iele_op list =
   Hashtbl.add regs 0 0;
   Hashtbl.add regs 1 1;
   let regcount = ref 2 in
-  let lblcount = ref 2 in
+  let lblcount = ref 6 in
   Hashtbl.add lbls 0 1;
+  Hashtbl.add lbls (-1) 2;
+  Hashtbl.add lbls (-2) 3;
+  Hashtbl.add lbls (-3) 4;
+  Hashtbl.add lbls (-4) 5;
   let reg_ops = List.map (replace_registers (fun reg -> try Hashtbl.find regs reg with Not_found -> let new_reg = !regcount in Hashtbl.add regs reg new_reg; regcount := new_reg + 1; new_reg)) ops in
   let lbl_ops = List.map (replace_labels (fun lbl -> try Hashtbl.find lbls lbl with Not_found -> let new_lbl = !lblcount in Hashtbl.add lbls lbl new_lbl; lblcount := new_lbl + 1; new_lbl)) reg_ops in
   let all_labels = Hashtbl.fold (fun _ v set -> IntSet.add v set) lbls IntSet.empty in
@@ -701,7 +788,7 @@ let alloc_registers (ops: iele_op list) : iele_op list =
     regbits := !regbits + 1;
     regcount := !regcount asr 1
   done;
-  VoidOp(`REGISTERS !regbits,[]) :: VoidOp(`FUNCTION("deposit"),[]) :: VoidOp(`CALLDEST(0, 0), []) :: (lbl_ops @ dangling_jumpdests) 
+  VoidOp(`REGISTERS !regbits,[]) :: VoidOp(`FUNCTION("deposit"),[]) :: VoidOp(`FUNCTION("ECREC"),[]) :: VoidOp(`FUNCTION("ECADD"),[]) :: VoidOp(`FUNCTION("ECMUL"),[]) :: VoidOp(`FUNCTION("ECPAIRING"),[]) :: VoidOp(`CALLDEST(0, 0), []) :: (lbl_ops @ dangling_jumpdests) 
 
 let max_val = Z.sub (Z.shift_left Z.one 255) Z.one
 
@@ -732,7 +819,8 @@ let evm_to_iele (evm:evm_op list) : iele_op list =
   let preprocessed = preprocess_evm evm in
   let cfg = compute_cfg preprocessed in
   let with_registers = convert_to_registers cfg in
-  let with_calls_found = identify_calls with_registers in
+  let with_precompiled = process_precompiled with_registers in
+  let with_calls_found = identify_calls with_precompiled in
   let with_calls = convert_to_call_return with_calls_found in
   let expanded = expand_phi with_calls in
   let with_calldest = add_calldest expanded in
