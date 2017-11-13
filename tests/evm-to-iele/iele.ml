@@ -146,8 +146,8 @@ let asm_iele_opcode op = match op with
   let byte = 0xa0 + n in
   let ch = Char.chr byte in
   IeleUtil.string_of_char ch
-| `CREATE -> "\xf0"
-| `COPYCREATE -> "\xf1"
+| `CREATE -> "\xf0\x00\x00\x00\x00"
+| `COPYCREATE -> "\xf1\x00\x00\x00\x00"
 | `CALL(call,nargs,nreturn) -> "\xf2" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
 | `CALLCODE(call,nargs,nreturn) -> "\xf3" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
 | `DELEGATECALL(call,nargs,nreturn) -> "\xf4" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
