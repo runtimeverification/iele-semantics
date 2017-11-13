@@ -1223,9 +1223,8 @@ The various `CALL*` (and other inter-contract control flow) operations will be d
       ~> #transferFunds ACCTFROM ACCTTO VALUE
       ~> #mkCall ACCTFROM ACCTTO CODE FUNC BYTES GLIMIT VALUE APPVALUE ARGS STATIC
 
-    rule <mode> EXECMODE </mode>
-         <k> #mkCall ACCTFROM ACCTTO CODE FUNC BYTES GLIMIT VALUE APPVALUE ARGS STATIC:Bool
-          => #initVM(ARGS) ~> #initFun(FUNC) ~> #if EXECMODE ==K VMTESTS #then #end #else #execute #fi
+    rule <k> #mkCall ACCTFROM ACCTTO CODE FUNC BYTES GLIMIT VALUE APPVALUE ARGS STATIC:Bool
+          => #initVM(ARGS) ~> #initFun(FUNC)
          ...
          </k>
          <callDepth> CD => CD +Int 1 </callDepth>
@@ -1259,7 +1258,8 @@ The various `CALL*` (and other inter-contract control flow) operations will be d
          <funcIds> LABELS </funcIds>
       requires notBool LABEL in LABELS
 
-    rule <k> #initFun(LABEL::Int) => . ... </k>
+    rule <k> #initFun(LABEL::Int) => #if EXECMODE ==K VMTESTS #then #end #else #execute #fi ... </k>
+         <mode> EXECMODE </mode>
          <funcIds> ... SetItem(LABEL) </funcIds>
          <fid> _ => LABEL </fid>
 
@@ -1411,7 +1411,7 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
 
     rule <mode> EXECMODE </mode>
          <k> #mkCreate ACCTFROM ACCTTO CODE LEN GAVAIL VALUE ARGS
-          => #initVM(ARGS) ~> #initFun(0) ~> #if EXECMODE ==K VMTESTS #then #end #else #execute #fi
+          => #initVM(ARGS) ~> #initFun(0)
          ...
          </k>
          <schedule> SCHED </schedule>
