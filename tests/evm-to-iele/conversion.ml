@@ -752,8 +752,12 @@ let resolve_phi ((graph,regcount) : iele_graph * int) : iele_op list list =
     | VoidOp(`JUMPDEST(_),_) :: _ -> true
     | _ -> false
     in
-    match incoming_edges, pre_stack, is_target with
-    | [], _::_, false -> [VoidOp(`INVALID,[])]
+    let is_deposit = match ops with
+    | VoidOp(`EXTCALLDEST(_,_),_) :: _ -> true
+    | _ -> false
+    in
+    match incoming_edges, pre_stack, is_target, is_deposit with
+    | [], _::_, false, is_deposit -> if is_deposit then [List.hd ops;VoidOp(`INVALID,[])] else [VoidOp(`INVALID,[])]
     | _ -> List.iter (discover_phi phi_web pre_stack ops post_stack) incoming_edges; ops) annotated_graph in
   List.map (fun ops -> List.map (replace_registers (IeleUtil.UnionFind.find phi_web)) ops) preprocessed_graph
 
