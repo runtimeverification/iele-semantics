@@ -1237,8 +1237,8 @@ The various `CALL*` (and other inter-contract control flow) operations will be d
          <static> OLDSTATIC:Bool => OLDSTATIC orBool STATIC </static>
 
     syntax KItem ::= #initVM ( Ints )
-                   | #initFun ( String ) [klabel(initVMName)]
-                   | #initFun ( Int )    [klabel(initVMLabel)]
+                   | #initFun ( String ) [klabel(initFunName)]
+                   | #initFun ( Int )    [klabel(initFunLabel)]
  // ---------------------------------------------------------
     rule <k> #initVM(ARGS) => #load #regRange(#sizeRegs(ARGS)) ARGS ... </k>
          <memoryUsed> _ => .Map    </memoryUsed>
