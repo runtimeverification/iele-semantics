@@ -831,7 +831,12 @@ This sometimes corresponds to the organization in the yellowpaper.
 
     rule <k> (. => #newAccount ACCTTO) ~> #transferFunds ACCTFROM ACCTTO VALUE ... </k>
          <activeAccounts> ACCTS </activeAccounts>
-      requires ACCTFROM =/=K ACCTTO andBool notBool ACCTTO in_keys(ACCTS)
+         <account>
+           <acctID> ACCTFROM </acctID>
+           <balance> ORIGFROM </balance>
+           ...
+         </account>
+      requires ACCTFROM =/=K ACCTTO andBool notBool ACCTTO in_keys(ACCTS) andBool VALUE <=Int ORIGFROM
 
     rule <k> #transferFunds ACCT ACCT VALUE => . ... </k>
          <account>
