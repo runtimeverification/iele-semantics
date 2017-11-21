@@ -169,6 +169,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
  // ---------------------------------------
     rule <k> #adjustGas => . ... </k>
          <gas> _ => GLIMIT -Int GUSED </gas>
+         <refund> _ => 0 </refund>
          <gasUsed> GUSED </gasUsed>
          <txPending> ListItem(TXID:Int) ... </txPending>
          <message>
