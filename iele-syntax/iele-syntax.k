@@ -72,7 +72,7 @@ module IELE-SYNTAX
   syntax StopInst ::= "stop"
 
   // Logging
-  syntax LogInst ::= "log" /* index */ Operand "," /* size in bytes */ Operand "," Operands
+  syntax LogInst ::= "log" /* index */ Operand "," /* size in bytes */ Operand "," (Operands)
 
   // Account creation/deletion
   //
