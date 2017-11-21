@@ -539,6 +539,8 @@ Some of them require an argument to be interpereted as an address (modulo 160 bi
     rule #code(OP::CallOp _ _ _ _ _ _)    => OP
     rule #code(OP::LocalCallOp _ _)       => OP
     rule #code(OP::ReturnOp _)            => OP
+    rule #code(OP::CreateOp _ _ _)        => OP
+    rule #code(OP::CopyCreateOp _ _ _ _)  => OP
 ```
 
 -   `#gas` calculates how much gas this operation costs, and takes into account the memory consumed.

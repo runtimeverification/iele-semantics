@@ -734,6 +734,9 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmRegs ( _:CallOpCode    (_, ARGS, RETS) #as OP::CallOp,      R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1 +Int RETS) %(R, W, M, 2 +Int RETS) %(R, W, M, 3 +Int RETS) %(R, W, M, 1, RETS) %(R, W, M, RETS +Int 4, ARGS)
     rule #dasmRegs ( LOCALCALL       (_, ARGS, RETS) #as OP::LocalCallOp, R, W, M ) => OP                                                                                       %(R, W, M, 0, RETS) %(R, W, M, RETS,        ARGS)
 
+    rule #dasmRegs ( CREATE (_,  ARGS) #as OP::CreateOp,     R, W, M) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2, ARGS)
+    rule #dasmRegs ( COPYCREATE (ARGS) #as OP::CopyCreateOp, R, W, M) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2) %(R, W, M, 3, ARGS)
+
     rule #dasmRegs ( REVERT(RETS), R, W, M ) => REVERT(RETS) %(R, W, M, 0, RETS)
     rule #dasmRegs ( RETURN(RETS), R, W, M ) => RETURN(RETS) %(R, W, M, 0, RETS)
 
@@ -744,7 +747,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
     syntax Regs ::= "%" "(" Int "," Int "," Int "," Int "," Int ")" [function]
  // --------------------------------------------------------------------------
     rule %(REGS, WIDTH, MASK, IDX, 0) => .Regs
-    rule %(REGS, WIDTH, MASK, IDX, COUNT) => %(REGS, WIDTH, MASK, IDX +Int COUNT -Int 1) %(REGS, WIDTH, MASK, IDX, COUNT -Int 1) [owise]
+    rule %(REGS, WIDTH, MASK, IDX, COUNT) => %(REGS, WIDTH, MASK, IDX) %(REGS, WIDTH, MASK, IDX +Int 1, COUNT -Int 1) [owise]
 
     syntax Int ::= #opWidth ( OpCode , Int ) [function]
  // ---------------------------------------------------
@@ -760,8 +763,10 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #opCodeWidth( LOCALCALL(_,_,_) ) => 7
     rule #opCodeWidth( RETURN(_) )        => 3
     rule #opCodeWidth( REVERT(_) )        => 3
-    rule #opCodeWidth( _:CallOp )         => 5
-    rule #opCodeWidth( _:CallSixOp )      => 5
+    rule #opCodeWidth( _:CallOp )         => 7
+    rule #opCodeWidth( _:CallSixOp )      => 7
+    rule #opCodeWidth( _:CreateOp )       => 5
+    rule #opCodeWidth( _:CopyCreateOp )   => 3
     rule #opCodeWidth( OP )               => 1 [owise]
 
     syntax Int ::= #numArgs ( OpCode ) [function]
@@ -782,6 +787,8 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #numArgs ( LOCALCALL      (_, ARGS, RETS) ) => ARGS +Int RETS
     rule #numArgs ( RETURN(RETS) )                => RETS
     rule #numArgs ( REVERT(RETS) )                => RETS
+    rule #numArgs ( CREATE(_, ARGS) )             => ARGS
+    rule #numArgs ( COPYCREATE(ARGS) )            => ARGS
 
     syntax OpCode ::= #dasmOpCode ( Int) [function]
  // -----------------------------------------------------------
