@@ -273,7 +273,7 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
 ```{.k .uiuck .rvk}
     syntax Set ::= "#loadKeys" [function]
  // -------------------------------------
-    rule #loadKeys => ( SetItem("env") SetItem("pre") SetItem("rlp") SetItem("network") SetItem("genesisRLP") )
+    rule #loadKeys => ( SetItem("env") SetItem("pre") SetItem("blockHeader") SetItem("transactions") SetItem("uncleHeaders") SetItem("network") SetItem("genesisRLP") )
 
     rule run TESTID : { KEY : (VAL:JSON) , REST } => load KEY : VAL ~> run TESTID : { REST } requires KEY in #loadKeys
 
@@ -303,7 +303,7 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
     rule #postKeys    => ( SetItem("post") SetItem("postState") )
     rule #allPostKeys => ( #postKeys SetItem("expect") SetItem("export") SetItem("expet") )
     rule #checkKeys   => ( #allPostKeys SetItem("logs") SetItem("callcreates") SetItem("out") SetItem("gas")
-                           SetItem("blockHeader") SetItem("transactions") SetItem("uncleHeaders") SetItem("genesisBlockHeader")
+                           SetItem("genesisBlockHeader")
                          )
 
     rule run TESTID : { KEY : (VAL:JSON) , REST } => run TESTID : { REST } ~> check TESTID : { "post" : VAL } requires KEY in #allPostKeys
@@ -315,7 +315,7 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
 ```{.k .uiuck .rvk}
     syntax Set ::= "#discardKeys" [function]
  // ----------------------------------------
-    rule #discardKeys => ( SetItem("//") SetItem("_info") )
+    rule #discardKeys => ( SetItem("//") SetItem("_info") SetItem("rlp") )
 
     rule run TESTID : { KEY : _ , REST } => run TESTID : { REST } requires KEY in #discardKeys
 ```
@@ -355,7 +355,7 @@ State Manipulation
  // --------------------------------------
     rule load DATA : { .JSONList } => .
     rule load DATA : { KEY : VALUE , REST } => load DATA : { KEY : VALUE } ~> load DATA : { REST }
-      requires REST =/=K .JSONList andBool DATA =/=String "transaction"
+      requires REST =/=K .JSONList andBool DATA =/=String "transactions"
 
     rule load DATA : [ .JSONList ] => .
     rule load DATA : [ { TEST } , REST ] => load DATA : { TEST } ~> load DATA : [ REST ]
@@ -463,49 +463,80 @@ The `"network"` key allows setting the fee schedule inside the test.
 The `"rlp"` key loads the block information.
 
 ```{.k .uiuck .rvk}
-    rule load "rlp" : (VAL:String => #rlpDecode(#unparseByteStack(#parseByteStack(VAL))))
+    rule <k> load "blockHeader" : { "nonce" : (HN:String) } => . ...</k> 
+         <blockNonce> _ => #asUnsigned(#parseByteStack(HN)) </blockNonce>
+
+    rule <k> load "blockHeader" : { "receiptTrie" : (HE:String) } => . ...</k> 
+         <receiptsRoot> _ => #asUnsigned(#parseByteStack(HE)) </receiptsRoot>
+
+    rule load "blockHeader" : { "hash" : _ } => .
+
+    rule <k> load "blockHeader" : { "uncleHash" : (HO:String) } => . ...</k> 
+         <ommersHash> _ => #asUnsigned(#parseByteStack(HO)) </ommersHash>
+
+    rule <k> load "blockHeader" : { "mixHash" : (HM:String) } => . ...</k> 
+         <mixHash> _ => #asUnsigned(#parseByteStack(HM)) </mixHash>
+
+    rule <k> load "blockHeader" : { "parentHash" : (HP:String) } => . ...</k> 
+         <previousHash> _ => #asUnsigned(#parseByteStack(HP)) </previousHash>
+
+    rule <k> load "blockHeader" : { "extraData" : (HX:String) } => . ...</k> 
+         <extraData> _ => #parseByteStack(HX) </extraData>
+
+    rule <k> load "blockHeader" : { "gasLimit" : (HL:String) } => . ...</k> 
+         <gasLimit> _ => #asUnsigned(#parseByteStack(HL)) </gasLimit>
+
+    rule <k> load "blockHeader" : { "number" : (HI:String) } => . ...</k> 
+         <number> _ => #asUnsigned(#parseByteStack(HI)) </number>
+
+    rule <k> load "blockHeader" : { "stateRoot" : (HR:String) } => . ...</k> 
+         <stateRoot> _ => #asUnsigned(#parseByteStack(HR)) </stateRoot>
+
+    rule <k> load "blockHeader" : { "difficulty" : (HD:String) } => . ...</k> 
+         <difficulty> _ => #asUnsigned(#parseByteStack(HD)) </difficulty>
+
+    rule <k> load "blockHeader" : { "timestamp" : (HS:String) } => . ...</k> 
+         <timestamp> _ => #asUnsigned(#parseByteStack(HS)) </timestamp>
+
+    rule <k> load "blockHeader" : { "coinbase" : (HC:String) } => . ...</k> 
+         <coinbase> _ => #asUnsigned(#parseByteStack(HC)) </coinbase>
+
+    rule <k> load "blockHeader" : { "transactionsTrie" : (HT:String) } => . ...</k> 
+         <transactionsRoot> _ => #asUnsigned(#parseByteStack(HT)) </transactionsRoot>
+
+    rule <k> load "blockHeader" : { "bloom" : (HB:String) } => . ...</k> 
+         <logsBloom> _ => #parseByteStack(HB) </logsBloom>
+
+    rule <k> load "blockHeader" : { "gasUsed" : (HG:String) } => . ...</k> 
+         <gasUsed> _ => #asUnsigned(#parseByteStack(HG)) </gasUsed>
+
+    rule <k> load "uncleHeaders" : [ .JSONList ] => . ...</k>
+         <ommerBlockHeaders> _ => [ .JSONList ] </ommerBlockHeaders>
+
     rule load "genesisRLP" : (VAL:String => #rlpDecode(#unparseByteStack(#parseByteStack(VAL))))
  // --------------------------------------------------------------------------------------------
-    rule <k> load "rlp" : [ [ HP , HO , HC , HR , HT , HE , HB , HD , HI , HL , HG , HS , HX , HM , HN , .JSONList ] , BT , BU , .JSONList ]
-          => load "transaction" : BT
-         ...
-         </k>
-         <previousHash>      _ => #asUnsigned(#parseByteStackRaw(HP)) </previousHash>
-         <ommersHash>        _ => #asUnsigned(#parseByteStackRaw(HO)) </ommersHash>
-         <coinbase>          _ => #asUnsigned(#parseByteStackRaw(HC)) </coinbase>
-         <stateRoot>         _ => #asUnsigned(#parseByteStackRaw(HR)) </stateRoot>
-         <transactionsRoot>  _ => #asUnsigned(#parseByteStackRaw(HT)) </transactionsRoot>
-         <receiptsRoot>      _ => #asUnsigned(#parseByteStackRaw(HE)) </receiptsRoot>
-         <logsBloom>         _ => #parseByteStackRaw(HB)          </logsBloom>
-         <difficulty>        _ => #asUnsigned(#parseByteStackRaw(HD)) </difficulty>
-         <number>            _ => #asUnsigned(#parseByteStackRaw(HI)) </number>
-         <gasLimit>          _ => #asUnsigned(#parseByteStackRaw(HL)) </gasLimit>
-         <gasUsed>           _ => #asUnsigned(#parseByteStackRaw(HG)) </gasUsed>
-         <timestamp>         _ => #asUnsigned(#parseByteStackRaw(HS)) </timestamp>
-         <extraData>         _ => #parseByteStackRaw(HX)          </extraData>
-         <mixHash>           _ => #asUnsigned(#parseByteStackRaw(HM)) </mixHash>
-         <blockNonce>        _ => #asUnsigned(#parseByteStackRaw(HN)) </blockNonce>
-         <ommerBlockHeaders> _ => BU                              </ommerBlockHeaders>
-
     rule <k> load "genesisRLP": [ [ HP, HO, HC, HR, HT, HE:String, HB, HD, HI, HL, HG, HS, HX, HM, HN, .JSONList ], _, _, .JSONList ] => .K ... </k>
          <blockhash> .List => ListItem(#blockHeaderHash(HP, HO, HC, HR, HT, HE, HB, HD, HI, HL, HG, HS, HX, HM, HN)) ListItem(#asUnsigned(#parseByteStackRaw(HP))) ... </blockhash>
 
-    rule <k> load "transaction" : [ [ TN , TP , TG , TT , TV , TI , TW , TR , TS ] , REST => REST ] ... </k>
+    rule load "transactions" : { TX } => load "transactions" : { #sortJSONList(TX) }
+         requires notBool #isSorted(TX)
+
+    rule <k> load "transactions" : { "data" : TI , "gasLimit" : TG , "gasPrice" : TP , "nonce" : TN , "r" : TR , "s" : TS , "to" : TT , "v" : TW , "value" : TV , .JSONList } => . ... </k>
          <txOrder>   ... .List => ListItem(!ID) </txOrder>
          <txPending> ... .List => ListItem(!ID) </txPending>
          <messages>
            ( .Bag
           => <message>
                <msgID>      !ID:Int                                 </msgID>
-               <txNonce>    #asUnsigned(#parseByteStackRaw(TN))         </txNonce>
-               <txGasPrice> #asUnsigned(#parseByteStackRaw(TP))         </txGasPrice>
-               <txGasLimit> #asUnsigned(#parseByteStackRaw(TG))         </txGasLimit>
-               <to>         #asAccount(#parseByteStackRaw(TT))      </to>
-               <value>      #asUnsigned(#parseByteStackRaw(TV))         </value>
-               <v>          #asUnsigned(#parseByteStackRaw(TW))         </v>
-               <r>          #padToWidth(32, #parseByteStackRaw(TR)) </r>
-               <s>          #padToWidth(32, #parseByteStackRaw(TS)) </s>
-               <data>       #parseByteStackRaw(TI)                  </data>
+               <txNonce>    #asUnsigned(#parseByteStack(TN))         </txNonce>
+               <txGasPrice> #asUnsigned(#parseByteStack(TP))         </txGasPrice>
+               <txGasLimit> #asUnsigned(#parseByteStack(TG))         </txGasLimit>
+               <to>         #asAccount(#parseByteStack(TT))      </to>
+               <value>      #asUnsigned(#parseByteStack(TV))         </value>
+               <v>          #asUnsigned(#parseByteStack(TW))         </v>
+               <r>          #padToWidth(32, #parseByteStack(TR)) </r>
+               <s>          #padToWidth(32, #parseByteStack(TS)) </s>
+               <data>       #parseByteStack(TI)                  </data>
              </message>
            )
            ...
@@ -616,53 +647,6 @@ Here we check the other post-conditions associated with an EVM test.
     rule check "callcreates" : { ("data" : (DATA:String)) , ("destination" : (ACCTTO:String)) , ("gasLimit" : (GLIMIT:String)) , ("value" : (VAL:String)) , .JSONList }
       => .
 
-    rule check TESTID : { "blockHeader" : BLOCKHEADER } => check "blockHeader" : BLOCKHEADER ~> failure TESTID
- // ----------------------------------------------------------------------------------------------------------
-    rule check "blockHeader" : { KEY : VALUE , REST } => check "blockHeader" : { KEY : VALUE } ~> check "blockHeader" : { REST } requires REST =/=K .JSONList
-
-    rule check "blockHeader" : { KEY : (VALUE:String => #parseByteStack(VALUE)) }
-
-    rule check "blockHeader" : { KEY : (VALUE:WordStack => #asUnsigned(VALUE)) }
-      requires KEY in ( SetItem("coinbase") SetItem("difficulty") SetItem("gasLimit") SetItem("gasUsed")
-                        SetItem("mixHash") SetItem("nonce") SetItem("number") SetItem("parentHash")
-                        SetItem("receiptTrie") SetItem("stateRoot") SetItem("timestamp")
-                        SetItem("transactionsTrie") SetItem("uncleHash")
-                      )
-
-    rule <k> check "blockHeader" : { "bloom"            : VALUE } => . ... </k> <logsBloom>        VALUE </logsBloom>
-    rule <k> check "blockHeader" : { "coinbase"         : VALUE } => . ... </k> <coinbase>         VALUE </coinbase>
-    rule <k> check "blockHeader" : { "difficulty"       : VALUE } => . ... </k> <difficulty>       VALUE </difficulty>
-    rule <k> check "blockHeader" : { "extraData"        : VALUE } => . ... </k> <extraData>        VALUE </extraData>
-    rule <k> check "blockHeader" : { "gasLimit"         : VALUE } => . ... </k> <gasLimit>         VALUE </gasLimit>
-    rule <k> check "blockHeader" : { "gasUsed"          : VALUE } => . ... </k> <gasUsed>          VALUE </gasUsed>
-    rule <k> check "blockHeader" : { "mixHash"          : VALUE } => . ... </k> <mixHash>          VALUE </mixHash>
-    rule <k> check "blockHeader" : { "nonce"            : VALUE } => . ... </k> <blockNonce>       VALUE </blockNonce>
-    rule <k> check "blockHeader" : { "number"           : VALUE } => . ... </k> <number>           VALUE </number>
-    rule <k> check "blockHeader" : { "parentHash"       : VALUE } => . ... </k> <previousHash>     VALUE </previousHash>
-    rule <k> check "blockHeader" : { "receiptTrie"      : VALUE } => . ... </k> <receiptsRoot>     VALUE </receiptsRoot>
-    rule <k> check "blockHeader" : { "stateRoot"        : VALUE } => . ... </k> <stateRoot>        VALUE </stateRoot>
-    rule <k> check "blockHeader" : { "timestamp"        : VALUE } => . ... </k> <timestamp>        VALUE </timestamp>
-    rule <k> check "blockHeader" : { "transactionsTrie" : VALUE } => . ... </k> <transactionsRoot> VALUE </transactionsRoot>
-    rule <k> check "blockHeader" : { "uncleHash"        : VALUE } => . ... </k> <ommersHash>       VALUE </ommersHash>
-
-    rule <k> check "blockHeader" : { "hash": HASH:WordStack } => . ...</k>
-         <previousHash>     HP </previousHash>
-         <ommersHash>       HO </ommersHash>
-         <coinbase>         HC </coinbase>
-         <stateRoot>        HR </stateRoot>
-         <transactionsRoot> HT </transactionsRoot>
-         <receiptsRoot>     HE </receiptsRoot>
-         <logsBloom>        HB </logsBloom>
-         <difficulty>       HD </difficulty>
-         <number>           HI </number>
-         <gasLimit>         HL </gasLimit>
-         <gasUsed>          HG </gasUsed>
-         <timestamp>        HS </timestamp>
-         <extraData>        HX </extraData>
-         <mixHash>          HM </mixHash>
-         <blockNonce>       HN </blockNonce>
-      requires #blockHeaderHash(HP, HO, HC, HR, HT, HE, HB, HD, HI, HL, HG, HS, HX, HM, HN) ==Int #asUnsigned(HASH)
-
     rule check TESTID : { "genesisBlockHeader" : BLOCKHEADER } => check "genesisBlockHeader" : BLOCKHEADER ~> failure TESTID
  // ------------------------------------------------------------------------------------------------------------------------
     rule check "genesisBlockHeader" : { KEY : VALUE , REST } => check "genesisBlockHeader" : { KEY : VALUE } ~> check "genesisBlockHeader" : { REST } requires REST =/=K .JSONList
@@ -671,34 +655,6 @@ Here we check the other post-conditions associated with an EVM test.
     rule check "genesisBlockHeader" : { "hash": (HASH:String => #asUnsigned(#parseByteStack(HASH))) }
     rule <k> check "genesisBlockHeader" : { "hash": HASH } => . ... </k>
          <blockhash> ... ListItem(HASH) ListItem(_) </blockhash>
-
-    rule check TESTID : { "transactions" : TRANSACTIONS } => check "transactions" : TRANSACTIONS ~> failure TESTID
- // --------------------------------------------------------------------------------------------------------------
-    rule <k> check "transactions" : [ .JSONList ] => . ... </k> <txOrder> .List </txOrder>
-    rule check "transactions" : [ TRANSACTION , REST ] => check "transactions" : TRANSACTION ~> check "transactions" : [ REST ]
-    rule check "transactions" : { KEY : VALUE , REST } => check "transactions" : (KEY : VALUE) ~> check "transactions" : { REST }
-    rule <k> check "transactions" : { .JSONList } => . ... </k> <txOrder> ListItem(_) => .List ... </txOrder>
-
-    rule check "transactions" : (KEY : (VALUE:String => #parseByteStack(VALUE)))
-
-    rule check "transactions" : (KEY : (VALUE:WordStack => #padToWidth(32, VALUE))) requires (KEY ==String "r" orBool KEY ==String "s") andBool #sizeWordStack(VALUE) <Int 32
-
-    rule check "transactions" : ("to" : (VALUE:WordStack => #asAccount(VALUE)))
-
-    rule check "transactions" : (KEY : (VALUE:WordStack => #asUnsigned(VALUE)))
-      requires KEY in ( SetItem("gasLimit") SetItem("gasPrice") SetItem("nonce")
-                        SetItem("v") SetItem("value")
-                      )
-
-    rule <k> check "transactions" : ("data"     : VALUE) => . ... </k> <txOrder> ListItem(TXID) ... </txOrder> <message> <msgID> TXID </msgID> <data>       VALUE </data>       ... </message>
-    rule <k> check "transactions" : ("gasLimit" : VALUE) => . ... </k> <txOrder> ListItem(TXID) ... </txOrder> <message> <msgID> TXID </msgID> <txGasLimit> VALUE </txGasLimit> ... </message>
-    rule <k> check "transactions" : ("gasPrice" : VALUE) => . ... </k> <txOrder> ListItem(TXID) ... </txOrder> <message> <msgID> TXID </msgID> <txGasPrice> VALUE </txGasPrice> ... </message>
-    rule <k> check "transactions" : ("nonce"    : VALUE) => . ... </k> <txOrder> ListItem(TXID) ... </txOrder> <message> <msgID> TXID </msgID> <txNonce>    VALUE </txNonce>    ... </message>
-    rule <k> check "transactions" : ("r"        : VALUE) => . ... </k> <txOrder> ListItem(TXID) ... </txOrder> <message> <msgID> TXID </msgID> <r>          VALUE </r>          ... </message>
-    rule <k> check "transactions" : ("s"        : VALUE) => . ... </k> <txOrder> ListItem(TXID) ... </txOrder> <message> <msgID> TXID </msgID> <s>          VALUE </s>          ... </message>
-    rule <k> check "transactions" : ("to"       : VALUE) => . ... </k> <txOrder> ListItem(TXID) ... </txOrder> <message> <msgID> TXID </msgID> <to>         VALUE </to>         ... </message>
-    rule <k> check "transactions" : ("v"        : VALUE) => . ... </k> <txOrder> ListItem(TXID) ... </txOrder> <message> <msgID> TXID </msgID> <v>          VALUE </v>          ... </message>
-    rule <k> check "transactions" : ("value"    : VALUE) => . ... </k> <txOrder> ListItem(TXID) ... </txOrder> <message> <msgID> TXID </msgID> <value>      VALUE </value>      ... </message>
 ```
 
 TODO: case with nonzero ommers.
