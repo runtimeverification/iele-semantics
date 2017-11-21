@@ -16,7 +16,7 @@ let rec preprocess_evm (evm: evm_op list) : intermediate_op list = match evm wit
 | `SDIV :: tl -> `DIV :: preprocess_evm tl
 | `SMOD :: tl -> `MOD :: preprocess_evm tl
 | (`DIV | `MOD | `GT | `LT as op) :: tl when compatibility -> `PUSH(_32) :: `TWOS :: `SWAP(1) :: `PUSH(_32) :: `TWOS :: `SWAP(1) :: op :: preprocess_evm tl
-| (`ADDMOD | `MULMOD as op) :: tl when compatibility -> `PUSH(_32) :: `TWOS :: `SWAP(1) :: `PUSH(_32) :: `TWOS :: `SWAP(1) :: `SWAP(2) :: `PUSH(_32) :: `TWOS :: `SWAP(2) :: op :: preprocess_evm tl
+| (`ADDMOD | `MULMOD as op) :: tl when compatibility -> `PUSH(_32) :: `TWOS :: `SWAP(1) :: `PUSH(_32) :: `TWOS :: `SWAP(1) :: `SWAP(2) :: `PUSH(_32) :: `TWOS :: `SWAP(2) :: op :: `PUSH(_31) :: `SIGNEXTEND :: preprocess_evm tl
 | `SLT :: tl -> `LT :: preprocess_evm tl
 | `SGT :: tl -> `GT :: preprocess_evm tl
 | `MLOAD :: tl -> `PUSH(_32) :: `SWAP(1) :: `PUSH(Z.zero) :: `MLOADN :: preprocess_evm tl
