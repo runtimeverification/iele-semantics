@@ -287,11 +287,9 @@ let process_precompiled ((graph,regcount) : iele_graph * int) : (iele_graph * in
     match ops with
     | Op((`CALL _|`CALLCODE _) as op, ret, [gas;addr;value;arg_idx;arg_width;ret_idx;ret_width]) :: tl ->
       let new_addr = LiOp(`LOADPOS, !regcount, Z.one) in
-      regcount := !regcount + 1;
       new_addr :: translate_call all_ops op ret addr [gas;!regcount;value] arg_idx arg_width ret_idx ret_width tl
     | Op((`DELEGATECALL _|`STATICCALL _) as op, ret, [gas;addr;arg_idx;arg_width;ret_idx;ret_width]) :: tl ->
       let new_addr = LiOp(`LOADPOS, !regcount, Z.one) in
-      regcount := !regcount + 1;
       new_addr :: translate_call all_ops op ret addr [gas;!regcount] arg_idx arg_width ret_idx ret_width tl
     | hd :: tl -> hd :: translate_calls tl all_ops
     | [] -> []
@@ -307,45 +305,37 @@ let process_precompiled ((graph,regcount) : iele_graph * int) : (iele_graph * in
        | Some LiOp(_,_,payload) -> 
          (try match Z.to_int payload with
           | 1 -> 6, LiOp(`LOADPOS, !regcount, _32) :: LiOp(`LOADPOS, !regcount + 1, Z.zero)
-                                                   :: Op(`MLOADN, !regcount + 2, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 2, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
-                                                   :: Op(`MLOADN, !regcount + 3, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 3, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
-                                                   :: Op(`MLOADN, !regcount + 4, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 4, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
-                                                   :: Op(`MLOADN, !regcount + 5, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 5, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
-                                                   :: CallOp(new_op op (-1) 4 1, [ret;retval], args @ [!regcount + 2; !regcount + 3; !regcount + 4; !regcount + 5]) :: VoidOp(`MSTOREN, [!regcount + 1;ret_idx;ret_width;retval]) :: []
+                                                   :: Op(`MLOADN, !regcount + 2, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 2, [!regcount; !regcount + 2]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: Op(`MLOADN, !regcount + 3, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 3, [!regcount; !regcount + 3]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: Op(`MLOADN, !regcount + 4, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 4, [!regcount; !regcount + 4]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: Op(`MLOADN, !regcount + 5, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 5, [!regcount; !regcount + 5]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: CallOp(new_op op (-1) 4 1, [ret;retval], args @ [!regcount + 2; !regcount + 3; !regcount + 4; !regcount + 5]) :: VoidOp(`MSTOREN, [!regcount + 1;ret_idx;retval;ret_width]) :: []
+          | 4 -> 1, LiOp(`LOADPOS, !regcount, Z.zero) 
+                                                   :: Op(`MLOADN, arg_idx, [!regcount;arg_idx;arg_width]) :: Op(`TWOS, arg_idx, [arg_width; arg_idx]) 
+                                                   :: CallOp(new_op op (-2) 1 1, [ret;retval], args @ [arg_idx]) :: VoidOp(`MSTOREN, [!regcount;ret_idx;retval;ret_width]) :: []
           | 5 -> 8, LiOp(`LOADPOS, !regcount, _32) :: LiOp(`LOADPOS, !regcount + 1, Z.zero)
-                                                   :: Op(`MLOADN, !regcount + 2, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 2, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
-                                                   :: Op(`MLOADN, !regcount + 3, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 3, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
-                                                   :: Op(`MLOADN, !regcount + 4, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 4, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: Op(`MLOADN, !regcount + 2, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 2, [!regcount; !regcount + 2]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: Op(`MLOADN, !regcount + 3, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 3, [!regcount; !regcount + 3]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: Op(`MLOADN, !regcount + 4, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 4, [!regcount; !regcount + 4]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
                                                    :: Op(`MLOADN, !regcount + 5, [!regcount + 1; arg_idx; !regcount + 2]) :: Op(`TWOS, !regcount + 5, [!regcount + 2; !regcount + 5]) :: Op(`ADD, arg_idx, [arg_idx; !regcount + 2])
                                                    :: Op(`MLOADN, !regcount + 6, [!regcount + 1; arg_idx; !regcount + 3]) :: Op(`TWOS, !regcount + 6, [!regcount + 3; !regcount + 6]) :: Op(`ADD, arg_idx, [arg_idx; !regcount + 3])
                                                    :: Op(`MLOADN, !regcount + 7, [!regcount + 1; arg_idx; !regcount + 4]) :: Op(`TWOS, !regcount + 7, [!regcount + 4; !regcount + 7]) :: Op(`ADD, arg_idx, [arg_idx; !regcount + 4])
-                                                   :: Op(`EXPMOD, retval, [!regcount + 5; !regcount + 6; !regcount + 7]) :: VoidOp(`MSTOREN, [!regcount + 1; ret_idx; ret_width; retval]) :: []
+                                                   :: Op(`EXPMOD, retval, [!regcount + 5; !regcount + 6; !regcount + 7]) :: VoidOp(`MSTOREN, [!regcount + 1; ret_idx; retval; ret_width]) :: []
           | 6 -> 8, LiOp(`LOADPOS, !regcount, _32) :: LiOp(`LOADPOS, !regcount + 1, Z.zero)
-                                                   :: Op(`MLOADN, !regcount + 2, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 2, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
-                                                   :: Op(`MLOADN, !regcount + 3, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 3, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
-                                                   :: Op(`MLOADN, !regcount + 4, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 4, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
-                                                   :: Op(`MLOADN, !regcount + 5, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 5, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
-                                                   :: CallOp(new_op op (-2) 4 2, [ret;!regcount + 6;!regcount + 7], args @ [!regcount + 2; !regcount + 3; !regcount + 4; !regcount + 5]) 
+                                                   :: Op(`MLOADN, !regcount + 2, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 2, [!regcount; !regcount + 2]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: Op(`MLOADN, !regcount + 3, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 3, [!regcount; !regcount + 3]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: Op(`MLOADN, !regcount + 4, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 4, [!regcount; !regcount + 4]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: Op(`MLOADN, !regcount + 5, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 5, [!regcount; !regcount + 5]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: CallOp(new_op op (-3) 4 2, [ret;!regcount + 6;!regcount + 7], args @ [!regcount + 2; !regcount + 3; !regcount + 4; !regcount + 5]) 
                                                    :: VoidOp(`MSTOREN, [!regcount + 1;ret_idx;!regcount + 6;!regcount]) :: Op(`ADD, ret_idx, [ret_idx; !regcount])
                                                    :: VoidOp(`MSTOREN, [!regcount + 1;ret_idx;!regcount + 7;!regcount]) :: Op(`ADD, ret_idx, [ret_idx; !regcount]) :: []
           | 7 -> 7, LiOp(`LOADPOS, !regcount, _32) :: LiOp(`LOADPOS, !regcount + 1, Z.zero)
-                                                   :: Op(`MLOADN, !regcount + 2, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 2, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
-                                                   :: Op(`MLOADN, !regcount + 3, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 3, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
-                                                   :: Op(`MLOADN, !regcount + 4, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 4, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
-                                                   :: CallOp(new_op op (-3) 3 2, [ret;!regcount + 5;!regcount + 6], args @ [!regcount + 2; !regcount + 3; !regcount + 4]) 
+                                                   :: Op(`MLOADN, !regcount + 2, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 2, [!regcount; !regcount + 2]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: Op(`MLOADN, !regcount + 3, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 3, [!regcount; !regcount + 3]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: Op(`MLOADN, !regcount + 4, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 4, [!regcount; !regcount + 4]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
+                                                   :: CallOp(new_op op (-4) 3 2, [ret;!regcount + 5;!regcount + 6], args @ [!regcount + 2; !regcount + 3; !regcount + 4]) 
                                                    :: VoidOp(`MSTOREN, [!regcount + 1;ret_idx;!regcount + 5;!regcount]) :: Op(`ADD, ret_idx, [ret_idx; !regcount])
                                                    :: VoidOp(`MSTOREN, [!regcount + 1;ret_idx;!regcount + 6;!regcount]) :: Op(`ADD, ret_idx, [ret_idx; !regcount]) :: []
-          | 8 -> 
-            let def = find_definition all_ops arg_width in
-            (match def with
-             | Some LiOp(_,_,payload) ->
-               let nregs = Z.to_int payload / 32 in
-               let res = ref (CallOp(new_op op (-4) nregs 1, [ret;retval], args @ (range (!regcount + 2) (!regcount + 1 + nregs))) :: VoidOp(`MSTOREN, [!regcount + 1;ret_idx;ret_width;retval]) :: []) in
-               for i = 1 to nregs do
-                 res := Op(`MLOADN, !regcount + 1 + i, [!regcount + 1;arg_idx;!regcount]) :: Op(`TWOS, !regcount + 1 + i, [!regcount; arg_idx]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) :: !res
-               done;
-               nregs + 1, (LiOp(`LOADPOS, !regcount, _32) :: LiOp(`LOADPOS, !regcount + 1, Z.zero) :: !res)
-             | _ -> failwith "non-constant ECPAIRING")
           | _ -> old_call
         with Z.Overflow -> old_call)
       | _ -> old_call
@@ -794,7 +784,7 @@ let alloc_registers (ops: iele_op list) : iele_op list =
     regbits := !regbits + 1;
     regcount := !regcount asr 1
   done;
-  VoidOp(`REGISTERS !regbits,[]) :: VoidOp(`FUNCTION("deposit"),[]) :: VoidOp(`FUNCTION("ECREC"),[]) :: VoidOp(`FUNCTION("ECADD"),[]) :: VoidOp(`FUNCTION("ECMUL"),[]) :: VoidOp(`FUNCTION("ECPAIRING"),[]) :: VoidOp(`CALLDEST(0, 0), []) :: (lbl_ops @ dangling_jumpdests) 
+  VoidOp(`REGISTERS !regbits,[]) :: VoidOp(`FUNCTION("deposit"),[]) :: VoidOp(`FUNCTION("ECREC"),[]) :: VoidOp(`FUNCTION("ID"),[]) :: VoidOp(`FUNCTION("ECADD"),[]) :: VoidOp(`FUNCTION("ECMUL"),[]) :: VoidOp(`CALLDEST(0, 0), []) :: (lbl_ops @ dangling_jumpdests) 
 
 let max_val = Z.sub (Z.shift_left Z.one 255) Z.one
 
