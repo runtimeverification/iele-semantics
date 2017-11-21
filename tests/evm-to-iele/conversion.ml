@@ -790,7 +790,7 @@ let max_val = Z.sub (Z.shift_left Z.one 255) Z.one
 
 let rec postprocess_iele iele label memcells = match iele with
 | Nop :: tl -> postprocess_iele tl label memcells
-| Op(`BYTE, reg, [byte;v]) :: tl -> LiOp(`LOADPOS, -1, _31) :: Op(`SUB, byte, [-1; byte]) :: Op(`BYTE, reg, [byte;v]) :: postprocess_iele tl label memcells
+| Op(`BYTE, reg, [byte;v]) :: tl -> LiOp(`LOADPOS, -1, _31) :: Op(`SUB, byte, [-1; byte]) :: LiOp(`LOADPOS, -1, _32) :: Op(`TWOS, v, [-1; v]) :: Op(`BYTE, reg, [byte;v]) :: postprocess_iele tl label memcells
 (* CALLDATALOAD/CALLDATACOPY/CALLDATASIZE have been removed by IELE, replaced 
    by passing arguments directly in registers. Because the CALLDATA doesn't
    explicitly separate where arguments begin and end, we convert all functions
