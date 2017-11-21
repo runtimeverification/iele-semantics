@@ -274,8 +274,9 @@ let range i j =
       if n < i then acc else aux (n-1) (n :: acc)
     in aux j []
 
-let process_precompiled ((graph,regcount) : iele_graph * int) : iele_graph * int =
+let process_precompiled ((graph,regcount) : iele_graph * int) : (iele_graph * int) * int =
   let regcount = ref regcount in
+  let lblcount = ref (-1) in
   let new_op op label nargs nreturn = match op with
   | `CALL(_,_,_) -> `CALL(label,nargs,nreturn)
   | `CALLCODE(_,_,_) -> `CALLCODE(label,nargs,nreturn)
@@ -298,8 +299,9 @@ let process_precompiled ((graph,regcount) : iele_graph * int) : iele_graph * int
       let retval = !regcount in
       let def = find_definition all_ops addr in
       let old_args = set_nth args 1 addr in
-      let old_call = 0, LiOp(`LOADPOS, !regcount, Z.zero) :: Op(`MLOADN, arg_idx, [!regcount;arg_idx;arg_width]) :: Op(`TWOS, arg_idx, [arg_width; arg_idx]) :: CallOp(new_op op 0 1 1, [ret;retval], old_args @ [arg_idx]) :: VoidOp(`MSTOREN, [!regcount;ret_idx;retval;ret_width]) :: [] in
-      regcount := !regcount + 2;
+      regcount := !regcount + 1;
+      let old_call = 2, LiOp(`LOADPOS, !regcount, Z.zero) :: Op(`MLOADN, arg_idx, [!regcount;arg_idx;arg_width]) :: Op(`TWOS, arg_idx, [arg_width; arg_idx]) :: CallOp(new_op op 0 2 1, [ret;retval], old_args @ [arg_idx; arg_width]) :: Op(`ISZERO, !regcount + 1, [ret]) :: VoidOp(`JUMPI(!lblcount),[!regcount + 1]) :: VoidOp(`MSTOREN, [!regcount;ret_idx;retval;ret_width]) :: VoidOp(`JUMPDEST(!lblcount),[]) :: [] in
+      lblcount := !lblcount - 1;
       let new_regs,new_call = 
       (match def with
        | Some LiOp(_,_,payload) -> 
@@ -355,7 +357,7 @@ let process_precompiled ((graph,regcount) : iele_graph * int) : iele_graph * int
       let new_ops = translate_calls ops ops in
       { block with ops=new_ops }
    ) graph in
-   new_graph,!regcount
+   (new_graph,!regcount),!lblcount
 
 let is_predecessor pre_idx idx succ jumpdest = 
 match succ,jumpdest with
@@ -824,7 +826,7 @@ let evm_to_iele (evm:evm_op list) : iele_op list =
   let preprocessed = preprocess_evm evm in
   let cfg = compute_cfg preprocessed in
   let with_registers = convert_to_registers cfg in
-  let with_precompiled = process_precompiled with_registers in
+  let with_precompiled,lblcount = process_precompiled with_registers in
   let with_calls_found = identify_calls with_precompiled in
   let with_calls = convert_to_call_return with_calls_found in
   let expanded = expand_phi with_calls in
@@ -832,5 +834,5 @@ let evm_to_iele (evm:evm_op list) : iele_op list =
   let with_functions = resolve_functions with_calldest in
   let resolved = resolve_phi with_functions in
   let flattened = List.flatten resolved in
-  let postprocessed = postprocess_iele flattened (-1) Z.one in
+  let postprocessed = postprocess_iele flattened lblcount Z.one in
   alloc_registers postprocessed
