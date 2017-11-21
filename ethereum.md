@@ -678,7 +678,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
     syntax Ops ::= #dasmOps ( WordStack )       [function]
                  | #dasmOps ( Ops , WordStack , K , Int ) [function, klabel(#dasmOpsAux)]
  // -----------------------------------------------------------------------------
-    rule #dasmOps( .WordStack )      => FUNCTION("deposit") ; EXTCALLDEST(1, 0); .Ops
+    rule #dasmOps( .WordStack )      => #emptyCode
     rule #dasmOps( 99 : NBITS : WS ) => #revOps(#dasmOps(REGISTERS(NBITS) ; .Ops, WS, .K, NBITS), .Ops)
 
     rule #dasmOps( OPS, .WordStack, .K, _ ) => OPS

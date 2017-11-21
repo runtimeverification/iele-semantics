@@ -125,12 +125,12 @@ In the comments next to each cell, we've marked which component of the yellowpap
                     <activeAccounts> .Map </activeAccounts>
                     <accounts>
                       <account multiplicity="*" type="Map">
-                        <acctID>   0    </acctID>
-                        <balance>  0    </balance>
-                        <code>     .Ops </code>
-                        <codeSize> 0    </codeSize>
-                        <storage>  .Map </storage>
-                        <nonce>    0    </nonce>
+                        <acctID>   0          </acctID>
+                        <balance>  0          </balance>
+                        <code>     #emptyCode </code>
+                        <codeSize> 0          </codeSize>
+                        <storage>  .Map       </storage>
+                        <nonce>    0          </nonce>
                       </account>
                     </accounts>
 
@@ -723,14 +723,14 @@ This sometimes corresponds to the organization in the yellowpaper.
            <nonce>  NONCE </nonce>
            ...
          </account>
-      requires CODE =/=K .Ops orBool NONCE =/=K 0
+      requires CODE =/=K #emptyCode orBool NONCE =/=K 0
 
     rule <k> #newAccount ACCT => . ... </k>
          <account>
-           <acctID>  ACCT      </acctID>
-           <code>    .Ops      </code>
-           <nonce>   0         </nonce>
-           <storage> _ => .Map </storage>
+           <acctID>  ACCT       </acctID>
+           <code>    #emptyCode </code>
+           <nonce>   0          </nonce>
+           <storage> _ => .Map  </storage>
            ...
          </account>
 
@@ -739,12 +739,12 @@ This sometimes corresponds to the organization in the yellowpaper.
          <accounts>
            ( .Bag
           => <account>
-               <acctID>   ACCT </acctID>
-               <balance>  0    </balance>
-               <code>     .Ops </code>
-               <codeSize> 0   </codeSize>
-               <storage>  .Map </storage>
-               <nonce>    0    </nonce>
+               <acctID>   ACCT       </acctID>
+               <balance>  0          </balance>
+               <code>     #emptyCode </code>
+               <codeSize> 0          </codeSize>
+               <storage>  .Map       </storage>
+               <nonce>    0          </nonce>
              </account>
            )
            ...
@@ -770,7 +770,7 @@ This sometimes corresponds to the organization in the yellowpaper.
            <balance> ORIGTO => ORIGTO +Int VALUE </balance>
            ...
          </account>
-         <activeAccounts> ... ACCTTO |-> (EMPTY => #if VALUE >Int 0 #then false #else EMPTY #fi) ACCTFROM |-> (_ => ORIGFROM ==Int VALUE andBool NONCE ==Int 0 andBool CODE ==K .Ops) ... </activeAccounts>
+         <activeAccounts> ... ACCTTO |-> (EMPTY => #if VALUE >Int 0 #then false #else EMPTY #fi) ACCTFROM |-> (_ => ORIGFROM ==Int VALUE andBool NONCE ==Int 0 andBool CODE ==K #emptyCode) ... </activeAccounts>
       requires ACCTFROM =/=K ACCTTO andBool VALUE <=Int ORIGFROM
 
     rule <k> #transferFunds ACCTFROM ACCTTO VALUE => #exception ... </k>
@@ -818,6 +818,10 @@ We use `INVALID` both for marking the designated invalid operator and for garbag
                       | ConstantOp
     syntax ConstantOp ::= FUNCTION ( String )
                         | CONTRACT ( Ops , Int )
+
+    syntax Ops ::= "#emptyCode"
+ // ---------------------------
+    rule #emptyCode => FUNCTION("deposit") ; EXTCALLDEST(1, 0); .Ops [macro]
 ```
 
 ### Register Manipulations
@@ -1194,7 +1198,7 @@ The various `CALL*` (and other inter-contract control flow) operations will be d
       requires notBool (VALUE >Int BAL orBool CD >=Int 1024)
 
     rule <k> #call ACCTFROM ACCTTO ACCTCODE FUNC GLIMIT VALUE APPVALUE ARGS STATIC
-          => #callWithCode ACCTFROM ACCTTO #precompiled FUNC .Ops GLIMIT VALUE APPVALUE ARGS STATIC
+          => #callWithCode ACCTFROM ACCTTO #precompiled FUNC #emptyCode GLIMIT VALUE APPVALUE ARGS STATIC
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -1211,7 +1215,7 @@ The various `CALL*` (and other inter-contract control flow) operations will be d
       requires ACCTCODE =/=Int #precompiledAccount
 
     rule <k> #call ACCTFROM ACCTTO ACCTCODE FUNC GLIMIT VALUE APPVALUE ARGS STATIC
-          => #callWithCode ACCTFROM ACCTTO #loadCode(.Ops, 0) FUNC .Ops GLIMIT VALUE APPVALUE ARGS STATIC
+          => #callWithCode ACCTFROM ACCTTO #loadCode(#emptyCode, 0) FUNC #emptyCode GLIMIT VALUE APPVALUE ARGS STATIC
          ...
          </k>
          <activeAccounts> ACCTS </activeAccounts>
@@ -1459,7 +1463,7 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
            <code> _ => CODE </code>
            ...
          </account>
-         <activeAccounts> ... ACCT |-> (EMPTY => #if CODE =/=K .Ops #then false #else EMPTY #fi) ... </activeAccounts>
+         <activeAccounts> ... ACCT |-> (EMPTY => #if CODE =/=K #emptyCode #then false #else EMPTY #fi) ... </activeAccounts>
 
     rule <k> #exception ~> #finishCodeDeposit _ _ REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG 0 ... </k>
 ```
@@ -1559,7 +1563,7 @@ Self destructing to yourself, unlike a regular transfer, destroys the balance in
            <code> CODE </code>
            ...
          </account>
-         <activeAccounts> ... ACCT |-> (_ => NONCE ==Int 0 andBool CODE ==K .Ops) ... </activeAccounts>
+         <activeAccounts> ... ACCT |-> (_ => NONCE ==Int 0 andBool CODE ==K #emptyCode) ... </activeAccounts>
          <output> _ => .Regs </output>
 
 ```
