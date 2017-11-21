@@ -112,7 +112,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
  // -----------------------------------------
     rule <k> loadTx(ACCTFROM)
           => #create ACCTFROM #newAddr(ACCTFROM, NONCE) (GLIMIT -Int G0(SCHED, CODE, true)) VALUE #dasmOps(CODE) #sizeWordStack(CODE) .Regs
-          ~> #execute ~> #codeDeposit #newAddr(ACCTFROM, NONCE) #sizeWordStack(CODE) #dasmOps(CODE) %0 ~> #adjustGas ~> #finalizeTx(false) ~> startTx
+          ~> #codeDeposit #newAddr(ACCTFROM, NONCE) #sizeWordStack(CODE) #dasmOps(CODE) %0 ~> #adjustGas ~> #finalizeTx(false) ~> startTx
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -139,7 +139,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
 
     rule <k> loadTx(ACCTFROM)
           => #call ACCTFROM ACCTTO ACCTTO "deposit" (GLIMIT -Int G0(SCHED, DATA, false)) VALUE VALUE (#sizeWordStack(DATA) #asUnsigned(DATA) .Regs) false
-          ~> #execute ~> #finishTx ~> #adjustGas ~> #finalizeTx(false) ~> startTx
+          ~> #finishTx ~> #adjustGas ~> #finalizeTx(false) ~> startTx
          ...
          </k>
          <schedule> SCHED </schedule>
