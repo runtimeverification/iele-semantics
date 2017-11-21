@@ -47,7 +47,7 @@ In the comments next to each cell, we've marked which component of the yellowpap
                         <functions>
                           <function multiplicity="*" type="Map">
                             <funcId>       0     </funcId>
-                            <nargs>        0     </nargs>
+                            <nparams>      0     </nparams>
                             <instructions> .Ops  </instructions>
                             <jumpTable>    .Map  </jumpTable>
                           </function>
@@ -2184,9 +2184,9 @@ IELE Program Representations
                          | #loadFunction  ( Ops , Map , ProgramCell , Int , FunctionCell ) [function]
  // ----------------------------------------------------------------------------------------------------
     rule #loadFunctions(CALLDEST(LABEL, ARGS) ; OPS, CONSTANTS, <program> PROG </program>)
-      => #loadFunction(OPS, CONSTANTS, <program> PROG </program>, LABEL, <function> <funcId> LABEL </funcId> <nargs> ARGS </nargs> ... </function>)
+      => #loadFunction(OPS, CONSTANTS, <program> PROG </program>, LABEL, <function> <funcId> LABEL </funcId> <nparams> ARGS </nparams> ... </function>)
     rule #loadFunctions(EXTCALLDEST(LABEL, ARGS) ; OPS, CONSTANTS LABEL |-> FUNCTION(FUNC), <program> PROG <exported> EXPORTED </exported> </program>)
-      => #loadFunction(OPS, CONSTANTS, <program> PROG <exported> EXPORTED FUNC |-> LABEL </exported> </program>, LABEL, <function> <funcId> LABEL </funcId> <nargs> ARGS </nargs> ... </function>)
+      => #loadFunction(OPS, CONSTANTS, <program> PROG <exported> EXPORTED FUNC |-> LABEL </exported> </program>, LABEL, <function> <funcId> LABEL </funcId> <nparams> ARGS </nparams> ... </function>)
     rule #loadFunctions(.Ops, _, <program> PROG </program>) => <program> PROG </program>
 
     rule #loadFunction(OP ; OPS => OPS, CONSTANTS, _, _, <function> FUNC <instructions> REST => OP ; REST </instructions> </function>)
