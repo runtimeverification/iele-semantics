@@ -16,11 +16,13 @@ module IELE-SYNTAX
   // Operands
   syntax LValue ::= LocalName | GlobalName
   
-  syntax LValues ::= List{LValue, ","} [klabel(lvalueList)]
+  syntax NonEmptyLValues ::= LValue | LValue "," NonEmptyLValues
 
   syntax Operand ::= LValue | Constant
 
   syntax Operands ::= List{Operand, ","} [klabel(operandList)]
+
+  syntax NonEmptyOperands ::= Operand | Operand "," NonEmptyOperands
 
   // Assignment
   syntax AssignInst ::= LValue "=" Operand
@@ -64,15 +66,18 @@ module IELE-SYNTAX
   // Jumps, Calls, and Returns
   syntax JumpInst ::= "br" IeleName
   syntax CondJumpInst ::= "br" Operand "," IeleName
-  syntax LocalCallInst ::= LValues "=" "call" GlobalName "(" Operands ")"
-  syntax AccountCallInst ::= LValues "=" "call" GlobalName "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand
+  syntax LocalCallInst ::= "call" GlobalName "(" Operands ")"
+                         | NonEmptyLValues "=" "call" GlobalName "(" Operands ")"
+  syntax AccountCallInst ::= "call" GlobalName "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand
+                           | NonEmptyLValues "=" "call" GlobalName "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand
   syntax SendInst ::= "send" /* value */ Operand "to" /* account */ Operand
   syntax ReturnInst ::= "ret" Operands | "ret" "void"
   syntax RevertInst ::= "revert" Operands | "revert" "void"
   syntax StopInst ::= "stop"
 
   // Logging
-  syntax LogInst ::= "log" /* index */ Operand "," /* size in bytes */ Operand "," (Operands)
+  syntax LogInst ::= "log" /* index */ Operand "," /* size in bytes */ Operand
+                   | "log" /* index */ Operand "," /* size in bytes */ Operand "," NonEmptyOperands
 
   // Account creation/deletion
   //
