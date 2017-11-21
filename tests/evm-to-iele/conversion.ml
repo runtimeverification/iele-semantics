@@ -806,6 +806,7 @@ let rec postprocess_iele iele label memcells = match iele with
 | CallOp(`LOCALCALLI(target,nargs,nreturn,ret_addr), rets, reg :: args) :: tl -> Op(`ISZERO, reg, [reg]) :: VoidOp(`JUMPI(label), [reg]) :: CallOp(`LOCALCALL(target,nargs,nreturn), rets, args) :: VoidOp(`JUMP(ret_addr), []) :: VoidOp(`JUMPDEST(label), []) :: postprocess_iele tl (label-1) memcells
 | Op(`SHA3, reg, [memstart; memwidth]) :: tl -> LiOp(`LOADPOS, -1, Z.zero) :: Op(`MLOADN, -2, [-1; memstart; memwidth]) :: LiOp(`LOADPOS, memstart, memcells) :: VoidOp(`MSTOREN, [memstart; -1; -2; memwidth]) :: Op(`SHA3, reg, [memstart]) :: postprocess_iele tl label (Z.add memcells Z.one)
 | VoidOp(`LOG(n), memstart :: memwidth :: topics) :: tl -> LiOp(`LOADPOS, -1, Z.zero) :: Op(`MLOADN, -2, [-1; memstart; memwidth]) :: LiOp(`LOADPOS, memstart, memcells) :: VoidOp(`MSTOREN, [memstart; -1; -2; memwidth]) :: VoidOp(`LOG(n), memstart :: topics) :: postprocess_iele tl label (Z.add memcells Z.one)
+| VoidOp(`STOP, []) :: tl -> LiOp(`LOADPOS, -1, Z.zero) :: VoidOp(`RETURN(1), [-1]) :: postprocess_iele tl label memcells
 | hd :: tl -> hd :: postprocess_iele tl label memcells
 | [] -> []
 
