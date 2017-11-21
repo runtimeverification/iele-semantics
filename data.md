@@ -243,11 +243,18 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
     rule .WordStack ++ WS' => WS'
     rule (W : WS)   ++ WS' => W : (WS ++ WS')
 
+    syntax WordStack ::= #rev ( WordStack , WordStack ) [function]
+ // --------------------------------------------------------------
+    rule #rev ( .WordStack , WS ) => WS
+    rule #rev ( W : WS1 , WS2 ) => #rev(WS1, W : WS2)
+
     syntax WordStack ::= #take ( Int , WordStack ) [function]
- // ---------------------------------------------------------
-    rule #take(0, WS)         => .WordStack
-    rule #take(N, .WordStack) => 0 : #take(N -Int 1, .WordStack) requires N >Int 0
-    rule #take(N, (W : WS))   => W : #take(N -Int 1, WS)         requires N >Int 0
+                       | #take ( Int , WordStack , WordStack ) [function, klabel(#takeAux)]
+ // ---------------------------------------------------------------------------------------
+    rule #take(N, WS)             => #take(N, WS, .WordStack)
+    rule #take(0, _, WS)          => #rev(WS, .WordStack)
+    rule #take(N, .WordStack, WS) => #take(N -Int 1, .WordStack, 0 : WS)  requires N >Int 0
+    rule #take(N, (W : WS1), WS2) => #take(N -Int 1, WS1,        W : WS2) requires N >Int 0
 
     syntax WordStack ::= #drop ( Int , WordStack ) [function]
  // ---------------------------------------------------------
