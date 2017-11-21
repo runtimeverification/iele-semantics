@@ -1230,7 +1230,7 @@ The various `CALL*` (and other inter-contract control flow) operations will be d
       ~> #mkCall ACCTFROM ACCTTO CODE FUNC BYTES GLIMIT VALUE APPVALUE ARGS STATIC
 
     rule <k> #mkCall ACCTFROM ACCTTO CODE FUNC BYTES GLIMIT VALUE APPVALUE ARGS STATIC:Bool
-          => #initVM(ARGS) ~> #initFun(FUNC)
+          => #initVM(ARGS) ~> #initFun(FUNC, #sizeRegs(ARGS))
          ...
          </k>
          <callDepth> CD => CD +Int 1 </callDepth>
@@ -1243,9 +1243,9 @@ The various `CALL*` (and other inter-contract control flow) operations will be d
          <static> OLDSTATIC:Bool => OLDSTATIC orBool STATIC </static>
 
     syntax KItem ::= #initVM ( Ints )
-                   | #initFun ( String ) [klabel(initFunName)]
-                   | #initFun ( Int )    [klabel(initFunLabel)]
- // ---------------------------------------------------------
+                   | #initFun ( String , Int ) [klabel(initFunName)]
+                   | #initFun ( Int , Int )    [klabel(initFunLabel)]
+ // -----------------------------------------------------------------
     rule <k> #initVM(ARGS) => #load #regRange(#sizeRegs(ARGS)) ARGS ... </k>
          <memoryUsed> _ => .Map    </memoryUsed>
          <output>     _ => .Regs   </output>
@@ -1253,21 +1253,28 @@ The various `CALL*` (and other inter-contract control flow) operations will be d
          <localMem>   _ => .Memory </localMem>
          <localCalls> _ => .List   </localCalls>
 
-    rule <k> #initFun(FUNC::String) => #initFun(LABEL::Int) ... </k>
+    rule <k> #initFun(FUNC::String, NARGS) => #initFun(LABEL::Int, NARGS) ... </k>
          <exported> ... FUNC |-> LABEL </exported>
 
-    rule <k> #initFun(FUNC::String) => #exception ... </k>
+    rule <k> #initFun(FUNC::String, _) => #exception ... </k>
          <exported> FUNCS </exported>
       requires notBool FUNC in_keys(FUNCS)
 
-    rule <k> #initFun(LABEL::Int) => #exception ... </k>
+    rule <k> #initFun(LABEL::Int, _) => #exception ... </k>
          <funcIds> LABELS </funcIds>
       requires notBool LABEL in LABELS
 
-    rule <k> #initFun(LABEL::Int) => #if EXECMODE ==K VMTESTS #then #end #else #execute #fi ... </k>
+    rule <k> #initFun(LABEL::Int, NARGS) => #exception ... </k>
+         <funcId> LABEL </funcId>
+         <nparams> NPARAMS </nparams>
+      requires NARGS =/=Int NPARAMS
+
+    rule <k> #initFun(LABEL::Int, NARGS) => #if EXECMODE ==K VMTESTS #then #end #else #execute #fi ... </k>
          <mode> EXECMODE </mode>
          <funcIds> ... SetItem(LABEL) </funcIds>
          <fid> _ => LABEL </fid>
+         <funcId> LABEL </funcId>
+         <nparams> NARGS </nparams>
 
     syntax KItem ::= "#return" Regs Reg
  // -----------------------------------
@@ -1409,7 +1416,7 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
 
     rule <mode> EXECMODE </mode>
          <k> #mkCreate ACCTFROM ACCTTO CODE LEN GAVAIL VALUE ARGS
-          => #initVM(ARGS) ~> #initFun(0)
+          => #initVM(ARGS) ~> #initFun(0, #sizeRegs(ARGS))
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -1586,13 +1593,13 @@ Precompiled Contracts
     rule #precompiled =>
          <program>
            <functions>
-             <function> <funcId> 1 </funcId> <instructions> ECREC;     .Ops </instructions> ... </function>
-             <function> <funcId> 2 </funcId> <instructions> SHA256;    .Ops </instructions> ... </function>
-             <function> <funcId> 3 </funcId> <instructions> RIP160;    .Ops </instructions> ... </function>
-             <function> <funcId> 4 </funcId> <instructions> ID;        .Ops </instructions> ... </function>
-             <function> <funcId> 5 </funcId> <instructions> ECADD;     .Ops </instructions> ... </function>
-             <function> <funcId> 6 </funcId> <instructions> ECMUL;     .Ops </instructions> ... </function>
-             <function> <funcId> 7 </funcId> <instructions> ECPAIRING; .Ops </instructions> ... </function>
+             <function> <funcId> 1 </funcId> <instructions> ECREC;     .Ops </instructions> <nparams> 4 </nparams> ... </function>
+             <function> <funcId> 2 </funcId> <instructions> SHA256;    .Ops </instructions> <nparams> 2 </nparams> ... </function>
+             <function> <funcId> 3 </funcId> <instructions> RIP160;    .Ops </instructions> <nparams> 2 </nparams> ... </function>
+             <function> <funcId> 4 </funcId> <instructions> ID;        .Ops </instructions> <nparams> 1 </nparams> ... </function>
+             <function> <funcId> 5 </funcId> <instructions> ECADD;     .Ops </instructions> <nparams> 4 </nparams> ... </function>
+             <function> <funcId> 6 </funcId> <instructions> ECMUL;     .Ops </instructions> <nparams> 3 </nparams> ... </function>
+             <function> <funcId> 7 </funcId> <instructions> ECPAIRING; .Ops </instructions> <nparams> 6 </nparams> ... </function>
            </functions>
            <funcIds> SetItem(1) SetItem(2) SetItem(3) SetItem(4) SetItem(5) SetItem(6) SetItem(7) </funcIds>
            <constants> 
