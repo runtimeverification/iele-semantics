@@ -1611,6 +1611,15 @@ Precompiled Contracts
              6 |-> FUNCTION("ECMUL")
              7 |-> FUNCTION("ECPAIRING")
            </constants>
+           <exported>
+             "ECREC"     |-> 1
+             "SHA256"    |-> 2
+             "RIP160"    |-> 3
+             "ID"        |-> 4
+             "ECADD"     |-> 5
+             "ECMUL"     |-> 6
+             "ECPAIRING" |-> 7
+           </exported>
            ...
          </program>
 ```
