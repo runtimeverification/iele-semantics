@@ -71,8 +71,8 @@ module IELE-SYNTAX
   syntax AccountCallInst ::= "call" GlobalName "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand
                            | NonEmptyLValues "=" "call" GlobalName "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand
   syntax SendInst ::= "send" /* value */ Operand "to" /* account */ Operand
-  syntax ReturnInst ::= "ret" Operands | "ret" "void"
-  syntax RevertInst ::= "revert" Operands | "revert" "void"
+  syntax ReturnInst ::= "ret" NonEmptyOperands | "ret" "void"
+  syntax RevertInst ::= "revert" NonEmptyOperands | "revert" "void"
   syntax StopInst ::= "stop"
 
   // Logging
