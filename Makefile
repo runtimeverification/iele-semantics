@@ -5,7 +5,7 @@ K_VERSION=rvk
 
 .PHONY: all clean build tangle defn proofs split-tests test vm-test blockchain-test
 
-all: build split-tests
+all: build split-vm-tests
 
 clean:
 	rm -r .build
