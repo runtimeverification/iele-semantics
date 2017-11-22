@@ -331,7 +331,7 @@ gas/memory) to contain that size.
 We assume that all operations interrogating the local state have complexity
 *localStateCost* and their result fits a machine word.
 
-* `LOCALOP rREG`, where `LOCALOP` in `[GAS, GASPRICE, GASLIMIT, COINBASE, NUMBER, MSIZE, CODESIZE]`
+* `LOCALOP rREG`, where `LOCALOP` in `[PC, GAS, GASPRICE, GASLIMIT, COINBASE, NUMBER, MSIZE, CODESIZE]`
     ```hs
     computationCost(LOCALOP rREG) = localStateCost
     estimatedResultSize(LOCALOP rREG) = 1
