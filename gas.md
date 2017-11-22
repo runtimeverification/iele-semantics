@@ -33,7 +33,10 @@ fixed at 256 bits, now varies during its usage.  This was previously only
 considered for storage (resetting a stored value to 0 would generate a refund).
 
 To address this variance, we charge memory accesses as EVM, but only charge
-memory allocation w.r.t. the peak memory usage. 
+memory allocation w.r.t. the peak memory usage.
+
+Another change brought upon by arbitrary length integers is that arithmetic
+operations need to take into account the size of the operands.
 
 ### Operations with return register
 
@@ -41,9 +44,6 @@ The memory variation introduced by updating the register *r* with value *v*
 ```
   registerLoadDelta(r, v) = limbLength(v) - registerDataSize(r)
 ```
-
-Another change brought upon by arbitrary length integers is that arithmetic
-operations need to take into account the size of the operands.
 
 ### High level view of the gas model
 
