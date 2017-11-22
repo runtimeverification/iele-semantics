@@ -399,11 +399,11 @@ Some checks if an opcode will throw an exception are relatively quick and done u
     syntax InternalOp ::= "#badJumpDest?" "[" Op "]"
  // ----------------------------------------------------
     rule <k> #badJumpDest? [ OP                        ] => . ... </k> requires notBool isJumpOp(#code(OP))
-    rule <k> #badJumpDest? [ JUMP (LABEL)              ] => . ... </k> <fid> FUNC </fid> <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ JUMPI(LABEL) _            ] => . ... </k> <fid> FUNC </fid> <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ JUMP (LABEL)              ] => . ... </k> <fid> FUNC </fid> <function>... <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> </function> requires LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ JUMPI(LABEL) _            ] => . ... </k> <fid> FUNC </fid> <function>... <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> </function> requires LABEL in_keys(JUMPS)
 
-    rule <k> #badJumpDest? [ JUMP (LABEL)              ] => #exception ... </k> <fid> FUNC </fid> <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ JUMPI(LABEL) _            ] => #exception ... </k> <fid> FUNC </fid> <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ JUMP (LABEL)              ] => #exception ... </k> <fid> FUNC </fid> <function>... <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> </function> requires notBool LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ JUMPI(LABEL) _            ] => #exception ... </k> <fid> FUNC </fid> <function>... <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> </function> requires notBool LABEL in_keys(JUMPS)
 
     syntax Bool ::= isJumpOp ( OpCode ) [function]
  // ----------------------------------------------
@@ -1000,11 +1000,11 @@ The `JUMP*` family of operations affect the current program counter.
 
     syntax NullVoidOp ::= JUMP ( Int )
  // ----------------------------------
-    rule <k> JUMP(LABEL) ~> _:Ops => CODE ... </k> <fid> FUNC </fid> <funcId> FUNC </funcId> <jumpTable> ... LABEL |-> CODE </jumpTable>
+    rule <k> JUMP(LABEL) ~> _:Ops => CODE ... </k> <fid> FUNC </fid> <function>... <funcId> FUNC </funcId> <jumpTable> ... LABEL |-> CODE </jumpTable> </function>
 
     syntax UnVoidOp ::= JUMPI ( Int )
  // ---------------------------------
-    rule <k> JUMPI(LABEL) I ~> _:Ops => CODE ... </k> <fid> FUNC </fid> <funcId> FUNC </funcId> <jumpTable> ... LABEL |-> CODE </jumpTable> requires I =/=K 0
+    rule <k> JUMPI(LABEL) I ~> _:Ops => CODE ... </k> <fid> FUNC </fid> <function>... <funcId> FUNC </funcId> <jumpTable> ... LABEL |-> CODE </jumpTable> </function> requires I =/=K 0
     rule <k> JUMPI(LABEL) 0          => .    ... </k>
 
     syntax LocalCall ::= "{" Ops "|" Int "|" Regs "|" Array "}"
