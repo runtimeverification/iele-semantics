@@ -83,6 +83,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
 
 -   `startTx` computes the sender of the transaction, and places loadTx on the `k` cell.
 -   `loadTx(_)` loads the next transaction to be executed into the current state.
+-   `#adjustGas` fakes the gas usage of the transaction since the EVM-to-IELE conversion does not preserve gas usage.
 -   `finishTx` is a place-holder for performing necessary cleanup after a transaction.
 
 ```{.k .uiuck .rvk}
@@ -324,7 +325,6 @@ State Manipulation
 ### Clearing State
 
 -   `clear` clears all the execution state of the machine.
--   `clearX` clears the substate `X`, for `TX`, `BLOCK`, and `NETWORK`.
 
 ```{.k .uiuck .rvk}
     syntax EthereumCommand ::= "clear"
@@ -448,6 +448,7 @@ Here we load the environmental information.
 ```
 
 The `"network"` key allows setting the fee schedule inside the test.
+Since IELE is a new language with no hard forks yet, we only support the latest EVM gas schedule.
 
 ```{.k .uiuck .rvk}
     rule <k> load "network" : SCHEDSTRING => . ... </k>
@@ -458,7 +459,7 @@ The `"network"` key allows setting the fee schedule inside the test.
     rule #asScheduleString("Byzantium")      => ALBE
 ```
 
-The `"rlp"` key loads the block information.
+The `"blockHeader"` key loads the block information.
 
 ```{.k .uiuck .rvk}
     rule <k> load "blockHeader" : { "nonce" : (HN:String) } => . ...</k> 
@@ -515,7 +516,11 @@ The `"rlp"` key loads the block information.
  // --------------------------------------------------------------------------------------------
     rule <k> load "genesisRLP": [ [ HP, HO, HC, HR, HT, HE:String, HB, HD, HI, HL, HG, HS, HX, HM, HN, .JSONList ], _, _, .JSONList ] => .K ... </k>
          <blockhash> .List => ListItem(#blockHeaderHash(HP, HO, HC, HR, HT, HE, HB, HD, HI, HL, HG, HS, HX, HM, HN)) ListItem(#asUnsigned(#parseByteStackRaw(HP))) ... </blockhash>
+```
 
+The `"transactions"` key loads the transactions.
+
+```{.k .uiuck .rvk}
     rule load "transactions" : { TX } => load "transactions" : { #sortJSONList(TX) }
          requires notBool #isSorted(TX)
 

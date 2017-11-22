@@ -3,7 +3,8 @@ IELE Execution
 
 IELE is a register-based abstract machine over some simple opcodes.
 Most of the opcodes are "local" to the execution state of the machine, but some of them must interact with the world state.
-This file only defines the local execution operations, the file `ethereum.md` will define the interactions with the world state.
+This file only defines the local execution operations. A separate `cardano.md` will eventually be created to describe the remainder
+of the transaction protocol.
 
 ```{.k .uiuck .rvk}
 requires "data.k"
@@ -16,7 +17,7 @@ module IELE
 Configuration
 -------------
 
-The configuration has cells for the current account id, the current opcode, the program counter, the current gas, the gas price, the current program, the word stack, and the local memory.
+The configuration has cells for the current account id, the current position in the program, the current gas, the gas price, the current program, the word stack, and the local memory.
 In addition, there are cells for the callstack and execution substate.
 
 We've broken up the configuration into two components; those parts of the state that mutate during execution of a single transaction and those that are static throughout.
@@ -42,7 +43,11 @@ In the comments next to each cell, we've marked which component of the yellowpap
                     <interimStates> .List      </interimStates>
                     <substateStack> .List      </substateStack>
 
+                    // A single contract call frame
+                    // ----------------------------
                     <callFrame>
+                      // The loaded state of a IELE program
+                      // ----------------------------------
                       <program>
                         <functions>
                           <function multiplicity="*" type="Map">
@@ -266,6 +271,7 @@ Simple commands controlling exceptions provide control-flow.
 
 -   `#end` is used to indicate the (non-exceptional) end of execution.
 -   `#exception` is used to indicate exceptional states (it consumes any operations to be performed after it).
+-   `#revert` is used to indicate the contract terminated with the REVERT instruction (exceptional return with error message, refunding gas).
 
 ```{.k .uiuck .rvk}
     syntax KItem ::= Exception
@@ -274,6 +280,18 @@ Simple commands controlling exceptions provide control-flow.
     rule <k> EX:Exception ~> (_:Int    => .) ... </k>
     rule <k> EX:Exception ~> (_:Op => .) ... </k>
     rule <k> EX:Exception ~> (_:Ops => .) ... </k>
+
+```
+
+Description of registers.
+
+-   Local registers begin with `%`
+-   Global registers begin with `@`
+-   Registers are evaluated using heating to the values they contain.
+-   `#regRange(N)` generates the registers 0 to N-1.
+-   `#sizeRegs(R)` returns the number of regsiters in a list of registers.
+
+```{.k .uiuck .rvk}
 
     syntax Reg ::= "%" Int | "@" Int | Int
     syntax KResult ::= Int
@@ -319,8 +337,8 @@ Here all `OpCode`s are subsorted into `KItem` (allowing sequentialization), and 
  // ---------------------------------------------------------------------------------------
 ```
 
--   `#execute` calls `#next` repeatedly until it recieves an `#end` or `#exception`.
--   `#execTo` executes until the next opcode is one of the specified ones.
+-   `#execute` loads the code of the currently-executing function into the `k` cell, where it executes until the function returns.
+    It is an exception if we try to execute a function that does not exist.
 
 ```{.k .uiuck .rvk}
     syntax KItem ::= "#execute"
@@ -331,17 +349,15 @@ Here all `OpCode`s are subsorted into `KItem` (allowing sequentialization), and 
 
 Execution follows a simple cycle where first the state is checked for exceptions, then if no exceptions will be thrown the opcode is run.
 
--   Regardless of the mode, `#next` will throw `#end` or `#exception` if the current program counter is not pointing at an OpCode.
-
-TODO: I think on `#next` we are supposed to pretend it's `STOP` if it's in the middle of the program somewhere but is invalid?
-I suppose the semantics currently loads `INVALID` where `N` is the position in the bytecode array.
+-   Regardless of the mode, if we reach the end of the function, we execute an implicit `STOP` instruction.
 
 ```{.k .uiuck .rvk}
     rule <k> .Ops => #end ... </k>
          <output> _ => .Regs </output>
 ```
 
--   In `NORMAL` or `VMTESTS` mode, `#next` checks if the opcode is exceptional, runs it if not, then increments the program counter.
+-   In `NORMAL` or `VMTESTS` mode, `#next` checks if the opcode is exceptional, runs it if not, then executes the next instruction (assuming
+    the instruction doesn't execute a transfer of control flow).
 
 ```{.k .uiuck .rvk}
     rule <mode> EXECMODE </mode>
@@ -361,7 +377,7 @@ I suppose the semantics currently loads `INVALID` where `N` is the position in t
 
 Some checks if an opcode will throw an exception are relatively quick and done up front.
 
--   `#exceptional?` checks if the operator is invalid  (this implements the function `Z` in the yellowpaper, section 9.4.2).
+-   `#exceptional?` checks if the operator is invalid.
 
 ```{.k .uiuck .rvk}
     syntax InternalOp ::= "#exceptional?" "[" Op "]"
@@ -689,9 +705,8 @@ IELE Programs
 =============
 
 Lists of opcodes form programs.
-Deciding if an opcode is in a list will be useful for modeling gas, and converting a program into a map of program-counter to opcode is useful for execution.
 
-Note that `_in_` ignores the arguments to operators that are parametric.
+-   `#revOps` reverses a list of instructions.
 
 ```{.k .uiuck .rvk}
     syntax Ops [flatPredicate]
@@ -707,7 +722,6 @@ IELE Ops
 
 Each subsection has a different class of opcodes.
 Organization is based roughly on what parts of the execution state are needed to compute the result of each operator.
-This sometimes corresponds to the organization in the yellowpaper.
 
 ### Internal Operations
 
@@ -804,6 +818,7 @@ This sometimes corresponds to the organization in the yellowpaper.
 ### Invalid Operator
 
 We use `INVALID` both for marking the designated invalid operator and for garbage bytes in the input program.
+Executing the INVALID instruction results in an exception.
 
 ```{.k .uiuck .rvk}
     syntax InvalidOp ::= "INVALID"

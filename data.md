@@ -51,7 +51,8 @@ Primitives
 
 Primitives provide the basic conversion from K's sorts `Int` and `Bool` to IELE's words.
 
--   `chop` interperets an integers modulo $2^256$.
+-   `chop` interperets an integers modulo $2^256$. This is used when interpreting
+    arbitrary precision integers as memory indices.
 
 ```{.k .uiuck .rvk}
     syntax Int ::= chop ( Int ) [function]
@@ -101,24 +102,12 @@ If we don't place the `Bool` condition as a side-condition for UIUC-K, it will a
 
 ### Empty Account
 
--   `.Account` represents the case when an account ID is referenced in the yellowpaper, but
+-   `.Account` represents the case when an account ID is needed, but
     the actual value of the account ID is the empty set. This is used, for example, when
     referring to the destination of a message which creates a new contract.
 
 ```{.k .uiuck .rvk}
     syntax Account ::= ".Account" | Int
-```
-
-### Symbolic Words
-
--   `#symbolicWord` generates a fresh existentially-bound symbolic word.
-
-Note: Comment out this block (remove the `k` tag) if using RV K.
-
-```{.k .uiuck}
-    syntax Int ::= "#symbolicWord" [function]
- // -----------------------------------------
-    rule #symbolicWord => ?X:Int requires ?X >=Int 0 andBool ?X <=Int pow256
 ```
 
 Arithmetic
@@ -150,18 +139,11 @@ You could alternatively calculate `I1 %Int I2`, then add one to the normal integ
     rule log256Int(N) => log2Int(N) /Int 8
 ```
 
-RV-K has a more efficient power-modulus operator.
+Here we provide simple syntactic sugar over our power-modulus operator.
 
 ```{.k .uiuck .rvk}
     syntax Int ::= powmod(Int, Int, Int) [function]
  // -----------------------------------------------
-```
-
-```{.k .uiuck}
-    rule powmod(W0, W1, W2) => (W0 ^Int W1) %Int W2
-```
-
-```{.k .rvk}
     rule powmod(W0, W1, W2) => W0 ^%Int W1 W2 requires W2 =/=Int 0
     rule powmod(W0, W1, 0) => 0
 ```
@@ -195,6 +177,7 @@ Bitwise Operators
 ```
 
 -   `signextend(N, W)` sign-extends from byte $N$ of $W$ (0 being LSB).
+-   `twos(N, W)` converts a signed integer from byte $N$ of $W$ to twos-complement representation (0 being LSB).
 
 ```{.k .uiuck .rvk}
     syntax Int ::= signextend ( Int , Int ) [function]
@@ -233,6 +216,7 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
 ```
 
 -   `_++_` acts as `WordStack` append.
+-   `#rev` reverses a `WordStack`.
 -   `#take(N , WS)` keeps the first $N$ elements of a `WordStack` (passing with zeros as needed).
 -   `#drop(N , WS)` removes the first $N$ elements of a `WordStack`.
 -   `WS [ N .. W ]` access the range of `WS` beginning with `N` of width `W`.
@@ -269,6 +253,7 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
 
 -   `WS [ N ]` accesses element $N$ of $WS$.
 -   `WS [ N := W ]` sets element $N$ of $WS$ to $W$ (padding with zeros as needed).
+-   `WS [ N := WS' ]` sets elements starting at $N$ of $WS$ to $WS'$ (padding with zeros as needed).
 
 ```{.k .uiuck .rvk}
     syntax Int ::= WordStack "[" Int "]" [function]
@@ -318,6 +303,11 @@ Memory
 ------
 
 -   `.Array` is an arbitrary length array of zeroes.
+-   `.Memory` is an arbitrary length array of byte buffers.
+
+We use the impure attribute on the function definitions because the Array sort in a
+fast backend is mutable, so we need to ensure we do not cache identical arrays for each time
+we call this function.
 
 ```{.k .uiuck .rvk}
 
@@ -461,8 +451,8 @@ Addresses
 Word Map
 --------
 
-Most of IELE data is held in finite maps.
-We are using the polymorphic `Map` sort for these word maps.
+Most of IELE data is held in finite arrays.
+We are using the polymorphic `Array` sort for these word maps.
 
 -   `WM [ N := WS ]` assigns a contiguous chunk of $WM$ to $WS$ starting at position $W$.
 -   `#range(M, START, WIDTH)` reads off $WIDTH$ elements from $WM$ beginning at position $START$ (padding with zeros as needed).
@@ -597,7 +587,11 @@ Encoding
 --------
 
 -   `#rlpEncodeWord` RLP encodes a single IELE word.
+-   `#rlpEncodeWordUnsigned` RLP encodes a single EVM word (i.e., unsigned).
+-   `#rlpEncodeBytes` RLP encodes a single integer as a fixed-width unsigned byte buffer.
+-   `#rlpEncodeWordStack` RLP encodes a list of EVM words (i.e., unsigned).
 -   `#rlpEncodeString` RLP encodes a single `String`.
+-   `#rlpEncodeAccount` RLP encodes a single account ID.
 
 ```{.k .uiuck .rvk}
     syntax String ::= #rlpEncodeWord ( Int )            [function]
@@ -639,6 +633,7 @@ Decoding
 
 -   `#rlpDecode` RLP decodes a single `String` into a `JSON`.
 -   `#rlpDecodeList` RLP decodes a single `String` into a `JSONList`, interpereting the string as the RLP encoding of a list.
+-   `#pushLen` and `#pushOffset` decode a `WordStack` into a single string in an RLP-like encoding which does not allow lists in its structure.
 
 ```{.k .uiuck .rvk}
     syntax JSON ::= #rlpDecode(String)               [function]
