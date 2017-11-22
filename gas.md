@@ -551,3 +551,55 @@ Definitions
 
 * Check that GMP can check for 0 in constant time or update costs accordingly
 * Check that GMP can give number of limbs in constant time or update costs accordingly
+
+### TODOS: Instructions to add
+
+* EXTCODESIZE
+* MOVE
+* CREATE
+* SELFDESTRUCT
+* INVALID
+* MLOADN 
+* MSTOREN
+* LOADPOS
+* LOADNEG
+* COPYCREATE
+* CALL
+* CALLCODE
+* DELEGATECALL
+* STATICCALL
+* ECREC
+* SHA256
+* RIP160
+* ID
+* ECADD
+* ECMUL
+* ECPAIRING
+
+### TODOS: Instructions to consider if they should be added
+
+* REGISTERS
+* FUNCTION
+   
+### TODOS: Instructions to remove
+
+* PC
+
+### TODOS: Instructions to rename
+
+* TIMESTAMP (TMESTAMP)
+
+### TODOS: Make sure we don't need these
+
+* CALLDATALOAD
+* CALLDATASIZE
+* CALLDATACOPY
+* LOCALRETURN
+* LOCALCALLI
+* CALLDEST
+* EXTCALLDEST
+* RETURNDATASIZE
+* RETURNDATACOPY
+* CODECOPY
+* EXTCODECOPY
+
