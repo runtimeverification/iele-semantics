@@ -4,7 +4,7 @@ version:             0.0.1.0
 -- description:
 homepage:            https://github.com/githubuser/compiler#readme
 license:             OtherLicense
-license-file:        ../LICENSE
+license-file:        LICENSE
 author:              Virgil Serbanuta
 maintainer:          virgil.serbanuta@runtimeverification.com
 copyright:           2017 Runtime Verification
