@@ -1147,7 +1147,7 @@ These operations interact with the account storage.
            <storage> ... (INDEX |-> (OLD => VALUE)) ... </storage>
            ...
          </account>
-         <refund> R => #ifInt OLD =/=Int 0 andBool VALUE ==Int 0
+         <refund> R => #if OLD =/=Int 0 andBool VALUE ==Int 0
                         #then R +Int Rsstoreclear < SCHED >
                         #else R
                        #fi
@@ -1407,7 +1407,7 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
          <account>
            <acctID> ACCT </acctID>
            <balance> BAL </balance>
-           <nonce> NONCE => #ifInt EXECMODE ==K VMTESTS #then NONCE #else NONCE +Int 1 #fi </nonce>
+           <nonce> NONCE => #if EXECMODE ==K VMTESTS #then NONCE #else NONCE +Int 1 #fi </nonce>
            ...
          </account>
          <activeAccounts> ... ACCT |-> (EMPTY => #if EXECMODE ==K VMTESTS #then EMPTY #else false #fi) ... </activeAccounts>
@@ -1490,14 +1490,14 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
  // ---------------------------------------
     rule <k> CREATE(LABEL,_) REG VALUE ARGS
           => #checkCreate ACCT VALUE
-          ~> #create ACCT #newAddr(ACCT, NONCE) #ifInt Gstaticcalldepth << SCHED >> #then GAVAIL #else #allBut64th(GAVAIL) #fi VALUE CODE LEN ARGS
+          ~> #create ACCT #newAddr(ACCT, NONCE) #if Gstaticcalldepth << SCHED >> #then GAVAIL #else #allBut64th(GAVAIL) #fi VALUE CODE LEN ARGS
           ~> #codeDeposit #newAddr(ACCT, NONCE) LEN CODE REG
          ...
          </k>
          <constants> ... LABEL |-> CONTRACT(CODE, LEN) </constants>
          <schedule> SCHED </schedule>
          <id> ACCT </id>
-         <gas> GAVAIL => #ifInt Gstaticcalldepth << SCHED >> #then 0 #else GAVAIL /Int 64 #fi </gas>
+         <gas> GAVAIL => #if Gstaticcalldepth << SCHED >> #then 0 #else GAVAIL /Int 64 #fi </gas>
          <account>
            <acctID> ACCT </acctID>
            <nonce> NONCE </nonce>
@@ -1508,13 +1508,13 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
  // ------------------------------------------
     rule <k> COPYCREATE(_) REG ACCTCODE VALUE ARGS
           => #checkCreate ACCT VALUE
-          ~> #create ACCT #newAddr(ACCT, NONCE) #ifInt Gstaticcalldepth << SCHED >> #then GAVAIL #else #allBut64th(GAVAIL) #fi VALUE CODE LEN ARGS
+          ~> #create ACCT #newAddr(ACCT, NONCE) #if Gstaticcalldepth << SCHED >> #then GAVAIL #else #allBut64th(GAVAIL) #fi VALUE CODE LEN ARGS
           ~> #codeDeposit #newAddr(ACCT, NONCE) LEN CODE REG
          ...
          </k>
          <schedule> SCHED </schedule>
          <id> ACCT </id>
-         <gas> GAVAIL => #ifInt Gstaticcalldepth << SCHED >> #then 0 #else GAVAIL /Int 64 #fi </gas>
+         <gas> GAVAIL => #if Gstaticcalldepth << SCHED >> #then 0 #else GAVAIL /Int 64 #fi </gas>
          <account>
            <acctID> ACCT </acctID>
            <nonce> NONCE </nonce>
@@ -1530,13 +1530,13 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
 
     rule <k> COPYCREATE(_) REG ACCT VALUE ARGS
           => #checkCreate ACCT VALUE
-          ~> #create ACCT #newAddr(ACCT, NONCE) #ifInt Gstaticcalldepth << SCHED >> #then GAVAIL #else #allBut64th(GAVAIL) #fi VALUE CODE LEN ARGS
+          ~> #create ACCT #newAddr(ACCT, NONCE) #if Gstaticcalldepth << SCHED >> #then GAVAIL #else #allBut64th(GAVAIL) #fi VALUE CODE LEN ARGS
           ~> #codeDeposit #newAddr(ACCT, NONCE) LEN CODE REG
          ...
          </k>
          <schedule> SCHED </schedule>
          <id> ACCT </id>
-         <gas> GAVAIL => #ifInt Gstaticcalldepth << SCHED >> #then 0 #else GAVAIL /Int 64 #fi </gas>
+         <gas> GAVAIL => #if Gstaticcalldepth << SCHED >> #then 0 #else GAVAIL /Int 64 #fi </gas>
          <account>
            <acctID> ACCT </acctID>
            <nonce> NONCE </nonce>
@@ -1556,7 +1556,7 @@ Self destructing to yourself, unlike a regular transfer, destroys the balance in
          <schedule> SCHED </schedule>
          <id> ACCT </id>
          <selfDestruct> SDS (.Set => SetItem(ACCT)) </selfDestruct>
-         <refund> RF => #ifInt ACCT in SDS #then RF #else RF +Int Rselfdestruct < SCHED > #fi </refund>
+         <refund> RF => #if ACCT in SDS #then RF #else RF +Int Rselfdestruct < SCHED > #fi </refund>
          <account>
            <acctID> ACCT </acctID>
            <balance> BALFROM </balance>
@@ -1569,7 +1569,7 @@ Self destructing to yourself, unlike a regular transfer, destroys the balance in
          <schedule> SCHED </schedule>
          <id> ACCT </id>
          <selfDestruct> SDS (.Set => SetItem(ACCT)) </selfDestruct>
-         <refund> RF => #ifInt ACCT in SDS #then RF #else RF +Int Rselfdestruct < SCHED > #fi </refund>
+         <refund> RF => #if ACCT in SDS #then RF #else RF +Int Rselfdestruct < SCHED > #fi </refund>
          <account>
            <acctID> ACCT </acctID>
            <balance> BALFROM => 0 </balance>
@@ -1913,7 +1913,7 @@ Note: These are all functions as the operator `#gasExec` has already loaded all 
 ```{.k .uiuck .rvk}
     syntax Int ::= Csstore ( Schedule , Int , Int ) [function]
  // ----------------------------------------------------------
-    rule Csstore(SCHED, VALUE, OLD) => #ifInt VALUE =/=Int 0 andBool OLD ==Int 0 #then Gsstoreset < SCHED > #else Gsstorereset < SCHED > #fi
+    rule Csstore(SCHED, VALUE, OLD) => #if VALUE =/=Int 0 andBool OLD ==Int 0 #then Gsstoreset < SCHED > #else Gsstorereset < SCHED > #fi
 
     syntax Int ::= Ccall    ( Schedule , Int , Map , Int , Int , Int ) [function]
                  | Ccallgas ( Schedule , Int , Map , Int , Int , Int ) [function]

@@ -76,30 +76,6 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to IELE'
     rule word2Bool( W ) => true  requires W =/=K 0
 ```
 
--   `#ifInt_#then_#else_#fi` provides a conditional in `Int` expressions.
--   `#ifSet_#then_#else_#fi` provides a conditional in `Set` expressions.
-
-```{.k .uiuck .rvk}
-    syntax Int ::= "#ifInt" Bool "#then" Int "#else" Int "#fi" [function, smtlib(ite)]
-    syntax Set ::= "#ifSet" Bool "#then" Set "#else" Set "#fi" [function]
- // ---------------------------------------------------------------------
-```
-
-If we don't place the `Bool` condition as a side-condition for UIUC-K, it will attempt to only do an "implies-check" instead of full unification (which is problematic when `B` is symbolic during proving).
-
-```{.k .uiuck}
-    rule #ifInt B #then W #else _ #fi => W requires B
-    rule #ifInt B #then _ #else W #fi => W requires notBool B
-
-    rule #ifSet B #then W #else _ #fi => W requires B
-    rule #ifSet B #then _ #else W #fi => W requires notBool B
-```
-
-```{.k .rvk}
-    rule #ifInt A #then B #else C #fi => #if A #then B #else C #fi [macro]
-    rule #ifSet A #then B #else C #fi => #if A #then B #else C #fi [macro]
-```
-
 ### Empty Account
 
 -   `.Account` represents the case when an account ID is needed, but
