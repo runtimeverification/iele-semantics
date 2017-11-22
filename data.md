@@ -222,7 +222,7 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
 -   `WS [ N .. W ]` access the range of `WS` beginning with `N` of width `W`.
 
 ```{.k .uiuck .rvk}
-    syntax WordStack ::= WordStack "++" WordStack [function, left]
+    syntax WordStack ::= WordStack "++" WordStack [function, right]
  // --------------------------------------------------------------
     rule .WordStack ++ WS' => WS'
     rule (W : WS)   ++ WS' => W : (WS ++ WS')
@@ -461,7 +461,7 @@ We are using the polymorphic `Array` sort for these word maps.
     syntax Array ::= Array "[" Int ":=" WordStack "]" [function]
  // --------------------------------------------------------
     rule WM::Array[ N := .WordStack ] => WM
-    rule WM::Array[ N := W : WS     ] => (WM[chop(N) <- W])[chop(N) +Int 1 := WS]
+    rule WM::Array[ N := W : WS     ] => (WM[chop(N) <- W])[N +Int 1 := WS]
 
     syntax WordStack ::= #range ( Array , Int , Int )            [function]
     syntax WordStack ::= #range ( Array , Int , Int , WordStack) [function, klabel(#rangeAux)]

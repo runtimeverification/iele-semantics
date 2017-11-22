@@ -352,8 +352,7 @@ Execution follows a simple cycle where first the state is checked for exceptions
 -   Regardless of the mode, if we reach the end of the function, we execute an implicit `STOP` instruction.
 
 ```{.k .uiuck .rvk}
-    rule <k> .Ops => #end ... </k>
-         <output> _ => .Regs </output>
+    rule <k> .Ops => STOP ; .Ops ... </k>
 ```
 
 -   In `NORMAL` or `VMTESTS` mode, `#next` checks if the opcode is exceptional, runs it if not, then executes the next instruction (assuming
@@ -401,12 +400,16 @@ Some checks if an opcode will throw an exception are relatively quick and done u
  // ----------------------------------------------------
     rule <k> #badJumpDest? [ OP                        ] => . ... </k> requires notBool isJumpOp(#code(OP))
     rule <k> #badJumpDest? [ JUMP (LABEL)              ] => . ... </k> <fid> FUNC </fid> <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ LOCALCALL (LABEL,_,_) _ _ ] => . ... </k> <fid> FUNC </fid> <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
     rule <k> #badJumpDest? [ JUMPI(LABEL) _            ] => . ... </k> <fid> FUNC </fid> <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> requires LABEL in_keys(JUMPS)
 
     rule <k> #badJumpDest? [ JUMP (LABEL)              ] => #exception ... </k> <fid> FUNC </fid> <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ LOCALCALL (LABEL,_,_) _ _ ] => #exception ... </k> <fid> FUNC </fid> <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
     rule <k> #badJumpDest? [ JUMPI(LABEL) _            ] => #exception ... </k> <fid> FUNC </fid> <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> requires notBool LABEL in_keys(JUMPS)
+
+    syntax Bool ::= isJumpOp ( OpCode ) [function]
+ // ----------------------------------------------
+    rule isJumpOp(JUMP(_)) => true
+    rule isJumpOp(JUMPI(_)) => true
+    rule isJumpOp(...) => false [owise]
 ```
 
 -   `#static?` determines if the opcode should throw an exception due to the static flag.
@@ -586,19 +589,6 @@ Some of them require an argument to be interpereted as an address (modulo 160 bi
 
     rule #msize(_ |-> N MU) => N +Int #msize(MU)
     rule #msize(.Map)       => 0
-```
-
-### Program Counter
-
--   `#pc` calculates the next program counter of the given operator.
-
-```{.k .uiuck .rvk}
-    syntax Bool ::= isJumpOp ( OpCode ) [function]
- // ----------------------------------------------
-    rule isJumpOp(JUMP(_)) => true
-    rule isJumpOp(JUMPI(_)) => true
-    rule isJumpOp(LOCALCALL(_,_,_)) => true
-    rule isJumpOp(...) => false [owise]
 ```
 
 ### Substate Log
@@ -929,9 +919,9 @@ Expression calculations are simple and don't require anything but the arguments 
 
     syntax BinOp ::= "BYTE" | "SIGNEXTEND" | "TWOS"
  // -----------------------------------------------
-    rule <k> BYTE REG INDEX W     => #load REG byte(chop(INDEX), W)     ... </k>
-    rule <k> SIGNEXTEND REG W0 W1 => #load REG signextend(chop(W0), W1) ... </k>
-    rule <k> TWOS REG W0 W1       => #load REG twos(chop(W0), W1)       ... </k>
+    rule <k> BYTE REG INDEX W        => #load REG byte(chop(INDEX), W)     ... </k>
+    rule <k> SIGNEXTEND REG WIDTH W1 => #load REG signextend(chop(WIDTH), W1) ... </k>
+    rule <k> TWOS REG WIDTH W1       => #load REG twos(chop(WIDTH), W1)       ... </k>
 
     syntax BinOp ::= "AND" | "OR" | "XOR"
  // -------------------------------------
