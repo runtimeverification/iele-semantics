@@ -427,6 +427,121 @@ We assume that all operations interrogating the local state have complexity
 
 TODO:  Figure out more precise costs for these
 
+#### `CALL`, `CALLCODE`, `DELEGATECALL` and `STATICCALL`
+* `CALL`, `CALLCODE`, `DELEGATECALL` and `STATICCALL`
+  A call is split in several parts. There are some checks which are done before
+  everything else (account ammount and call depth), which may finish everything
+  with an exception. These (including the exception) have an O(1) cost. Here the
+  execution splits in three cases:
+  * The called account does not exist -> we continue executing an empty code,
+     which has only an empty "deposit" function, without any
+     end/return/whatever. TODO: What happens when executing an empty function?
+  * The account exists, but the code is not loaded. The code is assumed to be
+     in a format suitable for execution. This has a cost in O(code size).
+  * There are some special accounts with 'precompiled' code. Calls to these
+     accounts are likely to resolve to native calls. These are not handled
+     below because they are likely to have completely different cost structure.
+     TODO: handle precompiled code.
+
+  After loading the code there are more checks and setup work. The checks
+  (the function exists and the argument count matches) can end with an
+  exception. These checks are done at the end in the semantics, but I am
+  assuming that they can be moved earlier.
+
+  Here are the parameters relevant to `CALL` with a bit more detail than needed.
+  * `REG` is the error code.
+  * `REGS` are the return registers.
+  * `ARGS` are the arguments.
+  * `GCAP` is the gas limit.
+  * `VALUE` is the amount to transfer.
+  * `APPVALUE` can be read by a contract with `CALLVALUE` and, unless specified
+               otherwise, is equal to `VALUE`.
+  * `ACCTFROM` is the current account, by default making the call and making the
+               payments.
+  * `ACCTO` is explained below.
+  * `ACCTAPPFROM` is relevant for `DELEGATECALL` and it's the account calling
+                  the contract which contains `DELEGATECALL`.
+
+Here are the differences between the various calls.
+
+* `CALL` loads the code from `ACCTO`, runs it as `ACCTO` and pays `ACCTO`.
+* `CALLCODE` loads the code from `ACCTO` and runs it as `ACCFROM` and pays
+             `ACCFROM`.
+* `DELEGATECALL` makes the call as `ACCTAPPFROM`, loads the code from `ACCTO`
+                 and runs it as `ACCFROM`. Pays `0` to `ACCFROM`, `APPVALUE`
+                 is `CALLVALUE`.
+* `STATICCALL` loads the code from `ACCTO`, runs it as `ACCTO` and pays `0` to
+               `ACCTO`. `APPVALUE` is also `0`.
+
+Below I'll assume that no payment actually happens for `CALLCODE`,
+`DELEGATECALL` and `STATICCALL`. I'll also assume that calls to an inexistent
+account (which will be created) are executed without an actual call, since
+the only available function is an empty 'deposit'.
+
+If the contract code contains a function index when stored, then one does not
+need to load the entire code in order to fail with a function check. However,
+we should not optimize for the error case, so the question becomes what is
+more efficient for the non-error case. That is not trivial to answer, but for
+now we can "hide" this cost in the codeLoadingCost/codeByteLoadingCost values,
+and we'll make the error case less efficient.
+TODO: Clarify codeLoadingCost/codeByteLoadingCost.
+
+Although the caller pays for code loading one way or another, one may argue
+that this should be paid from the `GCAP`. However, it seems conceptually easier
+to consider that `GCAP` pays for the running cost of the contract, so it will
+not include the code loading cost.
+
+Also, it may seem counterintuitive to pay for the code loading cost, one may
+expect to pay a flat fee as in the EVM model. A flat fee is usually less
+efficient, so we're using a size-based fee.
+
+  ```hs
+  -- CALLOP in [CALL, CALLCODE, DELEGATECALL, STATICCALL]
+
+  computationCost(early-failing, CALLOP(LABEL,_,_) REG GCAP ACCTTO VALUE REGS ARGS) =
+    initialCallCheckCost(CALLOP) + errorCodeSettingCost
+  computationCost(not-early-failing, CALLOP(LABEL,_,_) REG GCAP ACCTTO VALUE REGS ARGS) =
+    initialCallCheckCost(CALLOP) + computationCost(#callWithCode(....))
+
+  computationCost(inexistent-acccount-late-failure, #callWithCode(...)) =
+    accountTypeCheckCost + methodCallCheckCost + errorSettingCost
+  computationCost(existent-acccount-late-failure, #callWithCode(...)) =
+    accountTypeCheckCost + codeLoadingCost + methodCallCheckCost +
+    errorSettingCost
+
+  computationCost(inexistent-account, #callWithCode(...)) =
+    accountTypeCheckCost + methodCallCheckCost + newAccountSetupCost(CALLOP)
+  computationCost(existent-account, #callWithCode(...)) =
+    accountTypeCheckCost + codeLoadingCost + methodCallCheckCost +
+    callStateSavingCost + accountTransferCost(CALLOP) + constantCallSetupCost +
+    callDataSetupCost + callFeeCost
+
+  codeLoadingCost = codeByteLoadingCost * codeSize
+  callDataSetupCost = wordCopyCost * callDataSize
+  callDataSize = sum [registerSize r | r <- rARGS]
+
+  initialCallCheckCost(CALL) = accountValueCheckCost + stackCheckCost
+  initialCallCheckCost(CALLCODE|DELEGATECALL|STATICCALL) = stackCheckCost
+
+  accountTransferCost(CALL) = accountTransferCost
+  accountTransferCost(CALLCODE|DELEGATECALL|STATICCALL) = 0
+
+  newAccountSetupCost(CALL) = accountCreationCost + accountTransferCost
+  newAccountSetupCost(CALLCODE|DELEGATECALL|STATICCALL) = 0
+  ```
+
+TODO: I (virgil) think that these costs are more reasonable than some costs
+      which follow the semantics in detail. However, we should be able to use
+      them inside the semantics, so we should make sure that this is possible.
+
+TODO: CALL loads some data in `<callData>`, but that's not used anywhere.
+      Above I included a possible definition (`callDataSetupCost`), but we
+      should find out what happens to that and include the right cost.
+
+TODO: Is the callFeeCost fixed or based on the stack size?
+
+TODO: Returning can be either implicit or explicit, should take that into
+      account
 
 #### Logging
 We use the same schema from the yellow paper, but taking into account the size
@@ -583,10 +698,6 @@ Definitions
 * LOADPOS
 * LOADNEG
 * COPYCREATE
-* CALL
-* CALLCODE
-* DELEGATECALL
-* STATICCALL
 * ECREC
 * SHA256
 * RIP160
