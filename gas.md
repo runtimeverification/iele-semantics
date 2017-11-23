@@ -326,7 +326,7 @@ gas/memory) to contain that size.
 We assume that all operations interrogating the local state have complexity
 *localStateCost* and their result fits a machine word.
 
-* `LOCALOP rREG`, where `LOCALOP` in `[PC, GAS, GASPRICE, GASLIMIT, COINBASE, NUMBER, MSIZE, CODESIZE]`
+* `LOCALOP rREG`, where `LOCALOP` in `[GAS, GASPRICE, GASLIMIT, COINBASE, NUMBER, MSIZE, CODESIZE]`
     ```hs
     computationCost(LOCALOP rREG) = localStateCost
     estimatedResultSize(LOCALOP rREG) = 1
@@ -336,7 +336,7 @@ We assume that all operations interrogating the local state have complexity
     computationCost(LOCALOP rREG) = localStateCost + addressSize*copyWordCost
     estimatedResultSize(LOCALOP rREG) = addressSize
     ```
-* `TMESTAMP rREG`
+* `TIMESTAMP rREG`
     ```hs
     computationCost(LOCALOP rREG) = localStateCost + timeStampSize*copyWordCost
     estimatedResultSize(LOCALOP rREG) = timeStampSize
@@ -559,7 +559,7 @@ Definitions
 * CREATE
 * SELFDESTRUCT
 * INVALID
-* MLOADN 
+* MLOADN
 * MSTOREN
 * LOADPOS
 * LOADNEG
@@ -580,14 +580,6 @@ Definitions
 
 * REGISTERS
 * FUNCTION
-   
-### TODOS: Instructions to remove
-
-* PC
-
-### TODOS: Instructions to rename
-
-* TIMESTAMP (TMESTAMP)
 
 ### TODOS: Make sure we don't need these
 
@@ -602,4 +594,3 @@ Definitions
 * RETURNDATACOPY
 * CODECOPY
 * EXTCODECOPY
-
