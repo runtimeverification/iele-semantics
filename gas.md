@@ -493,7 +493,9 @@ not include the code loading cost.
 
 Also, it may seem counterintuitive to pay for the code loading cost, one may
 expect to pay a flat fee as in the EVM model. A flat fee is usually less
-efficient, so we're using a size-based fee.
+efficient, so we're using a size-based fee. There is a similar memory
+consumption associated with loading the code which, arguably, might be included
+in a flat-fee cost.
 
   ```hs
   -- CALLOP in [CALL, CALLCODE, DELEGATECALL, STATICCALL]
@@ -528,7 +530,36 @@ efficient, so we're using a size-based fee.
 
   newAccountSetupCost(CALL) = accountCreationCost + accountTransferCost
   newAccountSetupCost(CALLCODE|DELEGATECALL|STATICCALL) = 0
+
+  -- Memory increase/decrease follows a similar pattern
+
+  memoryDelta(early-failling, CALLOP) =
+      registerSize 0 - registerSize REG
+  memoryDelta(inexistent-account-late-failure) =
+      registerSize 0 - registerSize REG
+  memoryDelta(inexistent-account-success) = 0
+      registerSize 0 - registerSize REG
+
+  -- Temporary memory increase, i.e. the memory increases until the error is
+  -- detected, then it goes back to its initial value. I.e. it might be a good
+  -- idea to just update the max memory usage (if needed) and not the currently
+  -- used memory.
+  memorySpikeSize(existent-account-late-failure) = codeSize
+  -- The spike is followed by a normal memory delta.
+  memoryDelta(existent-account-late-failure) =
+      registerSize 0 - registerSize REG
+
+  memoryDeltaCaller(existent-account-success) = codeSize + constantMemorySize
+  memorySizeCallee(existent-account-success) = callDataSize
   ```
+
+  The calee starts with a memory usage of memorySizeCallee (absolute, not a
+  delta). There is a free memory allowance for each new contract call, equal to
+  the maximum EVM stack size, that will be taken into account separately.
+
+  `constantMemorySize` is the size of whatever is part of the saved state
+  except for the code and callData (calldepth, callValue, id, gas, caller,
+  static)
 
 TODO: I (virgil) think that these costs are more reasonable than some costs
       which follow the semantics in detail. However, we should be able to use
