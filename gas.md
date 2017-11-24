@@ -413,17 +413,65 @@ We assume that all operations interrogating the local state have complexity
     sum [registerLoadDelta(r, v) | (r, v) <- getReturns() `zip` rVALUES]
   ```
 
-#### `STOP` and `REVERT`
+#### `RETURN` (account call version), `INVALID`, `STOP`, `REVERT` and exceptions
 
-* `STOP`
+A `RETURN` is a an account call one if the call stack is empty.
+
+`INVALID` generates an exception in the callee, whose cost is pre-paid.
+
+`STOP` is an explicit instruction, but reaching the end of a function would
+also do an implicit stop. `STOP` has `0` actual return values.
+
+For `STOP`, `RETURN` and `REVERT`: if the actual return values count is
+different fron the expected return value count, the caller experiences an
+exception, in which case one should use the exception-tagged cost. Note that
+in such cases it does not make sense to set the output values and return code
+since the exception means that the caller can't handle them.
+
+All the costs below are billed to the caller and not taken out of the callee
+gas limit. The `- exceptionCost` part refers to the callee prepaid exception
+cost which is being refunded since any possible exception belongs to the caller.
+
+* `INVALID` and exceptions in general
   ```hs
-  computationCost(STOP) = stopCost() -- defined in terms of the current execution context
+  computationCost(INVALID|exception) = 0
+  ```
+* `STOP`.
+  ```hs
+  computationCost(STOP) =
+    environmentRestoreCost(with-world) + wordCopyCost * (registersize 1) +
+    refundCost + returnValueCountComparisonCost - exceptionCost
+  computationCost(exception, STOP) =
+    environmentRestoreCost(with-world) + refundCost +
+    returnValueCountComparisonCost - exceptionCost
   ```
 * `REVERT`
   ```hs
-  computationCost(REVERT(nRETURNS) rVALUES) = wordCopyCost * registerSize(rValues) +
-    revertCost() -- defined in terms of the current execution context.
+  computationCost(REVERT(nRETURNS) rVALUES) =
+    environmentRestoreCost + wordCopyCost * (registersize 0) +
+    wordCopyCost * sum [registerSize(r) | r <- rVALUES] +
+    returnValueCountComparisonCost - exceptionCost
+  computationCost(exception, REVERT(nRETURNS) rVALUES) =
+    environmentRestoreCost + returnValueCountComparisonCost - exceptionCost
   ```
+* `RETURN`
+  ```hs
+  computationCost(RETURN(nRETURNS) rVALUES) =
+    environmentRestoreCost + wordCopyCost * (registersize 0) +
+    wordCopyCost * sum [registerSize(r) | r <- rVALUES] +
+    returnValueCountComparisonCost - exceptionCost
+  computationCost(exception, RETURN(nRETURNS) rVALUES) =
+    environmentRestoreCost + returnValueCountComparisonCost - exceptionCost
+  ```
+
+environmentRestoreCost is the cost of re-establishing the callStack, worldState
+and subState pointers to what they were before the current contract call.
+
+TODO: Do we count any cost for freeing memory? This occurs at any operation
+which resizes a register or a memory value, but it's most obvious at calls,
+returns and similar things. I guess that it's better to include the memory
+freeing cost in the allocation cost since all memory seems to be freed after the
+top call finishes. We should check that this is the case.
 
 TODO:  Figure out more precise costs for these
 
@@ -516,7 +564,7 @@ in a flat-fee cost.
   computationCost(existent-account, #callWithCode(...)) =
     accountTypeCheckCost + codeLoadingCost + methodCallCheckCost +
     callStateSavingCost + accountTransferCost(CALLOP) + constantCallSetupCost +
-    callDataSetupCost + callFeeCost
+    callDataSetupCost + callFeeCost + exceptionCost
 
   codeLoadingCost = codeByteLoadingCost * codeSize
   callDataSetupCost = wordCopyCost * callDataSize
@@ -574,6 +622,19 @@ TODO: Is the callFeeCost fixed or based on the stack size?
 TODO: Returning can be either implicit or explicit, should take that into
       account
 
+#### Exception costs
+
+Many things generate exceptions, including being out of gas, which means that
+there may not be any gas left to pay for the exception. Therefore it is
+preferable that all exception handling costs are pre-paid by `CALL`-like
+operations and returned by `RETURN`-like operations. TODO: Make sure that this
+actually happens.
+
+```hs
+exceptionCost = environmentRestoreCost + wordCopyCost * (registersize 0)
+```
+
+
 #### Logging
 We use the same schema from the yellow paper, but taking into account the size
 of the logged registers.
@@ -619,8 +680,6 @@ of the logged registers.
   memoryCost(MSTORE wINDEX wVALUE) =
     (registerSize wVALUE - storeCellSize(value wIndex))
   ```
-
-
 
 #### Account operations
 
