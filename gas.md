@@ -634,6 +634,61 @@ actually happens.
 exceptionCost = environmentRestoreCost + wordCopyCost * (registersize 0)
 ```
 
+#### Builtin calls costs
+* `ECREC` - ECDSA public key recovery. http://www.secg.org/sec1-v2.pdf section
+  4.1.6
+
+  ```hs
+  computationCost(ECREC) = ecrecCost + keyCopyCost  -- 3000 for EVM
+  ```
+* `SHA256`
+  ```hs
+  -- 60 + 12 * upper(len(data)/32) for EVM
+  computationCost(SHA256(LEN, DATA)) =
+    builtinCallConstantCost +
+    sha256ConstantCost + sha256ChunkCost * upper(max(len, log256(data))/32) +
+    32 * byteCopyCost -- hashCopyCost
+  ```
+  TODO: can `len` be less than `log256(data)`?
+* `RIP160`
+  ```hs
+  -- 600 + 120 * upper(len(data)/32) for EVM
+  computationCost(RIP160(LEN, DATA)) =
+    builtinCallConstantCost +
+    rip160ConstantCost + rip160ChunkCost * upper(max(len, log256(data))/32) +
+    20 * byteCopyCost -- hashCopyCost
+  ```
+* `ID`
+  ```
+  -- 15 + 3 * upper(len(data)/32) for EVM
+  computationCost(ID(DATA)) =
+    builtinCallConstantCost +
+    byteCopyCost * log256(DATA)
+  ```
+* `ECADD`
+  ```
+  -- 500 in the Byzantium EVM semantics
+  computationCost(ECADD(X,Y,Z)) =
+    builtinCallConstantCost +
+    ecAddComputationCost +
+    64 * byteCopyCost -- result, 2x32-byte coordinates
+  ```
+* `ECMUL`
+  ```
+  -- 40000 in the Byzantium EVM semantics
+  computationCost(ECMUL(X,Y,Z)) =
+    builtinCallConstantCost +
+    ecMulComputationCost +
+    64 * byteCopyCost -- result, 2x32-byte coordinates
+  ```
+* `ECPAIRING`
+  ```
+  -- 100000 +Int (#sizeWordStack(DATA) /Int 192) *Int 80000  in the Byzantium EVM semantics
+  computationCost(ECPAIRING(DATA)) =
+    builtinCallConstantCost +
+    ecPairingConstantCost + upper(log256(DATA)/192) * ecPairingChunkCost +
+    32 * byteCopyCost -- result copy cost
+  ```
 
 #### Logging
 We use the same schema from the yellow paper, but taking into account the size
@@ -788,13 +843,6 @@ Definitions
 * LOADPOS
 * LOADNEG
 * COPYCREATE
-* ECREC
-* SHA256
-* RIP160
-* ID
-* ECADD
-* ECMUL
-* ECPAIRING
 
 ### TODOS: Instructions to consider if they should be added
 
