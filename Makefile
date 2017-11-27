@@ -3,7 +3,7 @@ K_VERSION=rvk
 # Common to all versions of K
 # ===========================
 
-.PHONY: all clean build tangle defn proofs split-tests test
+.PHONY: all clean build tangle defn proofs split-tests test vm-test blockchain-test
 
 all: build split-vm-tests
 
@@ -19,7 +19,7 @@ build: tangle .build/${K_VERSION}/ethereum-kompiled/extras/timestamp
 tangle: defn proofs
 
 defn_dir=.build/${K_VERSION}
-defn_files=${defn_dir}/ethereum.k ${defn_dir}/data.k ${defn_dir}/iele.k ${defn_dir}/analysis.k ${defn_dir}/krypto.k ${defn_dir}/verification.k
+defn_files=${defn_dir}/ethereum.k ${defn_dir}/data.k ${defn_dir}/iele.k ${defn_dir}/iele-binary.k ${defn_dir}/krypto.k
 defn: $(defn_files)
 
 .build/${K_VERSION}/%.k: %.md
@@ -88,14 +88,16 @@ passing_targets=${passing_tests:=.test}
 passing_vm_targets=${passing_vm_tests:=.test}
 passing_blockchain_targets=${passing_blockchain_tests:=.test}
 
-test: $(passing_vm_targets)
+test: $(passing_targets)
 vm-test: $(passing_vm_targets)
 blockchain-test: $(passing_blockchain_targets)
 
-tests/VMTests/%.test: tests/VMTests/% build
+tests/VMTests/%.test: tests/VMTests/% | build
 	./vmtest $<
-tests/BlockchainTests/%.test: tests/BlockchainTests/% build
+	touch $@
+tests/BlockchainTests/%.test: tests/BlockchainTests/% | build
 	./blockchaintest $<
+	touch $@
 
 tests/%/make.timestamp: tests/ethereum-tests/%.json tests/evm-to-iele/evm-to-iele
 	@echo "==   split: $@"

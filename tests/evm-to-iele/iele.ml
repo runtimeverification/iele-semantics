@@ -42,15 +42,12 @@ type iele_opcode = [
 | `NUMBER
 | `DIFFICULTY
 | `GASLIMIT
-| `MLOAD8
-| `MLOAD256
+| `MLOADN
 | `MLOAD
-| `MSTORE8
-| `MSTORE256
+| `MSTOREN
 | `MSTORE
 | `SLOAD
 | `SSTORE
-| `PC
 | `MSIZE
 | `GAS
 | `MOVE
@@ -60,12 +57,16 @@ type iele_opcode = [
 | `JUMPI of int
 | `JUMPDEST of int
 | `REGISTERS of int
+| `CALLDEST of int * int
+| `EXTCALLDEST of int * int
+| `FUNCTION of string
 | `LOG of int
 | `CREATE
-| `CALL of int * int
-| `CALLCODE of int * int
-| `DELEGATECALL of int * int
-| `STATICCALL of int * int
+| `COPYCREATE
+| `CALL of int * int * int
+| `CALLCODE of int * int * int
+| `DELEGATECALL of int * int * int
+| `STATICCALL of int * int * int
 | `LOCALCALL of int * int * int
 | `LOCALCALLI of int * int * int * int
 | `RETURN of int
@@ -123,17 +124,14 @@ let asm_iele_opcode op = match op with
 | `NUMBER -> "\x43"
 | `DIFFICULTY -> "\x44"
 | `GASLIMIT -> "\x45"
-| `MLOAD8 -> "\x50"
-| `MLOAD256 -> "\x51"
-| `MLOAD -> "\x52"
-| `MSTORE8 -> "\x53"
-| `MSTORE256 -> "\x54"
-| `MSTORE -> "\x55"
-| `SLOAD -> "\x56"
-| `SSTORE -> "\x57"
-| `PC -> "\x58"
-| `MSIZE -> "\x59"
-| `GAS -> "\x5a"
+| `MLOADN -> "\x50"
+| `MLOAD -> "\x51"
+| `MSTOREN -> "\x52"
+| `MSTORE -> "\x53"
+| `SLOAD -> "\x54"
+| `SSTORE -> "\x55"
+| `MSIZE -> "\x56"
+| `GAS -> "\x57"
 | `MOVE -> "\x60"
 | `LOADPOS -> "\x61"
 | `LOADNEG -> "\x62"
@@ -141,19 +139,23 @@ let asm_iele_opcode op = match op with
 | `JUMP i -> "\x64" ^ (IeleUtil.be_int_width (Z.of_int i) 16)
 | `JUMPI i -> "\x65" ^ (IeleUtil.be_int_width (Z.of_int i) 16)
 | `JUMPDEST i -> "\x66" ^ (IeleUtil.be_int_width (Z.of_int i) 16)
+| `CALLDEST (lbl,args) -> "\x67" ^ (IeleUtil.be_int_width (Z.of_int lbl) 16) ^ (IeleUtil.be_int_width (Z.of_int args) 16)
+| `EXTCALLDEST (lbl,args) -> "\x68" ^ (IeleUtil.be_int_width (Z.of_int lbl) 16) ^ (IeleUtil.be_int_width (Z.of_int args) 16)
+| `FUNCTION (name) -> "\x69" ^ (IeleUtil.be_int_width (Z.of_int (String.length name)) 16) ^ name
 | `LOG(n) ->
   let byte = 0xa0 + n in
   let ch = Char.chr byte in
   IeleUtil.string_of_char ch
-| `CREATE -> "\xf0"
-| `CALL(nargs,nreturn) -> "\xf1" ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
-| `CALLCODE(nargs,nreturn) -> "\xf2" ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
-| `DELEGATECALL(nargs,nreturn) -> "\xf3" ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
-| `STATICCALL(nargs,nreturn) -> "\xf4" ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
-| `RETURN(nreturn) -> "\xf5" ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
-| `REVERT(nreturn) -> "\xf6" ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
-| `LOCALCALL (call,nargs,nreturn) -> "\xf7" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
-| `LOCALRETURN(nreturn) -> "\xf5" ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `CREATE -> "\xf0\x00\x00\x00\x00"
+| `COPYCREATE -> "\xf1\x00\x00\x00\x00"
+| `CALL(call,nargs,nreturn) -> "\xf2" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `CALLCODE(call,nargs,nreturn) -> "\xf3" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `DELEGATECALL(call,nargs,nreturn) -> "\xf4" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `STATICCALL(call,nargs,nreturn) -> "\xf5" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `RETURN(nreturn) -> "\xf6" ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `REVERT(nreturn) -> "\xf7" ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `LOCALCALL (call,nargs,nreturn) -> "\xf8" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `LOCALRETURN(nreturn) -> "\xf6" ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
 | `INVALID -> "\xfe"
 | `SELFDESTRUCT -> "\xff"
 | `LOCALCALLI _ | `CALLDATALOAD | `CALLDATASIZE | `CALLDATACOPY -> invalid_arg "needs postprocessing"

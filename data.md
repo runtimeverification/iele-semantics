@@ -51,7 +51,8 @@ Primitives
 
 Primitives provide the basic conversion from K's sorts `Int` and `Bool` to IELE's words.
 
--   `chop` interperets an integers modulo $2^256$.
+-   `chop` interperets an integers modulo $2^256$. This is used when interpreting
+    arbitrary precision integers as memory indices.
 
 ```{.k .uiuck .rvk}
     syntax Int ::= chop ( Int ) [function]
@@ -75,50 +76,14 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to IELE'
     rule word2Bool( W ) => true  requires W =/=K 0
 ```
 
--   `#ifInt_#then_#else_#fi` provides a conditional in `Int` expressions.
--   `#ifSet_#then_#else_#fi` provides a conditional in `Set` expressions.
-
-```{.k .uiuck .rvk}
-    syntax Int ::= "#ifInt" Bool "#then" Int "#else" Int "#fi" [function, smtlib(ite)]
-    syntax Set ::= "#ifSet" Bool "#then" Set "#else" Set "#fi" [function]
- // ---------------------------------------------------------------------
-```
-
-If we don't place the `Bool` condition as a side-condition for UIUC-K, it will attempt to only do an "implies-check" instead of full unification (which is problematic when `B` is symbolic during proving).
-
-```{.k .uiuck}
-    rule #ifInt B #then W #else _ #fi => W requires B
-    rule #ifInt B #then _ #else W #fi => W requires notBool B
-
-    rule #ifSet B #then W #else _ #fi => W requires B
-    rule #ifSet B #then _ #else W #fi => W requires notBool B
-```
-
-```{.k .rvk}
-    rule #ifInt A #then B #else C #fi => #if A #then B #else C #fi [macro]
-    rule #ifSet A #then B #else C #fi => #if A #then B #else C #fi [macro]
-```
-
 ### Empty Account
 
--   `.Account` represents the case when an account ID is referenced in the yellowpaper, but
+-   `.Account` represents the case when an account ID is needed, but
     the actual value of the account ID is the empty set. This is used, for example, when
     referring to the destination of a message which creates a new contract.
 
 ```{.k .uiuck .rvk}
     syntax Account ::= ".Account" | Int
-```
-
-### Symbolic Words
-
--   `#symbolicWord` generates a fresh existentially-bound symbolic word.
-
-Note: Comment out this block (remove the `k` tag) if using RV K.
-
-```{.k .uiuck}
-    syntax Int ::= "#symbolicWord" [function]
- // -----------------------------------------
-    rule #symbolicWord => ?X:Int requires ?X >=Int 0 andBool ?X <=Int pow256
 ```
 
 Arithmetic
@@ -150,18 +115,11 @@ You could alternatively calculate `I1 %Int I2`, then add one to the normal integ
     rule log256Int(N) => log2Int(N) /Int 8
 ```
 
-RV-K has a more efficient power-modulus operator.
+Here we provide simple syntactic sugar over our power-modulus operator.
 
 ```{.k .uiuck .rvk}
     syntax Int ::= powmod(Int, Int, Int) [function]
  // -----------------------------------------------
-```
-
-```{.k .uiuck}
-    rule powmod(W0, W1, W2) => (W0 ^Int W1) %Int W2
-```
-
-```{.k .rvk}
     rule powmod(W0, W1, W2) => W0 ^%Int W1 W2 requires W2 =/=Int 0
     rule powmod(W0, W1, 0) => 0
 ```
@@ -195,6 +153,7 @@ Bitwise Operators
 ```
 
 -   `signextend(N, W)` sign-extends from byte $N$ of $W$ (0 being LSB).
+-   `twos(N, W)` converts a signed integer from byte $N$ of $W$ to twos-complement representation (0 being LSB).
 
 ```{.k .uiuck .rvk}
     syntax Int ::= signextend ( Int , Int ) [function]
@@ -233,21 +192,29 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
 ```
 
 -   `_++_` acts as `WordStack` append.
+-   `#rev` reverses a `WordStack`.
 -   `#take(N , WS)` keeps the first $N$ elements of a `WordStack` (passing with zeros as needed).
 -   `#drop(N , WS)` removes the first $N$ elements of a `WordStack`.
 -   `WS [ N .. W ]` access the range of `WS` beginning with `N` of width `W`.
 
 ```{.k .uiuck .rvk}
-    syntax WordStack ::= WordStack "++" WordStack [function]
- // --------------------------------------------------------
+    syntax WordStack ::= WordStack "++" WordStack [function, right]
+ // --------------------------------------------------------------
     rule .WordStack ++ WS' => WS'
     rule (W : WS)   ++ WS' => W : (WS ++ WS')
 
+    syntax WordStack ::= #rev ( WordStack , WordStack ) [function]
+ // --------------------------------------------------------------
+    rule #rev ( .WordStack , WS ) => WS
+    rule #rev ( W : WS1 , WS2 ) => #rev(WS1, W : WS2)
+
     syntax WordStack ::= #take ( Int , WordStack ) [function]
- // ---------------------------------------------------------
-    rule #take(0, WS)         => .WordStack
-    rule #take(N, .WordStack) => 0 : #take(N -Int 1, .WordStack) requires N >Int 0
-    rule #take(N, (W : WS))   => W : #take(N -Int 1, WS)         requires N >Int 0
+                       | #take ( Int , WordStack , WordStack ) [function, klabel(#takeAux)]
+ // ---------------------------------------------------------------------------------------
+    rule #take(N, WS)             => #take(N, WS, .WordStack)
+    rule #take(0, _, WS)          => #rev(WS, .WordStack)
+    rule #take(N, .WordStack, WS) => #take(N -Int 1, .WordStack, 0 : WS)  requires N >Int 0
+    rule #take(N, (W : WS1), WS2) => #take(N -Int 1, WS1,        W : WS2) requires N >Int 0
 
     syntax WordStack ::= #drop ( Int , WordStack ) [function]
  // ---------------------------------------------------------
@@ -262,6 +229,7 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
 
 -   `WS [ N ]` accesses element $N$ of $WS$.
 -   `WS [ N := W ]` sets element $N$ of $WS$ to $W$ (padding with zeros as needed).
+-   `WS [ N := WS' ]` sets elements starting at $N$ of $WS$ to $WS'$ (padding with zeros as needed).
 
 ```{.k .uiuck .rvk}
     syntax Int ::= WordStack "[" Int "]" [function]
@@ -272,9 +240,13 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
 
     syntax WordStack ::= WordStack "[" Int ":=" Int "]" [function]
  // --------------------------------------------------------------
-    rule (W0 : WS)  [ 0 := W ] => W  : WS
-    rule .WordStack [ N := W ] => 0  : (.WordStack [ N -Int 1 := W ]) requires N >Int 0
-    rule (W0 : WS)  [ N := W ] => W0 : (WS [ N -Int 1 := W ])         requires N >Int 0
+    rule (W0 : WS)  [ 0 := W::Int ] => W  : WS
+    rule .WordStack [ N := W::Int ] => 0  : (.WordStack [ N -Int 1 := W ]) requires N >Int 0
+    rule (W0 : WS)  [ N := W::Int ] => W0 : (WS [ N -Int 1 := W ])         requires N >Int 0
+
+    syntax WordStack ::= WordStack "[" Int ":=" WordStack "]" [function, klabel(assignWordStackRange)]
+ // --------------------------------------------------------------------------------------------------
+    rule WS1 [ N := WS2 ] => #take(N, WS1) ++ WS2 ++ #drop(N +Int #sizeWordStack(WS2), WS1)
 ```
 
 -   `#sizeWordStack` calculates the size of a `WordStack`.
@@ -307,12 +279,19 @@ Memory
 ------
 
 -   `.Array` is an arbitrary length array of zeroes.
+-   `.Memory` is an arbitrary length array of byte buffers.
+
+We use the impure attribute on the function definitions because the Array sort in a
+fast backend is mutable, so we need to ensure we do not cache identical arrays for each time
+we call this function.
 
 ```{.k .uiuck .rvk}
 
     syntax Array ::= ".Array" [function, impure]
- // ------------------------------------
+                   | ".Memory" [function, impure]
+ // ---------------------------------------------
     rule .Array => makeArray(pow30, 0)
+    rule .Memory => makeArray(pow30, .WordStack)
 ```
 
 Byte Arrays
@@ -398,7 +377,7 @@ Addresses
                  | #sender ( String )                                                                 [function, klabel(#senderAux2)]
  // ---------------------------------------------------------------------------------------------------------------------------------
     rule #sender(TN, TP, TG, TT, TV, DATA, TW, TR, TS)
-      => #sender(#unparseByteStack(#parseHexBytes(Keccak256(#rlpEncodeLength(#rlpEncodeWordStack(TN : TP : TG : .WordStack) +String #rlpEncodeAccount(TT) +String #rlpEncodeWord(TV) +String #rlpEncodeString(DATA), 192)))), TW, #unparseByteStack(TR), #unparseByteStack(TS))
+      => #sender(#unparseByteStack(#parseHexBytes(Keccak256(#rlpEncodeLength(#rlpEncodeWordStack(TN : TP : TG : .WordStack) +String #rlpEncodeAccount(TT) +String #rlpEncodeWordUnsigned(TV) +String #rlpEncodeString(DATA), 192)))), TW, #unparseByteStack(TR), #unparseByteStack(TS))
 
     rule #sender(HT, TW, TR, TS) => #sender(ECDSARecover(HT, TW, TR, TS))
 
@@ -448,8 +427,8 @@ Addresses
 Word Map
 --------
 
-Most of IELE data is held in finite maps.
-We are using the polymorphic `Map` sort for these word maps.
+Most of IELE data is held in finite arrays.
+We are using the polymorphic `Array` sort for these word maps.
 
 -   `WM [ N := WS ]` assigns a contiguous chunk of $WM$ to $WS$ starting at position $W$.
 -   `#range(M, START, WIDTH)` reads off $WIDTH$ elements from $WM$ beginning at position $START$ (padding with zeros as needed).
@@ -457,8 +436,8 @@ We are using the polymorphic `Map` sort for these word maps.
 ```{.k .uiuck .rvk}
     syntax Array ::= Array "[" Int ":=" WordStack "]" [function]
  // --------------------------------------------------------
-    rule WM[ N := .WordStack ] => WM
-    rule WM[ N := W : WS     ] => (WM[chop(N) <- W])[chop(N) +Int 1 := WS]
+    rule WM::Array[ N := .WordStack ] => WM
+    rule WM::Array[ N := W : WS     ] => (WM[chop(N) <- W])[N +Int 1 := WS]
 
     syntax WordStack ::= #range ( Array , Int , Int )            [function]
     syntax WordStack ::= #range ( Array , Int , Int , WordStack) [function, klabel(#rangeAux)]
@@ -584,10 +563,15 @@ Encoding
 --------
 
 -   `#rlpEncodeWord` RLP encodes a single IELE word.
+-   `#rlpEncodeWordUnsigned` RLP encodes a single EVM word (i.e., unsigned).
+-   `#rlpEncodeBytes` RLP encodes a single integer as a fixed-width unsigned byte buffer.
+-   `#rlpEncodeWordStack` RLP encodes a list of EVM words (i.e., unsigned).
 -   `#rlpEncodeString` RLP encodes a single `String`.
+-   `#rlpEncodeAccount` RLP encodes a single account ID.
 
 ```{.k .uiuck .rvk}
     syntax String ::= #rlpEncodeWord ( Int )            [function]
+                    | #rlpEncodeWordUnsigned ( Int )    [function]
                     | #rlpEncodeBytes ( Int , Int )     [function]
                     | #rlpEncodeWordStack ( WordStack ) [function]
                     | #rlpEncodeString ( String )       [function]
@@ -597,10 +581,14 @@ Encoding
     rule #rlpEncodeWord(WORD) => chrChar(WORD) requires WORD >Int 0 andBool WORD <Int 128
     rule #rlpEncodeWord(WORD) => #rlpEncodeLength(#unparseByteStack(#asSignedBytes(WORD)), 128) requires WORD >=Int 128
 
+    rule #rlpEncodeWordUnsigned(0) => "\x80"
+    rule #rlpEncodeWordUnsigned(WORD) => chrChar(WORD) requires WORD >Int 0 andBool WORD <Int 128
+    rule #rlpEncodeWordUnsigned(WORD) => #rlpEncodeLength(#unparseByteStack(#asUnsignedBytes(WORD)), 128) requires WORD >=Int 128
+
     rule #rlpEncodeBytes(WORD, LEN) => #rlpEncodeString(#unparseByteStack(#padToWidth(LEN, #asUnsignedBytes(WORD))))
 
     rule #rlpEncodeWordStack(.WordStack) => ""
-    rule #rlpEncodeWordStack(W : WS)     => #rlpEncodeWord(W) +String #rlpEncodeWordStack(WS)
+    rule #rlpEncodeWordStack(W : WS)     => #rlpEncodeWordUnsigned(W) +String #rlpEncodeWordStack(WS)
 
     rule #rlpEncodeString(STR) => STR                        requires lengthString(STR) ==Int 1 andBool ordChar(STR) <Int 128
     rule #rlpEncodeString(STR) => #rlpEncodeLength(STR, 128) [owise]
@@ -621,6 +609,7 @@ Decoding
 
 -   `#rlpDecode` RLP decodes a single `String` into a `JSON`.
 -   `#rlpDecodeList` RLP decodes a single `String` into a `JSONList`, interpereting the string as the RLP encoding of a list.
+-   `#pushLen` and `#pushOffset` decode a `WordStack` into a single string in an RLP-like encoding which does not allow lists in its structure.
 
 ```{.k .uiuck .rvk}
     syntax JSON ::= #rlpDecode(String)               [function]

@@ -42,15 +42,12 @@ type iele_opcode = [
 | `NUMBER
 | `DIFFICULTY
 | `GASLIMIT
-| `MLOAD8
-| `MLOAD256
+| `MLOADN
 | `MLOAD
-| `MSTORE8
-| `MSTORE256
+| `MSTOREN
 | `MSTORE
 | `SLOAD
 | `SSTORE
-| `PC
 | `MSIZE
 | `GAS
 | `MOVE
@@ -60,12 +57,16 @@ type iele_opcode = [
 | `JUMPI of int
 | `JUMPDEST of int
 | `REGISTERS of int
+| `CALLDEST of int * int
+| `EXTCALLDEST of int * int
+| `FUNCTION of string
 | `LOG of int
 | `CREATE
-| `CALL of int * int
-| `CALLCODE of int * int
-| `DELEGATECALL of int * int
-| `STATICCALL of int * int
+| `COPYCREATE
+| `CALL of int * int * int
+| `CALLCODE of int * int * int
+| `DELEGATECALL of int * int * int
+| `STATICCALL of int * int * int
 | `LOCALCALL of int * int * int
 | `LOCALCALLI of int * int * int * int
 | `RETURN of int
