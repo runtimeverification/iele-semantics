@@ -19,13 +19,18 @@ build: tangle .build/${K_VERSION}/ethereum-kompiled/extras/timestamp
 tangle: defn proofs
 
 defn_dir=.build/${K_VERSION}
-defn_files=${defn_dir}/ethereum.k ${defn_dir}/data.k ${defn_dir}/iele.k ${defn_dir}/iele-binary.k ${defn_dir}/krypto.k
+defn_files=${defn_dir}/ethereum.k ${defn_dir}/data.k ${defn_dir}/iele.k ${defn_dir}/iele-binary.k ${defn_dir}/krypto.k ${defn_dir}/iele-syntax.k
 defn: $(defn_files)
 
 .build/${K_VERSION}/%.k: %.md
 	@echo "==  tangle: $@"
 	mkdir -p $(dir $@)
 	pandoc-tangle --from markdown --to code-k --code ${K_VERSION} $< > $@
+
+.build/${K_VERSION}/iele-syntax.k: iele-syntax/iele-syntax.k
+	@echo "==  copy: $@"
+	mkdir -p $(dir $@)
+	cp $< $@
 
 proof_dir=tests/proofs
 proof_files=${proof_dir}/sum-to-n-spec.k \
