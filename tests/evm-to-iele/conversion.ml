@@ -784,7 +784,7 @@ let alloc_registers (ops: iele_op list) : iele_op list =
     regbits := !regbits + 1;
     regcount := !regcount asr 1
   done;
-  VoidOp(`REGISTERS !regbits,[]) :: VoidOp(`FUNCTION("deposit"),[]) :: VoidOp(`FUNCTION("iele.ecrec"),[]) :: VoidOp(`FUNCTION("iele.id"),[]) :: VoidOp(`FUNCTION("iele.ecadd"),[]) :: VoidOp(`FUNCTION("iele.ecmul"),[]) :: VoidOp(`CALLDEST(0, 0), []) :: (lbl_ops @ dangling_jumpdests) 
+  VoidOp(`REGISTERS(!regbits + 1),[]) :: VoidOp(`FUNCTION("deposit"),[]) :: VoidOp(`FUNCTION("iele.ecrec"),[]) :: VoidOp(`FUNCTION("iele.id"),[]) :: VoidOp(`FUNCTION("iele.ecadd"),[]) :: VoidOp(`FUNCTION("iele.ecmul"),[]) :: VoidOp(`CALLDEST(0, 0), []) :: (lbl_ops @ dangling_jumpdests) 
 
 let max_val = Z.sub (Z.shift_left Z.one 255) Z.one
 
