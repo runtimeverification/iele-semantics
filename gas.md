@@ -183,7 +183,7 @@ gas/memory) to contain that size.
     then result is 0; otherwise, we approximate the cost to that of the
     basecase division method.
     ```hs
-    computationCost(MUL rREG wREG1 wREG2)
+    computationCost(DIV rREG wREG1 wREG2)
       | isZero wREG2 = bitCost + wordCopyCost
       | l2 > l1      = lenCost + wordCopyCost
       | otherwise    = divCost l1 l1
@@ -191,7 +191,7 @@ gas/memory) to contain that size.
   - if the result is 0 its size is 1, otherwise it's about the difference
     between sizes
     ```hs
-    estimatedResultSize(MUL rREG wREG1 wREG2)
+    estimatedResultSize(DIV rREG wREG1 wREG2)
       | isZero wREG2 = 1
       | l2 > l1      = 1
       | otherwise    = l1 - l2 + 1
@@ -201,7 +201,7 @@ gas/memory) to contain that size.
 * `MOD rREG wREG1 wREG2`
   - The complexity of `MOD` is similar to that of `DIV`
     ```hs
-    computationCost(MUL rREG wREG1 wREG2)
+    computationCost(MOD rREG wREG1 wREG2)
       | isZero wREG2 = bitCost + wordCopyCost
       | l2 > l1      = lenCost + l1*wordCopyCost
       | otherwise    = divCost l1 l2
@@ -209,7 +209,7 @@ gas/memory) to contain that size.
   - if the result is 0 its size is 1, otherwise it's the minimum of the
     operands sizes
     ```hs
-    estimatedResultSize(MUL rREG wREG1 wREG2)
+    estimatedResultSize(MOD rREG wREG1 wREG2)
       | isZero wREG2 = 1
       | otherwise    = min l1 l2
       where l1 = registerSize wREG1
@@ -275,7 +275,8 @@ gas/memory) to contain that size.
     computationCost(EXPMOD rREG wREG1 wREG2 wREG3)
       | isZero wREG2 = bitCost + wordCopyCost
       | otherwise    = divCost l1 l3 + constExpMod * 2 * l2 * (cc + divCost (l3+l3) l3)
-      where l2 = registerSize wREG2
+      where l1 = registerSize wREG1
+            l2 = registerSize wREG2
             l3 = registerSize wREG3
             cc = mulCost l3 l3
     ```
@@ -284,8 +285,7 @@ gas/memory) to contain that size.
     estimatedResultSize(EXPMOD rREG wREG1 wREG2)
       | isZero wREG2 = 1
       | otherwise    = l3
-      where l = registerSize wREG1
-            e = value wREG2
+      where l3 = registerSize wREG3
     ```
 
 #### SHA3
@@ -370,9 +370,7 @@ We assume that all operations interrogating the local state have complexity
     ```
 * `JUMPI`
     ```hs
-    computationCost(JUMPI(_) cREG)
-      | not (isZero cREG) = bitCost + jumpCost
-      | otherwise         = skipJumpiCost
+    computationCost(JUMPI(_) cREG) = bitCost + jumpCost
     ```
 * `LOCALCALL`
   Save the local context (including the current register stack memory
@@ -420,18 +418,23 @@ of the logged registers.
   computationCost(LOG0 rMEMSTART rMEMWIDTH) =
     logCost + value rMEMWIDTH * logDataCost
   computationCost(LOG1 rMEMSTART rMEMWIDTH rW0) =
-    logCost + value rMEMWIDTH * logDataCost + registerSize rW0 * logTopicWordCost
+    logCost + value rMEMWIDTH * logDataCost +
+    logTopicCost + registerSize rW0 * logDataCost
   computationCost(LOG2 rMEMSTART rMEMWIDTH rw0 rW1) =
     logCost + value rMEMWIDTH * logDataCost +
-      registerSize rW0 * logTopicWordCost + registerSize rW1 * logTopicWordCost
+    logTopicCost + registerSize rW0 * logDataCost +
+    logTopicCost + registerSize rW1 * logDataCost
   computationCost(LOG3 rMEMSTART rMEMWIDTH rw0 rW1 rW2) =
     logCost + value rMEMWIDTH * logDataCost +
-      registerSize rW0 * logTopicWordCost + registerSize rW1 * logTopicWordCost
-      registerSize rW2 * logTopicWordCost
+    logTopicCost + registerSize rW0 * logDataCost +
+    logTopicCost + registerSize rW1 * logDataCost +
+    logTopicCost + registerSize rW2 * logDataCost
   computationCost(LOG4 rMEMSTART rMEMWIDTH rw0 rW1 rW2 rW3) =
     logCost + value rMEMWIDTH * logDataCost +
-      registerSize rW0 * logTopicWordCost + registerSize rW1 * logTopicWordCost
-      registerSize rW2 * logTopicWordCost + registerSize rW3 * logTopicWordCost
+    logTopicCost + registerSize rW0 * logDataCost +
+    logTopicCost + registerSize rW1 * logDataCost +
+    logTopicCost + registerSize rW2 * logDataCost +
+    logTopicCost + registerSize rW3 * logDataCost
   ```
 
 #### Memory operations
