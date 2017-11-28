@@ -736,6 +736,34 @@ of the logged registers.
     (registerSize wVALUE - storeCellSize(value wIndex))
   ```
 
+#### Register manipulations
+* `MOVE` copies a value from one register to another
+  ```hs
+  computationcost(MOVE(destREG, sourceREG)) =
+      wordCopyCost * registerSize(sourceREG)
+  memoryDelta(MOVE(destREG, sourceREG)) =
+      registerSize(sourceREG) - registerSize(destREG)
+  ```
+* `LOADPOS` loads an immediate (positive) value into a register
+  ```hs
+  computationcost(LOADPOS(destREG, SOURCE)) =
+      wordCopyCost * registerSize(SOURCE)
+  memoryDelta(LOADPOS(destREG, SOURCE)) =
+      registerSize(SOURCE) - registerSize(destREG)
+  ```
+* `LOADNEG` loads an immediate (positive) value into a register, negating it
+  first.
+
+  This assumes either a sign + number representation or a two's complement
+  with the source already in that form.
+
+  ```hs
+  computationcost(LOADPOS(destREG, SOURCE)) =
+      wordCopyCost * registerSize(SOURCE) + wordCost
+  memoryDelta(LOADPOS(destREG, SOURCE)) =
+      registerSize(SOURCE) - registerSize(destREG)
+  ```
+
 #### Account operations
 
 * `BALANCE`
@@ -830,18 +858,17 @@ Definitions
 
 * Check that GMP can check for 0 in constant time or update costs accordingly
 * Check that GMP can give number of limbs in constant time or update costs accordingly
+* Check that all background costs are accounted for (e.g. updating a register's)
+  metadata after an assignment.
 
 ### TODOS: Instructions to add
 
 * EXTCODESIZE
-* MOVE
 * CREATE
 * SELFDESTRUCT
 * INVALID
 * MLOADN
 * MSTOREN
-* LOADPOS
-* LOADNEG
 * COPYCREATE
 
 ### TODOS: Instructions to consider if they should be added
