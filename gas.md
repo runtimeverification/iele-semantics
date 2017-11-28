@@ -419,22 +419,18 @@ of the logged registers.
     logCost + value rMEMWIDTH * logDataCost
   computationCost(LOG1 rMEMSTART rMEMWIDTH rW0) =
     logCost + value rMEMWIDTH * logDataCost +
-    logTopicCost + registerSize rW0 * logDataCost
+    registerSize rW0 * logTopicWordCost
   computationCost(LOG2 rMEMSTART rMEMWIDTH rw0 rW1) =
     logCost + value rMEMWIDTH * logDataCost +
-    logTopicCost + registerSize rW0 * logDataCost +
-    logTopicCost + registerSize rW1 * logDataCost
+    registerSize rW0 * logTopicWordCost + registerSize rW1 * logTopicWordCost
   computationCost(LOG3 rMEMSTART rMEMWIDTH rw0 rW1 rW2) =
     logCost + value rMEMWIDTH * logDataCost +
-    logTopicCost + registerSize rW0 * logDataCost +
-    logTopicCost + registerSize rW1 * logDataCost +
-    logTopicCost + registerSize rW2 * logDataCost
+    registerSize rW0 * logTopicWordCost + registerSize rW1 * logTopicWordCost +
+    registerSize rW2 * logTopicWordCost
   computationCost(LOG4 rMEMSTART rMEMWIDTH rw0 rW1 rW2 rW3) =
     logCost + value rMEMWIDTH * logDataCost +
-    logTopicCost + registerSize rW0 * logDataCost +
-    logTopicCost + registerSize rW1 * logDataCost +
-    logTopicCost + registerSize rW2 * logDataCost +
-    logTopicCost + registerSize rW3 * logDataCost
+    registerSize rW0 * logTopicWordCost + registerSize rW1 * logTopicWordCost +
+    registerSize rW2 * logTopicWordCost + registerSize rW3 * logTopicWordCost
   ```
 
 #### Memory operations
