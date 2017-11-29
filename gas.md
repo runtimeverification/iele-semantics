@@ -784,8 +784,15 @@ of the logged registers.
 
 * `BALANCE`
   ```hs
-  computationCost(BALANCE) = balanceCost
+  computationCost(existing-account, BALANCE) = balanceCost
+  computationCost(non-existing-account, BALANCE) = newAccountCost + balanceCost
   estimatedResultSize(BALANCE) = balanceSize
+  ```
+* `EXTCODESIZE`
+  ```hs
+  computationCost(existing-account, EXTCODESIZE) = extCodeSizeCost
+  computationCost(non-existing-account, EXTCODESIZE) = newAccountCost + extCodeSizeCost
+  estimatedResultSize(EXTCODESIZE) = extCodeSizeSize
   ```
 * `SLOAD` In order to load the data from the storage, we first need to inspect
   the metadata to make sure we have enough gas to load it.  Hence, we will
@@ -877,10 +884,10 @@ Definitions
 * Check that all background costs are accounted for (e.g. updating a register's)
   metadata after an assignment.
 * Check that memory deltas are used properly everywhere (e.g. MLOAD).
+* Bill each use of #newAccount as using account storage space.
 
 ### TODOS: Instructions to add
 
-* EXTCODESIZE
 * CREATE
 * SELFDESTRUCT
 * COPYCREATE
