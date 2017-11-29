@@ -818,6 +818,59 @@ of the logged registers.
     refundableStoreCost * (registerSize wVALUE - storeCellSize(value wIndex))
   ```
 
+#### Account creation and destruction
+
+* `CREATE`
+  ```hs
+  computationCost(early-failing, CREATE) =
+    checkCreateCost + errorCodeSettingCost
+  computationCost(new-account-failing, CREATE) =
+    checkCreateCost + checkExistingNonemptyAccountCost + errorCodeSettingCost
+  computationCost(new-account-failing, CREATE) =
+    checkCreateCost + checkExistingNonemptyAccountCost + mapLookupCost +
+    checkCodeLengthCost + errorCodeSettingCost
+
+  computationCost(success, CREATE) =
+    checkCreateCost + checkExistingNonemptyAccountCost + mapLookupCost +
+    checkCodeLengthCost + createCostWithoutChecks + [depositCostWithoutChecks]
+
+  checkCreateCost = initialCallCheckCost(CALL)
+  newAddrCost = constant
+  createCostWithoutChecks =
+    contextSaveCost + newAccountWithoutChecksCost + accountTransferCost +
+    mkCreateCost + exceptionCost
+  newAccountWithoutChecksCost = constant
+  mkCreateCost = mkCreateConstantCost + initVMCost + initFunCost +
+    codeLoadingCost
+  -- TODO: the same cost exists for calls.
+  initVMCost = wordCopyCost * (sum [registerSize r | r <- rARGS]) + clearVMCost
+  -- TODO: the same cost exists for calls.
+  -- initFunCost = checkFunctionExistence + checkArgCountMatch +
+  --   constantInitFunCost
+
+  depositCostWithoutChecks = constant -- TODO - runs at the #end
+  ```
+* `SELFDESTRUCT`
+  TODO: Should selfDestructFinalizeTxCost be paid when there is an exception?
+  Do we care?
+  ```hs
+  computationCost(diff-account, SELFDESTRUCT) =
+    accountTransferCost + comparisonCost + setInsertCost +
+    refundComputationCost + selfDestructFinalizeTxCost
+  computationCost(same-account, SELFDESTRUCT) =
+    comparisonCost + setInsertCost + refundComputationCost +
+    selfDestructFinalizeTxCost
+  ```
+* `COPYCREATE`
+  TODO: There may be a difference in costs, but it's hard to check before
+  Dwight finishes his fix for the case when there is no ACCTCODE.
+  The only difference is that the map lookup for the code above is replaced by
+  the ACCTCODE lookup, and the lookup failure case may be different.
+  ```hs
+  computationCost(X, COPYCREATE) = computationCost(X, CREATE)
+  ```
+
+
 Definitions
 -----------
 
@@ -973,12 +1026,8 @@ Definitions
   metadata after an assignment.
 * Check that memory deltas are used properly everywhere (e.g. MLOAD).
 * Bill each use of #newAccount as using account storage space.
+* Account for #finalizeTx costs somehow.
 
-### TODOS: Instructions to add
-
-* CREATE
-* SELFDESTRUCT
-* COPYCREATE
 
 ### TODOS: Instructions to consider if they should be added
 
