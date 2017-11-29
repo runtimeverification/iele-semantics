@@ -27,11 +27,6 @@ defn: $(defn_files)
 	mkdir -p $(dir $@)
 	pandoc-tangle --from markdown --to code-k --code ${K_VERSION} $< > $@
 
-.build/${K_VERSION}/iele-syntax.k: iele-syntax/iele-syntax.k
-	@echo "==  copy: $@"
-	mkdir -p $(dir $@)
-	cp $< $@
-
 proof_dir=tests/proofs
 proof_files=${proof_dir}/sum-to-n-spec.k \
 			${proof_dir}/hkg/allowance-spec.k \

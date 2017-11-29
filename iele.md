@@ -62,6 +62,7 @@ In the comments next to each cell, we've marked which component of the yellowpap
                         <funcIds>     .Set </funcIds>
                         <exported>    .Set </exported>
                         <programSize> 0    </programSize>
+                        <contractCode> .Contract </contractCode>
                       </program>
                       <callDepth>    0          </callDepth>
                       <localCalls>   .List      </localCalls>
@@ -276,9 +277,10 @@ Simple commands controlling exceptions provide control-flow.
     syntax KItem ::= Exception
     syntax Exception ::= "#exception" | "#end" | "#revert"
  // ------------------------------------------
-    rule <k> EX:Exception ~> (_:Int    => .) ... </k>
+    rule <k> EX:Exception ~> (_:Int    => .)      ... </k>
     rule <k> EX:Exception ~> (_:Instruction => .) ... </k>
-    rule <k> EX:Exception ~> (_:LabeledBlocks => .) ... </k>
+    rule <k> EX:Exception ~> (_:Blocks => .)      ... </k>
+    rule <k> EX:Exception ~> (_:InternalOp => .)  ... </k>
 
 ```
 
@@ -297,7 +299,6 @@ Description of registers.
     rule <k> % REG:Int => REGS [ REG ] ... </k> <regs> REGS </regs>
     rule <k> @ REG:Int => REGS [ REG ] ... </k> <globalRegs> REGS </globalRegs>
 
-    syntax Ints ::= List{Int, ","} [klabel(operandList)]
     syntax Operands ::= Ints
     syntax NonEmptyOperands ::= Operands
     syntax KResult ::= Ints
@@ -306,15 +307,15 @@ Description of registers.
 
     syntax String ::= IeleName2String ( IeleName ) [function, hook(STRING.token2string)]
  // ----------------------------
-    rule @ NAME:NumericIeleName => @ String2Int(IeleName2String(NAME))
-    rule % NAME:NumericIeleName => % String2Int(IeleName2String(NAME))
+    rule @ NAME:NumericIeleName => @ String2Int(IeleName2String(NAME)) requires notBool isInt(NAME)
+    rule % NAME:NumericIeleName => % String2Int(IeleName2String(NAME)) requires notBool isInt(NAME)
 
     syntax LValues ::= #regRange ( Int ) [function]
                      | #regRange ( Int , Int ) [function, klabel(#regRangeAux)]
  // ------------------------------------------------------------------------
     rule #regRange(N) => #regRange(0, N)
     rule #regRange(_, 0) => .LValues
-    rule #regRange(N, 1) => % N
+    rule #regRange(N, 1) => % N , .LValues
     rule #regRange(N, M) => % N , #regRange(N +Int 1, M -Int 1) [owise]
 
     syntax Int ::= #sizeRegs ( Operands ) [function]
@@ -359,14 +360,14 @@ Execution follows a simple cycle where first the state is checked for exceptions
 
 ```{.k .uiuck .rvk}
     rule <mode> EXECMODE </mode>
-         <k> OP:Instruction OPS:Instructions BLOCKS:LabeledBlocks
+         <k> OP::Instruction OPS::Instructions BLOCKS::LabeledBlocks
           => #exceptional? [ OP ] ~> OP
           ~> OPS BLOCKS
          ...
          </k>
       requires EXECMODE in #normalModes
 
-    rule .Instructions BLOCKS:LabeledBlocks => BLOCKS
+    rule .Instructions BLOCKS::LabeledBlocks => BLOCKS
 
     syntax Set ::= "#normalModes" [function]
  // ----------------------------------------
@@ -440,6 +441,8 @@ Some checks if an opcode will throw an exception are relatively quick and done u
 
 ```{.k .uiuck .rvk}
     syntax InternalOp ::= "#exec" Instruction
+    syntax KResult ::= AssignInst
+    syntax KResult ::= JumpInst
  // ----------------------------------------
     rule <k> OP:Instruction => #gas [ #addr?(OP) ] ~> #exec #addr?(OP) ... </k> requires isKResult(OP)
 ```
@@ -705,7 +708,7 @@ Executing the INVALID instruction results in an exception.
                       | "deposit" [token]
                       | "init" [token]
  // ---------------------------
-    rule #emptyCode => contract Main !0 { define public @deposit ( 0 ) { ret .NonEmptyOperands .LabeledBlocks } } [macro]
+    rule #emptyCode => contract Main !0 { define public @deposit ( 0 ) { ret .NonEmptyOperands .Instructions .LabeledBlocks } } .Contract [macro]
 ```
 
 ### Register Manipulations
@@ -728,12 +731,12 @@ Some operators don't calculate anything, they just manipulate the state of regis
     rule <k> #load @ REG VALUE => . ... </k>
          <globalRegs> REGS => REGS [ REG <- VALUE ] </globalRegs>
 
-    syntax InternalOp ::= "#load" LValues Ints
+    syntax InternalOp ::= "#loads" LValues Ints
  // ---------------------------------------
-    rule <k> #load (REG , REGS) (VALUE , VALUES) => #load REG VALUE ~> #load REGS VALUES     ... </k>
-    rule <k> #load .LValues     .Ints            => .                                        ... </k>
-    rule <k> #load (REG , REGS) .Ints            => #exception                               ... </k>
-    rule <k> #load .LValues     (VALUE , VALUES) => #exception                               ... </k>
+    rule <k> #loads (REG , REGS) (VALUE , VALUES) => #load REG VALUE ~> #loads REGS VALUES ... </k>
+    rule <k> #loads .LValues     .Ints            => .K                                    ... </k>
+    rule <k> #loads (REG , REGS) .Ints            => #exception                            ... </k>
+    rule <k> #loads .LValues     (VALUE , VALUES) => #exception                            ... </k>
 ```
 
 ### Local Memory
@@ -850,13 +853,40 @@ The `JUMP*` family of operations affect the current program counter.
     rule <k> #exec br 0, LABEL          => .    ... </k>
 
     syntax LocalCall ::= "{" Blocks "|" IeleName "|" LValues "|" Array "}"
+    syntax Bool ::= isIeleBuiltin(IeleName) [function]
  // -----------------------------------------------------------
 
-    rule <k> #exec RETURNS = call @ LABEL ( ARGS ) ~> OPS:Blocks => #load #regRange(#sizeRegs(ARGS)) ARGS ~> #execute ... </k>
+    rule <k> #exec RETURNS = call @ LABEL ( ARGS ) ~> OPS:Blocks => #loads #regRange(#sizeRegs(ARGS)) ARGS ~> #execute ... </k>
          <fid> FUNC => LABEL </fid>
          <regs> REGS => .Array </regs>
          <localCalls> .List => ListItem({ OPS | FUNC | RETURNS | REGS }) ... </localCalls>
       requires notBool isIeleBuiltin(LABEL)
+
+    rule isIeleBuiltin(iele.invalid) => true
+    rule isIeleBuiltin(iele.gas) => true
+    rule isIeleBuiltin(iele.gasprice) => true
+    rule isIeleBuiltin(iele.gaslimit) => true
+    rule isIeleBuiltin(iele.coinbase) => true
+    rule isIeleBuiltin(iele.timestamp) => true
+    rule isIeleBuiltin(iele.number) => true
+    rule isIeleBuiltin(iele.difficulty) => true
+    rule isIeleBuiltin(iele.address) => true
+    rule isIeleBuiltin(iele.origin) => true
+    rule isIeleBuiltin(iele.caller) => true
+    rule isIeleBuiltin(iele.callvalue) => true
+    rule isIeleBuiltin(iele.msize) => true
+    rule isIeleBuiltin(iele.codesize) => true
+    rule isIeleBuiltin(iele.blockhash) => true
+    rule isIeleBuiltin(iele.balance) => true
+    rule isIeleBuiltin(iele.extcodesize) => true
+    rule isIeleBuiltin(iele.ecrec) => true
+    rule isIeleBuiltin(iele.sha256) => true
+    rule isIeleBuiltin(iele.rip160) => true
+    rule isIeleBuiltin(iele.id) => true
+    rule isIeleBuiltin(iele.ecadd) => true
+    rule isIeleBuiltin(iele.ecmul) => true
+    rule isIeleBuiltin(iele.ecpairing) => true
+    rule isIeleBuiltin( ... ) => false [owise]
 ```
 
 ### `STOP`, `REVERT`, and `RETURN`
@@ -866,7 +896,7 @@ The `JUMP*` family of operations affect the current program counter.
          <output> _ => VALUES </output>
          <localCalls> .List </localCalls>
 
-    rule <k> #exec ret VALUES ~> _:Blocks => #load RETURNS VALUES ~> OPS ... </k>
+    rule <k> #exec ret VALUES ~> _:Blocks => #loads RETURNS VALUES ~> OPS ... </k>
          <fid> _ => FUNC </fid>
          <regs> _ => REGS </regs>
          <localCalls> ListItem({ OPS | FUNC | RETURNS | REGS }) => .List ... </localCalls>
@@ -956,7 +986,7 @@ These operations interact with the account storage.
            ...
          </account>
 
-    rule <k> #exec sstore INDEX , VALUE => . ... </k>
+    rule <k> #exec sstore VALUE , INDEX => . ... </k>
          <id> ACCT </id>
          <account>
            <acctID> ACCT </acctID>
@@ -971,7 +1001,7 @@ These operations interact with the account storage.
          <schedule> SCHED </schedule>
          requires INDEX >=Int 0 andBool INDEX <Int pow256
 
-    rule <k> #exec sstore INDEX , VALUE => . ... </k>
+    rule <k> #exec sstore VALUE , INDEX => . ... </k>
          <id> ACCT </id>
          <account>
            <acctID> ACCT </acctID>
@@ -981,7 +1011,7 @@ These operations interact with the account storage.
       requires notBool (INDEX in_keys(STORAGE))
        andBool INDEX >=Int 0 andBool INDEX <Int pow256
 
-    rule <k> #exec sstore (INDEX => chop(INDEX)) , _ ... </k>
+    rule <k> #exec sstore _ , (INDEX => chop(INDEX)) ... </k>
       requires INDEX <Int 0 orBool INDEX >=Int pow256
 ```
 
@@ -1065,7 +1095,7 @@ The various `CALL*` (and other inter-contract control flow) operations will be d
     syntax KItem ::= #initVM ( Ints )
                    | #initFun ( IeleName , Int )
  // -----------------------------------------------------------------
-    rule <k> #initVM(ARGS) => #load #regRange(#sizeRegs(ARGS)) ARGS ... </k>
+    rule <k> #initVM(ARGS) => #loads #regRange(#sizeRegs(ARGS)) ARGS ... </k>
          <memoryUsed> _ => .Map    </memoryUsed>
          <output>     _ => .Ints   </output>
          <regs>       _ => .Array  </regs>
@@ -1106,7 +1136,7 @@ The various `CALL*` (and other inter-contract control flow) operations will be d
            => #popCallStack
            ~> #popWorldState
            ~> #popSubstate
-           ~> #load REG 0 ~> #refund GAVAIL ~> #load REGS OUT
+           ~> #load REG 0 ~> #refund GAVAIL ~> #loads REGS OUT
           ...
          </k>
          <output> OUT </output>
@@ -1117,7 +1147,7 @@ The various `CALL*` (and other inter-contract control flow) operations will be d
           => #popCallStack
           ~> #if EXECMODE ==K VMTESTS #then #popWorldState #else #dropWorldState #fi
           ~> #dropSubstate
-          ~> #load REG 1 ~> #refund GAVAIL ~> #if EXECMODE ==K VMTESTS #then .K #else #load REGS OUT #fi
+          ~> #load REG 1 ~> #refund GAVAIL ~> #if EXECMODE ==K VMTESTS #then .K #else #loads REGS OUT #fi
          ...
          </k>
          <output> OUT </output>
@@ -1144,7 +1174,7 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
 
     rule <k> #exec REG , REGS = callcode @ LABEL at ACCTTO ( ARGS ) send VALUE , gaslimit GCAP
           => #checkCall ACCTFROM VALUE
-          ~> #call ACCTFROM ACCTFROM ACCTTO FUNC Ccallgas(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, VALUE) VALUE VALUE ARGS false
+          ~> #call ACCTFROM ACCTFROM ACCTTO LABEL Ccallgas(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, VALUE) VALUE VALUE ARGS false
           ~> #return REGS REG
          ...
          </k>
@@ -1155,7 +1185,7 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
 
     rule <k> #exec REG , REGS = delegatecall @ LABEL at ACCTTO ( ARGS ) gaslimit GCAP
           => #checkCall ACCTFROM 0
-          ~> #call ACCTAPPFROM ACCTFROM ACCTTO FUNC Ccallgas(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, 0) 0 VALUE ARGS false
+          ~> #call ACCTAPPFROM ACCTFROM ACCTTO LABEL Ccallgas(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, 0) 0 VALUE ARGS false
           ~> #return REGS REG
          ...
          </k>
@@ -1168,7 +1198,7 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
 
     rule <k> #exec REG , REGS = staticcall @ LABEL at ACCTTO ( ARGS ) gaslimit GCAP
           => #checkCall ACCTFROM 0
-          ~> #call ACCTFROM ACCTTO ACCTTO FUNC Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0) 0 0 ARGS true
+          ~> #call ACCTFROM ACCTTO ACCTTO LABEL Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0) 0 0 ARGS true
           ~> #return REGS REG
          ...
          </k>
@@ -1236,6 +1266,11 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
          </account>
          <activeAccounts> ... ACCTTO |-> (EMPTY => false) ... </activeAccounts>
 
+    syntax Contract ::= #subcontract ( Contract , IeleName ) [function]
+ // -------------------------------------------------------
+    rule #subcontract ( (contract NAME ! _ { _ } #as CONTRACT) _, NAME ) => CONTRACT
+    rule #subcontract ( CONTRACT CONTRACTS, NAME ) => CONTRACT #subcontract(CONTRACTS, NAME) [owise]
+
     syntax KItem ::= "#codeDeposit" Int Int Contract LValue
                    | "#mkCodeDeposit" Int Int Contract LValue
                    | "#finishCodeDeposit" Int Contract LValue
@@ -1278,7 +1313,7 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
 ```{.k .uiuck .rvk}
     rule <k> #exec REG = create NAME ( ARGS ) send VALUE
           => #checkCreate ACCT VALUE
-          ~> #create ACCT #newAddr(ACCT, NONCE) #if Gstaticcalldepth << SCHED >> #then GAVAIL #else #allBut64th(GAVAIL) #fi VALUE #subcontract(CODE) ARGS
+          ~> #create ACCT #newAddr(ACCT, NONCE) #if Gstaticcalldepth << SCHED >> #then GAVAIL #else #allBut64th(GAVAIL) #fi VALUE #subcontract(CODE, NAME) ARGS
           ~> #codeDeposit #newAddr(ACCT, NONCE) #contractSize(CODE, NAME) #subcontract(CODE, NAME) REG
          ...
          </k>
@@ -1288,9 +1323,9 @@ For each `CALL*` operation, we make a corresponding call to `#call` and a state-
          <account>
            <acctID> ACCT </acctID>
            <nonce> NONCE </nonce>
-           <code> CODE </code>
            ...
          </account>
+         <contractCode> CODE </contractCode>
 
     rule <k> #exec REG = copycreate ACCTCODE ( ARGS ) send VALUE
           => #checkCreate ACCT VALUE
@@ -1416,6 +1451,7 @@ Precompiled Contracts
 
 ```{.k .uiuck .rvk}
     syntax Instruction ::= PrecompiledOp
+    syntax KResult ::= PrecompiledOp
 
     syntax PrecompiledOp ::= "ECREC"
  // --------------------------------
@@ -1573,7 +1609,7 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     rule <k> #gasExec(SCHED, log IDX , _:Int , _:Int , _:Int)         => (Glog < SCHED > +Int (Glogdata < SCHED > *Int #sizeWordStack({LM [ IDX ]}:>WordStack)) +Int (3 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
     rule <k> #gasExec(SCHED, log IDX , _:Int , _:Int , _:Int,  _:Int) => (Glog < SCHED > +Int (Glogdata < SCHED > *Int #sizeWordStack({LM [ IDX ]}:>WordStack)) +Int (4 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
 
-    rule <k> #gasExec(SCHED, _ = call _ at ACCTO ( _ ) send VALUE , gaslimit GCAP) => Ccall(SCHED, ACCTTO,   ACCTS, GCAP, GAVAIL, VALUE) ... </k>
+    rule <k> #gasExec(SCHED, _ = call _ at ACCTTO ( _ ) send VALUE , gaslimit GCAP) => Ccall(SCHED, ACCTTO,   ACCTS, GCAP, GAVAIL, VALUE) ... </k>
          <activeAccounts> ACCTS </activeAccounts>
          <gas> GAVAIL </gas>
 
@@ -1587,7 +1623,7 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
          <activeAccounts> ACCTS </activeAccounts>
          <gas> GAVAIL </gas>
 
-    rule <k> #gasExec(SCHED, _ = staticcall _ at ACCTO ( _ ) gaslimit GCAP) => Ccall(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0) ... </k>
+    rule <k> #gasExec(SCHED, _ = staticcall _ at ACCTTO ( _ ) gaslimit GCAP) => Ccall(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0) ... </k>
          <activeAccounts> ACCTS </activeAccounts>
          <gas> GAVAIL </gas>
 
@@ -1650,8 +1686,8 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     rule <k> #gasExec(SCHED, _:MulModInst)    => Gmid < SCHED > ... </k>
     rule <k> #gasExec(SCHED, _:ExpModInst)    => Gmid < SCHED > ... </k>
     rule <k> #gasExec(SCHED, _:JumpInst)      => Gmid < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:LocalCallInst) => Gmid < SCHED > ... </k>
     rule <k> #gasExec(SCHED, _:ReturnInst)    => Gmid < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, _ = call @ NAME ( _ )) => Gmid < SCHED > ... </k> requires notBool isIeleBuiltin(NAME)
 
     // Whigh
     rule <k> #gasExec(SCHED, _:CondJumpInst) => Ghigh < SCHED > ... </k>
@@ -1949,18 +1985,21 @@ IELE Program Representations
 
 ```{.k .uiuck .rvk}
     syntax ProgramCell ::= #loadCode ( Contract ) [function]
+                         | #loadCode ( Contract , Contract ) [klabel(#loadCodeAux), function]
  // -------------------------------------------------------------------------------------------------
-    rule #loadCode(contract _ ! _ { _ } CONTRACTS) => #loadCode(CONTRACTS)
+    rule #loadCode(contract _ ! _ { _ } CONTRACTS, CONTRACT) => #loadCode(CONTRACTS, CONTRACT)
       requires CONTRACTS =/=K .Contract
-    rule #loadCode(contract _ ! SIZE { DEFS })
+    rule #loadCode(contract _ ! SIZE { DEFS }, CONTRACT)
       => #loadDeclarations(DEFS,
          <program>
            <functions> .Bag </functions>
            <funcIds> .Set </funcIds>
            <programSize> SIZE </programSize>
            <exported> .Set </exported>
+           <contractCode> CONTRACT </contractCode>
          </program>)
       [owise]
+     rule #loadCode(CONTRACT) => #loadCode(CONTRACT, CONTRACT)
 
     syntax ProgramCell ::= #loadDeclarations ( TopLevelDefinitions , ProgramCell ) [function]
                          | #loadFunction  ( TopLevelDefinitions , Blocks , ProgramCell , IeleName , FunctionCell ) [function]

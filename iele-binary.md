@@ -15,7 +15,7 @@ module IELE-BINARY
 After interpreting the strings representing programs as a `WordStack`, it should be changed into a `Contract` for use by the IELE semantics.
 
 -   `#dasmContract` interperets `WordStack` as a `Contract`.
--   `#dasmRegs` disassembles the registers for a single instruction.
+-   `#dasmInstruction` disassembles the registers for a single instruction.
 -   `#dasmOpCode` interperets a `Int` as an `OpCode`.
 
 ```{.k .uiuck .rvk}
@@ -43,20 +43,18 @@ After interpreting the strings representing programs as a `WordStack`, it should
                     | SELFDESTRUCT ()
                     | LOG0 ()
 
-    syntax CreateOp ::= CREATE ( Int , Int )
-
-    syntax CopyCreateOp ::= COPYCREATE ( Int )
-
-    syntax CallOp ::= CALL ( Int , Int , Int )
-                    | CALLCODE ( Int , Int , Int )
-
-    syntax CallSixOp ::= DELEGATECALL ( Int , Int , Int )
-                       | STATICCALL ( Int , Int , Int )
-
-    syntax ReturnOp ::= RETURN ( Int )
-                      | REVERT ( Int )
-
-    syntax LocalCallOp ::= LOCALCALL ( Int , Int , Int )
+    syntax BinOp ::= ISZERO ()
+                   | NOT ()
+                   | SHA3 ()
+                   | MLOAD ()
+                   | MSTORE ()
+                   | SLOAD ()
+                   | EXTCODESIZE ()
+                   | BLOCKHASH ()
+                   | BALANCE ()
+                   | SSTORE ()
+                   | MOVE ()
+                   | LOG1 ()
 
     syntax TernOp ::= ADD ()
                     | MUL ()
@@ -85,20 +83,22 @@ After interpreting the strings representing programs as a `WordStack`, it should
                     | MSTOREN ()
                     | LOG3 ()
 
-    syntax BinOp ::= ISZERO ()
-                    | NOT ()
-                    | SHA3 ()
-                    | MLOAD ()
-                    | MSTORE ()
-                    | SLOAD ()
-                    | EXTCODESIZE ()
-                    | BLOCKHASH ()
-                    | BALANCE ()
-                    | SSTORE ()
-                    | MOVE ()
-                    | LOG1 ()
-
     syntax FiveOp ::= LOG4 ()
+
+    syntax CreateOp ::= CREATE ( Int , Int )
+
+    syntax CopyCreateOp ::= COPYCREATE ( Int )
+
+    syntax CallOp ::= CALL ( Int , Int , Int )
+                    | CALLCODE ( Int , Int , Int )
+
+    syntax CallSixOp ::= DELEGATECALL ( Int , Int , Int )
+                       | STATICCALL ( Int , Int , Int )
+
+    syntax ReturnOp ::= RETURN ( Int )
+                      | REVERT ( Int )
+
+    syntax LocalCallOp ::= LOCALCALL ( Int , Int , Int )
 
     syntax OpCode ::= NullOp
                     | UnOp
@@ -118,103 +118,187 @@ After interpreting the strings representing programs as a `WordStack`, it should
  // -----------------------------------------------------------------------------
     rule #dasmContract( .WordStack, _)      => #emptyCode
     rule #dasmContract( 99 : NBITS : WS, NAME ) => #dasmContract(WS, NBITS, 0 |-> "init", NAME, .TopLevelDefinitions, 1, #sizeWordStack(WS) +Int 2)
-    rule #dasmContract( 105 : W1 : W2 : WS, NBITS, FUNCS, NAME, DEFS, N, SIZE ) => #dasmContract(#drop(W1 *Int 256 +Int W2, WS), NBITS, N |-> #unparseByteStack(#take(W1 *Int 256 +Int W2, WS)) FUNCS, NAME, DEFS, N +Int 1, SIZE )
+    rule #dasmContract( 105 : W1 : W2 : WS, NBITS, FUNCS, NAME, DEFS, N, SIZE ) => #dasmContract(#drop(W1 *Int 256 +Int W2, WS), NBITS, N |-> #parseToken("IeleName", #unparseByteStack(#take(W1 *Int 256 +Int W2, WS))) FUNCS, NAME, DEFS, N +Int 1, SIZE )
     rule #dasmContract( 106 : W1 : W2 : WS, NBITS, FUNCS, NAME, DEFS, N, SIZE ) => #dasmContract(#take(W1 *Int 256 +Int W2, WS), N) ++Contract #dasmContract(#drop(W1 *Int 256 +Int W2, WS), NBITS, FUNCS, NAME, external contract N DEFS, N +Int 1, SIZE)
-    rule #dasmContract( WS, NBITS, FUNCS, NAME, DEFS, N, SIZE ) => contract NAME ! SIZE { DEFS ++TopLevelDefintions #dasmFunctions(WS, NBITS, FUNCS) } .Contract
+    rule #dasmContract( WS, NBITS, FUNCS, NAME, DEFS, N, SIZE ) => contract NAME ! SIZE { DEFS ++TopLevelDefinitions #dasmFunctions(WS, NBITS, FUNCS) } .Contract [owise]
+
+    syntax Contract ::= Contract "++Contract" Contract [function, klabel(contractAppend)]
+    syntax priorities contractDefinitionList > contractAppend
+    syntax TopLevelDefinitions ::= TopLevelDefinitions "++TopLevelDefinitions" TopLevelDefinitions [function, klabel(topLevelAppend)]
+    syntax priorities topLevelDefinitionList > topLevelAppend
+ // -----------------------------------------------------------------------------
+    rule .Contract ++Contract Cs => Cs
+    rule C Cs ++Contract Cs' => C (Cs ++Contract Cs')
+    rule .TopLevelDefinitions ++TopLevelDefinitions Ds => Ds
+    rule D Ds ++TopLevelDefinitions Ds' => D (Ds ++TopLevelDefinitions Ds')
 
     syntax TopLevelDefinitions ::= #dasmFunctions ( WordStack , Int , Map ) [function]
-    syntax TopLevelDefinitions ::= #dasmFunction ( Bool , IeleName , Int , WordStack , Int , Map , Blocks , K ) [function]
+    syntax TopLevelDefinitions ::= #dasmFunction ( Bool , IeleName , Int , WordStack , Int , Map , Instructions , K ) [function]
+    syntax Blocks ::= #toBlocks ( Instructions ) [function]
+                    | #toBlocks ( Instructions , Blocks ) [function, klabel(#toBlockAux)]
  // -----------------------------------------------------------------------------
-    rule #dasmFunctions(103 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS) => #dasmFunction(false, W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, WS, NBITS, FUNCS, .LabeledBlocks, .K)
-    rule #dasmFunctions(104 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS) => #dasmFunction(true, String2IeleName({FUNCS [ W1 *Int 256 +Int W2 ]}:>String), W3 *Int 256 +Int W4, WS, NBITS, FUNCS, .LabeledBlocks, .K)
+    rule #dasmFunctions(103 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS) => #dasmFunction(false, W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, WS, NBITS, FUNCS, .Instructions, .K)
+    rule #dasmFunctions(104 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS) => #dasmFunction(true, {FUNCS [ W1 *Int 256 +Int W2 ]}:>IeleName, W3 *Int 256 +Int W4, WS, NBITS, FUNCS, .Instructions, .K)
 
-    rule #dasmFunction(false, NAME, SIG, W : WS, NBITS, FUNCS, BLOCKS, .K) => define NAME ( SIG ) { BLOCKS } #dasmFunctions(W : WS, NBITS, FUNCS)
+    rule #dasmFunction(false, NAME, SIG, W : WS, NBITS, FUNCS, INSTRS, .K) => define @ NAME ( SIG ) { #toBlocks(INSTRS) } #dasmFunctions(W : WS, NBITS, FUNCS)
       requires W ==Int 103 orBool W ==Int 104
-    rule #dasmFunction(true, NAME, SIG, W : WS, NBITS, FUNCS, BLOCKS, .K) => define public NAME ( SIG ) { BLOCKS } #dasmFunctions(W : WS, NBITS, FUNCS)
+    rule #dasmFunction(true, NAME, SIG, W : WS, NBITS, FUNCS, INSTRS, .K) => define public @ NAME ( SIG ) { #toBlocks(INSTRS) } #dasmFunctions(W : WS, NBITS, FUNCS)
       requires W ==Int 103 orBool W ==Int 104
-    rule #dasmFunction(false, NAME, SIG, .WordStack, NBITS, FUNCS, BLOCKS, .K) => define NAME ( SIG ) { BLOCKS } .TopLevelDefinitions
-    rule #dasmFunction(true, NAME, SIG, .WordStack, NBITS, FUNCS, BLOCKS, .K) => define public NAME ( SIG ) { BLOCKS } .TopLevelDefinitions
+    rule #dasmFunction(false, NAME, SIG, .WordStack, NBITS, FUNCS, INSTRS, .K) => define @ NAME ( SIG ) { #toBlocks(INSTRS) } .TopLevelDefinitions
+    rule #dasmFunction(true, NAME, SIG, .WordStack, NBITS, FUNCS, INSTRS, .K) => define public @ NAME ( SIG ) { #toBlocks(INSTRS) } .TopLevelDefinitions
 
-    rule #dasmFunction(PUBLIC, NAME, SIG, W : WS, NBITS, FUNCS, BLOCKS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, BLOCKS, #dasmOpCode(W))
+    rule #dasmFunction(PUBLIC, NAME, SIG, W : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, #dasmOpCode(W))
       requires (W >=Int 0   andBool W <=Int 96)
         orBool (W >=Int 107 andBool W <=Int 239)
         orBool (W >=Int 249 andBool W <=Int 255)
 
-    rule #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, BLOCKS, OP:OpCode) => #dasmFunction(PUBLIC, NAME, SIG, #drop(#opWidth(OP, NBITS), WS), NBITS, FUNCS, #dasmInstruction(OP, #take(#opWidth(OP, NBITS), WS), NBITS) BLOCKS, .K)
+    rule #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, OP:OpCode) => #dasmFunction(PUBLIC, NAME, SIG, #drop(#opWidth(OP, NBITS) -Int #opCodeWidth(OP), WS), NBITS, FUNCS, #dasmInstruction(OP, #take(#opWidth(OP, NBITS) -Int #opCodeWidth(OP), WS), NBITS, FUNCS) INSTRS, .K)
 
-    rule #dasmFunction(PUBLIC, NAME, SIG, W : WS, NBITS, FUNCS, BLOCKS, .K) => #dasmFunction(PUBLIC, NAME, SIG, W : WS, #str(#pushLen(#drop(NBITS up/Int 8, WS)), #pushOffset(#drop(NBITS up/Int 8, WS))))
+    rule #dasmFunction(PUBLIC, NAME, SIG, W : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, W : WS, NBITS, FUNCS, INSTRS, #str(#pushLen(#drop(NBITS up/Int 8, WS)), #pushOffset(#drop(NBITS up/Int 8, WS))))
       requires W >=Int 97 andBool W <Int 99
-    rule #dasmFunction(PUBLIC, NAME, SIG, 97  : WS, NBITS, FUNCS, BLOCKS, #str(LEN, POS)) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, BLOCKS, LOADPOS(LEN +Int POS, #asUnsigned(WS [ POS +Int (NREGS up/Int 8) .. LEN ])))
-    rule #dasmFunction(PUBLIC, NAME, SIG, 98  : WS, NBITS, FUNCS, BLOCKS, #str(LEN, POS)) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, BLOCKS, LOADNEG(LEN +Int POS, #asUnsigned(WS [ POS +Int (NREGS up/Int 8) .. LEN ])))
+    rule #dasmFunction(PUBLIC, NAME, SIG, 97  : WS, NBITS, FUNCS, INSTRS, #str(LEN, POS)) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, LOADPOS(LEN +Int POS, #asUnsigned(WS [ POS +Int (NBITS up/Int 8) .. LEN ])))
+    rule #dasmFunction(PUBLIC, NAME, SIG, 98  : WS, NBITS, FUNCS, INSTRS, #str(LEN, POS)) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, LOADNEG(LEN +Int POS, #asUnsigned(WS [ POS +Int (NBITS up/Int 8) .. LEN ])))
 
-    rule #dasmFunction(PUBLIC, NAME, SIG, 100 : W1 : W2 : WS, NBITS, FUNCS, BLOCKS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, BLOCKS, JUMP(W1 *Int 256 +Int W2))
-    rule #dasmFunction(PUBLIC, NAME, SIG, 101 : W1 : W2 : WS, NBITS, FUNCS, BLOCKS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, BLOCKS, JUMPI(W1 *Int 256 +Int W2))
-    rule #dasmFunction(PUBLIC, NAME, SIG, 102 : W1 : W2 : WS, NBITS, FUNCS, BLOCKS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, BLOCKS, JUMPDEST(W1 *Int 256 +Int W2))
-    rule #dasmFunction(PUBLIC, NAME, SIG, 241 : W1 : W2 : WS, NBITS, FUNCS, BLOCKS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, BLOCKS, COPYCREATE(W1 *Int 256 +Int W2))
-    rule #dasmFunction(PUBLIC, NAME, SIG, 246 : W1 : W2 : WS, NBITS, FUNCS, BLOCKS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, BLOCKS, RETURN(W1 *Int 256 +Int W2))
-    rule #dasmFunction(PUBLIC, NAME, SIG, 247 : W1 : W2 : WS, NBITS, FUNCS, BLOCKS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, BLOCKS, REVERT(W1 *Int 256 +Int W2))
-    rule #dasmFunction(PUBLIC, NAME, SIG, 240 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS, BLOCKS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, BLOCKS, CREATE(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4))
-    rule #dasmFunction(PUBLIC, NAME, SIG, 242 : W1 : W2 : W3 : W4 : W5 : W6 : WS, NBITS, FUNCS, BLOCKS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, BLOCKS, CALL(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, W5 *Int 256 +Int W6))
-    rule #dasmFunction(PUBLIC, NAME, SIG, 243 : W1 : W2 : W3 : W4 : W5 : W6 : WS, NBITS, FUNCS, BLOCKS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, BLOCKS, CALLCODE(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, W5 *Int 256 +Int W6))
-    rule #dasmFunction(PUBLIC, NAME, SIG, 244 : W1 : W2 : W3 : W4 : W5 : W6 : WS, NBITS, FUNCS, BLOCKS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, BLOCKS, DELEGATECALL(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, W5 *Int 256 +Int W6))
-    rule #dasmFunction(PUBLIC, NAME, SIG, 245 : W1 : W2 : W3 : W4 : W5 : W6 : WS, NBITS, FUNCS, BLOCKS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, BLOCKS, STATICCALL(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, W5 *Int 256 +Int W6))
-    rule #dasmFunction(PUBLIC, NAME, SIG, 248 : W1 : W2 : W3 : W4 : W5 : W6 : WS, NBITS, FUNCS, BLOCKS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, BLOCKS, LOCALCALL(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, W5 *Int 256 +Int W6))
+    rule #dasmFunction(PUBLIC, NAME, SIG, 100 : W1 : W2 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, BR(W1 *Int 256 +Int W2))
+    rule #dasmFunction(PUBLIC, NAME, SIG, 101 : W1 : W2 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, BRC(W1 *Int 256 +Int W2))
+    rule #dasmFunction(PUBLIC, NAME, SIG, 102 : W1 : W2 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, BRLABEL(W1 *Int 256 +Int W2))
+    rule #dasmFunction(PUBLIC, NAME, SIG, 241 : W1 : W2 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, COPYCREATE(W1 *Int 256 +Int W2))
+    rule #dasmFunction(PUBLIC, NAME, SIG, 246 : W1 : W2 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, RETURN(W1 *Int 256 +Int W2))
+    rule #dasmFunction(PUBLIC, NAME, SIG, 247 : W1 : W2 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, REVERT(W1 *Int 256 +Int W2))
+    rule #dasmFunction(PUBLIC, NAME, SIG, 240 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, CREATE(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4))
+    rule #dasmFunction(PUBLIC, NAME, SIG, 242 : W1 : W2 : W3 : W4 : W5 : W6 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, CALL(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, W5 *Int 256 +Int W6))
+    rule #dasmFunction(PUBLIC, NAME, SIG, 243 : W1 : W2 : W3 : W4 : W5 : W6 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, CALLCODE(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, W5 *Int 256 +Int W6))
+    rule #dasmFunction(PUBLIC, NAME, SIG, 244 : W1 : W2 : W3 : W4 : W5 : W6 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, DELEGATECALL(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, W5 *Int 256 +Int W6))
+    rule #dasmFunction(PUBLIC, NAME, SIG, 245 : W1 : W2 : W3 : W4 : W5 : W6 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, STATICCALL(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, W5 *Int 256 +Int W6))
+    rule #dasmFunction(PUBLIC, NAME, SIG, 248 : W1 : W2 : W3 : W4 : W5 : W6 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, LOCALCALL(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, W5 *Int 256 +Int W6))
 
+    rule #toBlocks(INSTRS) => #toBlocks(INSTRS, .LabeledBlocks)
+    rule #toBlocks(.Instructions, BLOCKS) => BLOCKS
+    rule #toBlocks(label(LABEL) INSTRS, UNLABELEDBLOCK::Instructions BLOCKS) => #toBlocks(INSTRS, LABEL : UNLABELEDBLOCK BLOCKS)
+    rule #toBlocks(label(LABEL) INSTRS, LABELEDBLOCK::LabeledBlock BLOCKS) => #toBlocks(INSTRS, LABEL : .Instructions LABELEDBLOCK BLOCKS)
+    rule #toBlocks(label(LABEL) INSTRS, .LabeledBlocks) => #toBlocks(INSTRS, LABEL : .Instructions .LabeledBlocks)
+    rule #toBlocks(INSTR INSTRS, UNLABELEDBLOCK::Instructions BLOCKS) => #toBlocks(INSTRS, INSTR UNLABELEDBLOCK BLOCKS)
+      requires notBool isPseudoInstruction(INSTR)
+    rule #toBlocks(INSTR INSTRS, LABELEDBLOCK::LabeledBlock BLOCKS) => #toBlocks(INSTRS, INSTR .Instructions LABELEDBLOCK BLOCKS)
+      requires notBool isPseudoInstruction(INSTR)
+    rule #toBlocks(INSTR INSTRS, .LabeledBlocks) => #toBlocks(INSTRS, INSTR .Instructions .LabeledBlocks)
+      requires notBool isPseudoInstruction(INSTR)
 
-    syntax Op ::= #dasmRegs ( OpCode , WordStack , Int ) [function]
-                | #dasmRegs ( OpCode , Int , Int , Int ) [function, klabel(#dasmRegsAux)]
+    syntax Instruction ::= #dasmInstruction ( OpCode , WordStack , Int , Map ) [function]
+                         | #dasmInstruction ( OpCode , Int , Int , Int , Map ) [function, klabel(#dasmInstructionAux)]
+    syntax PseudoInstruction ::= label ( Int )
+    syntax Instruction ::= PseudoInstruction
  // -------------------------------------------------------------------------------------
-    rule #dasmRegs ( LOADPOS(N, W), WS, NREGS ) => #dasmRegs(LOADPOS(N, W), #asUnsigned(#take(NREGS up/Int 8, WS)),                            NREGS, (1 <<Int NREGS) -Int 1)
-    rule #dasmRegs ( LOADNEG(N, W), WS, NREGS ) => #dasmRegs(LOADNEG(N, W), #asUnsigned(#take(NREGS up/Int 8, WS)),                            NREGS, (1 <<Int NREGS) -Int 1)
-    rule #dasmRegs ( OP,            WS, NREGS ) => #dasmRegs(OP,            #asUnsigned(#take(#opWidth(OP, NREGS) -Int #opCodeWidth(OP), WS)), NREGS, (1 <<Int NREGS) -Int 1) [owise]
+    rule #dasmInstruction ( LOADPOS(N, W), WS, NBITS, FUNCS ) => #dasmInstruction(LOADPOS(N, W), #asUnsigned(#take(NBITS up/Int 8, WS)),                            NBITS, (1 <<Int NBITS) -Int 1, FUNCS)
+    rule #dasmInstruction ( LOADNEG(N, W), WS, NBITS, FUNCS ) => #dasmInstruction(LOADNEG(N, W), #asUnsigned(#take(NBITS up/Int 8, WS)),                            NBITS, (1 <<Int NBITS) -Int 1, FUNCS)
+    rule #dasmInstruction ( OP,            WS, NBITS, FUNCS ) => #dasmInstruction(OP,            #asUnsigned(#take(#opWidth(OP, NBITS) -Int #opCodeWidth(OP), WS)), NBITS, (1 <<Int NBITS) -Int 1, FUNCS) [owise]
 
-    rule #dasmRegs ( OP:NullOp,     R, W, M ) => OP %(R, W, M, 0)
-    rule #dasmRegs ( OP:NullVoidOp, R, W, M ) => OP
-    rule #dasmRegs ( OP:HeaderOp,   R, W, M ) => OP
-    rule #dasmRegs ( OP:UnOp,       R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1)
-    rule #dasmRegs ( OP:UnVoidOp,   R, W, M ) => OP %(R, W, M, 0)
-    rule #dasmRegs ( OP:BinOp,      R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2)
-    rule #dasmRegs ( OP:BinVoidOp,  R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1)
-    rule #dasmRegs ( OP:TernOp,     R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2) %(R, W, M, 3)
-    rule #dasmRegs ( OP:TernVoidOp, R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2)
-    rule #dasmRegs ( OP:QuadVoidOp, R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2) %(R, W, M, 3)
-    rule #dasmRegs ( OP:FiveVoidOp, R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2) %(R, W, M, 3) %(R, W, M, 4)
+    rule #dasmInstruction ( LOADPOS ( _, I ),  R, W, M, _ ) => %(R, W, M, 0) = I
+    rule #dasmInstruction ( LOADNEG ( _, I ),  R, W, M, _ ) => %(R, W, M, 0) = (0 -Int I)
+    rule #dasmInstruction ( BR ( LABEL ),      _, _, _, _ ) => br LABEL 
+    rule #dasmInstruction ( INVALID (),        R, W, M, _ ) => %(R, W, M, 0) = call @iele.invalid ( .Operands )
+    rule #dasmInstruction ( BRLABEL ( LABEL ), _, _, _, _ ) => label ( LABEL )
 
-    rule #dasmRegs ( _:CallSixOpCode (_, ARGS, RETS) #as OP::CallSixOp,   R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1 +Int RETS) %(R, W, M, 2 +Int RETS)                         %(R, W, M, 1, RETS) %(R, W, M, RETS +Int 3, ARGS)
-    rule #dasmRegs ( _:CallOpCode    (_, ARGS, RETS) #as OP::CallOp,      R, W, M ) => OP %(R, W, M, 0) %(R, W, M, 1 +Int RETS) %(R, W, M, 2 +Int RETS) %(R, W, M, 3 +Int RETS) %(R, W, M, 1, RETS) %(R, W, M, RETS +Int 4, ARGS)
-    rule #dasmRegs ( LOCALCALL       (_, ARGS, RETS) #as OP::LocalCallOp, R, W, M ) => OP                                                                                       %(R, W, M, 0, RETS) %(R, W, M, RETS,        ARGS)
+    rule #dasmInstruction ( SELFDESTRUCT (), R, W, M, _ ) => selfdestruct %(R, W, M, 0)
+    rule #dasmInstruction ( BRC ( LABEL ),   R, W, M, _ ) => br %(R, W, M, 0) , LABEL
+    rule #dasmInstruction ( LOG0 (),         R, W, M, _ ) => log %(R, W, M, 0)
+    rule #dasmInstruction ( CALLVALUE (),    R, W, M, _ ) => %(R, W, M, 0) = call @iele.callvalue  ( .Operands )
+    rule #dasmInstruction ( GASLIMIT (),     R, W, M, _ ) => %(R, W, M, 0) = call @iele.gaslimit   ( .Operands ) 
+    rule #dasmInstruction ( GASPRICE (),     R, W, M, _ ) => %(R, W, M, 0) = call @iele.gasprice   ( .Operands ) 
+    rule #dasmInstruction ( GAS (),          R, W, M, _ ) => %(R, W, M, 0) = call @iele.gas        ( .Operands ) 
+    rule #dasmInstruction ( ADDRESS (),      R, W, M, _ ) => %(R, W, M, 0) = call @iele.address    ( .Operands ) 
+    rule #dasmInstruction ( ORIGIN (),       R, W, M, _ ) => %(R, W, M, 0) = call @iele.origin     ( .Operands ) 
+    rule #dasmInstruction ( CALLER (),       R, W, M, _ ) => %(R, W, M, 0) = call @iele.caller     ( .Operands ) 
+    rule #dasmInstruction ( CODESIZE (),     R, W, M, _ ) => %(R, W, M, 0) = call @iele.codesize   ( .Operands ) 
+    rule #dasmInstruction ( COINBASE (),     R, W, M, _ ) => %(R, W, M, 0) = call @iele.coinbase   ( .Operands ) 
+    rule #dasmInstruction ( TIMESTAMP (),    R, W, M, _ ) => %(R, W, M, 0) = call @iele.timestamp  ( .Operands ) 
+    rule #dasmInstruction ( NUMBER (),       R, W, M, _ ) => %(R, W, M, 0) = call @iele.number     ( .Operands ) 
+    rule #dasmInstruction ( DIFFICULTY (),   R, W, M, _ ) => %(R, W, M, 0) = call @iele.difficulty ( .Operands ) 
+    rule #dasmInstruction ( MSIZE (),        R, W, M, _ ) => %(R, W, M, 0) = call @iele.msize      ( .Operands ) 
 
-    rule #dasmRegs ( CREATE (_,  ARGS) #as OP::CreateOp,     R, W, M) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2, ARGS)
-    rule #dasmRegs ( COPYCREATE (ARGS) #as OP::CopyCreateOp, R, W, M) => OP %(R, W, M, 0) %(R, W, M, 1) %(R, W, M, 2) %(R, W, M, 3, ARGS)
+    rule #dasmInstruction ( MOVE (),        R, W, M, _ ) => %(R, W, M, 0) = %(R, W, M, 1)
+    rule #dasmInstruction ( ISZERO (),      R, W, M, _ ) => %(R, W, M, 0) = iszero %(R, W, M, 1)
+    rule #dasmInstruction ( NOT (),         R, W, M, _ ) => %(R, W, M, 0) = not    %(R, W, M, 1)
+    rule #dasmInstruction ( SHA3 (),        R, W, M, _ ) => %(R, W, M, 0) = sha3   %(R, W, M, 1)
+    rule #dasmInstruction ( MLOAD (),       R, W, M, _ ) => %(R, W, M, 0) = load   %(R, W, M, 1)
+    rule #dasmInstruction ( SLOAD (),       R, W, M, _ ) => %(R, W, M, 0) = sload  %(R, W, M, 1)
+    rule #dasmInstruction ( MSTORE (),      R, W, M, _ ) => store  %(R, W, M, 1) , %(R, W, M, 0)
+    rule #dasmInstruction ( SSTORE (),      R, W, M, _ ) => sstore %(R, W, M, 1) , %(R, W, M, 0)
+    rule #dasmInstruction ( LOG1 (),        R, W, M, _ ) => log    %(R, W, M, 0) , %(R, W, M, 1)
+    rule #dasmInstruction ( EXTCODESIZE (), R, W, M, _ ) => %(R, W, M, 0) = call @iele.extcodesize ( %(R, W, M, 1) )
+    rule #dasmInstruction ( BLOCKHASH (),   R, W, M, _ ) => %(R, W, M, 0) = call @iele.blockhash   ( %(R, W, M, 1) )
+    rule #dasmInstruction ( BALANCE (),     R, W, M, _ ) => %(R, W, M, 0) = call @iele.balance     ( %(R, W, M, 1) ) 
 
-    rule #dasmRegs ( REVERT(RETS), R, W, M ) => REVERT(RETS) %(R, W, M, 0, RETS)
-    rule #dasmRegs ( RETURN(RETS), R, W, M ) => RETURN(RETS) %(R, W, M, 0, RETS)
+    rule #dasmInstruction ( ADD (),        R, W, M, _ ) => %(R, W, M, 0) = add    %(R, W, M, 1) , %(R, W, M, 2)
+    rule #dasmInstruction ( MUL (),        R, W, M, _ ) => %(R, W, M, 0) = mul    %(R, W, M, 1) , %(R, W, M, 2)
+    rule #dasmInstruction ( SUB (),        R, W, M, _ ) => %(R, W, M, 0) = sub    %(R, W, M, 1) , %(R, W, M, 2)
+    rule #dasmInstruction ( DIV (),        R, W, M, _ ) => %(R, W, M, 0) = div    %(R, W, M, 1) , %(R, W, M, 2)
+    rule #dasmInstruction ( MOD (),        R, W, M, _ ) => %(R, W, M, 0) = mod    %(R, W, M, 1) , %(R, W, M, 2)
+    rule #dasmInstruction ( EXP (),        R, W, M, _ ) => %(R, W, M, 0) = exp    %(R, W, M, 1) , %(R, W, M, 2)
+    rule #dasmInstruction ( SIGNEXTEND (), R, W, M, _ ) => %(R, W, M, 0) = sext   %(R, W, M, 1) , %(R, W, M, 2)
+    rule #dasmInstruction ( TWOS (),       R, W, M, _ ) => %(R, W, M, 0) = twos   %(R, W, M, 1) , %(R, W, M, 2)
+    rule #dasmInstruction ( AND (),        R, W, M, _ ) => %(R, W, M, 0) = and    %(R, W, M, 1) , %(R, W, M, 2)
+    rule #dasmInstruction ( OR (),         R, W, M, _ ) => %(R, W, M, 0) = or     %(R, W, M, 1) , %(R, W, M, 2)
+    rule #dasmInstruction ( XOR (),        R, W, M, _ ) => %(R, W, M, 0) = xor    %(R, W, M, 1) , %(R, W, M, 2)
+    rule #dasmInstruction ( BYTE (),       R, W, M, _ ) => %(R, W, M, 0) = byte   %(R, W, M, 1) , %(R, W, M, 2)
+    rule #dasmInstruction ( LT (),         R, W, M, _ ) => %(R, W, M, 0) = cmp lt %(R, W, M, 1) , %(R, W, M, 2)
+    rule #dasmInstruction ( LE (),         R, W, M, _ ) => %(R, W, M, 0) = cmp le %(R, W, M, 1) , %(R, W, M, 2)
+    rule #dasmInstruction ( GT (),         R, W, M, _ ) => %(R, W, M, 0) = cmp gt %(R, W, M, 1) , %(R, W, M, 2)
+    rule #dasmInstruction ( GE (),         R, W, M, _ ) => %(R, W, M, 0) = cmp ge %(R, W, M, 1) , %(R, W, M, 2)
+    rule #dasmInstruction ( EQ (),         R, W, M, _ ) => %(R, W, M, 0) = cmp eq %(R, W, M, 1) , %(R, W, M, 2)
+    rule #dasmInstruction ( NE (),         R, W, M, _ ) => %(R, W, M, 0) = cmp ne %(R, W, M, 1) , %(R, W, M, 2)
+    rule #dasmInstruction ( LOG2 (),       R, W, M, _ ) => log %(R, W, M, 0) , %(R, W, M, 1) , %(R, W, M, 2)
 
-    syntax Operand ::= "%" "(" Int "," Int "," Int "," Int ")" [function]
+    rule #dasmInstruction ( ADDMOD (),  R, W, M, _ ) => %(R, W, M, 0) = addmod %(R, W, M, 1) , %(R, W, M, 2) , %(R, W, M, 3)
+    rule #dasmInstruction ( MULMOD (),  R, W, M, _ ) => %(R, W, M, 0) = mulmod %(R, W, M, 1) , %(R, W, M, 2) , %(R, W, M, 3)
+    rule #dasmInstruction ( EXPMOD (),  R, W, M, _ ) => %(R, W, M, 0) = expmod %(R, W, M, 1) , %(R, W, M, 2) , %(R, W, M, 3)
+    rule #dasmInstruction ( MLOADN (),  R, W, M, _ ) => %(R, W, M, 0) = load   %(R, W, M, 1) , %(R, W, M, 2) , %(R, W, M, 3)
+    rule #dasmInstruction ( MSTOREN (), R, W, M, _ ) => store %(R, W, M, 2) , %(R, W, M, 0) , %(R, W, M, 1) , %(R, W, M, 3)
+    rule #dasmInstruction ( LOG3 (),    R, W, M, _ ) => log %(R, W, M, 0) , %(R, W, M, 1) , %(R, W, M, 2) , %(R, W, M, 3)
+
+    rule #dasmInstruction ( LOG4 (),    R, W, M, _ ) => log %(R, W, M, 0) , %(R, W, M, 1) , %(R, W, M, 2) , %(R, W, M, 3) , %(R, W, M, 4)
+
+    rule #dasmInstruction ( DELEGATECALL (LABEL, ARGS, RETS), R, W, M, F ) => %l(R, W, M, 0, RETS +Int 1) = delegatecall @ {F [ LABEL ]}:>IeleName at %(R, W, M, 2 +Int RETS) ( %o(R, W, M, 3 +Int RETS, ARGS) ) gaslimit %(R, W, M, 1 +Int RETS)
+    rule #dasmInstruction ( STATICCALL (LABEL, ARGS, RETS), R, W, M, F ) => %l(R, W, M, 0, RETS +Int 1) = staticcall @ {F [ LABEL ]}:>IeleName at %(R, W, M, 2 +Int RETS) ( %o(R, W, M, 3 +Int RETS, ARGS) ) gaslimit %(R, W, M, 1 +Int RETS)
+    rule #dasmInstruction ( CALL (LABEL, ARGS, RETS), R, W, M, F ) => %l(R, W, M, 0, RETS +Int 1) = call @ {F [ LABEL ]}:>IeleName at %(R, W, M, 2 +Int RETS) ( %o(R, W, M, 4 +Int RETS, ARGS) ) send %(R, W, M, 3 +Int RETS) , gaslimit %(R, W, M, 1 +Int RETS)
+    rule #dasmInstruction ( CALLCODE (LABEL, ARGS, RETS), R, W, M, F ) => %l(R, W, M, 0, RETS +Int 1) = callcode @ {F [ LABEL ]}:>IeleName at %(R, W, M, 2 +Int RETS) ( %o(R, W, M, 4 +Int RETS, ARGS) ) send %(R, W, M, 3 +Int RETS) , gaslimit %(R, W, M, 1 +Int RETS)
+    rule #dasmInstruction ( LOCALCALL (LABEL, ARGS, RETS), R, W, M, F ) => %l(R, W, M, 0, RETS) = call @ {F [ LABEL ] orDefault LABEL}:>IeleName ( %o(R, W, M, RETS, ARGS) )
+
+    rule #dasmInstruction ( CREATE (LABEL, ARGS), R, W, M, _ ) => %(R, W, M, 0) = create LABEL ( %o(R, W, M, 2, ARGS) ) send %(R, W, M, 1)
+    rule #dasmInstruction ( COPYCREATE (ARGS), R, W, M, _ ) => %(R, W, M, 0) = copycreate %(R, W, M, 2) ( %o(R, W, M, 3, ARGS) ) send %(R, W, M, 1)
+
+    rule #dasmInstruction ( REVERT(RETS), R, W, M, _ ) => revert %o(R, W, M, 0, RETS)
+      requires RETS =/=Int 0
+    rule #dasmInstruction ( REVERT(0), R, W, M, _ ) => revert void
+    rule #dasmInstruction ( RETURN(RETS), R, W, M, _ ) => ret %o(R, W, M, 0, RETS)
+      requires RETS =/=Int 0
+    rule #dasmInstruction ( RETURN(0), R, W, M, _ ) => ret void
+
+    syntax LValue ::= "%" "(" Int "," Int "," Int "," Int ")" [function]
  // -----------------------------------------------------------------
     rule %(REGS, WIDTH, MASK, IDX) => % ((REGS >>Int (IDX *Int WIDTH)) &Int MASK)
 
-    syntax Operands ::= "%" "(" Int "," Int "," Int "," Int "," Int ")" [function]
+    syntax Operands ::= "%o" "(" Int "," Int "," Int "," Int "," Int ")" [function]
  // --------------------------------------------------------------------------
-    rule %(REGS, WIDTH, MASK, IDX, 0) => .Operands
-    rule %(REGS, WIDTH, MASK, IDX, COUNT) => %(REGS, WIDTH, MASK, IDX) , %(REGS, WIDTH, MASK, IDX +Int 1, COUNT -Int 1) [owise]
+    rule %o(REGS, WIDTH, MASK, IDX, 0) => .Operands
+    rule %o(REGS, WIDTH, MASK, IDX, COUNT) => %(REGS, WIDTH, MASK, IDX) , %o(REGS, WIDTH, MASK, IDX +Int 1, COUNT -Int 1) [owise]
 
-    syntax LValues ::= "%" "(" Int "," Int "," Int "," Int "," Int ")" [function]
+    syntax LValues ::= "%l" "(" Int "," Int "," Int "," Int "," Int ")" [function]
  // --------------------------------------------------------------------------
-    rule %(REGS, WIDTH, MASK, IDX, 0) => .LValues
-    rule %(REGS, WIDTH, MASK, IDX, COUNT) => %(REGS, WIDTH, MASK, IDX) , %(REGS, WIDTH, MASK, IDX +Int 1, COUNT -Int 1) [owise]
+    rule %l(REGS, WIDTH, MASK, IDX, 0) => .LValues
+    rule %l(REGS, WIDTH, MASK, IDX, COUNT) => %(REGS, WIDTH, MASK, IDX) , %l(REGS, WIDTH, MASK, IDX +Int 1, COUNT -Int 1) [owise]
 
     syntax Int ::= #opWidth ( OpCode , Int ) [function]
  // ---------------------------------------------------
-    rule #opWidth ( LOADPOS(N, _), NREGS ) => 1 +Int N +Int (NREGS up/Int 8)
-    rule #opWidth ( LOADNEG(N, _), NREGS ) => 1 +Int N +Int (NREGS up/Int 8)
-    rule #opWidth ( OP, NREGS ) => #opCodeWidth(OP) +Int ((NREGS *Int #numArgs(OP)) up/Int 8) [owise]
+    rule #opWidth ( LOADPOS(N, _), NBITS ) => 1 +Int N +Int (NBITS up/Int 8)
+    rule #opWidth ( LOADNEG(N, _), NBITS ) => 1 +Int N +Int (NBITS up/Int 8)
+    rule #opWidth ( OP, NBITS ) => #opCodeWidth(OP) +Int ((NBITS *Int #numArgs(OP)) up/Int 8) [owise]
 
     syntax Int ::= #opCodeWidth ( OpCode ) [function]
  // -------------------------------------------------
-    rule #opCodeWidth( JUMPDEST(_) )      => 3
-    rule #opCodeWidth( JUMP(_) )          => 3
-    rule #opCodeWidth( JUMPI(_) )         => 3
+    rule #opCodeWidth( BRLABEL(_) )       => 3
+    rule #opCodeWidth( BR(_) )            => 3
+    rule #opCodeWidth( BRC(_) )           => 3
     rule #opCodeWidth( LOCALCALL(_,_,_) ) => 7
     rule #opCodeWidth( RETURN(_) )        => 3
     rule #opCodeWidth( REVERT(_) )        => 3

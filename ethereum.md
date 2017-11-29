@@ -40,7 +40,7 @@ For verification purposes, it's much easier to specify a program in terms of its
 To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a "pretti-fication" to the nicer input form.
 
 ```{.k .uiuck .rvk}
-    syntax JSON ::= Int | WordStack | Ops | Map | SubstateLogEntry | Account
+    syntax JSON ::= Int | WordStack | Map | SubstateLogEntry | Account | Bool
  // -----------------------------------------------------------------------------------
 
     syntax JSONList ::= #sortJSONList ( JSONList )            [function]
@@ -71,9 +71,9 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
 ```{.k .uiuck .rvk}
     syntax EthereumCommand ::= "start"
  // ----------------------------------
-    rule <mode> NORMAL     </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData> <fid> _ => 1 </fid>
-    rule <mode> VMTESTS    </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData> <fid> _ => 1 </fid>
- // rule <mode> GASANALYZE </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #gasAnalyze ... </k> <callData> VALUES </callData> <fid> _ => 1 </fid>
+    rule <mode> NORMAL     </mode> <k> start => #loads #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData> <fid> _ => deposit </fid>
+    rule <mode> VMTESTS    </mode> <k> start => #loads #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData> <fid> _ => deposit </fid>
+ // rule <mode> GASANALYZE </mode> <k> start => #loads #regRange(#sizeRegs(VALUES)) VALUES ~> #gasAnalyze ... </k> <callData> VALUES </callData> <fid> _ => deposit </fid>
 
     syntax EthereumCommand ::= "flush"
  // ----------------------------------
@@ -110,8 +110,8 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
     syntax EthereumCommand ::= loadTx ( Int )
  // -----------------------------------------
     rule <k> loadTx(ACCTFROM)
-          => #create ACCTFROM #newAddr(ACCTFROM, NONCE) (GLIMIT -Int G0(SCHED, CODE, true)) VALUE #dasmOps(CODE) .Ints
-          ~> #codeDeposit #newAddr(ACCTFROM, NONCE) #sizeWordStack(CODE) #dasmOps(CODE) %0 ~> #adjustGas ~> #finalizeTx(false) ~> startTx
+          => #create ACCTFROM #newAddr(ACCTFROM, NONCE) (GLIMIT -Int G0(SCHED, CODE, true)) VALUE #dasmContract(CODE, Main) .Ints
+          ~> #codeDeposit #newAddr(ACCTFROM, NONCE) #sizeWordStack(CODE) #dasmContract(CODE, Main) %0 ~> #adjustGas ~> #finalizeTx(false) ~> startTx
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -387,7 +387,7 @@ The individual fields of the accounts are dealt with here.
     rule <k> load "account" : { ACCT : { "code" : (CODE:WordStack) } } => . ... </k>
          <account>
            <acctID> ACCT </acctID>
-           <code> _ => #dasmOps(CODE) </code>
+           <code> _ => #dasmContract(CODE, Main) </code>
            ...
          </account>
          <activeAccounts> ... ACCT |-> (EMPTY => #if CODE =/=K .WordStack #then false #else EMPTY #fi) ... </activeAccounts>
@@ -442,7 +442,7 @@ Here we load the environmental information.
  // -----------------------------------------------------------------------------------------------
     rule <k> load "exec" : { "data" : [DATA:Int, LEN:Int] } => . ... </k> <callData> _ => LEN , DATA , .Ints </callData>
     rule <k> load "exec" : { "code" : (CODE:WordStack) } => . ... </k>
-         (<program>  _ </program> => #loadCode(#dasmOps(CODE)))
+         (<program>  _ </program> => #loadCode(#dasmContract(CODE, Main)))
          <schedule> SCHED </schedule>
 ```
 
@@ -598,10 +598,10 @@ The `"transactions"` key loads the transactions.
     rule <k> check "account" : { ACCT : { "code" : (CODE:WordStack) } } => . ... </k>
          <account>
            <acctID> ACCT </acctID>
-           <code> OPS </code>
+           <code> CONTRACT </code>
            ...
          </account>
-         requires #dasmOps(CODE) ==K OPS
+         requires #dasmContract(CODE, Main) ==K CONTRACT
     rule <k> check "account" : { ACCT : { "code" : .WordStack } } => . ... </k>
          <account>
            <acctID> ACCT </acctID>
