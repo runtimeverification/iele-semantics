@@ -1,20 +1,16 @@
-@beneficiary = 0
-@auction.start = 0
-@auction.end = 0
+contract Main !10 {
 
-@highest.bidder = 0
-@highest.bid = 0
-
-@ended = 0
-
-define @init(%beneficiary, %bidding.time) {
+define public @init(%beneficiary, %bidding.time) {
 entry:
     @beneficiary = %beneficiary
     @auction.start = call @iele.timestamp()
     @auction.end = add @auction_start, %bidding.time
+    @highest.bidder = 0
+    @highest.bid = 0
+    @ended = 0
 }
 
-define @bid() {
+define public @bid() {
 entry:
     %1 = call @iele.timestamp()
     %2 = cmp ge %1, @auction.end
@@ -40,7 +36,7 @@ exit:
     ret void
 }
 
-define @finish.auction() {
+define public @finish.auction() {
 entry:
     %1 = call @iele.timestamp()
     %2 = cmp lt %1, @auction.end
@@ -56,4 +52,6 @@ bb.2:
 
 exit:
     ret void
+}
+
 }
