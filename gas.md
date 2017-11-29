@@ -724,6 +724,13 @@ of the logged registers.
   computationCost(MLOAD rREG wINDEX) = mLoadCost + mloadWordCost * memoryCellSize(value wIndex)
   estimatedResultSize(MLOAD rREG wINDEX) = memoryCellSize(value wIndex)
   ```
+* `MLOADN`
+  ```hs
+  computationCost(MLOADN rREG, wINDEX1, wINDEX2, wWIDTH) =
+    mLoadNCost + mLoadWordCost * wWIDTH
+  memoryDelta(MLOADN rREG, wINDEX1, wINDEX2, wWIDTH) =
+    wWIDTH - registerSize rREG
+  ```
 * `MSTORE` when we store a new value over an old one, we compute the difference
   in size between the two values.  Similar to changes to registers, this difference is used to update the
   current memory requirements, and, if it increases, it might update the top
@@ -734,6 +741,15 @@ of the logged registers.
     mStoreCost + mStoreWordCost * registerSize wVALUE
   memoryCost(MSTORE wINDEX wVALUE) =
     (registerSize wVALUE - storeCellSize(value wIndex))
+  ```
+* `MSTOREN`
+  ```hs
+  computationCost(MSTOREN wINDEX1 wINDEX2 wVALUE wWIDTH) =
+    mStoreNCost +
+    mStoreWordCost * max(0, wINDEX2 - storeCellSize(value wIINDEX1))
+    mStoreWordCost * wWIDTH
+  memoryDelta(MSTOREN wINDEX1 wINDEX2 wVALUE wWIDTH) =
+    wWIDTH + max(0, wINDEX2 - storeCellSize(value wIINDEX1))
   ```
 
 #### Register manipulations
@@ -860,15 +876,13 @@ Definitions
 * Check that GMP can give number of limbs in constant time or update costs accordingly
 * Check that all background costs are accounted for (e.g. updating a register's)
   metadata after an assignment.
+* Check that memory deltas are used properly everywhere (e.g. MLOAD).
 
 ### TODOS: Instructions to add
 
 * EXTCODESIZE
 * CREATE
 * SELFDESTRUCT
-* INVALID
-* MLOADN
-* MSTOREN
 * COPYCREATE
 
 ### TODOS: Instructions to consider if they should be added
