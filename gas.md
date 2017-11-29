@@ -42,7 +42,7 @@ operations need to take into account the size of the operands.
 
 The memory variation introduced by updating the register *r* with value *v*
 ```
-  registerLoadDelta(r, v) = limbLength(v) - registerDataSize(r)
+  registerLoadDelta(r, v) = limbLength(v) - registerSize(r)
 ```
 
 ### High level view of the gas model
@@ -376,10 +376,29 @@ We assume that all operations interrogating the local state have complexity
   Save the local context (including the current register stack memory
   requirements), copy the arguments into the new context and jump to
   the call site.
+
+  We're assuming that, in an efficient implementation, saving the caller's
+  registers is a small constant time operation. One way or another, an
+  efficient implementation will, in the general case, hold the actual register
+  data in memory, while, maybe, using machine registers for the machine
+  metadata. Regardless of how these optimizations are done, saving the caller
+  context and creating the callee context takes
+  constantTime + someConstant * registerCount, and a similar amount of memory.
+
   ```hs
   computationCost(LOCALCALL(_, nARGS, _) _ rARGS) =
-    saveContextCost + wordCopyCost * (sum [registerSize r | r <- rARGS]) + jumpCost
+    returnAddressSaveCost + byteSetCost * registerMetadataSize * REGISTERS +
+    wordCopyCost * (sum [registerSize r | r <- rARGS])
+    + jumpCost + callStackDepthCheckCost
+  memoryDelta(LOCALCALL(_, nARGS, _) _ rARGS) =
+    currentRegisterMemory + sum [registerSize(r) | r <- rARGS]
+    + returnAddressSize -- return address
+    + registerMetadataSize * REGISTERS -- unused register table
   ```
+
+  `REGISTERS` is the maximum number of registers as declared in the contract
+  prefix. TODO: Use the caller's actual register count or callee's max register
+  count instead.
 
 * `RETURN`
   Copy values from return registers to caller locations restore local context,
@@ -390,7 +409,7 @@ We assume that all operations interrogating the local state have complexity
   ```hs
   computationCost(RETURN(nRETURNS) rVALUES) =
     restoreContextCost + metadataCopyCost * nRETURNS + jumpCost
-  requiredRegisterMemory = callerRegisterMemory +
+  requiredRegisterMemory(RETURN(nRETURNS) rVALUES) = callerRegisterMemory +
     sum [registerLoadDelta(r, v) | (r, v) <- getReturns() `zip` rVALUES]
   ```
 
