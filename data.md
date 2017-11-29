@@ -113,6 +113,12 @@ You could alternatively calculate `I1 %Int I2`, then add one to the normal integ
     syntax Int ::= log256Int ( Int ) [function]
  // -------------------------------------------
     rule log256Int(N) => log2Int(N) /Int 8
+
+    syntax Int ::= intSize ( Int ) [function]
+ // -----------------------------------------
+    rule intSize(N) => (log2Int(N) +Int 2) up/Int 64 requires N >Int 0
+    rule intSize(0) => 1
+    rule intSize(N) => intSize(~Int N) requires N <Int 0
 ```
 
 Here we provide simple syntactic sugar over our power-modulus operator.
