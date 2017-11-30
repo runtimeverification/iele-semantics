@@ -50,6 +50,13 @@ define public @totalSupply() {
   ret @supply
 }
 
+define @init() {
+  @supply = 10000
+  %caller = call @iele.caller()
+  call @setBalance(%caller, @supply)
+  ret void
+}
+
 define public @balanceOf(%id) {
   @balanceRegion = 1
   %key = call @mapKey(@balanceRegion, %id)
