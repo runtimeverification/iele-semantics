@@ -221,6 +221,12 @@ module IELE-COMMON
 
   syntax Contract ::= List{ContractDefinition, ""} [klabel(contractDefinitionList)]
 
+  // Deposit function in empty accounts
+  syntax IeleName ::= "deposit" [token]
+
+  // Constructor function for all contracts
+  syntax IeleName ::= "init" [token]
+
   // macros for empty return operand lists in calls and returns
   rule call NAME ( ARGS ) => .LValues = call NAME ( ARGS ) [macro]
   rule call NAME at CONTRACT ( ARGS ) send VALUE , gaslimit GLIMIT => .LValues = call NAME at CONTRACT ( ARGS ) send VALUE , gaslimit GLIMIT [macro]

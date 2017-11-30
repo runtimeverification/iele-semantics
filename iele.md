@@ -700,9 +700,9 @@ if any of its entry points are invoked with a balance transfer.
 
 ```{.k .uiuck .rvk}
     syntax Contract ::= "#emptyCode"
+    syntax IeleName ::= "Main" [token]
     syntax FunctionParameters ::= Int /* when desugared to just the number of parameters */
-    syntax IeleName ::= "Main" [token] | "deposit" [token] | "init" [token]
- // -----------------------------------------------------------------------
+ // ---------------------------------------------------------------------------------------
     rule #emptyCode => contract Main !0 { define public @deposit ( 0 ) { ret .NonEmptyOperands .Instructions .LabeledBlocks } } .Contract [macro]
 ```
 
