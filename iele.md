@@ -173,7 +173,7 @@ Modal Semantics
 Our semantics is modal, with the initial mode being set on the command line via `-cMODE=EXECMODE`.
 
 -   `NORMAL` executes as a client on the network would.
--   `VMTESTS` skips `CALL*` and `CREATE` operations.
+-   `VMTESTS` skips `call*` and `create*` operations.
 
 ```{.k .uiuck .rvk}
     syntax Mode ::= "NORMAL" | "VMTESTS"
@@ -1190,6 +1190,7 @@ If the function being called is not public, does not exist, or has the wrong num
 
     rule <k> #initFun(LABEL, NARGS) => #if EXECMODE ==K VMTESTS #then #end #else #execute #fi ... </k>
          <mode> EXECMODE </mode>
+         <id> ACCT </id>
          <funcIds> ... SetItem(LABEL) </funcIds>
          <exported> FUNCS </exported>
          <fid> _ => LABEL </fid>
