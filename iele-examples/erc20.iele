@@ -1,6 +1,9 @@
 contract ERC20 {
 
-define @mapKey(%prefix, %address) {
+// computes a unique index in the account storage for a particular value by partitioning
+// the storage into different regions. %region represents a unique bit prefix on the
+// key that will be ored with the specified address.
+define @mapKey(%region, %address) {
   @addressMask = 1461501637330902918203684832716283019655932542975 // 2^160 - 1
   @addressShift = 1461501637330902918203684832716283019655932542976 // 2^160
   %realAddress = and %address, @addressMask
@@ -10,15 +13,15 @@ define @mapKey(%prefix, %address) {
 }
 
 define @setBalance(%account, %value) {
-  @balanceId = 0
-  %key = call @mapKey(@balanceId, %account)
+  @balanceRegion = 1
+  %key = call @mapKey(@balanceRegion, %account)
   sstore %value, %key
   ret void
 }
 
 define @setAllowance(%owner, %spender, %allowance) {
-  @allowanceId = 1
-  %key1 = call @mapKey(@allowanceId, %owner)
+  @allowanceRegion = 2
+  %key1 = call @mapKey(@allowanceRegion, %owner)
   %key2 = call @mapKey(%key1, %spender)
   sstore %allowance, %key2
   ret void
@@ -48,15 +51,15 @@ define public @totalSupply() {
 }
 
 define public @balanceOf(%id) {
-  @balanceId = 0
-  %key = call @mapKey(@balanceId, %id)
+  @balanceRegion = 1
+  %key = call @mapKey(@balanceRegion, %id)
   %balance = sload %key
   ret %balance
 }
 
 define public @allowance(%owner, %spender) {
-  @allowanceId = 1
-  %key1 = call @mapKey(@allowanceId, %owner)
+  @allowanceRegion = 2
+  %key1 = call @mapKey(@allowanceRegion, %owner)
   %key2 = call @mapKey(%key1, %spender)
   %allowance = sload %key2
   ret %allowance
