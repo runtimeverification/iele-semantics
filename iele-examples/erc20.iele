@@ -8,12 +8,14 @@ define @mapKey(%prefix, %address) {
   %ored = or %shifted, %realAddress
   ret %ored
 }
+
 define @setBalance(%account, %value) {
   @balanceId = 0
   %key = call @mapKey(@balanceId, %account)
   sstore %value, %key
   ret void
 }
+
 define @setAllowance(%owner, %spender, %allowance) {
   @allowanceId = 1
   %key1 = call @mapKey(@allowanceId, %owner)
@@ -21,19 +23,23 @@ define @setAllowance(%owner, %spender, %allowance) {
   sstore %allowance, %key2
   ret void
 }
+
 define @log.Approval(%owner, %spender, %allowance) {
   // hash of event name
   @approvalEvent = 51203953783612407010867880206449430888987723574256155352892809266431502985471
   @logCell = 0
   store %allowance, @logCell
   log @logCell, @approvalEvent, %owner, %spender
+  ret void
 }
+
 define @log.Transfer(%from, %to, %value) {
   // hash of event name
   @transferEvent = 108826829889743193495150187174564778908056497375576552531120215125716493244137
   @logCell = 0
   store %value, @logCell
   log @logCell, @transferEvent, %from, %to
+  ret void
 }
 
 define public @totalSupply() {
