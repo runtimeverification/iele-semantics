@@ -33,7 +33,7 @@ fixed at 256 bits, now varies during its usage.  This was previously only
 considered for storage (resetting a stored value to 0 would generate a refund).
 
 To address this variance, we charge memory accesses as EVM, but only charge
-memory allocation w.r.t. the peak memory usage. 
+memory allocation w.r.t. the peak memory usage.
 
 ### Operations with return register
 
@@ -215,23 +215,25 @@ gas/memory) to contain that size.
       where l1 = registerSize wREG1
             l2 = registerSize wREG2
     ```
-* `EXP rREG wREG1 wREG2`
-  - Exponentiation is done by repeatedly squaring `WREG1` and multiplying those
-    intermediate results for the non-zero bits of `WREG2`.
+* `EXP rREG wBASE wEXPONENT`
+  - Exponentiation is done by repeatedly squaring `wBASE` and multiplying those
+    intermediate results for the non-zero bits of `wEXPONENT`.
+    This leads to a result of size `lb*e` where `lb` is the length of `wBASE`
+    and `e` is the value of `wEXPONENT`.
     ```hs
-    computationCost(EXP rREG wREG1 wREG2)
-      | isZero wREG2 = bitCost + wordCopyCost
-      | otherwise    = constExp * wordCost * (0.5 * approxKara l * (approxKara e - 1) + 2 * l * (e - 1)))
-      where l = registerSize wREG1
-            e = value wREG2
+    computationCost(EXP rREG wBASE wEXPONENT)
+      | isZero wEXPONENT = bitCost + wordCopyCost
+      | otherwise    = constExp * wordCost * (0.5 * approxKara lb * (approxKara e - 1) + 2 * lb * (e - 1)))
+      where lb = registerSize wBASE
+            e = value wEXPONENT
     ```
   - Size of the result is the product between the exponent and the size of the base
     ```hs
-    estimatedResultSize(EXP rREG wREG1 wREG2)
-      | isZero wREG2 = 1
-      | otherwise    = l * e
-      where l = registerSize wREG1
-            e = value wREG2
+    estimatedResultSize(EXP rREG wBASE wEXPONENT)
+      | isZero wEXPONENT = 1
+      | otherwise    = lb * e
+      where l = registerSize wBASE
+            e = value wEXPONENT
     ```
 
 #### Modular arithmetic
@@ -248,13 +250,15 @@ gas/memory) to contain that size.
             l3 = registerSize wREG3
     ```
 * `MULMOD rREG wREG1 wREG2 wREG3`
-  -  Multiplication is followed by a mod operation
+  -  Multiplication can be done by first modulo-ing the arguments;
+     then `mulModCost l3` computes the cost for multiplying and
+     taking modulo again.
     ```hs
     computationCost(MULMOD rREG wREG1 wREG2 wREG3)
       | isZero wREG1
       || isZero wREG2  = 2 * bitCost + wordCopyCost
       | l1 + l2 < l3   = cc
-      | otherwise      = divCost l1 l3 + divCost l2 l3 + cc + divCost (ml1 + ml2) l3
+      | otherwise      = divCost l1 l3 + divCost l2 l3 + mulModCost l3
     ```
   - Size of result is that of the module
     ```hs
@@ -269,23 +273,24 @@ gas/memory) to contain that size.
             cc = mulCost ml1 ml2
     ```
 * `EXPMOD rREG wREG1 wREG2 wREG3`
-  - Exponentiation is done by repeatedly squaring `WREG1` and multiplying those
+  - Exponentiation is done by repeatedly squareing `WREG1` and multiplying those
     intermediate results for the non-zero bits of `WREG2`, all modulo `WREG3`.
+    Modulo is taken by computing the `(2^limbSize)^(2*l3) / (value wREG3)` once,
+    then performing division by multiplying with the inverse (see `mulModCost0`).
     ```hs
-    computationCost(EXPMOD rREG wREG1 wREG2 wREG3)
+    computationCost(EXPMOD rREG wBASE wEXP wMOD)
       | isZero wREG2 = bitCost + wordCopyCost
-      | otherwise    = divCost l1 l3 + constExpMod * 2 * l2 * (cc + divCost (l3+l3) l3)
-      where l1 = registerSize wREG1
-            l2 = registerSize wREG2
-            l3 = registerSize wREG3
-            cc = mulCost l3 l3
+      | otherwise    = divCost lBASE lMOD + lMOD * wordCopyCost + divModCost lMOD + 2 * blEXP * (mulModCost0 lMOD) + constExpMod
+      where lBASE = registerSize wBASE
+            blEXP = limbSize * registerSize wEXP
+            lMOD = registerSize wMOD
     ```
-  - Size of the result is the product between the exponent and the size of the base
+  - Size of the result is capped by the size of the modulo
     ```hs
-    estimatedResultSize(EXPMOD rREG wREG1 wREG2)
-      | isZero wREG2 = 1
-      | otherwise    = l3
-      where l3 = registerSize wREG3
+    estimatedResultSize(EXPMOD rREG wBASE wEXP wMOD)
+      | isZero wEXP = 1
+      | otherwise    = lMOD
+      where lMOD = registerSize wMOD
     ```
 
 #### SHA3
@@ -513,6 +518,89 @@ Definitions
     where m = max l1 l2
   ```
 
+  The Karatsuba method for multiplying two numbers of size `2*n` (base `b`).
+
+  * Split the numbers, into two numbers, each of size `n`
+    `x = b^n * x1 + x0,  y = b^n * y1 + y0`
+  * Then `x * y = (b^n * x1 + x0) * (b^n * y1 + y0)`, leading to
+    `x * y  = b^2n * x1 * y1 + b^n * (x1 * y0 + x2 * y0) + x0 * y0`
+  * Note that `x1 * y0 + x0 * y1 = (x1 + x0) * (y1 + y0) - x1 * y1 - x0 * y0`
+  * Let `z0 = x0 * y0`, `z2 = x1 * y1`, `t = (x1 + x0) * (y1 + y0)`, and
+    `z1 = t - z0 - z2`.
+  * Suppose `mul x` is the cost of computing the multiplication of two numbers
+    of `x` limbs and `add x` is the cost of computing the addition of two
+    numbers of size `x`. Then,
+    * `time z0 = time z2 = mul n`, and `size z0 = size z2 = 2 * n`
+    * `time (x1 + x0) = time (y1 + y0) = add n` and
+      `size (x1 + x0) = size (y1 + y0) = n + 1`
+    * `time t = 2 * add n + mul (n + 1)` and `size t = 2 * n + 2`
+    * `time z1 = time t + 2 * add (2 * n + 2)` and `size z1 = 2 * n + 2`
+    * Since the shifting is done by limbs, we can aggregate the cost for shifting
+      into that for addition, and have:
+
+      ```hs
+      mul (2*n) = time (x * y) = time z0 + time z1 + time z2 + 2 * add (4 * n) + const0
+                 = 2 * mul n + mul (n + 1) + 2 * add n + 2 * add (2 * n + 2) + 2 * add (4 * n) + const0
+      size x * y = 4 * n
+      ```
+
+  * Using that add is linear, we can assume constants `cAdd1` and `cAdd0` s.t.
+    `add x = cAdd1 * x + cAdd0`, we can rewrite `mul (2*n)` to:
+
+    `mul (2*n) = 2 * mul n + mul (n + 1) + 2 * (cAdd1 * n + cAdd0) + 2 * (cAdd1 * (2 * n + 2) + cAdd0) + 2 * (cAdd1 * 4 * n + cAdd0) + const0`, which simplifies to
+    ```hs
+    mul n = 2 * mul (nd2 1)  + mul (nd2 1 + 1) + n * cAdd1 * 7 + const1
+       where nd2 k = ceiling (n / 2 ^ k)
+             const1 = const0 +  cAdd0 * 6 + cAdd1 * 4
+    ```
+
+    Now, to simplify computation, we approximate `mul (nd2 1)` with `mul (nd2 1 + 1)`,
+    and `ceiling ((nd2 1 + 1) / 2)` with `nd2 2`
+    ```hs
+    mul n = 3 * mul (nd2 1 + 1) + 7 * cAdd1 * n + const1
+          = 3 * (3 * mul (nd2 2 + 1) + 7 * cAdd1 * (nd2 1 + 1) + const1) + 7 * cAdd1 * n + const1
+    ```
+    Let `const2 = 7 * cAdd1 + const1`. Then we can replace `const1` by `const2 - 7 * cAdd1`
+    ```hs
+    mul n = - 7 * cAdd1 + 7 * cAdd1 * n + const2
+                       + (7 * cAdd1 * nd2 1 + const2) * 3 ^ 1
+                       + (7 * cAdd1 * nd2 2 + const2) * 3 ^ 2 +
+                       .................
+                       + (7 * cAdd1 * nd2 k + const2) * 3 ^ k
+      where k = log n / log 2
+    ```
+    By computing the sums, we obtain
+    ```hs
+    mul n = -7 * cAdd1 + 7 * cAdd1 * n * ((3/2)^(k+1) -1)(3/2 - 1) + const2*(3 ^ (k+1) -1) / 2
+    ```
+    Considering that `2^k = n` and `3 ^ k = n ^ constKara`, we reduce to
+    ```hs
+    mul n = 14 * cAdd1 * n * (3/2 * n ^ constKara / n - 1) + const2/2 * (3 * n^constKara - 1) - 7 * cAdd1
+          = 21 * n ^ constKara + 3/2 * const2 * n^constKara - 14 * cAdd1 * n - 7 * cAdd1 - const2/2
+          = mMul2 * n ^ constKara + mMul1 * n + mMul0
+      where mMul2 = 21 + 3 * const2 / 2 = 21 + 3 / 2 * (11 * cAdd1 + 6 * cAdd0 + const0)
+            mMul1 = -14 * cadd1
+            mMul0 = -7*cAdd1 - const2 / 2 = -1/2 * (25 * cAdd1 + 6 * cAdd0 + const0)
+            const2 = 11 * cAdd1 + 6 * cAdd0 + const0
+    ```
+* Division cost: `a divmod m` when size of `a` is twice the size of `m`, say `n` division
+  can be done in a divide and conquer manner, with a complexity of `mul n * log n`
+  ```hs
+  divModCost n = mul n * (log n / log 2)
+  ```
+* Multiplication modulo cost. Assuming size of arguments is equal to size of modulo, which is `n`
+  ```hs
+  mulModCost n = mul n + divCost (2 * n) n = mul n * (1 + log n)
+  ```
+  When doing multiple multiplications modulo `m` of size `n` for really large `n`,
+  one can compute only once the "inverse" `base^(2*n) / m`, with a cost of `divModCost n` as above, followed by
+  repeated operations of cost `mulModCost0 n`
+  (Barrett reduction [https://en.wikipedia.org/wiki/Barrett_reduction]).
+  ```hs
+  mulModCost0 n = mul n + mul (n + 1) + 4 * add n
+  ```
+
+ 
 * *constKara = log 3 / log 2* - the exponent of the complexity for the Karatsuba
   algorithm
 
