@@ -165,7 +165,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
 
     rule #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, OP:OpCode) => #dasmFunction(PUBLIC, NAME, SIG, #drop(#opWidth(OP, NBITS) -Int #opCodeWidth(OP), WS), NBITS, FUNCS, #dasmInstruction(OP, #take(#opWidth(OP, NBITS) -Int #opCodeWidth(OP), WS), NBITS, FUNCS) INSTRS, .K)
 
-    rule #dasmFunction(PUBLIC, NAME, SIG, W : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, W : WS, NBITS, FUNCS, INSTRS, #str(#pushLen(#drop(NBITS up/Int 8, WS)), #pushOffset(#drop(NBITS up/Int 8, WS))))
+    rule #dasmFunction(PUBLIC, NAME, SIG, W : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, W : WS, NBITS, FUNCS, INSTRS, #str(#loadLen(#drop(NBITS up/Int 8, WS)), #loadOffset(#drop(NBITS up/Int 8, WS))))
       requires W >=Int 97 andBool W <Int 99
     rule #dasmFunction(PUBLIC, NAME, SIG, 97  : WS, NBITS, FUNCS, INSTRS, #str(LEN, POS)) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, LOADPOS(LEN +Int POS, #asUnsigned(WS [ POS +Int (NBITS up/Int 8) .. LEN ])))
     rule #dasmFunction(PUBLIC, NAME, SIG, 98  : WS, NBITS, FUNCS, INSTRS, #str(LEN, POS)) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, LOADNEG(LEN +Int POS, #asUnsigned(WS [ POS +Int (NBITS up/Int 8) .. LEN ])))
