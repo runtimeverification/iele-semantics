@@ -88,10 +88,6 @@ module IELE-COMMON
                            | LValues "=" "call" GlobalName "(" Operands ")" [hybrid, strict(3)]
   syntax AccountCallInst ::= "call" GlobalName "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand
                            | LValues "=" "call" GlobalName "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand [hybrid, seqstrict(3,4,5,6)]
-  syntax AccountCallInst ::= "callcode" GlobalName "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand
-                           | LValues "=" "callcode" GlobalName "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand [hybrid, seqstrict(3,4,5,6)]
-  syntax AccountCallInst ::= "delegatecall" GlobalName "at" Operand "(" Operands ")" "gaslimit" Operand
-                           | LValues "=" "delegatecall" GlobalName "at" Operand "(" Operands ")" "gaslimit" Operand [hybrid, seqstrict(3,4,5)]
   syntax AccountCallInst ::= "staticcall" GlobalName "at" Operand "(" Operands ")" "gaslimit" Operand
                            | LValues "=" "staticcall" GlobalName "at" Operand "(" Operands ")" "gaslimit" Operand [hybrid, seqstrict(3,4,5)]
   syntax SendInst        ::= "send" /* value */ Operand "to" /* account */ Operand [hybrid, seqstrict(1,2)]
@@ -228,8 +224,6 @@ module IELE-COMMON
   // macros for empty return operand lists in calls and returns
   rule call NAME ( ARGS ) => .LValues = call NAME ( ARGS ) [macro]
   rule call NAME at CONTRACT ( ARGS ) send VALUE , gaslimit GLIMIT => .LValues = call NAME at CONTRACT ( ARGS ) send VALUE , gaslimit GLIMIT [macro]
-  rule callcode NAME at CONTRACT ( ARGS ) send VALUE , gaslimit GLIMIT => .LValues = callcode NAME at CONTRACT ( ARGS ) send VALUE , gaslimit GLIMIT [macro]
-  rule delegatecall NAME at CONTRACT ( ARGS ) gaslimit GLIMIT => .LValues = delegatecall NAME at CONTRACT ( ARGS ) gaslimit GLIMIT [macro]
   rule staticcall NAME at CONTRACT ( ARGS ) gaslimit GLIMIT => .LValues = staticcall NAME at CONTRACT ( ARGS ) gaslimit GLIMIT [macro]
   rule ret void => ret .NonEmptyOperands [macro]
   rule revert void => revert .NonEmptyOperands [macro]

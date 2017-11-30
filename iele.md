@@ -451,8 +451,6 @@ Some instructions require an argument to be interpereted as an address (modulo 1
     rule #addr?(REG = copycreate W0 (REGS1) send W1)                        => REG = copycreate #addr(W0) (REGS1) send W1
     rule #addr?(selfdestruct W)                                             => selfdestruct #addr(W)
     rule #addr?(REGS1 = call LABEL at W0 (REGS2) send W1 , gaslimit W2)     => REGS1 = call LABEL at #addr(W0) (REGS2) send W1 , gaslimit W2
-    rule #addr?(REGS1 = callcode LABEL at W0 (REGS2) send W1 , gaslimit W2) => REGS1 = callcode LABEL at #addr(W0) (REGS2) send W1 , gaslimit W2
-    rule #addr?(REGS1 = delegatecall LABEL at W0 (REGS2) gaslimit W1)       => REGS1 = delegatecall LABEL at #addr(W0) (REGS2) gaslimit W1
     rule #addr?(REGS1 = staticcall LABEL at W0 (REGS2) gaslimit W1)         => REGS1 = staticcall LABEL at #addr(W0) (REGS2) gaslimit W1
     rule #addr?(OP)                                                         => OP [owise]
 ```
@@ -1095,11 +1093,11 @@ The various `call*` (and other inter-contract control flow) operations will be d
 
 ```{.k .uiuck .rvk}
     syntax InternalOp ::= "#checkCall" Int Int
-                        | "#call" Int Int Int IeleName Int Int Int Ints Bool
-                        | "#callWithCode" Int Int ProgramCell IeleName Int Int Int Ints Bool
-                        | "#mkCall" Int Int ProgramCell IeleName Int Int Int Ints Bool
+                        | "#call" Int Int IeleName Int Int Ints Bool
+                        | "#callWithCode" Int Int ProgramCell IeleName Int Int Ints Bool
+                        | "#mkCall" Int Int ProgramCell IeleName Int Int Ints Bool
  // ----------------------------------------------------------------------------------
-    rule <k> #checkCall ACCT VALUE ~> #call _ _ _ _ GLIMIT _ _ _ _ => #refund GLIMIT ~> #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception ... </k>
+    rule <k> #checkCall ACCT VALUE ~> #call _ _ _ GLIMIT _ _ _ => #refund GLIMIT ~> #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception ... </k>
          <callDepth> CD </callDepth>
          <output> _ => .Ints </output>
          <account>
@@ -1118,42 +1116,42 @@ The various `call*` (and other inter-contract control flow) operations will be d
          </account>
       requires notBool (VALUE >Int BAL orBool CD >=Int 1024)
 
-    rule <k> #call ACCTFROM ACCTTO ACCTCODE FUNC GLIMIT VALUE APPVALUE ARGS STATIC
-          => #callWithCode ACCTFROM ACCTTO #precompiled FUNC GLIMIT VALUE APPVALUE ARGS STATIC
+    rule <k> #call ACCTFROM ACCTTO FUNC GLIMIT VALUE ARGS STATIC
+          => #callWithCode ACCTFROM ACCTTO #precompiled FUNC GLIMIT VALUE ARGS STATIC
          ...
          </k>
          <schedule> SCHED </schedule>
-      requires ACCTCODE ==Int #precompiledAccount
+      requires ACCTTO ==Int #precompiledAccount
 
-    rule <k> #call ACCTFROM ACCTTO ACCTCODE FUNC GLIMIT VALUE APPVALUE ARGS STATIC
-          => #callWithCode ACCTFROM ACCTTO #loadCode(CODE) FUNC GLIMIT VALUE APPVALUE ARGS STATIC
+    rule <k> #call ACCTFROM ACCTTO FUNC GLIMIT VALUE ARGS STATIC
+          => #callWithCode ACCTFROM ACCTTO #loadCode(CODE) FUNC GLIMIT VALUE ARGS STATIC
          ...
          </k>
          <schedule> SCHED </schedule>
-         <acctID> ACCTCODE </acctID>
+         <acctID> ACCTTO </acctID>
          <code> CODE </code>
-      requires ACCTCODE =/=Int #precompiledAccount
+      requires ACCTTO =/=Int #precompiledAccount
 
-    rule <k> #call ACCTFROM ACCTTO ACCTCODE FUNC GLIMIT VALUE APPVALUE ARGS STATIC
-          => #callWithCode ACCTFROM ACCTTO #loadCode(#emptyCode) FUNC GLIMIT VALUE APPVALUE ARGS STATIC
+    rule <k> #call ACCTFROM ACCTTO FUNC GLIMIT VALUE ARGS STATIC
+          => #callWithCode ACCTFROM ACCTTO #loadCode(#emptyCode) FUNC GLIMIT VALUE ARGS STATIC
          ...
          </k>
          <activeAccounts> ACCTS </activeAccounts>
          <schedule> SCHED </schedule>
-      requires ACCTCODE =/=Int #precompiledAccount andBool notBool ACCTCODE in_keys(ACCTS)
+      requires ACCTTO =/=Int #precompiledAccount andBool notBool ACCTTO in_keys(ACCTS)
 
-    rule #callWithCode ACCTFROM ACCTTO CODE FUNC GLIMIT VALUE APPVALUE ARGS STATIC
+    rule #callWithCode ACCTFROM ACCTTO CODE FUNC GLIMIT VALUE ARGS STATIC
       => #pushCallStack ~> #pushWorldState ~> #pushSubstate
       ~> #transferFunds ACCTFROM ACCTTO VALUE
-      ~> #mkCall ACCTFROM ACCTTO CODE FUNC GLIMIT VALUE APPVALUE ARGS STATIC
+      ~> #mkCall ACCTFROM ACCTTO CODE FUNC GLIMIT VALUE ARGS STATIC
 
-    rule <k> #mkCall ACCTFROM ACCTTO CODE FUNC GLIMIT VALUE APPVALUE ARGS STATIC:Bool
+    rule <k> #mkCall ACCTFROM ACCTTO CODE FUNC GLIMIT VALUE ARGS STATIC:Bool
           => #initVM(ARGS) ~> #initFun(FUNC, #sizeRegs(ARGS))
          ...
          </k>
          <callDepth> CD => CD +Int 1 </callDepth>
          <callData> _ => ARGS </callData>
-         <callValue> _ => APPVALUE </callValue>
+         <callValue> _ => VALUE </callValue>
          <id> _ => ACCTTO </id>
          <gas> _ => GLIMIT </gas>
          <caller> _ => ACCTFROM </caller>
@@ -1238,42 +1236,18 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
 ```{.k .uiuck .rvk}
     rule <k> #exec REG , REGS = call @ LABEL at ACCTTO ( ARGS ) send VALUE , gaslimit GCAP
           => #checkCall ACCTFROM VALUE
-          ~> #call ACCTFROM ACCTTO ACCTTO LABEL Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, VALUE) VALUE VALUE ARGS false
+          ~> #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, VALUE) VALUE ARGS false
           ~> #return REGS REG
          ...
          </k>
          <schedule> SCHED </schedule>
          <id> ACCTFROM </id>
-         <activeAccounts> ACCTS </activeAccounts>
-         <previousGas> GAVAIL </previousGas>
-
-    rule <k> #exec REG , REGS = callcode @ LABEL at ACCTTO ( ARGS ) send VALUE , gaslimit GCAP
-          => #checkCall ACCTFROM VALUE
-          ~> #call ACCTFROM ACCTFROM ACCTTO LABEL Ccallgas(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, VALUE) VALUE VALUE ARGS false
-          ~> #return REGS REG
-         ...
-         </k>
-         <schedule> SCHED </schedule>
-         <id> ACCTFROM </id>
-         <activeAccounts> ACCTS </activeAccounts>
-         <previousGas> GAVAIL </previousGas>
-
-    rule <k> #exec REG , REGS = delegatecall @ LABEL at ACCTTO ( ARGS ) gaslimit GCAP
-          => #checkCall ACCTFROM 0
-          ~> #call ACCTAPPFROM ACCTFROM ACCTTO LABEL Ccallgas(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, 0) 0 VALUE ARGS false
-          ~> #return REGS REG
-         ...
-         </k>
-         <schedule> SCHED </schedule>
-         <id> ACCTFROM </id>
-         <caller> ACCTAPPFROM </caller>
-         <callValue> VALUE </callValue>
          <activeAccounts> ACCTS </activeAccounts>
          <previousGas> GAVAIL </previousGas>
 
     rule <k> #exec REG , REGS = staticcall @ LABEL at ACCTTO ( ARGS ) gaslimit GCAP
           => #checkCall ACCTFROM 0
-          ~> #call ACCTFROM ACCTTO ACCTTO LABEL Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0) 0 0 ARGS true
+          ~> #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0) 0 ARGS true
           ~> #return REGS REG
          ...
          </k>
@@ -1692,16 +1666,6 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     rule <k> #gasExec(SCHED, log IDX , _:Int , _:Int , _:Int,  _:Int) => (Glog < SCHED > +Int (Glogdata < SCHED > *Int #sizeWordStack({LM [ IDX ]}:>WordStack)) +Int (4 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
 
     rule <k> #gasExec(SCHED, _ = call _ at ACCTTO ( _ ) send VALUE , gaslimit GCAP) => Ccall(SCHED, ACCTTO,   ACCTS, GCAP, GAVAIL, VALUE) ... </k>
-         <activeAccounts> ACCTS </activeAccounts>
-         <gas> GAVAIL </gas>
-
-    rule <k> #gasExec(SCHED, _ = callcode _ at _ ( _ ) send VALUE , gaslimit GCAP) => Ccall(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, VALUE) ... </k>
-         <id> ACCTFROM </id>
-         <activeAccounts> ACCTS </activeAccounts>
-         <gas> GAVAIL </gas>
-
-    rule <k> #gasExec(SCHED, _ = delegatecall _ at _ ( _ ) gaslimit GCAP) => Ccall(SCHED, ACCTFROM, ACCTS, GCAP, GAVAIL, 0) ... </k>
-         <id> ACCTFROM </id>
          <activeAccounts> ACCTS </activeAccounts>
          <gas> GAVAIL </gas>
 

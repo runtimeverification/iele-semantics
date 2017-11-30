@@ -90,10 +90,8 @@ contains enough information to determine and decode the rest of the operation.
     syntax CopyCreateOp ::= COPYCREATE ( Int )
 
     syntax CallOp ::= CALL ( Int , Int , Int )
-                    | CALLCODE ( Int , Int , Int )
 
-    syntax CallSixOp ::= DELEGATECALL ( Int , Int , Int )
-                       | STATICCALL ( Int , Int , Int )
+    syntax CallSixOp ::= STATICCALL ( Int , Int , Int )
 
     syntax ReturnOp ::= RETURN ( Int )
                       | REVERT ( Int )
@@ -178,8 +176,6 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmFunction(PUBLIC, NAME, SIG, 247 : W1 : W2 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, REVERT(W1 *Int 256 +Int W2))
     rule #dasmFunction(PUBLIC, NAME, SIG, 240 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, CREATE(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4))
     rule #dasmFunction(PUBLIC, NAME, SIG, 242 : W1 : W2 : W3 : W4 : W5 : W6 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, CALL(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, W5 *Int 256 +Int W6))
-    rule #dasmFunction(PUBLIC, NAME, SIG, 243 : W1 : W2 : W3 : W4 : W5 : W6 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, CALLCODE(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, W5 *Int 256 +Int W6))
-    rule #dasmFunction(PUBLIC, NAME, SIG, 244 : W1 : W2 : W3 : W4 : W5 : W6 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, DELEGATECALL(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, W5 *Int 256 +Int W6))
     rule #dasmFunction(PUBLIC, NAME, SIG, 245 : W1 : W2 : W3 : W4 : W5 : W6 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, STATICCALL(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, W5 *Int 256 +Int W6))
     rule #dasmFunction(PUBLIC, NAME, SIG, 248 : W1 : W2 : W3 : W4 : W5 : W6 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, LOCALCALL(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, W5 *Int 256 +Int W6))
 
@@ -272,10 +268,8 @@ After interpreting the strings representing programs as a `WordStack`, it should
 
     rule #dasmInstruction ( LOG4 (),    R, W, M, _ ) => log %(R, W, M, 0) , %(R, W, M, 1) , %(R, W, M, 2) , %(R, W, M, 3) , %(R, W, M, 4)
 
-    rule #dasmInstruction ( DELEGATECALL (LABEL, ARGS, RETS), R, W, M, F ) => %l(R, W, M, 0, RETS +Int 1) = delegatecall @ {F [ LABEL ]}:>IeleName at %(R, W, M, 2 +Int RETS) ( %o(R, W, M, 3 +Int RETS, ARGS) ) gaslimit %(R, W, M, 1 +Int RETS)
     rule #dasmInstruction ( STATICCALL (LABEL, ARGS, RETS), R, W, M, F ) => %l(R, W, M, 0, RETS +Int 1) = staticcall @ {F [ LABEL ]}:>IeleName at %(R, W, M, 2 +Int RETS) ( %o(R, W, M, 3 +Int RETS, ARGS) ) gaslimit %(R, W, M, 1 +Int RETS)
     rule #dasmInstruction ( CALL (LABEL, ARGS, RETS), R, W, M, F ) => %l(R, W, M, 0, RETS +Int 1) = call @ {F [ LABEL ]}:>IeleName at %(R, W, M, 2 +Int RETS) ( %o(R, W, M, 4 +Int RETS, ARGS) ) send %(R, W, M, 3 +Int RETS) , gaslimit %(R, W, M, 1 +Int RETS)
-    rule #dasmInstruction ( CALLCODE (LABEL, ARGS, RETS), R, W, M, F ) => %l(R, W, M, 0, RETS +Int 1) = callcode @ {F [ LABEL ]}:>IeleName at %(R, W, M, 2 +Int RETS) ( %o(R, W, M, 4 +Int RETS, ARGS) ) send %(R, W, M, 3 +Int RETS) , gaslimit %(R, W, M, 1 +Int RETS)
     rule #dasmInstruction ( LOCALCALL (LABEL, ARGS, RETS), R, W, M, F ) => %l(R, W, M, 0, RETS) = call @ {F [ LABEL ] orDefault LABEL}:>IeleName ( %o(R, W, M, RETS, ARGS) )
 
     rule #dasmInstruction ( CREATE (LABEL, ARGS), R, W, M, _ ) => %(R, W, M, 0) = create LABEL ( %o(R, W, M, 2, ARGS) ) send %(R, W, M, 1)
@@ -330,10 +324,8 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #numArgs ( _:TernOp ) => 3
     rule #numArgs ( _:QuadOp ) => 4
     rule #numArgs ( _:FiveOp ) => 5
-    rule #numArgs ( DELEGATECALL(_, ARGS, RETS) ) => 3 +Int ARGS +Int RETS
     rule #numArgs ( STATICCALL  (_, ARGS, RETS) ) => 3 +Int ARGS +Int RETS
     rule #numArgs ( CALL        (_, ARGS, RETS) ) => 4 +Int ARGS +Int RETS
-    rule #numArgs ( CALLCODE    (_, ARGS, RETS) ) => 4 +Int ARGS +Int RETS
     rule #numArgs ( LOCALCALL   (_, ARGS, RETS) ) => ARGS +Int RETS
     rule #numArgs ( RETURN(RETS) )                => RETS
     rule #numArgs ( REVERT(RETS) )                => RETS

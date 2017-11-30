@@ -137,7 +137,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
          <activeAccounts> ... ACCTFROM |-> (_ => false) ... </activeAccounts>
 
     rule <k> loadTx(ACCTFROM)
-          => #call ACCTFROM ACCTTO ACCTTO deposit (GLIMIT -Int G0(SCHED, DATA, false)) VALUE VALUE (#sizeWordStack(DATA) , #asUnsigned(DATA) , .Ints) false
+          => #call ACCTFROM ACCTTO deposit (GLIMIT -Int G0(SCHED, DATA, false)) VALUE (#sizeWordStack(DATA) , #asUnsigned(DATA) , .Ints) false
           ~> #finishTx ~> #adjustGas ~> #finalizeTx(false) ~> startTx
          ...
          </k>
