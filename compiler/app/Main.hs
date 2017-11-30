@@ -11,11 +11,19 @@
 
 module Main where
 
-import IeleParser (ieleParser)
-
+import qualified Data.ByteString as B
 import Data.Char
 import Text.Parsec (parse)
 import Text.Parsec.String (Parser)
+import System.Environment
+
+import IeleParser (ieleParser1)
+import IeleAssembler (assemble)
+import IeleTypes
+import IelePrint
+import IeleDesugar
+
+import Codec.Binary.Base16(b16Enc)
 
 stringToParse = "\n\
 \@beneficiary = global 0\n\
@@ -80,9 +88,21 @@ stringToParse = "\n\
 \"
 
 main :: IO ()
-main =
-  case parse ieleParser "" stringToParse of
-    Left err  -> print err
-    Right xs  -> print xs
+main = do
+  args <- getArgs
+  case args of
+    [file] -> do
+      contents <- readFile file
+      case parse ieleParser1 file contents of
+        Left err  -> print err
+        Right c  -> do
+          {-
+          writeFile "test1.iele" (show (prettyContract c))
+          let (defs,c') = processContract c
+          mapM_ print defs
+          writeFile "test2.iele" (show (prettyContract c'))
+           -}
+          B.putStr . b16Enc . assemble . compileContract $ c
+    _ -> putStrLn "Usage: iele-assemble FILE"
 
 --parse anyChar "" "a"

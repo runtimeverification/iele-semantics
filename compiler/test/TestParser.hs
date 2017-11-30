@@ -1,14 +1,17 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
+import Prelude hiding (LT,EQ,GT)
 
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import IeleParser
 import IeleParserImplementation
+import IeleTypes hiding (instructions)
+import IeleInstructions
 
 import Control.Applicative (many)
 import Data.Either (isLeft)
-import Text.Parsec (parse)
+import Text.Parsec (parse, eof)
 import Text.Parsec.String (Parser)
 
 main :: IO ()
@@ -18,16 +21,16 @@ main =
       "All Tests"
       [ testGroup "Token Tests" tokenTests
       , testGroup "Instruction Tests" instructionTests
-      , testGroup "Other Tests" otherTests
+--      , testGroup "Other Tests" otherTests
       ]
     )
 
 ieleNameExamples :: [(IeleName, String)]
 ieleNameExamples =
-  [ (IeleName "test", "test")
-  , (IeleName "-1.bc7", "-1.bc7")
-  , (IeleName "1234", "1234")
-  , (IeleName "-1", "-1")
+  [ (IeleNameText "test", "test")
+  , (IeleNameText "-1.bc7", "-1.bc7")
+  , (IeleNameNumber 1234, "1234")
+  , (IeleNameText "-1", "-1")
   ]
 ieleNameCounterexamples :: [String]
 ieleNameCounterexamples =
@@ -49,135 +52,92 @@ intTokenCounterexamples =
 
 globalNameExamples :: [(GlobalName, String)]
 globalNameExamples =
-  [ (GlobalName (IeleName "0"), "@0")
-  , (GlobalName (IeleName "a"), "@a")
-  , (GlobalName (IeleName "a.bc"), "@a.bc")
-  , (GlobalName (IeleName "ab"), "@ ab")
+  [ (GlobalName "0", "@0")
+  , (GlobalName "a", "@a")
+  , (GlobalName "a.bc", "@a.bc")
+  , (GlobalName "ab", "@ ab")
   ]
 
 globalNameCounterexamples :: [String]
 globalNameCounterexamples =
+  globalNameInclReservedCounterexamples ++ ["@iele.foo"]
+
+globalNameInclReservedExamples :: [(GlobalName, String)]
+globalNameInclReservedExamples =
+  [(GlobalName "iele.foo","@iele.foo")] ++ globalNameExamples
+
+globalNameInclReservedCounterexamples :: [String]
+globalNameInclReservedCounterexamples =
   ["@", "a", "@@bcd", "@@", "%a"]
+
 
 localNameExamples :: [(LocalName, String)]
 localNameExamples =
-  [ (LocalName (IeleName "0"), "%0")
-  , (LocalName (IeleName "a"), "%a")
-  , (LocalName (IeleName "a.bc"), "%a.bc")
-  , (LocalName (IeleName "ab"), "% ab")
+  [ (LocalName (IeleNameNumber 0), "%0")
+  , (LocalName (IeleNameText "a"), "%a")
+  , (LocalName (IeleNameText "a.bc"), "%a.bc")
+  , (LocalName (IeleNameText "ab"), "% ab")
   ]
 
 localNameCounterexamples :: [String]
 localNameCounterexamples =
   ["%", "a", "%%bcd", "%%", "@a"]
 
-localNamesExamples :: [(LocalNames, String)]
-localNamesExamples =
-  [ (LocalNames [LocalName (IeleName "a")], "%a")
-  , (LocalNames [LocalName (IeleName "a"), LocalName (IeleName "b")], "%a,%b")
-  , (LocalNames [LocalName (IeleName "a"), LocalName (IeleName "b")], "%a, %b")
-  , (LocalNames [], "")
-  ]
-
-localNamesCounterexamples :: [String]
-localNamesCounterexamples =
-  ["%"]
-
 lValueExamples :: [(LValue, String)]
 lValueExamples =
-  [ (LValueLocalName (LocalName (IeleName "a")), "%a")
-  , (LValueGlobalName (GlobalName (IeleName "a")), "@a")
+  [ (LValueLocalName (LocalName (IeleNameText "a")), "%a")
+  , (LValueGlobalName (GlobalName (IeleNameText "a")), "@a")
   ]
 
 lValueCounterexamples :: [String]
 lValueCounterexamples =
   ["%", "a", "@"]
 
-nonEmptyLValuesExamples :: [(LValues, String)]
+nonEmptyLValuesExamples :: [([LValue], String)]
 nonEmptyLValuesExamples =
-  [ (LValues [LValueLocalName (LocalName (IeleName "a"))], "%a")
-  , ( LValues
-        [ LValueLocalName (LocalName (IeleName "a"))
-        , LValueGlobalName (GlobalName (IeleName "b"))]
-    , "%a,@b"
-    )
-  , ( LValues
-      [ LValueGlobalName (GlobalName (IeleName "a"))
-      , LValueLocalName (LocalName (IeleName "b"))
-      ]
-    , "@a, %b"
-    )
-  ]
+    [ ([LValueLocalName "%a"], "%a")
+    , ([LValueLocalName "%a", LValueGlobalName "@b"], "%a,@b")
+    , ([LValueGlobalName "@a", LValueLocalName "%b"], "@a, %b")
+    ]
 
 nonEmptyLValuesCounterexamples :: [String]
 nonEmptyLValuesCounterexamples =
   ["%", "@", ""]
 
-operandExamples :: [(Operand, String)]
-operandExamples =
-  [ (OperandLValue (LValueLocalName (LocalName (IeleName "a"))), "%a")
-  , (OperandLValue (LValueGlobalName (GlobalName (IeleName "a"))), "@a")
-  , (OperandInt (IntToken 10), "10")
+lvaluesExamples :: [([LValue], String)]
+lvaluesExamples =
+  [ ([LValueLocalName "%a"], "%a")
+  , ([LValueLocalName "%a", LValueGlobalName "@b"], "%a,@b")
+  , ([LValueGlobalName "@a", LValueLocalName "%b"], "@a, %b")
+  , ([], "")
   ]
 
-operandCounterexamples :: [String]
-operandCounterexamples =
-  ["%", "a", "@"]
-
-operandsExamples :: [(Operands, String)]
-operandsExamples =
-  [ (Operands
-      [OperandLValue (LValueLocalName (LocalName (IeleName "a")))], "%a")
-  , ( Operands
-      [ OperandLValue (LValueLocalName (LocalName (IeleName "a")))
-      , OperandLValue (LValueGlobalName (GlobalName (IeleName "b")))
-      ]
-    , "%a,@b"
-    )
-  , ( Operands
-      [ OperandLValue (LValueGlobalName (GlobalName (IeleName "a")))
-      , OperandLValue (LValueLocalName (LocalName (IeleName "b")))
-      ]
-    , "@a, %b"
-    )
-  , (Operands [], "")
-  ]
-
-operandsCounterexamples :: [String]
-operandsCounterexamples =
+lvaluesCounterexamples :: [String]
+lvaluesCounterexamples =
   ["%", "@"]
 
-
-nonEmptyOperandsExamples :: [(Operands, String)]
-nonEmptyOperandsExamples =
-    [ ( Operands
-        [OperandLValue (LValueLocalName (LocalName (IeleName "a")))]
-      , "%a"
-      )
-    , ( Operands
-        [ OperandLValue (LValueLocalName (LocalName (IeleName "a")))
-        , OperandLValue (LValueGlobalName (GlobalName (IeleName "b")))
-        ]
-      , "%a,@b"
-      )
-    , ( Operands
-        [ OperandLValue (LValueGlobalName (GlobalName (IeleName "a")))
-        , OperandLValue (LValueLocalName (LocalName (IeleName "b")))
-        ]
-      , "@a, %b"
-      )
-    ]
 
 nonEmptyOperandsCounterexamples :: [String]
 nonEmptyOperandsCounterexamples =
     ["%", "@", ""]
 
+functionParametersExamples :: [([LocalName], String)]
+functionParametersExamples =
+  [ ([LocalName (IeleNameText "a")], "(%a)")
+  , ([LocalName (IeleNameText "a"), LocalName (IeleNameText "b")], "( %a,%b)")
+  , ([LocalName (IeleNameText "a"), LocalName (IeleNameText "b")], "(%a, %b )")
+  , ([], "()")
+  ]
+
+functionParametersCounterexamples :: [String]
+functionParametersCounterexamples =
+  ["%"]
 
 tokenTests :: [TestTree]
 tokenTests =
     [ singleCharTests '@' at "a?.1"
-    , singleCharTests ')' closedParenthesis "a?.1"
-    , singleCharTests '}' closedCurlyBrace "a?.1"
+    , singleCharTests ')' closeParenthesis "a?.1"
+    , singleCharTests '}' closeCurlyBrace "a?.1"
     , singleCharTests ':' colon "a?.1"
     , singleCharTests ',' comma "a?.1"
     , singleCharTests '=' equal "a?.1"
@@ -191,532 +151,286 @@ tokenTests =
     , testToken "Iele Name" ieleNameExamples ieleNameToken ieleNameCounterexamples IgnoresSpaces
     , testToken "Int Token" intTokenExamples intToken intTokenCounterexamples IgnoresSpaces
     , testToken "GlobalName" globalNameExamples globalName globalNameCounterexamples ConcatenationAndIgnoresSpaces
+    , testToken "GlobalNameInclReserved"
+        globalNameInclReservedExamples globalNameInclReserved globalNameInclReservedCounterexamples ConcatenationAndIgnoresSpaces
     , testToken "LocalName" localNameExamples localName localNameCounterexamples ConcatenationAndIgnoresSpaces
-    , testToken "LocalNames" localNamesExamples localNames localNamesCounterexamples NoConcatenationOrSpaces
     , testToken "LValue" lValueExamples lValue lValueCounterexamples ConcatenationAndIgnoresSpaces
+    , testToken "LValues" lvaluesExamples lValues lvaluesCounterexamples NoConcatenationOrSpaces
     , testToken "NonEmptyLValues" nonEmptyLValuesExamples nonEmptyLValues nonEmptyLValuesCounterexamples ConcatenationAndIgnoresSpaces
-    , testToken "Operand" operandExamples operand operandCounterexamples IgnoresSpaces
-    , testToken "Operands" operandsExamples operands operandsCounterexamples NoConcatenationOrSpaces
-    , testToken "NonEmptyOperands" nonEmptyOperandsExamples nonEmptyOperands nonEmptyOperandsCounterexamples ConcatenationAndIgnoresSpaces
     ]
 
 instructionTests :: [TestTree]
 instructionTests =
   [ testInstruction
-      "Assign"
-      AssignInst
-        { assignLeft = LValueLocalName (LocalName (IeleName "a"))
-        , assignRight = OperandInt (IntToken 10)
-        }
-      assignInst
-      InstructionAssign
+      "Load Immediate Pos"
+      (LiOp LOADPOS "%a" 10)
       "%a=10"
   , testInstruction
+      "Load Immediate Neg"
+      (LiOp LOADNEG "%a" 10)
+      "%a=-10"
+  , testInstruction
+      "Move"
+      (Op  MOVE "%a" ["@b"])
+      "%a=@b"
+  , testInstruction
       "Load"
-      LoadInst
-        { loadLeft = LValueLocalName (LocalName (IeleName "a"))
-        , loadIndex = OperandInt (IntToken 10)
-        , loadSizeInBytes = OperandInt (IntToken 11)
-        }
-      loadInst
-      InstructionLoad
-      "%a=load 10, 11"
+      (Op MLOAD "%a" ["%10"])
+      "%a=load %10"
+  , testInstruction
+      "LoadN"
+      (Op MLOADN "%a" ["%10","%off","%size"])
+      "%a=load %10, %off, %size"
   , testInstruction
       "Store"
-      StoreInst
-        { storeValue = OperandInt (IntToken 9)
-        , storeIndex = OperandInt (IntToken 10)
-        , storeSizeInBytes = OperandInt (IntToken 11)
-        }
-      storeInst
-      InstructionStore
-      "store 9, 10, 11"
+      (VoidOp MSTORE ["%9","%10"])
+      "store %9, %10"
+  , testInstruction
+      "StoreN"
+      (VoidOp MSTOREN ["%9","%10","%off","%size"])
+      "store %9, %10, %off, %size"
   , testInstruction
       "SLoad"
-      SLoadInst
-        { sloadLeft = LValueLocalName (LocalName (IeleName "a"))
-        , sloadIndex = OperandInt (IntToken 10)
-        , sloadSizeInBytes = OperandInt (IntToken 11)
-        }
-      sloadInst
-      InstructionSLoad
-      "%a=sload 10, 11"
+      (Op SLOAD "%a" ["%10"])
+      "%a=sload %10"
   , testInstruction
       "SStore"
-      SStoreInst
-        { sstoreValue = OperandInt (IntToken 9)
-        , sstoreIndex = OperandInt (IntToken 10)
-        , sstoreSizeInBytes = OperandInt (IntToken 11)
-        }
-      sstoreInst
-      InstructionSStore
-      "sstore 9, 10, 11"
+      (VoidOp SSTORE ["%9","%10"])
+      "sstore %9, %10"
   , testInstruction
       "IsZero"
-      IsZeroInst
-        { isZeroLeft = LValueLocalName (LocalName (IeleName "a"))
-        , isZeroRight = OperandInt (IntToken 10)
-        }
-      isZeroInst
-      InstructionIsZero
-      "%a=iszero 10"
+      (Op ISZERO "%a" ["%10"])
+      "%a=iszero %10"
   , testInstruction
       "Not"
-      NotInst
-        { notLeft = LValueLocalName (LocalName (IeleName "a"))
-        , notRight = OperandInt (IntToken 10)
-        }
-      notInst
-      InstructionNot
-      "%a = not 10"
-  , testBinaryOperation "add" AddInst
-  , testBinaryOperation "mul" MulInst
-  , testBinaryOperation "sub" SubInst
-  , testBinaryOperation "div" DivInst
-  , testBinaryOperation "exp" ExpInst
-  , testBinaryOperation "mod" ModInst
-  , testBinaryOperation "and" AndInst
-  , testBinaryOperation "or" OrInst
-  , testBinaryOperation "xor" XorInst
-  , testBinaryOperation "sha3" Sha3Inst
-  , testBinaryOperation "byte" ByteInst
-  , testBinaryOperation "sext" SExtInst
-  , testBinaryOperation "twos" TwosInst
-  , testTernaryOperation "addmod" AddModInst
-  , testTernaryOperation "mulmod" MulModInst
-  , testTernaryOperation "expmod" ExpModInst
-  , testPredicateOperation "le" LePredicateInst
-  , testPredicateOperation "lt" LtPredicateInst
-  , testPredicateOperation "ge" GePredicateInst
-  , testPredicateOperation "gt" GtPredicateInst
-  , testPredicateOperation "eq" EqPredicateInst
-  , testPredicateOperation "ne" NePredicateInst
+      (Op NOT "%a" ["%b"])
+      "%a = not %b"
+  , testBinaryOperation "add" ADD
+  , testBinaryOperation "mul" MUL
+  , testBinaryOperation "sub" SUB
+  , testBinaryOperation "div" DIV
+  , testBinaryOperation "exp" EXP
+  , testBinaryOperation "mod" MOD
+
+  , testTernaryOperation "addmod" ADDMOD
+  , testTernaryOperation "mulmod" MULMOD
+  , testTernaryOperation "expmod" EXPMOD
+
+  , testBinaryOperation "byte" BYTE
+  , testBinaryOperation "sext" SIGNEXTEND
+  , testBinaryOperation "twos" TWOS
+
+  , testBinaryOperation "and" AND
+  , testBinaryOperation "or" OR
+  , testBinaryOperation "xor" XOR
+
+  , testPredicateOperation "lt" LT
+  , testPredicateOperation "le" LE
+  , testPredicateOperation "gt" GT
+  , testPredicateOperation "ge" GE
+  , testPredicateOperation "eq" EQ
+  , testPredicateOperation "ne" NE
+
+  , testInstruction "sha3"
+      (Op SHA3 "%a" ["%b"])
+      "%a = sha3 %b"
+
   , testInstruction
       "Jump"
-      (JumpInst (IeleName "a"))
-      jumpInst
-      InstructionJump
+      (VoidOp (JUMP "a") [])
       "br a"
   , testInstruction
       "CondJump"
-      CondJumpInst
-        { condJumpOperand = OperandInt (IntToken 10)
-        , condJumpLabel = IeleName "a"
-        }
-      condJumpInst
-      InstructionCondJump
-      "br 10, a"
+      (VoidOp (JUMPI "a") ["%10"])
+      "br %10, a"
+
   , testInstruction
       "LocalCall"
-      LocalCallInst
-        { localCallLValues =
-          LValues
-            [ LValueLocalName (LocalName (IeleName "a"))
-            , LValueGlobalName (GlobalName (IeleName "b"))]
-        , localCallName = GlobalName (IeleName "c")
-        , localCallOperands =
-          Operands
-            [ OperandInt (IntToken 10)
-            , OperandInt (IntToken 11)]
-        }
-      localCallInst
-      InstructionLocalCall
-      "%a,@b=call@c(10,11)"
+      (CallOp (LOCALCALL "@c" 2 2) ["%a","@b"] ["%10","%11"])
+      "%a,@b=call@c(%10,%11)"
   , testInstruction
       "empty arguments LocalCall"
-      LocalCallInst
-        { localCallLValues =
-          LValues
-            [ LValueLocalName (LocalName (IeleName "a"))
-            , LValueGlobalName (GlobalName (IeleName "b"))]
-        , localCallName = GlobalName (IeleName "c")
-        , localCallOperands = Operands []
-        }
-      localCallInst
-      InstructionLocalCall
+      (CallOp (LOCALCALL "@c" 2 0) ["%a","@b"] [])
       "%a,@b=call@c()"
   , testInstruction
-      "empty lvalues LocalCall"
-      LocalCallInst
-        { localCallLValues = LValues []
-        , localCallName = GlobalName (IeleName "c")
-        , localCallOperands =
-          Operands
-            [ OperandInt (IntToken 10)
-            , OperandInt (IntToken 11)
-            ]
-    }
-      localCallInst
-      InstructionLocalCall
-      "call@c(10,11)"
+      "empty results LocalCall"
+      (CallOp (LOCALCALL "@c" 0 2) [] ["%10","%11"])
+      "call@c(%10,%11)"
   , testInstruction
       "empty lvalues arguments LocalCall"
-      LocalCallInst
-        { localCallLValues = LValues []
-        , localCallName = GlobalName (IeleName "c")
-        , localCallOperands = Operands []
-        }
-      localCallInst
-      InstructionLocalCall
+      (CallOp (LOCALCALL "@c" 0 0) [] [])
       "call@c()"
+
   , testInstruction
       "AccountCall"
-      AccountCallInst
-        { accountCallLValues =
-          LValues
-            [ LValueLocalName (LocalName (IeleName "a"))
-            , LValueGlobalName (GlobalName (IeleName "b"))]
-        , accountCallName = GlobalName (IeleName "c")
-        , accountCallAddress = OperandInt (IntToken 9)
-        , accountCallOperands =
-          Operands
-            [ OperandInt (IntToken 10)
-            , OperandInt (IntToken 11)]
-        , accountCallSend = OperandInt (IntToken 12)
-        , accountCallGasLimit = OperandInt (IntToken 13)
-        }
-      accountCallInst
-      InstructionAccountCall
-      "%a,@b=call@c at 9(10,11)send 12, gaslimit 13"
+      (CallOp (CALL "@c" 2 2) ["%ok","%a","@b"] ["%gas","%acct","%amt","%10","%11"])
+      "%ok,%a,@b=call@c at %acct(%10,%11)send %amt, gaslimit %gas"
   , testInstruction
       "empty arguments AccountCall"
-      AccountCallInst
-        { accountCallLValues =
-          LValues
-            [ LValueLocalName (LocalName (IeleName "a"))
-            , LValueGlobalName (GlobalName (IeleName "b"))]
-        , accountCallName = GlobalName (IeleName "c")
-        , accountCallAddress = OperandInt (IntToken 9)
-        , accountCallOperands = Operands []
-        , accountCallSend = OperandInt (IntToken 12)
-        , accountCallGasLimit = OperandInt (IntToken 13)
-        }
-      accountCallInst
-      InstructionAccountCall
-      "%a,@b=call@c at 9()send 12, gaslimit 13"
-  , testInstruction
-      "empty lvalues AccountCall"
-      AccountCallInst
-        { accountCallLValues = LValues []
-        , accountCallName = GlobalName (IeleName "c")
-        , accountCallAddress = OperandInt (IntToken 9)
-        , accountCallOperands =
-          Operands
-            [ OperandInt (IntToken 10)
-            , OperandInt (IntToken 11)]
-        , accountCallSend = OperandInt (IntToken 12)
-        , accountCallGasLimit = OperandInt (IntToken 13)
-        }
-      accountCallInst
-      InstructionAccountCall
-      "call@c at 9(10,11)send 12, gaslimit 13"
-  , testInstruction
-      "empty lvalues arguments AccountCall"
-      AccountCallInst
-        { accountCallLValues = LValues []
-        , accountCallName = GlobalName (IeleName "c")
-        , accountCallAddress = OperandInt (IntToken 9)
-        , accountCallOperands = Operands []
-        , accountCallSend = OperandInt (IntToken 12)
-        , accountCallGasLimit = OperandInt (IntToken 13)
-        }
-      accountCallInst
-      InstructionAccountCall
-      "call@c at 9()send 12, gaslimit 13"
-  , testInstruction
-      "Send"
-      SendInst
-        { sendValue = OperandInt (IntToken 10)
-        , sendDestinationAccount = OperandInt (IntToken 11)
-        }
-      sendInst
-      InstructionSend
-      "send 10 to 11"
+      (CallOp (CALL "@c" 1 0) ["%ok","@b"] ["%gas","%acct","%amt"])
+      "%ok , @b = call @c at %acct() send %amt, gaslimit %gas"
+  , testCase
+      "reject empty lvalues AccountCall"
+      (parseFailure instruction
+        "call@c at %acct(%10,%11)send %amt, gaslimit %gas")
   , testInstruction
       "Return"
-      (ReturnInst
-        (Operands [OperandInt (IntToken 10), OperandInt (IntToken 11)])
-      )
-      returnInst
-      InstructionReturn
-      "ret (10, 11)"
+      (VoidOp (RETURN 2) ["@10","%11"])
+      "ret @10, %11"
   , testInstruction
       "empty Return"
-      (ReturnInst (Operands []))
-      returnInst
-      InstructionReturn
+      (VoidOp (RETURN 0) [])
       "ret void"
   , testInstruction
       "Revert"
-      (RevertInst
-        (Operands [OperandInt (IntToken 10), OperandInt (IntToken 11)])
-      )
-      revertInst
-      InstructionRevert
-      "revert (10, 11)"
+      (VoidOp (REVERT 2) ["%10","@11"])
+      "revert %10, @11"
   , testInstruction
       "empty Revert"
-      (RevertInst (Operands []))
-      revertInst
-      InstructionRevert
+      (VoidOp (REVERT 0) [])
       "revert void"
   , testInstruction
-      "Stop"
-      StopInst
-      stopInst
-      InstructionStop
-      "stop"
+      "Log 0"
+      (VoidOp (LOG 0) ["%idx"])
+      "log %idx"
   , testInstruction
-      "Log"
-      LogInst
-        { logIndex = OperandInt (IntToken 10)
-        , logSizeInBytes = OperandInt (IntToken 11)
-        , logContent =
-            Operands [OperandInt (IntToken 12), OperandInt (IntToken 13)]
-        }
-      logInst
-      InstructionLog
-      "log 10,11,12,13"
+      "Log 1"
+      (VoidOp (LOG 1) ["%idx","%1"])
+      "log %idx, %1"
   , testInstruction
-      "empty Log"
-      LogInst
-        { logIndex = OperandInt (IntToken 10)
-        , logSizeInBytes = OperandInt (IntToken 11)
-        , logContent = Operands []
-        }
-      logInst
-      InstructionLog
-      "log 10,11"
+      "Log 2"
+      (VoidOp (LOG 2) ["%idx","%1","%2"])
+      "log %idx, %1, %2"
   , testInstruction
-      "CreateInst"
-      CreateInst
-        { createLValue = LValueLocalName (LocalName (IeleName "a"))
-        , createContractName = IeleName "b"
-        , createOperands =
-            Operands [OperandInt (IntToken 10), OperandInt (IntToken 11)]
-        , createSendValue = OperandInt (IntToken 12)
-        }
-      createInst
-      InstructionCreate
-      "%a=create b(10,11) send 12"
+      "Log 3"
+      (VoidOp (LOG 3) ["%idx","%1","%2","%3"])
+      "log %idx, %1, %2, %3"
+  , testInstruction
+      "Log 4"
+      (VoidOp (LOG 4) ["%idx","%1","%2","%3","%4"])
+      "log %idx, %1, %2, %3, %4"
+  , testCase
+      "Reject Log 5"
+      (parseFailure (instruction <* eof) "log %idx, %1, %2, %3, %4, %5")
+  , testInstruction
+      "create"
+      (Op (CREATE "b" 2) "%a" ["%12","%10","%11"])
+      "%a=create b(%10,%11) send %12"
+  , testInstruction
+      "copycreate"
+      (Op (COPYCREATE 2) "%a" ["%val","%acct","%10","%11"])
+      "%a=copycreate %acct(%10,%11) send %val"
   , testInstruction
       "SelfDestruct"
-      SelfdestructInst
-        {selfdestructAccountToSendBalance = OperandInt (IntToken 10)}
-      selfDestructInst
-      InstructionSelfdestruct
-      "selfdestruct 10"
+      (VoidOp SELFDESTRUCT ["%10"])
+      "selfdestruct %10"
   ]
 
 otherTests :: [TestTree]
 otherTests =
+  let dummy = LiOp LOADPOS "%0" 0 in
   [ testCase
       "empty LabelledBlock"
       (parseSuccess
-        LabeledBlock
-          { labeledBlockLabel = IeleName "a"
-          , labeledBlockInstructions = Instructions []
-          }
+        (LabeledBlock "a" [])
         labeledBlock
         "a:"
       )
   , testCase
       "LabelledBlock"
       (parseSuccess
-        LabeledBlock
-          { labeledBlockLabel = IeleName "a"
-          , labeledBlockInstructions =
-              Instructions [InstructionStop StopInst, InstructionStop StopInst]
-          }
+        (LabeledBlock "a" [dummy,dummy])
         labeledBlock
-        "a:stop stop"
+        "a:%0=0 %0=0"
       )
   , testCase
       "empty LabelledBlocks"
       (parseSuccess
-        (LabeledBlocks [])
+        []
         labeledBlocks
         ""
       )
   , testCase
       "LabelledBlocks"
       (parseSuccess
-        (LabeledBlocks
-          [ LabeledBlock
-              { labeledBlockLabel = IeleName "a"
-              , labeledBlockInstructions =
-                  Instructions [InstructionStop StopInst]
-              }
-          , LabeledBlock
-              { labeledBlockLabel = IeleName "a"
-              , labeledBlockInstructions = Instructions []
-              }
-          , LabeledBlock
-              { labeledBlockLabel = IeleName "a"
-              , labeledBlockInstructions =
-                  Instructions [InstructionStop StopInst]
-              }
-          ]
-        )
+        [ LabeledBlock "a" [dummy]
+        , LabeledBlock "a" []
+        , LabeledBlock "a" [dummy]
+        ]
         labeledBlocks
-        "a:stop a:a:stop"
+        "a:%0=0 a:a:%0=0"
       )
   , testCase
       "stop label in LabelledBlocks"
       (parseSuccess
-        (LabeledBlocks
-          [ LabeledBlock
-              { labeledBlockLabel = IeleName "a"
-              , labeledBlockInstructions =
-                  Instructions [InstructionStop StopInst]
-              }
-          , LabeledBlock
-              { labeledBlockLabel = IeleName "stop"
-              , labeledBlockInstructions =
-                  Instructions [InstructionStop StopInst]
-              }
-          ]
-        )
+        [ LabeledBlock "a" [dummy]
+        , LabeledBlock "stop" [dummy]
+        ]
         labeledBlocks
-        "a:stop stop :stop"
+        "a:%0=0 stop :%0=0"
       )
   , testCase
       "empty FunctionParameters"
       (parseSuccess
-        (FunctionParameters (LocalNames []))
+        []
         functionParameters
-        ""
+        "()"
       )
   , testCase
       "FunctionParameters"
       (parseSuccess
-        (FunctionParameters
-          (LocalNames [LocalName (IeleName "a"), LocalName (IeleName "b")])
-        )
+        ["%a", "%b"]
         functionParameters
-        "%a,%b"
+        "(%a,%b)"
       )
-  , testCase
-      "empty parameters FunctionSignature"
-      (parseSuccess
-        FunctionSignature
-          { functionSignatureName = GlobalName (IeleName "a")
-          , functionSignatureParameters = FunctionParameters (LocalNames [])
-          }
-        functionSignature
-        "@a()"
-      )
-  , testCase
-      "FunctionSignature"
-      (parseSuccess
-        FunctionSignature
-          { functionSignatureName = GlobalName (IeleName "a")
-          , functionSignatureParameters =
-              FunctionParameters
-                (LocalNames
-                  [LocalName (IeleName "a"), LocalName (IeleName "b")])
-          }
-        functionSignature
-        "@a(%a,%b)"
-      )
+  , testToken "FunctionParameters" functionParametersExamples functionParameters functionParametersCounterexamples NoConcatenationOrSpaces
   , testCase
       "FunctionDefinition"
       (parseSuccess
-        FunctionDefinition
-          { functionDefinitionSignature =
-              FunctionSignature
-                { functionSignatureName = GlobalName (IeleName "a")
-                , functionSignatureParameters =
-                    FunctionParameters (LocalNames [])
-                }
-          , functionDefinitionBlocks =
-              LabeledBlocks
-                [ LabeledBlock
-                    { labeledBlockLabel = IeleName "b"
-                    , labeledBlockInstructions =
-                        Instructions [InstructionStop StopInst]
-                    }
-                ]
-          }
+        (FunctionDefinition False "@a" []
+          [dummy]
+          [ LabeledBlock "b" [dummy]])
         functionDefinition
-        "define@a(){b:stop}"
+        "define@a(){%0=0 b:%0=0}"
       )
   , testCase
-      "GlobalVariableDefinition"
+      "public function definition"
       (parseSuccess
-        GlobalVariableDefinition
-          { globalVariableName = GlobalName (IeleName "a")
-          , globalVariableValue = IntToken 10
-          }
-        globalVariableDefinition
-        "@a=10"
+        (FunctionDefinition True "@10" []
+          [dummy]
+          [ LabeledBlock "b" [dummy] ])
+        functionDefinition
+        "define public @10(){%0=0 b:%0=0}"
       )
   , testCase
-      "function TopLevelDefinition"
+      "private function definition"
       (parseSuccess
         (TopLevelDefinitionFunction
-          FunctionDefinition
-            { functionDefinitionSignature =
-                FunctionSignature
-                  { functionSignatureName = GlobalName (IeleName "a")
-                  , functionSignatureParameters =
-                      FunctionParameters (LocalNames [])
-                  }
-            , functionDefinitionBlocks =
-                LabeledBlocks
-                  [ LabeledBlock
-                      { labeledBlockLabel = IeleName "b"
-                      , labeledBlockInstructions =
-                          Instructions [InstructionStop StopInst]
-                      }
-                  ]
-            }
-        )
+          (FunctionDefinition False "@a" []
+            []
+            [ LabeledBlock "b" [dummy] ]))
         topLevelDefinition
-        "define@a(){b:stop}"
+        "define@a(){b:%0=0}"
       )
   , testCase
       "global variable TopLevelDefinition"
       (parseSuccess
-        (TopLevelDefinitionGlobalVariable
-          GlobalVariableDefinition
-            { globalVariableName = GlobalName (IeleName "a")
-            , globalVariableValue = IntToken 10
-            }
-        )
+        (TopLevelDefinitionContract "a")
         topLevelDefinition
-        "@a=10"
+        "contract a"
       )
   , testCase
       "TopLevelDefinitions"
       (parseSuccess
-        (TopLevelDefinitions
-          [ TopLevelDefinitionFunction
-              FunctionDefinition
-                { functionDefinitionSignature =
-                    FunctionSignature
-                      { functionSignatureName = GlobalName (IeleName "a")
-                      , functionSignatureParameters =
-                          FunctionParameters (LocalNames [])
-                      }
-                , functionDefinitionBlocks =
-                    LabeledBlocks
-                      [ LabeledBlock
-                          { labeledBlockLabel = IeleName "b"
-                          , labeledBlockInstructions =
-                              Instructions [InstructionStop StopInst]
-                          }
-                      ]
-                }
-          , TopLevelDefinitionGlobalVariable
-              GlobalVariableDefinition
-                { globalVariableName = GlobalName (IeleName "a")
-                , globalVariableValue = IntToken 10
-                }
-          ]
-        )
-        topLevelDefinitions
-        "define@a(){b:stop}@a=10"
+        [TopLevelDefinitionFunction
+          (FunctionDefinition False "@a" []
+            [dummy,dummy]
+            [ LabeledBlock "b" [dummy,dummy]
+            , LabeledBlock "c" [dummy]])
+         , TopLevelDefinitionContract "a"
+         ]
+        (many topLevelDefinition)
+        "define@a(){%0=0 %0=0 b:%0=0 %0=0 c:%0=0}contract a"
       )
   ]
 
@@ -739,77 +453,41 @@ parseFailure parser input =
 -- Instruction test utilities
 ------------------------------------
 
-testBinaryOperation :: String -> BinaryOperationType ->  TestTree
-testBinaryOperation name operationType =
+testBinaryOperation :: String -> IeleOpcode1P ->  TestTree
+testBinaryOperation name op =
   testInstruction
     name
-    BinaryOperationInst
-      { binaryOperationType = operationType
-      , binaryOperationLeft = LValueLocalName (LocalName (IeleName "a"))
-      , binaryOperationFirst = OperandInt (IntToken 10)
-      , binaryOperationSecond = OperandInt (IntToken 11)
-      }
-    binaryOperationInst
-    InstructionBinaryOperation
-    ("%a=" ++ name ++ " 10,11")
+    (Op op "%a" ["%10","@b"])
+    ("%a=" ++ name ++ " %10,@b")
 
-testPredicateOperation :: String -> PredicateOperationType ->  TestTree
-testPredicateOperation name operationType =
+testPredicateOperation :: String -> IeleOpcode1P ->  TestTree
+testPredicateOperation name op =
   testInstruction
     name
-    PredicateOperationInst
-      { predicateOperationType = operationType
-      , predicateOperationLeft = LValueLocalName (LocalName (IeleName "a"))
-      , predicateOperationFirst = OperandInt (IntToken 10)
-      , predicateOperationSecond = OperandInt (IntToken 11)
-      }
-    predicateOperationInst
-    InstructionPredicateOperation
-    ("%a=cmp " ++ name ++ " 10,11")
+    (Op op "%a" ["%10","@11"])
+    ("%a=cmp " ++ name ++ " %10,@11")
 
-testTernaryOperation :: String -> TernaryOperationType ->  TestTree
-testTernaryOperation name operationType =
+testTernaryOperation :: String -> IeleOpcode1P ->  TestTree
+testTernaryOperation name op =
   testInstruction
     name
-    TernaryOperationInst
-      { ternaryOperationType = operationType
-      , ternaryOperationLeft = LValueLocalName (LocalName (IeleName "a"))
-      , ternaryOperationFirst = OperandInt (IntToken 10)
-      , ternaryOperationSecond = OperandInt (IntToken 11)
-      , ternaryOperationDivisor = OperandInt (IntToken 12)
-      }
-    ternaryOperationInst
-    InstructionTernaryOperation
-    ("%a=" ++ name ++ " 10,11, 12")
+    (Op op "%a" ["%10","@11","%12"])
+    ("%a=" ++ name ++ " %10,@11, %12")
 
-testInstruction :: (Show a, Eq a) =>
-  String -> a -> Parser a -> (a -> Instruction)-> String -> TestTree
-testInstruction name expectedValue parser instructionConstructor input =
-  let expectedAsInstruction = instructionConstructor expectedValue
-  in
+testInstruction :: String -> Instruction -> String -> TestTree
+testInstruction name expected input =
     testGroup
       name
       [ testCase
           ("Simple parse '" ++ input ++ "'")
-          (parseSuccess expectedValue parser input)
+          (parseSuccess expected (instruction <* eof) input)
       , testCase
           ("Double parse '" ++ input ++ "'")
-          ( parseSuccess [expectedValue, expectedValue]
-              (many parser)
-              (input ++ " " ++ input)
-          )
-      , testCase
-          ("Parse as instruction '" ++ input ++ "'")
-          (parseSuccess expectedAsInstruction instruction input)
-      , testCase
-          ("Parse as instructions '" ++ input ++ "'")
-          ( parseSuccess
-              (Instructions [expectedAsInstruction, expectedAsInstruction])
-              instructions
+          ( parseSuccess [expected, expected]
+              (many instruction <* eof)
               (input ++ " " ++ input)
           )
       ]
-
 
 ------------------------------------
 -- Token test utilities
