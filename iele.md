@@ -153,11 +153,13 @@ In the comments next to each cell, we've marked which component of the yellowpap
                         <txGasPrice> 0          </txGasPrice>         // T_p
                         <txGasLimit> 0          </txGasLimit>         // T_g
                         <sendto>     .Account   </sendto>             // T_t
+                        <func>       deposit    </func>
                         <value>      0          </value>              // T_v
                         <v>          0          </v>                  // T_w
                         <r>          .WordStack </r>                  // T_r
                         <s>          .WordStack </s>                  // T_s
                         <data>       .WordStack </data>               // T_i/T_e
+                        <args>       .Ints      </args>
                       </message>
                     </messages>
 
@@ -1802,13 +1804,15 @@ Note: These are all functions as the operator `#gasExec` has already loaded all 
  // ---------------------------------------------
     rule #allBut64th(N) => N -Int (N /Int 64)
 
-    syntax Int ::= G0 ( Schedule , WordStack , Bool ) [function]
+    syntax Int ::= G0 ( Schedule , WordStack , Ints , Bool ) [function]
  // ------------------------------------------------------------
-    rule G0(SCHED, .WordStack, true)  => Gtxcreate    < SCHED >
-    rule G0(SCHED, .WordStack, false) => Gtransaction < SCHED >
+    rule G0(SCHED, .WordStack, .Ints, true)  => Gtxcreate    < SCHED >
+    rule G0(SCHED, .WordStack, .Ints, false) => Gtransaction < SCHED >
 
-    rule G0(SCHED, 0 : REST, ISCREATE) => Gtxdatazero    < SCHED > +Int G0(SCHED, REST, ISCREATE)
-    rule G0(SCHED, N : REST, ISCREATE) => Gtxdatanonzero < SCHED > +Int G0(SCHED, REST, ISCREATE) requires N =/=Int 0
+    rule G0(SCHED, (WS => #asSignedBytes(I) ++ WS), (I , INTS => INTS), _)
+
+    rule G0(SCHED, 0 : REST, .Ints, ISCREATE) => Gtxdatazero    < SCHED > +Int G0(SCHED, REST, .Ints, ISCREATE)
+    rule G0(SCHED, N : REST, .Ints, ISCREATE) => Gtxdatanonzero < SCHED > +Int G0(SCHED, REST, .Ints, ISCREATE) requires N =/=Int 0
 
     syntax Int ::= "G*" "(" Int "," Int "," Int ")" [function]
  // ----------------------------------------------------------

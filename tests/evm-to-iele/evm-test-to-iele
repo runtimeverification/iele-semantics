@@ -18,7 +18,16 @@ def convertCodeToIele(evm_code):
   stdout, stderr = p.communicate(evm_code[2:])
   assert p.poll() == 0
   return stdout[:-1]
-        
+
+def convertCallData(calldata, isCreateTx):
+  if isCreateTx:
+    return []
+  if len(calldata) == 0:
+    return [u"", u""]
+  assert calldata[0:2] == "0x"
+  calldatasize = (len(calldata) - 2)/2
+  return [unicode(hex(calldatasize)), calldata]
+          
 
 def convertToIele(json):
     if isinstance(json, dict):
@@ -27,6 +36,10 @@ def convertToIele(json):
         if "to" in json.keys():
           if json["to"] == "":
             isCreateTx = True
+            json["function"] = u""
+          else:
+            json["function"] = u"deposit"
+          json["arguments"] = convertCallData(json["data"], isCreateTx)
         for key, value in json.iteritems():
             if key == "code" or (key == "data" and isCreateTx):
                 res[key] = convertCodeToIele(value)

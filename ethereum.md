@@ -105,12 +105,13 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            <r>          TR   </r>
            <s>          TS   </s>
            <data>       DATA </data>
+           ...
          </message>
 
     syntax IELECommand ::= loadTx ( Int )
  // -------------------------------------
     rule <k> loadTx(ACCTFROM)
-          => #create ACCTFROM #newAddr(ACCTFROM, NONCE) (GLIMIT -Int G0(SCHED, CODE, true)) VALUE #dasmContract(CODE, Main) .Ints
+          => #create ACCTFROM #newAddr(ACCTFROM, NONCE) (GLIMIT -Int G0(SCHED, CODE, ARGS, true)) VALUE #dasmContract(CODE, Main) ARGS
           ~> #codeDeposit #newAddr(ACCTFROM, NONCE) #sizeWordStack(CODE) #dasmContract(CODE, Main) %0 true ~> #adjustGas ~> #finalizeTx(false) ~> startTx
          ...
          </k>
@@ -126,6 +127,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            <sendto>     .Account </sendto>
            <value>      VALUE    </value>
            <data>       CODE     </data>
+           <args>       ARGS     </args>
            ...
          </message>
          <account>
@@ -137,7 +139,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
          <activeAccounts> ... ACCTFROM |-> (_ => false) ... </activeAccounts>
 
     rule <k> loadTx(ACCTFROM)
-          => #call ACCTFROM ACCTTO deposit (GLIMIT -Int G0(SCHED, DATA, false)) VALUE (#sizeWordStack(DATA) , #asUnsigned(DATA) , .Ints) false
+          => #call ACCTFROM ACCTTO deposit (GLIMIT -Int G0(SCHED, .WordStack, ARGS, false)) VALUE ARGS false
           ~> #finishTx ~> #adjustGas ~> #finalizeTx(false) ~> startTx
          ...
          </k>
@@ -152,7 +154,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            <txGasLimit> GLIMIT </txGasLimit>
            <sendto>     ACCTTO </sendto>
            <value>      VALUE  </value>
-           <data>       DATA   </data>
+           <args>       ARGS   </args>
            ...
          </message>
          <account>
@@ -523,26 +525,33 @@ The `"transactions"` key loads the transactions.
     rule load "transactions" : { TX } => load "transactions" : { #sortJSONList(TX) }
          requires notBool #isSorted(TX)
 
-    rule <k> load "transactions" : { "data" : TI , "gasLimit" : TG , "gasPrice" : TP , "nonce" : TN , "r" : TR , "s" : TS , "to" : TT , "v" : TW , "value" : TV , .JSONList } => . ... </k>
+    rule <k> load "transactions" : { "arguments" : [ ARGS ],  "data" : TI , "function" : FUNC, "gasLimit" : TG , "gasPrice" : TP , "nonce" : TN , "r" : TR , "s" : TS , "to" : TT , "v" : TW , "value" : TV , .JSONList } => . ... </k>
          <txOrder>   ... .List => ListItem(!ID) </txOrder>
          <txPending> ... .List => ListItem(!ID) </txPending>
          <messages>
            ( .Bag
           => <message>
-               <msgID>      !ID:Int                                 </msgID>
-               <txNonce>    #asUnsigned(#parseByteStack(TN))         </txNonce>
-               <txGasPrice> #asUnsigned(#parseByteStack(TP))         </txGasPrice>
-               <txGasLimit> #asUnsigned(#parseByteStack(TG))         </txGasLimit>
-               <sendto>     #asAccount(#parseByteStack(TT))          </sendto>
-               <value>      #asUnsigned(#parseByteStack(TV))         </value>
-               <v>          #asUnsigned(#parseByteStack(TW))         </v>
+               <msgID>      !ID:Int                              </msgID>
+               <txNonce>    #asUnsigned(#parseByteStack(TN))     </txNonce>
+               <txGasPrice> #asUnsigned(#parseByteStack(TP))     </txGasPrice>
+               <txGasLimit> #asUnsigned(#parseByteStack(TG))     </txGasLimit>
+               <sendto>     #asAccount(#parseByteStack(TT))      </sendto>
+               <func>       FUNC                                 </func>
+               <value>      #asUnsigned(#parseByteStack(TV))     </value>
+               <v>          #asUnsigned(#parseByteStack(TW))     </v>
                <r>          #padToWidth(32, #parseByteStack(TR)) </r>
                <s>          #padToWidth(32, #parseByteStack(TS)) </s>
                <data>       #parseByteStack(TI)                  </data>
+               <args>       #toInts(ARGS)                        </args>
              </message>
            )
            ...
          </messages>
+
+    syntax Ints ::= #toInts ( JSONList ) [function]
+ // -----------------------------------------------
+    rule #toInts(.JSONList) => .Ints
+    rule #toInts(WORD:String , ARGS) => #parseHexWord(WORD) , #toInts(ARGS)
 ```
 
 ### Checking State
