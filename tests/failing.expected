@@ -243,3 +243,8 @@ tests/ethereum-tests/BlockchainTests/GeneralStateTests/stRandom/randomStatetest1
 tests/ethereum-tests/BlockchainTests/GeneralStateTests/stRandom/randomStatetest307_d0g0v0.json
 tests/ethereum-tests/BlockchainTests/GeneralStateTests/stRandom/randomStatetest177_d0g0v0.json
 tests/ethereum-tests/BlockchainTests/GeneralStateTests/stRandom/randomStatetest237_d0g0v0.json
+tests/ethereum-tests/VMTests/vmRandomTest/201503102148PYTHON.json
+tests/ethereum-tests/VMTests/vmRandomTest/201503110050PYTHON.json
+tests/ethereum-tests/VMTests/vmRandomTest/201503102300PYTHON.json
+tests/ethereum-tests/VMTests/vmRandomTest/201503102037PYTHON.json
+tests/ethereum-tests/VMTests/vmSystemOperations/callcodeToNameRegistrator0.json
