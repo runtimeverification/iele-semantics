@@ -116,21 +116,23 @@ After interpreting the strings representing programs as a `WordStack`, it should
     syntax Contract ::= #dasmContract ( WordStack , IeleName )       [function]
                       | #dasmContract ( WordStack , Int , Map, IeleName , TopLevelDefinitions, Int , Int ) [function, klabel(#dasmContractAux)]
  // -----------------------------------------------------------------------------
-    rule #dasmContract( .WordStack, _)      => #emptyCode
+    rule #dasmContract( .WordStack, _) => #emptyCode
     rule #dasmContract( 99 : NBITS : WS, NAME ) => #dasmContract(WS, NBITS, 0 |-> "init", NAME, .TopLevelDefinitions, 1, #sizeWordStack(WS) +Int 2)
     rule #dasmContract( 105 : W1 : W2 : WS, NBITS, FUNCS, NAME, DEFS, N, SIZE ) => #dasmContract(#drop(W1 *Int 256 +Int W2, WS), NBITS, N |-> #parseToken("IeleName", #unparseByteStack(#take(W1 *Int 256 +Int W2, WS))) FUNCS, NAME, DEFS, N +Int 1, SIZE )
-    rule #dasmContract( 106 : W1 : W2 : WS, NBITS, FUNCS, NAME, DEFS, N, SIZE ) => #dasmContract(#take(W1 *Int 256 +Int W2, WS), N) ++Contract #dasmContract(#drop(W1 *Int 256 +Int W2, WS), NBITS, FUNCS, NAME, external contract N DEFS, N +Int 1, SIZE)
+    rule #dasmContract( 106 : W1 : W2 : WS, NBITS, FUNCS, NAME, DEFS, N, SIZE ) => #dasmContract(#take(W1 *Int 256 +Int W2, WS), NAME ++IeleName N) ++Contract #dasmContract(#drop(W1 *Int 256 +Int W2, WS), NBITS, FUNCS, NAME, external contract N DEFS, N +Int 1, SIZE)
     rule #dasmContract( WS, NBITS, FUNCS, NAME, DEFS, N, SIZE ) => contract NAME ! SIZE { DEFS ++TopLevelDefinitions #dasmFunctions(WS, NBITS, FUNCS) } .Contract [owise]
 
     syntax Contract ::= Contract "++Contract" Contract [function, klabel(contractAppend)]
     syntax priorities contractDefinitionList > contractAppend
     syntax TopLevelDefinitions ::= TopLevelDefinitions "++TopLevelDefinitions" TopLevelDefinitions [function, klabel(topLevelAppend)]
     syntax priorities topLevelDefinitionList > topLevelAppend
+    syntax IeleName ::= IeleName "++IeleName" IeleName [function]
  // -----------------------------------------------------------------------------
     rule .Contract ++Contract Cs => Cs
     rule C Cs ++Contract Cs' => C (Cs ++Contract Cs')
     rule .TopLevelDefinitions ++TopLevelDefinitions Ds => Ds
     rule D Ds ++TopLevelDefinitions Ds' => D (Ds ++TopLevelDefinitions Ds')
+    rule N ++IeleName M => #parseToken("IeleName", IeleName2String(N) +String "." +String IeleName2String(M)) 
 
     syntax TopLevelDefinitions ::= #dasmFunctions ( WordStack , Int , Map ) [function]
     syntax TopLevelDefinitions ::= #dasmFunction ( Bool , IeleName , Int , WordStack , Int , Map , Instructions , K ) [function]
