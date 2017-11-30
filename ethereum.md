@@ -40,7 +40,7 @@ For verification purposes, it's much easier to specify a program in terms of its
 To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a "pretti-fication" to the nicer input form.
 
 ```{.k .uiuck .rvk}
-    syntax JSON ::= Int | WordStack | Ops | Map | SubstateLogEntry | Account
+    syntax JSON ::= Int | WordStack | Map | SubstateLogEntry | Account | Bool
  // -----------------------------------------------------------------------------------
 
     syntax JSONList ::= #sortJSONList ( JSONList )            [function]
@@ -71,9 +71,9 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
 ```{.k .uiuck .rvk}
     syntax EthereumCommand ::= "start"
  // ----------------------------------
-    rule <mode> NORMAL     </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData> <fid> _ => 1 </fid>
-    rule <mode> VMTESTS    </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData> <fid> _ => 1 </fid>
- // rule <mode> GASANALYZE </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #gasAnalyze ... </k> <callData> VALUES </callData> <fid> _ => 1 </fid>
+    rule <mode> NORMAL     </mode> <k> start => #loads #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData> <fid> _ => deposit </fid>
+    rule <mode> VMTESTS    </mode> <k> start => #loads #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData> <fid> _ => deposit </fid>
+ // rule <mode> GASANALYZE </mode> <k> start => #loads #regRange(#sizeRegs(VALUES)) VALUES ~> #gasAnalyze ... </k> <callData> VALUES </callData> <fid> _ => deposit </fid>
 
     syntax EthereumCommand ::= "flush"
  // ----------------------------------
@@ -99,7 +99,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            <txNonce>    TN   </txNonce>
            <txGasPrice> TP   </txGasPrice>
            <txGasLimit> TG   </txGasLimit>
-           <to>         TT   </to>
+           <sendto>     TT   </sendto>
            <value>      TV   </value>
            <v>          TW   </v>
            <r>          TR   </r>
@@ -110,8 +110,8 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
     syntax EthereumCommand ::= loadTx ( Int )
  // -----------------------------------------
     rule <k> loadTx(ACCTFROM)
-          => #create ACCTFROM #newAddr(ACCTFROM, NONCE) (GLIMIT -Int G0(SCHED, CODE, true)) VALUE #dasmOps(CODE) #sizeWordStack(CODE) .Regs
-          ~> #codeDeposit #newAddr(ACCTFROM, NONCE) #sizeWordStack(CODE) #dasmOps(CODE) %0 ~> #adjustGas ~> #finalizeTx(false) ~> startTx
+          => #create ACCTFROM #newAddr(ACCTFROM, NONCE) (GLIMIT -Int G0(SCHED, CODE, true)) VALUE #dasmContract(CODE, Main) .Ints
+          ~> #codeDeposit #newAddr(ACCTFROM, NONCE) #sizeWordStack(CODE) #dasmContract(CODE, Main) %0 ~> #adjustGas ~> #finalizeTx(false) ~> startTx
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -123,7 +123,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            <msgID>      TXID     </msgID>
            <txGasPrice> GPRICE   </txGasPrice>
            <txGasLimit> GLIMIT   </txGasLimit>
-           <to>         .Account </to>
+           <sendto>     .Account </sendto>
            <value>      VALUE    </value>
            <data>       CODE     </data>
            ...
@@ -137,7 +137,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
          <activeAccounts> ... ACCTFROM |-> (_ => false) ... </activeAccounts>
 
     rule <k> loadTx(ACCTFROM)
-          => #call ACCTFROM ACCTTO ACCTTO "deposit" (GLIMIT -Int G0(SCHED, DATA, false)) VALUE VALUE (#sizeWordStack(DATA) #asUnsigned(DATA) .Regs) false
+          => #call ACCTFROM ACCTTO ACCTTO deposit (GLIMIT -Int G0(SCHED, DATA, false)) VALUE VALUE (#sizeWordStack(DATA) , #asUnsigned(DATA) , .Ints) false
           ~> #finishTx ~> #adjustGas ~> #finalizeTx(false) ~> startTx
          ...
          </k>
@@ -150,7 +150,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            <msgID>      TXID   </msgID>
            <txGasPrice> GPRICE </txGasPrice>
            <txGasLimit> GLIMIT </txGasLimit>
-           <to>         ACCTTO </to>
+           <sendto>     ACCTTO </sendto>
            <value>      VALUE  </value>
            <data>       DATA   </data>
            ...
@@ -187,8 +187,8 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
          <gas> GAVAIL </gas>
          <txPending> ListItem(TXID:Int) ... </txPending>
          <message>
-           <msgID> TXID </msgID>
-           <to>    TT   </to>
+           <msgID>  TXID </msgID>
+           <sendto> TT   </sendto>
            ...
          </message>
       requires TT =/=K .Account
@@ -387,8 +387,7 @@ The individual fields of the accounts are dealt with here.
     rule <k> load "account" : { ACCT : { "code" : (CODE:WordStack) } } => . ... </k>
          <account>
            <acctID> ACCT </acctID>
-           <code> _ => #dasmOps(CODE) </code>
-           <codeSize> _ => #sizeWordStack(CODE) </codeSize>
+           <code> _ => #dasmContract(CODE, Main) </code>
            ...
          </account>
          <activeAccounts> ... ACCT |-> (EMPTY => #if CODE =/=K .WordStack #then false #else EMPTY #fi) ... </activeAccounts>
@@ -441,9 +440,9 @@ Here we load the environmental information.
     rule load "exec" : { "data" : ((DATA:String) => #parseByteStack(DATA)) }
     rule load "exec" : { "data" : ((DATA:WordStack) => [#asUnsigned(DATA), #sizeWordStack(DATA)]) } 
  // -----------------------------------------------------------------------------------------------
-    rule <k> load "exec" : { "data" : [DATA:Int, LEN:Int] } => . ... </k> <callData> _ => LEN DATA .Regs </callData>
+    rule <k> load "exec" : { "data" : [DATA:Int, LEN:Int] } => . ... </k> <callData> _ => LEN , DATA , .Ints </callData>
     rule <k> load "exec" : { "code" : (CODE:WordStack) } => . ... </k>
-         (<program>  _ </program> => #loadCode(#dasmOps(CODE), #sizeWordStack(CODE)))
+         (<program>  _ </program> => #loadCode(#dasmContract(CODE, Main)))
          <schedule> SCHED </schedule>
 ```
 
@@ -534,7 +533,7 @@ The `"transactions"` key loads the transactions.
                <txNonce>    #asUnsigned(#parseByteStack(TN))         </txNonce>
                <txGasPrice> #asUnsigned(#parseByteStack(TP))         </txGasPrice>
                <txGasLimit> #asUnsigned(#parseByteStack(TG))         </txGasLimit>
-               <to>         #asAccount(#parseByteStack(TT))      </to>
+               <sendto>     #asAccount(#parseByteStack(TT))          </sendto>
                <value>      #asUnsigned(#parseByteStack(TV))         </value>
                <v>          #asUnsigned(#parseByteStack(TW))         </v>
                <r>          #padToWidth(32, #parseByteStack(TR)) </r>
@@ -599,15 +598,13 @@ The `"transactions"` key loads the transactions.
     rule <k> check "account" : { ACCT : { "code" : (CODE:WordStack) } } => . ... </k>
          <account>
            <acctID> ACCT </acctID>
-           <code> OPS </code>
-           <codeSize> SIZE </codeSize>
+           <code> CONTRACT </code>
            ...
          </account>
-         requires #dasmOps(CODE) ==K OPS andBool #sizeWordStack(CODE) ==Int SIZE
+         requires #dasmContract(CODE, Main) ==K CONTRACT
     rule <k> check "account" : { ACCT : { "code" : .WordStack } } => . ... </k>
          <account>
            <acctID> ACCT </acctID>
-           <codeSize> 0 </codeSize>
            ...
          </account>
 
@@ -623,12 +620,12 @@ Here we check the other post-conditions associated with an EVM test.
     rule check TESTID : { "out" : OUT } => check "out" : OUT ~> failure TESTID
  // --------------------------------------------------------------------------
     rule check "out" : ((OUT:String) => #parseHexWord(OUT))
-    rule <k> check "out" : OUT => . ... </k> <output> OUT .Regs </output>
-    rule <k> check "out" : 0   => . ... </k> <output> .Regs </output>
+    rule <k> check "out" : OUT => . ... </k> <output> OUT , .Ints </output>
+    rule <k> check "out" : 0   => . ... </k> <output> .Ints </output>
 
     rule check TESTID : { "logs" : LOGS } => check "logs" : LOGS ~> failure TESTID
  // ------------------------------------------------------------------------------
-    rule <k> check "logs" : HASH:String => . ... </k> <log> SL </log> requires #parseHexBytes(Keccak256(#rlpEncodeLogs(SL))) ==K #parseByteStack(HASH)
+    rule <k> check "logs" : HASH:String => . ... </k> <logData> SL </logData> requires #parseHexBytes(Keccak256(#rlpEncodeLogs(SL))) ==K #parseByteStack(HASH)
 
     syntax String ::= #rlpEncodeLogs(List)        [function]
                     | #rlpEncodeLogsAux(List)     [function]

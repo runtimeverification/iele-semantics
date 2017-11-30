@@ -1,0 +1,57 @@
+contract Main !10 {
+
+define public @init(%beneficiary, %bidding.time) {
+entry:
+    @beneficiary = %beneficiary
+    @auction.start = call @iele.timestamp()
+    @auction.end = add @auction_start, %bidding.time
+    @highest.bidder = 0
+    @highest.bid = 0
+    @ended = 0
+}
+
+define public @bid() {
+entry:
+    %1 = call @iele.timestamp()
+    %2 = cmp ge %1, @auction.end
+    br %2, exit
+
+bb.1:
+    %bid.value = call @iele.callvalue()
+    %3 = cmp le %bid.value, @highest.bid
+    br %3, exit
+
+bb.2:
+    %4 = cmp eq @highest.bid, 0
+    br %4, bb.4
+
+bb.3:
+    send @highest.bid to @highest.bidder
+
+bb.4:
+    @highest.bidder = call @iele.caller()
+    @highest.bid = %bid.value
+
+exit:
+    ret void
+}
+
+define public @finish.auction() {
+entry:
+    %1 = call @iele.timestamp()
+    %2 = cmp lt %1, @auction.end
+    br %2, exit
+
+bb.1:
+    br @ended, exit
+
+bb.2:
+    @ended = 1
+    send @highest.bid to @beneficiary
+    ret void
+
+exit:
+    ret void
+}
+
+}

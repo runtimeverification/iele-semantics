@@ -19,7 +19,7 @@ build: tangle .build/${K_VERSION}/ethereum-kompiled/extras/timestamp
 tangle: defn proofs
 
 defn_dir=.build/${K_VERSION}
-defn_files=${defn_dir}/ethereum.k ${defn_dir}/data.k ${defn_dir}/iele.k ${defn_dir}/iele-binary.k ${defn_dir}/krypto.k
+defn_files=${defn_dir}/ethereum.k ${defn_dir}/data.k ${defn_dir}/iele.k ${defn_dir}/iele-binary.k ${defn_dir}/krypto.k ${defn_dir}/iele-syntax.k
 defn: $(defn_files)
 
 .build/${K_VERSION}/%.k: %.md
