@@ -1347,19 +1347,19 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
     rule #subcontract ( (contract NAME ! _ { _ } #as CONTRACT) _, NAME ) => CONTRACT
     rule #subcontract ( CONTRACT CONTRACTS, NAME ) => CONTRACT #subcontract(CONTRACTS, NAME) [owise]
 
-    syntax KItem ::= "#codeDeposit" Int Int Contract LValue
-                   | "#mkCodeDeposit" Int Int Contract LValue
+    syntax KItem ::= "#codeDeposit" Int Int Contract LValue Bool
+                   | "#mkCodeDeposit" Int Int Contract LValue Bool
                    | "#finishCodeDeposit" Int Contract LValue
  // ---------------------------------------------------------
-    rule <k> #exception ~> #codeDeposit _ _ _ REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG 0 ... </k> <output> _ => .Ints </output>
-    rule <k> #revert ~> #codeDeposit _ _ _ REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #refund GAVAIL ~> #load REG 0 ... </k>
+    rule <k> #exception ~> #codeDeposit _ _ _ REG _ => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG 0 ... </k> <output> _ => .Ints </output>
+    rule <k> #revert ~> #codeDeposit _ _ _ REG _ => #popCallStack ~> #popWorldState ~> #popSubstate ~> #refund GAVAIL ~> #load REG 0 ... </k>
          <gas> GAVAIL </gas>
 
     rule <mode> EXECMODE </mode>
-         <k> #end ~> #codeDeposit ACCT LEN CODE REG => #mkCodeDeposit ACCT LEN CODE REG ... </k>
+         <k> #end ~> #codeDeposit ACCT LEN CODE REG NEW => #mkCodeDeposit ACCT LEN CODE REG NEW ... </k>
 
-    rule <k> #mkCodeDeposit ACCT LEN CODE REG
-          => #if EXECMODE ==K VMTESTS #then . #else Gcodedeposit < SCHED > *Int LEN ~> #deductGas #fi
+    rule <k> #mkCodeDeposit ACCT LEN CODE REG NEW:Bool
+          => #if EXECMODE ==K VMTESTS orBool notBool NEW #then . #else Gcodedeposit < SCHED > *Int LEN ~> #deductGas #fi
           ~> #finishCodeDeposit ACCT CODE REG
          ...
          </k>
@@ -1391,7 +1391,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
     rule <k> #exec REG = create NAME ( ARGS ) send VALUE
           => #checkCreate ACCT VALUE
           ~> #create ACCT #newAddr(ACCT, NONCE) #if Gstaticcalldepth << SCHED >> #then GAVAIL #else #allBut64th(GAVAIL) #fi VALUE #subcontract(CODE, NAME) ARGS
-          ~> #codeDeposit #newAddr(ACCT, NONCE) #contractSize(CODE, NAME) #subcontract(CODE, NAME) REG
+          ~> #codeDeposit #newAddr(ACCT, NONCE) #contractSize(CODE, NAME) #subcontract(CODE, NAME) REG false
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -1407,7 +1407,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
     rule <k> #exec REG = copycreate ACCTCODE ( ARGS ) send VALUE
           => #checkCreate ACCT VALUE
           ~> #create ACCT #newAddr(ACCT, NONCE) #if Gstaticcalldepth << SCHED >> #then GAVAIL #else #allBut64th(GAVAIL) #fi VALUE CODE ARGS
-          ~> #codeDeposit #newAddr(ACCT, NONCE) #contractSize(CODE, #mainContract(CODE)) CODE REG
+          ~> #codeDeposit #newAddr(ACCT, NONCE) #contractSize(CODE, #mainContract(CODE)) CODE REG false
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -1428,7 +1428,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
     rule <k> #exec REG = copycreate ACCT ( ARGS ) send VALUE
           => #checkCreate ACCT VALUE
           ~> #create ACCT #newAddr(ACCT, NONCE) #if Gstaticcalldepth << SCHED >> #then GAVAIL #else #allBut64th(GAVAIL) #fi VALUE CODE ARGS
-          ~> #codeDeposit #newAddr(ACCT, NONCE) #contractSize(CODE, #mainContract(CODE)) CODE REG
+          ~> #codeDeposit #newAddr(ACCT, NONCE) #contractSize(CODE, #mainContract(CODE)) CODE REG false
          ...
          </k>
          <schedule> SCHED </schedule>
