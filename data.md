@@ -377,7 +377,7 @@ Addresses
                  | #sender ( String )                                                                 [function, klabel(#senderAux2)]
  // ---------------------------------------------------------------------------------------------------------------------------------
     rule #sender(TN, TP, TG, TT, TV, DATA, TW, TR, TS)
-      => #sender(#unparseByteStack(#parseHexBytes(Keccak256(#rlpEncodeLength(#rlpEncodeWordStack(TN : TP : TG : .WordStack) +String #rlpEncodeAccount(TT) +String #rlpEncodeWordUnsigned(TV) +String #rlpEncodeString(DATA), 192)))), TW, #unparseByteStack(TR), #unparseByteStack(TS))
+      => #sender(#unparseByteStack(#parseHexBytes(Keccak256(#rlpEncodeLength(#rlpEncodeWordStack(TN : TP : TG : .WordStack) +String #rlpEncodeAccount(TT) +String #rlpEncodeWord(TV) +String #rlpEncodeString(DATA), 192)))), TW, #unparseByteStack(TR), #unparseByteStack(TS))
 
     rule #sender(HT, TW, TR, TS) => #sender(ECDSARecover(HT, TW, TR, TS))
 
@@ -571,7 +571,6 @@ Encoding
 
 ```{.k .uiuck .rvk}
     syntax String ::= #rlpEncodeWord ( Int )            [function]
-                    | #rlpEncodeWordUnsigned ( Int )    [function]
                     | #rlpEncodeBytes ( Int , Int )     [function]
                     | #rlpEncodeWordStack ( WordStack ) [function]
                     | #rlpEncodeString ( String )       [function]
@@ -579,16 +578,12 @@ Encoding
  // --------------------------------------------------------------
     rule #rlpEncodeWord(0) => "\x80"
     rule #rlpEncodeWord(WORD) => chrChar(WORD) requires WORD >Int 0 andBool WORD <Int 128
-    rule #rlpEncodeWord(WORD) => #rlpEncodeLength(#unparseByteStack(#asSignedBytes(WORD)), 128) requires WORD >=Int 128
-
-    rule #rlpEncodeWordUnsigned(0) => "\x80"
-    rule #rlpEncodeWordUnsigned(WORD) => chrChar(WORD) requires WORD >Int 0 andBool WORD <Int 128
-    rule #rlpEncodeWordUnsigned(WORD) => #rlpEncodeLength(#unparseByteStack(#asUnsignedBytes(WORD)), 128) requires WORD >=Int 128
+    rule #rlpEncodeWord(WORD) => #rlpEncodeLength(#unparseByteStack(#asUnsignedBytes(WORD)), 128) requires WORD >=Int 128
 
     rule #rlpEncodeBytes(WORD, LEN) => #rlpEncodeString(#unparseByteStack(#padToWidth(LEN, #asUnsignedBytes(WORD))))
 
     rule #rlpEncodeWordStack(.WordStack) => ""
-    rule #rlpEncodeWordStack(W : WS)     => #rlpEncodeWordUnsigned(W) +String #rlpEncodeWordStack(WS)
+    rule #rlpEncodeWordStack(W : WS)     => #rlpEncodeWord(W) +String #rlpEncodeWordStack(WS)
 
     rule #rlpEncodeString(STR) => STR                        requires lengthString(STR) ==Int 1 andBool ordChar(STR) <Int 128
     rule #rlpEncodeString(STR) => #rlpEncodeLength(STR, 128) [owise]
