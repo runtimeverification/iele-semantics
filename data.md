@@ -33,7 +33,7 @@ Some important numbers that are referred to often during execution:
     rule pow256 => 2 ^Int 256
 ```
 
-The JSON format is used extensively for communication in the Ethereum circles.
+The JSON format is used to encode IELE test cases.
 Writing a JSON-ish parser in K takes 6 lines.
 
 ```{.k .uiuck .rvk}
@@ -199,7 +199,7 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
 
 ```{.k .uiuck .rvk}
     syntax WordStack ::= WordStack "++" WordStack [function, right]
- // --------------------------------------------------------------
+ // ---------------------------------------------------------------
     rule .WordStack ++ WS' => WS'
     rule (W : WS)   ++ WS' => W : (WS ++ WS')
 
@@ -335,7 +335,7 @@ The local memory of execution is a byte-array (instead of a word-array).
 
     syntax WordStack ::= #asSignedBytes ( Int )                    [function]
                        | #asSignedBytes ( Int , WordStack , Bool ) [function, klabel(#asSignedBytesAux), smtlib(asSignedBytes)]
- // ---------------------------------------------------------------------------------------------------------------------
+ // ---------------------------------------------------------------------------------------------------------------------------
     rule #asSignedBytes( W ) => #asSignedBytes( W ,                                          .WordStack , true  ) requires W >=Int 0
     rule #asSignedBytes( W ) => #asSignedBytes( twos(#numBytes(0 -Int W *Int 2 -Int 1), W) , .WordStack , false ) requires W  <Int 0
     rule #asSignedBytes( 0 , WS         , false ) => WS
@@ -346,7 +346,7 @@ The local memory of execution is a byte-array (instead of a word-array).
 
     syntax WordStack ::= #asUnsignedBytes ( Int )             [function]
                        | #asUnsignedBytes ( Int , WordStack ) [function, klabel(#asUnsignedBytesAux), smtlib(asUnsignedBytes)]
- // --------------------------------------------------------------------------------------------------------------
+ // --------------------------------------------------------------------------------------------------------------------------
     rule #asUnsignedBytes( W ) => #asUnsignedBytes( W , .WordStack )
     rule #asUnsignedBytes( 0 , WS ) => WS
     rule #asUnsignedBytes( W , WS ) => #asUnsignedBytes( W /Int 256 , W %Int 256 : WS ) requires W =/=K 0
@@ -356,7 +356,7 @@ The local memory of execution is a byte-array (instead of a word-array).
 Addresses
 ---------
 
--   `#addr` turns an Ethereum word into the corresponding Ethereum address (160 LSB).
+-   `#addr` turns a IELE arbitrary-precision word into the corresponding IELE address (modulo 2^160).
 
 ```{.k .uiuck .rvk}
     syntax Int ::= #addr ( Int ) [function]
@@ -365,7 +365,7 @@ Addresses
 ```
 
 -   `#newAddr` computes the address of a new account given the address and nonce of the creating account.
--   `#sender` computes the sender of the transaction from its data and signature.
+-   `#sender` computes the sender of the transaction from its data and signature. The format which takes an entire transaction is used only for backwards compatibility with the EVM test suite; the argument which takes an ECDSA signature is used by IELE.
 
 ```{.k .uiuck .rvk}
     syntax Int ::= #newAddr ( Int , Int ) [function]
@@ -377,7 +377,7 @@ Addresses
                  | #sender ( String )                                                                 [function, klabel(#senderAux2)]
  // ---------------------------------------------------------------------------------------------------------------------------------
     rule #sender(TN, TP, TG, TT, TV, DATA, TW, TR, TS)
-      => #sender(#unparseByteStack(#parseHexBytes(Keccak256(#rlpEncodeLength(#rlpEncodeWordStack(TN : TP : TG : .WordStack) +String #rlpEncodeAccount(TT) +String #rlpEncodeWordUnsigned(TV) +String #rlpEncodeString(DATA), 192)))), TW, #unparseByteStack(TR), #unparseByteStack(TS))
+      => #sender(#unparseByteStack(#parseHexBytes(Keccak256(#rlpEncodeLength(#rlpEncodeWordStack(TN : TP : TG : .WordStack) +String #rlpEncodeAccount(TT) +String #rlpEncodeWord(TV) +String #rlpEncodeString(DATA), 192)))), TW, #unparseByteStack(TR), #unparseByteStack(TS))
 
     rule #sender(HT, TW, TR, TS) => #sender(ECDSARecover(HT, TW, TR, TS))
 
@@ -385,7 +385,7 @@ Addresses
     rule #sender(STR) => #addr(#parseHexWord(Keccak256(STR))) requires STR =/=String ""
 ```
 
--   `#blockHeaderHash` computes the hash of a block header given all the block data.
+-   `#blockHeaderHash` computes the hash of a block header given all the block data. This is used solely for backwards compatibility with the EVM test suite.
 
 ```{.k .uiuck .rvk}
     syntax Int ::= #blockHeaderHash( Int , Int , Int , Int , Int , Int , WordStack , Int , Int , Int , Int , Int , WordStack , Int , Int ) [function]
@@ -435,13 +435,13 @@ We are using the polymorphic `Array` sort for these word maps.
 
 ```{.k .uiuck .rvk}
     syntax Array ::= Array "[" Int ":=" WordStack "]" [function]
- // --------------------------------------------------------
+ // ------------------------------------------------------------
     rule WM::Array[ N := .WordStack ] => WM
     rule WM::Array[ N := W : WS     ] => (WM[chop(N) <- W])[N +Int 1 := WS]
 
     syntax WordStack ::= #range ( Array , Int , Int )            [function]
     syntax WordStack ::= #range ( Array , Int , Int , WordStack) [function, klabel(#rangeAux)]
- // ----------------------------------------------------------------------------------------
+ // ------------------------------------------------------------------------------------------
     rule #range(WM, START, WIDTH) => #range(WM, chop(START) +Int chop(WIDTH) -Int 1, chop(WIDTH), .WordStack)
 
     rule #range(WM, END, 0,     WS) => WS
@@ -503,10 +503,10 @@ These parsers can interperet hex-encoded strings as `Int`s, `WordStack`s, and `M
     rule #parseWord(S)  => #parseHexWord(S) requires lengthString(S) >=Int 2 andBool substrString(S, 0, 2) ==String "0x"
     rule #parseWord(S)  => String2Int(S) [owise]
 
-    syntax WordStack ::= #parseHexBytes  ( String ) [function]
-                       | #parseByteStack ( String ) [function]
+    syntax WordStack ::= #parseHexBytes  ( String )    [function]
+                       | #parseByteStack ( String )    [function]
                        | #parseByteStackRaw ( String ) [function]
- // ----------------------------------------------------------
+ // -------------------------------------------------------------
     rule #parseByteStack(S) => #parseHexBytes(replaceAll(S, "0x", ""))
     rule #parseHexBytes("") => .WordStack
     rule #parseHexBytes(S)  => #parseHexWord(substrString(S, 0, 2)) : #parseHexBytes(substrString(S, 2, lengthString(S))) requires lengthString(S) >=Int 2
@@ -558,20 +558,19 @@ Recursive Length Prefix (RLP)
 
 RLP encoding is used extensively for executing the blocks of a transaction.
 For details about RLP encoding, see the [YellowPaper Appendix B](http://gavwood.com/paper.pdf).
+This is included only for compatibility with the EVM test suite.
 
 Encoding
 --------
 
--   `#rlpEncodeWord` RLP encodes a single IELE word.
--   `#rlpEncodeWordUnsigned` RLP encodes a single EVM word (i.e., unsigned).
+-   `#rlpEncodeWord` RLP encodes a single EVM word.
 -   `#rlpEncodeBytes` RLP encodes a single integer as a fixed-width unsigned byte buffer.
--   `#rlpEncodeWordStack` RLP encodes a list of EVM words (i.e., unsigned).
+-   `#rlpEncodeWordStack` RLP encodes a list of EVM words.
 -   `#rlpEncodeString` RLP encodes a single `String`.
 -   `#rlpEncodeAccount` RLP encodes a single account ID.
 
 ```{.k .uiuck .rvk}
     syntax String ::= #rlpEncodeWord ( Int )            [function]
-                    | #rlpEncodeWordUnsigned ( Int )    [function]
                     | #rlpEncodeBytes ( Int , Int )     [function]
                     | #rlpEncodeWordStack ( WordStack ) [function]
                     | #rlpEncodeString ( String )       [function]
@@ -579,16 +578,12 @@ Encoding
  // --------------------------------------------------------------
     rule #rlpEncodeWord(0) => "\x80"
     rule #rlpEncodeWord(WORD) => chrChar(WORD) requires WORD >Int 0 andBool WORD <Int 128
-    rule #rlpEncodeWord(WORD) => #rlpEncodeLength(#unparseByteStack(#asSignedBytes(WORD)), 128) requires WORD >=Int 128
-
-    rule #rlpEncodeWordUnsigned(0) => "\x80"
-    rule #rlpEncodeWordUnsigned(WORD) => chrChar(WORD) requires WORD >Int 0 andBool WORD <Int 128
-    rule #rlpEncodeWordUnsigned(WORD) => #rlpEncodeLength(#unparseByteStack(#asUnsignedBytes(WORD)), 128) requires WORD >=Int 128
+    rule #rlpEncodeWord(WORD) => #rlpEncodeLength(#unparseByteStack(#asUnsignedBytes(WORD)), 128) requires WORD >=Int 128
 
     rule #rlpEncodeBytes(WORD, LEN) => #rlpEncodeString(#unparseByteStack(#padToWidth(LEN, #asUnsignedBytes(WORD))))
 
     rule #rlpEncodeWordStack(.WordStack) => ""
-    rule #rlpEncodeWordStack(W : WS)     => #rlpEncodeWordUnsigned(W) +String #rlpEncodeWordStack(WS)
+    rule #rlpEncodeWordStack(W : WS)     => #rlpEncodeWord(W) +String #rlpEncodeWordStack(WS)
 
     rule #rlpEncodeString(STR) => STR                        requires lengthString(STR) ==Int 1 andBool ordChar(STR) <Int 128
     rule #rlpEncodeString(STR) => #rlpEncodeLength(STR, 128) [owise]
@@ -609,7 +604,7 @@ Decoding
 
 -   `#rlpDecode` RLP decodes a single `String` into a `JSON`.
 -   `#rlpDecodeList` RLP decodes a single `String` into a `JSONList`, interpereting the string as the RLP encoding of a list.
--   `#pushLen` and `#pushOffset` decode a `WordStack` into a single string in an RLP-like encoding which does not allow lists in its structure.
+-   `#loadLen` and `#loadOffset` decode a `WordStack` into a single string in an RLP-like encoding which does not allow lists in its structure.
 
 ```{.k .uiuck .rvk}
     syntax JSON ::= #rlpDecode(String)               [function]
@@ -645,16 +640,16 @@ Decoding
     rule #decodeLengthPrefixLength(#list, STR, START, B0) => #decodeLengthPrefixLength(#list, START, B0 -Int 192 -Int 56 +Int 1, #asUnsigned(#parseByteStackRaw(substrString(STR, START +Int 1, START +Int 1 +Int (B0 -Int 192 -Int 56 +Int 1)))))
     rule #decodeLengthPrefixLength(TYPE, START, LL, L) => TYPE(L, START +Int 1 +Int LL)
 
-    syntax Int ::= #pushLen ( WordStack ) [function]
- // -----------------------------------------------
-    rule #pushLen ( B0 : WS ) => 1                               requires B0  <Int 128 orBool  B0 >=Int 192
-    rule #pushLen ( B0 : WS ) => B0 -Int 128                     requires B0 >=Int 128 andBool B0  <Int 184
-    rule #pushLen ( B0 : WS ) => #asUnsigned(#take(B0 -Int 183, WS)) requires B0 >=Int 184 andBool B0  <Int 192
+    syntax Int ::= #loadLen ( WordStack ) [function]
+ // ------------------------------------------------
+    rule #loadLen ( B0 : WS ) => 1                               requires B0  <Int 128 orBool  B0 >=Int 192
+    rule #loadLen ( B0 : WS ) => B0 -Int 128                     requires B0 >=Int 128 andBool B0  <Int 184
+    rule #loadLen ( B0 : WS ) => #asUnsigned(#take(B0 -Int 183, WS)) requires B0 >=Int 184 andBool B0  <Int 192
 
-    syntax Int ::= #pushOffset ( WordStack ) [function]
- // --------------------------------------------------
-    rule #pushOffset ( B0 : WS ) => 0           requires B0  <Int 128 orBool  B0 >=Int 192
-    rule #pushOffset ( B0 : WS ) => 1           requires B0 >=Int 128 andBool B0  <Int 184
-    rule #pushOffset ( B0 : WS ) => B0 -Int 182 requires B0 >=Int 184 andBool B0  <Int 192
+    syntax Int ::= #loadOffset ( WordStack ) [function]
+ // ---------------------------------------------------
+    rule #loadOffset ( B0 : WS ) => 0           requires B0  <Int 128 orBool  B0 >=Int 192
+    rule #loadOffset ( B0 : WS ) => 1           requires B0 >=Int 128 andBool B0  <Int 184
+    rule #loadOffset ( B0 : WS ) => B0 -Int 182 requires B0 >=Int 184 andBool B0  <Int 192
 endmodule
 ```

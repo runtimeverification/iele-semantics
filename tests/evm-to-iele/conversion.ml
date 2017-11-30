@@ -784,7 +784,7 @@ let alloc_registers (ops: iele_op list) : iele_op list =
     regbits := !regbits + 1;
     regcount := !regcount asr 1
   done;
-  VoidOp(`REGISTERS !regbits,[]) :: VoidOp(`FUNCTION("deposit"),[]) :: VoidOp(`FUNCTION("iele.ecrec"),[]) :: VoidOp(`FUNCTION("iele.id"),[]) :: VoidOp(`FUNCTION("iele.ecadd"),[]) :: VoidOp(`FUNCTION("iele.ecmul"),[]) :: VoidOp(`CALLDEST(0, 0), []) :: (lbl_ops @ dangling_jumpdests) 
+  VoidOp(`REGISTERS(!regbits + 1),[]) :: VoidOp(`FUNCTION("deposit"),[]) :: VoidOp(`FUNCTION("iele.ecrec"),[]) :: VoidOp(`FUNCTION("iele.id"),[]) :: VoidOp(`FUNCTION("iele.ecadd"),[]) :: VoidOp(`FUNCTION("iele.ecmul"),[]) :: VoidOp(`CALLDEST(0, 0), []) :: (lbl_ops @ dangling_jumpdests) 
 
 let max_val = Z.sub (Z.shift_left Z.one 255) Z.one
 
@@ -807,6 +807,8 @@ let rec postprocess_iele iele label memcells = match iele with
 | Op(`SHA3, reg, [memstart; memwidth]) :: tl -> LiOp(`LOADPOS, -1, Z.zero) :: Op(`MLOADN, -2, [-1; memstart; memwidth]) :: LiOp(`LOADPOS, memstart, memcells) :: VoidOp(`MSTOREN, [memstart; -1; -2; memwidth]) :: Op(`SHA3, reg, [memstart]) :: postprocess_iele tl label (Z.add memcells Z.one)
 | VoidOp(`LOG(n), memstart :: memwidth :: topics) :: tl -> LiOp(`LOADPOS, -1, Z.zero) :: Op(`MLOADN, -2, [-1; memstart; memwidth]) :: LiOp(`LOADPOS, memstart, memcells) :: VoidOp(`MSTOREN, [memstart; -1; -2; memwidth]) :: VoidOp(`LOG(n), memstart :: topics) :: postprocess_iele tl label (Z.add memcells Z.one)
 | VoidOp(`STOP, []) :: tl -> LiOp(`LOADPOS, -1, Z.zero) :: VoidOp(`RETURN(1), [-1]) :: postprocess_iele tl label memcells
+| Op((`DIV|`MOD), reg, [v1;v2]) as op :: tl when compatibility -> VoidOp(`JUMPI(label), [v2]) :: LiOp(`LOADPOS, reg, Z.zero) :: VoidOp(`JUMP(label-1),[]) :: VoidOp(`JUMPDEST(label),[]) :: op :: VoidOp(`JUMPDEST(label-1),[]) :: postprocess_iele tl (label-2) memcells
+| Op((`ADDMOD|`MULMOD), reg, [v1;v2;v3]) as op :: tl when compatibility -> VoidOp(`JUMPI(label), [v3]) :: LiOp(`LOADPOS, reg, Z.zero) :: VoidOp(`JUMP(label-1),[]) :: VoidOp(`JUMPDEST(label),[]) :: op :: VoidOp(`JUMPDEST(label-1),[]) :: postprocess_iele tl (label-2) memcells
 | hd :: tl -> hd :: postprocess_iele tl label memcells
 | [] -> []
 

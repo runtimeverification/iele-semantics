@@ -1,3 +1,8 @@
+IELE Textual Syntax
+===================
+
+Here we define the textual syntax of IELE assembly code. The syntax represented here has some syntactic sugar which is removed by the assembler. However, a fragment of this textual encoding is used by the semantics to express the rules of the language itself.
+
 ```{.k .uiuck .rvk}
 module IELE-SYNTAX
   imports IELE-COMMON
@@ -8,6 +13,7 @@ module IELE-SYNTAX
 endmodule
 
 module IELE-COMMON
+  // Identifiers
   syntax NumericIeleName ::= Int
   syntax IeleName ::= NumericIeleName
 
@@ -82,10 +88,6 @@ module IELE-COMMON
                            | LValues "=" "call" GlobalName "(" Operands ")" [hybrid, strict(3)]
   syntax AccountCallInst ::= "call" GlobalName "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand
                            | LValues "=" "call" GlobalName "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand [hybrid, seqstrict(3,4,5,6)]
-  syntax AccountCallInst ::= "callcode" GlobalName "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand
-                           | LValues "=" "callcode" GlobalName "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand [hybrid, seqstrict(3,4,5,6)]
-  syntax AccountCallInst ::= "delegatecall" GlobalName "at" Operand "(" Operands ")" "gaslimit" Operand
-                           | LValues "=" "delegatecall" GlobalName "at" Operand "(" Operands ")" "gaslimit" Operand [hybrid, seqstrict(3,4,5)]
   syntax AccountCallInst ::= "staticcall" GlobalName "at" Operand "(" Operands ")" "gaslimit" Operand
                            | LValues "=" "staticcall" GlobalName "at" Operand "(" Operands ")" "gaslimit" Operand [hybrid, seqstrict(3,4,5)]
   syntax SendInst        ::= "send" /* value */ Operand "to" /* account */ Operand [hybrid, seqstrict(1,2)]
@@ -123,7 +125,7 @@ module IELE-COMMON
   syntax IeleName ::= "iele.gas"         [token]
   syntax IeleName ::= "iele.gasprice"    [token]
   syntax IeleName ::= "iele.gaslimit"    [token]
-  syntax IeleName ::= "iele.coinbase"    [token]
+  syntax IeleName ::= "iele.beneficiary" [token]
   syntax IeleName ::= "iele.timestamp"   [token]
   syntax IeleName ::= "iele.number"      [token]
   syntax IeleName ::= "iele.difficulty"  [token]
@@ -219,11 +221,15 @@ module IELE-COMMON
 
   syntax Contract ::= List{ContractDefinition, ""} [klabel(contractDefinitionList)]
 
+  // Deposit function in empty accounts
+  syntax IeleName ::= "deposit" [token]
+
+  // Constructor function for all contracts
+  syntax IeleName ::= "init" [token]
+
   // macros for empty return operand lists in calls and returns
   rule call NAME ( ARGS ) => .LValues = call NAME ( ARGS ) [macro]
   rule call NAME at CONTRACT ( ARGS ) send VALUE , gaslimit GLIMIT => .LValues = call NAME at CONTRACT ( ARGS ) send VALUE , gaslimit GLIMIT [macro]
-  rule callcode NAME at CONTRACT ( ARGS ) send VALUE , gaslimit GLIMIT => .LValues = callcode NAME at CONTRACT ( ARGS ) send VALUE , gaslimit GLIMIT [macro]
-  rule delegatecall NAME at CONTRACT ( ARGS ) gaslimit GLIMIT => .LValues = delegatecall NAME at CONTRACT ( ARGS ) gaslimit GLIMIT [macro]
   rule staticcall NAME at CONTRACT ( ARGS ) gaslimit GLIMIT => .LValues = staticcall NAME at CONTRACT ( ARGS ) gaslimit GLIMIT [macro]
   rule ret void => ret .NonEmptyOperands [macro]
   rule revert void => revert .NonEmptyOperands [macro]
