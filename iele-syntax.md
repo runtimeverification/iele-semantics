@@ -199,7 +199,6 @@ module IELE-COMMON
   syntax FunctionSignature ::= GlobalName "(" FunctionParameters ")"
 
   syntax FunctionParameters ::= LocalNames
-                              | Int /* when desugared to just the number of parameters */
 
   syntax FunctionDefinition ::= 
     "define" FunctionSignature "{" Blocks "}"

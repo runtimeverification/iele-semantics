@@ -707,6 +707,7 @@ Executing the INVALID instruction results in an exception.
     syntax IeleName ::= "Main" [token]
                       | "deposit" [token]
                       | "init" [token]
+    syntax FunctionParameters ::= Int /* when desugared to just the number of parameters */
  // ---------------------------
     rule #emptyCode => contract Main !0 { define public @deposit ( 0 ) { ret .NonEmptyOperands .Instructions .LabeledBlocks } } .Contract [macro]
 ```
