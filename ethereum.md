@@ -203,7 +203,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
     rule <k> #finalizeBlock => #rewardOmmers(OMMERS) ... </k>
          <schedule> SCHED </schedule>
          <ommerBlockHeaders> [ OMMERS ] </ommerBlockHeaders>
-         <coinbase> MINER </coinbase>
+         <beneficiary> MINER </beneficiary>
          <account>
            <acctID> MINER </acctID>
            <balance> MINBAL => MINBAL +Int Rb < SCHED > </balance>
@@ -212,14 +212,14 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
          <activeAccounts> ... MINER |-> (_ => false) ... </activeAccounts>
 
     rule <k> (.K => #newAccount MINER) ~> #finalizeBlock ... </k>
-         <coinbase> MINER </coinbase>
+         <beneficiary> MINER </beneficiary>
          <activeAccounts> ACCTS </activeAccounts>
       requires notBool MINER in_keys(ACCTS)
 
     rule <k> #rewardOmmers(.JSONList) => . ... </k>
     rule <k> #rewardOmmers([ _ , _ , OMMER , _ , _ , _ , _ , _ , OMMNUM , _ ] , REST) => #rewardOmmers(REST) ... </k>
          <schedule> SCHED </schedule>
-         <coinbase> MINER </coinbase>
+         <beneficiary> MINER </beneficiary>
          <number> CURNUM </number>
          <account>
            <acctID> MINER </acctID>
@@ -416,7 +416,7 @@ Here we load the environmental information.
     rule load "env" : { KEY : ((VAL:String) => #parseHexWord(VAL)) }
       requires KEY in (SetItem("currentCoinbase") SetItem("previousHash"))
  // ----------------------------------------------------------------------
-    rule <k> load "env" : { "currentCoinbase"   : (CB:Int)     } => . ... </k> <coinbase>     _ => CB     </coinbase>
+    rule <k> load "env" : { "currentCoinbase"   : (CB:Int)     } => . ... </k> <beneficiary>     _ => CB     </beneficiary>
     rule <k> load "env" : { "currentDifficulty" : (DIFF:Int)   } => . ... </k> <difficulty>   _ => DIFF   </difficulty>
     rule <k> load "env" : { "currentGasLimit"   : (GLIMIT:Int) } => . ... </k> <gasLimit>     _ => GLIMIT </gasLimit>
     rule <k> load "env" : { "currentNumber"     : (NUM:Int)    } => . ... </k> <number>       _ => NUM    </number>
@@ -497,7 +497,7 @@ The `"blockHeader"` key loads the block information.
          <timestamp> _ => #asUnsigned(#parseByteStack(HS)) </timestamp>
 
     rule <k> load "blockHeader" : { "coinbase" : (HC:String) } => . ...</k> 
-         <coinbase> _ => #asUnsigned(#parseByteStack(HC)) </coinbase>
+         <beneficiary> _ => #asUnsigned(#parseByteStack(HC)) </beneficiary>
 
     rule <k> load "blockHeader" : { "transactionsTrie" : (HT:String) } => . ...</k> 
          <transactionsRoot> _ => #asUnsigned(#parseByteStack(HT)) </transactionsRoot>

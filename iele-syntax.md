@@ -129,7 +129,7 @@ module IELE-COMMON
   syntax IeleName ::= "iele.gas"         [token]
   syntax IeleName ::= "iele.gasprice"    [token]
   syntax IeleName ::= "iele.gaslimit"    [token]
-  syntax IeleName ::= "iele.coinbase"    [token]
+  syntax IeleName ::= "iele.beneficiary" [token]
   syntax IeleName ::= "iele.timestamp"   [token]
   syntax IeleName ::= "iele.number"      [token]
   syntax IeleName ::= "iele.difficulty"  [token]

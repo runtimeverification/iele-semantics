@@ -101,7 +101,7 @@ In the comments next to each cell, we've marked which component of the yellowpap
                     // I_H* (block information)
                     <previousHash>     0          </previousHash>          // I_Hp
                     <ommersHash>       0          </ommersHash>            // I_Ho
-                    <coinbase>         0          </coinbase>              // I_Hc
+                    <beneficiary>      0          </beneficiary>           // I_Hc
                     <stateRoot>        0          </stateRoot>             // I_Hr
                     <transactionsRoot> 0          </transactionsRoot>      // I_Ht
                     <receiptsRoot>     0          </receiptsRoot>          // I_He
@@ -511,7 +511,7 @@ After executing a transaction, it's necessary to have the effect of the substate
 
     rule <k> (.K => #newAccount MINER) ~> #finalizeTx(_)... </k>
          <mode> NORMAL </mode>
-         <coinbase> MINER </coinbase>
+         <beneficiary> MINER </beneficiary>
          <activeAccounts> ACCTS </activeAccounts>
       requires notBool MINER in_keys(ACCTS)
 
@@ -530,7 +530,7 @@ After executing a transaction, it's necessary to have the effect of the substate
     rule <k> #finalizeTx(false => true) ... </k>
          <mode> NORMAL </mode>
          <origin> ORG </origin>
-         <coinbase> MINER </coinbase>
+         <beneficiary> MINER </beneficiary>
          <gas> GAVAIL </gas>
          <refund> 0 </refund>
          <account>
@@ -556,7 +556,7 @@ After executing a transaction, it's necessary to have the effect of the substate
     rule <k> #finalizeTx(false => true) ... </k>
          <mode> NORMAL </mode>
          <origin> ACCT </origin>
-         <coinbase> ACCT </coinbase>
+         <beneficiary> ACCT </beneficiary>
          <refund> 0 </refund>
          <account>
            <acctID> ACCT </acctID>
@@ -1728,19 +1728,19 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     rule <k> #gasExec(SCHED, _:RevertInst)  => Gzero < SCHED > ... </k>
 
     // Wbase
-    rule <k> #gasExec(SCHED, _ = call @iele.address ( .Ints ))    => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.origin ( .Ints ))     => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.caller ( .Ints ))     => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.callvalue ( .Ints ))  => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.codesize ( .Ints ))   => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.gasprice ( .Ints ))   => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.coinbase ( .Ints ))   => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.timestamp ( .Ints ))  => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.number ( .Ints ))     => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.difficulty ( .Ints )) => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.gaslimit ( .Ints ))   => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.msize ( .Ints ))      => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.gas ( .Ints ))        => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, _ = call @iele.address ( .Ints ))     => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, _ = call @iele.origin ( .Ints ))      => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, _ = call @iele.caller ( .Ints ))      => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, _ = call @iele.callvalue ( .Ints ))   => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, _ = call @iele.codesize ( .Ints ))    => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, _ = call @iele.gasprice ( .Ints ))    => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, _ = call @iele.beneficiary ( .Ints )) => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, _ = call @iele.timestamp ( .Ints ))   => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, _ = call @iele.number ( .Ints ))      => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, _ = call @iele.difficulty ( .Ints ))  => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, _ = call @iele.gaslimit ( .Ints ))    => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, _ = call @iele.msize ( .Ints ))       => Gbase < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, _ = call @iele.gas ( .Ints ))         => Gbase < SCHED > ... </k>
 
     // Wverylow
     rule <k> #gasExec(SCHED, _:AddInst)    => Gverylow < SCHED > ... </k>
