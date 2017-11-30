@@ -1,0 +1,79 @@
+contract ERC20 {
+
+@totalSupply = 10000
+
+define getBalance(%account) {}
+define setBalance(%account, %value) {}
+define getAllowance(%owner, %spender) {}
+define setAllowance(%owner, %spender, %allowance) {}
+define log.Approval(%owner, %spender, %allowance) {}
+define log.Transfer(%from, %to, %value) {}
+
+
+define public @totalSupply() {
+  ret @totalSupply
+}
+
+define public @balanceOf(%id) {
+  %balance = call @getBalance(%id)
+  ret %balance
+}
+
+define public @allowance(%owner, %spender) {
+  %allowance = call getAllowance(%owner, %spender)
+  ret %allowance
+}
+
+define public @approve(%spender, %allowance) {
+  %1 = cmp lt %allowance, 0   // this check burns gas :(
+  br %1, throw
+  %owner = call @iele.caller()  // written as msg.sender in Viper
+  setAllowance(%owner, %spender, %allowance)
+  log.Approval(%owner, %spender, %allowance)
+  ret 1   // should always return true
+throw:
+  ... // throwing exception
+}
+
+define public @transfer(%to, %value) {
+  %1 = cmp lt %value, 0   // this check burns gas :(
+  br %1, throw
+  %from = call @iele.caller()
+  %balanceFrom = call @getBalance(%from)
+  %1 = cmp lt %balanceFrom, %value
+  br %1, throw
+  %balanceFrom = sub %balanceFrom, %value
+  %balanceTo = call @getBalance(%to)
+  %balanceTo = add %balanceTo, %value  // no worries of overflow
+  setBalance(%from, %balanceFrom)
+  setBalance(%to, %balanceTo)
+  log.Transfer(%from, %to, %value)
+  ret 1  // should either return true or throw
+throw:
+  ... // throwing exception
+}
+
+define public @transferFrom(%from, %to, %value) {
+  %1 = cmp lt %value, 0   // this check burns gas :(
+  br %1, throw
+  %caller = call @iele.caller()
+  %balanceFrom = call @getBalance(%from)
+  %1 = cmp lt %balanceFrom, %value
+  br %1, throw
+  %allowance = call @getAllowance(%from, %caller)
+  %1 = cmp lt %allowance, %value
+  br %1, throw
+  %balanceFrom = sub %balanceFrom, %value
+  %allowance = sub %allowance, %value
+  %balanceTo = call @getBalance(%to)
+  %balanceTo = add %balanceTo, %value  // no worries of overflow
+  setBalance(%from, %balanceFrom)
+  setAllowance(%from, %caller, %allowance)
+  setBalance(%to, %balanceTo)
+  log.Transfer(%from, %to, %value)
+  ret 1  // should either return true or throw
+throw:
+  ... // throwing exception
+}
+
+}
