@@ -21,27 +21,27 @@ module ETHEREUM-SIMULATION
     imports K-REFLECTION
 ```
 
-An Ethereum simulation is a list of Ethereum commands.
-Some Ethereum commands take an Ethereum specification (eg. for an account or transaction).
+A IELE simulation is a list of IELE commands.
+Some IELE commands take a specification of IELE state (eg. for an account or transaction).
 
 ```{.k .uiuck .rvk}
-    syntax EthereumSimulation ::= ".EthereumSimulation"
-                                | EthereumCommand EthereumSimulation
- // ----------------------------------------------------------------
-    rule .EthereumSimulation => .
-    rule ETC:EthereumCommand ETS:EthereumSimulation => ETC ~> ETS
+    syntax IELESimulation ::= ".IELESimulation"
+                                | IELECommand IELESimulation
+ // --------------------------------------------------------
+    rule .IELESimulation => .
+    rule IEC:IELECommand IES:IELESimulation => IEC ~> IES
 
-    syntax EthereumSimulation ::= JSON
- // ----------------------------------
-    rule <k> JSONINPUT:JSON => run JSONINPUT success .EthereumSimulation </k>
+    syntax IELESimulation ::= JSON
+ // ------------------------------
+    rule <k> JSONINPUT:JSON => run JSONINPUT success .IELESimulation </k>
 ```
 
 For verification purposes, it's much easier to specify a program in terms of its op-codes and not the hex-encoding that the tests use.
 To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a "pretti-fication" to the nicer input form.
 
 ```{.k .uiuck .rvk}
-    syntax JSON ::= Int | WordStack | Map | SubstateLogEntry | Account | Bool
- // -----------------------------------------------------------------------------------
+    syntax JSON ::= Int | WordStack | Map | SubstateLogEntry | Account
+ // ------------------------------------------------------------------
 
     syntax JSONList ::= #sortJSONList ( JSONList )            [function]
                       | #sortJSONList ( JSONList , JSONList ) [function, klabel(#sortJSONListAux)]
@@ -69,14 +69,14 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
 -   `flush` places `#finalize` on the `<k>` cell once it sees `#end` in the `<k>` cell, clearing any exceptions it finds.
 
 ```{.k .uiuck .rvk}
-    syntax EthereumCommand ::= "start"
- // ----------------------------------
+    syntax IELECommand ::= "start"
+ // ------------------------------
     rule <mode> NORMAL     </mode> <k> start => #loads #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData> <fid> _ => deposit </fid>
     rule <mode> VMTESTS    </mode> <k> start => #loads #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData> <fid> _ => deposit </fid>
  // rule <mode> GASANALYZE </mode> <k> start => #loads #regRange(#sizeRegs(VALUES)) VALUES ~> #gasAnalyze ... </k> <callData> VALUES </callData> <fid> _ => deposit </fid>
 
-    syntax EthereumCommand ::= "flush"
- // ----------------------------------
+    syntax IELECommand ::= "flush"
+ // ------------------------------
     rule <k> #end       ~> flush => #finalizeTx(false)               ... </k>
     rule <k> #exception ~> flush => #finalizeTx(false) ~> #exception ... </k>
 ```
@@ -87,8 +87,8 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
 -   `finishTx` is a place-holder for performing necessary cleanup after a transaction.
 
 ```{.k .uiuck .rvk}
-    syntax EthereumCommand ::= "startTx"
- // ------------------------------------
+    syntax IELECommand ::= "startTx"
+ // --------------------------------
     rule <k> startTx => #finalizeBlock ... </k>
          <txPending> .List </txPending>
 
@@ -107,8 +107,8 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            <data>       DATA </data>
          </message>
 
-    syntax EthereumCommand ::= loadTx ( Int )
- // -----------------------------------------
+    syntax IELECommand ::= loadTx ( Int )
+ // -------------------------------------
     rule <k> loadTx(ACCTFROM)
           => #create ACCTFROM #newAddr(ACCTFROM, NONCE) (GLIMIT -Int G0(SCHED, CODE, true)) VALUE #dasmContract(CODE, Main) .Ints
           ~> #codeDeposit #newAddr(ACCTFROM, NONCE) #sizeWordStack(CODE) #dasmContract(CODE, Main) %0 ~> #adjustGas ~> #finalizeTx(false) ~> startTx
@@ -164,8 +164,8 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
          <activeAccounts> ... ACCTFROM |-> (_ => false) ... </activeAccounts>
       requires ACCTTO =/=K .Account
 
-    syntax EthereumCommand ::= "#adjustGas"
- // ---------------------------------------
+    syntax IELECommand ::= "#adjustGas"
+ // -----------------------------------
     rule <k> #adjustGas => . ... </k>
          <gas> _ => GLIMIT -Int GUSED </gas>
          <refund> _ => 0 </refund>
@@ -177,8 +177,8 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            ...
          </message>
 
-    syntax EthereumCommand ::= "#finishTx"
- // --------------------------------------
+    syntax IELECommand ::= "#finishTx"
+ // ----------------------------------
     rule <k> #exception ~> #finishTx => #popCallStack ~> #popWorldState ~> #popSubstate ... </k>
     rule <k> #revert    ~> #finishTx => #popCallStack ~> #popWorldState ~> #popSubstate ~> #refund GAVAIL ... </k> <gas> GAVAIL </gas>       
 
@@ -195,11 +195,11 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
 ```
 
 -   `#finalizeBlock` is used to signal that block finalization procedures should take place (after transactions have executed).
--   `#rewardOmmers(_)` pays out the reward to uncle blocks so that blocks are orphaned less often in Ethereum.
+-   `#rewardOmmers(_)` pays out the reward to uncle blocks so that blocks are orphaned less often.
 
 ```{.k .uiuck .rvk}
-    syntax EthereumCommand ::= "#finalizeBlock" | #rewardOmmers ( JSONList )
- // ------------------------------------------------------------------------
+    syntax IELECommand ::= "#finalizeBlock" | #rewardOmmers ( JSONList )
+ // --------------------------------------------------------------------
     rule <k> #finalizeBlock => #rewardOmmers(OMMERS) ... </k>
          <schedule> SCHED </schedule>
          <ommerBlockHeaders> [ OMMERS ] </ommerBlockHeaders>
@@ -238,8 +238,8 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
 -   `failure_` holds the name of a test that failed if a test does fail.
 
 ```{.k .uiuck .rvk}
-    syntax EthereumCommand ::= "exception" | "failure" String | "success"
- // ---------------------------------------------------------------------
+    syntax IELECommand ::= "exception" | "failure" String | "success"
+ // -----------------------------------------------------------------
     rule <k> #exception ~> exception => . ... </k>
     rule <k> success => . ... </k> <exit-code> _ => 0 </exit-code>
     rule failure _ => .
@@ -252,8 +252,8 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
 Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`.
 
 ```{.k .uiuck .rvk}
-    syntax EthereumCommand ::= "run" JSON
- // -------------------------------------
+    syntax IELECommand ::= "run" JSON
+ // ---------------------------------
     rule run { .JSONList } => .
     rule run { TESTID : { TEST:JSONList } , TESTS }
       => run ( TESTID : { #sortJSONList(TEST) } )
@@ -327,8 +327,8 @@ State Manipulation
 -   `clear` clears all the execution state of the machine.
 
 ```{.k .uiuck .rvk}
-    syntax EthereumCommand ::= "clear"
- // ----------------------------------
+    syntax IELECommand ::= "clear"
+ // ------------------------------
     rule <k> clear => . ... </k>
          <analysis> _ => .Map </analysis>
          <schedule> _ => DEFAULT </schedule>
@@ -341,16 +341,16 @@ State Manipulation
 -   `mkAcct_` creates an account with the supplied ID (assuming it's already been chopped to 160 bits).
 
 ```{.k .uiuck .rvk}
-    syntax EthereumCommand ::= "mkAcct" Int
- // ---------------------------------------
+    syntax IELECommand ::= "mkAcct" Int
+ // -----------------------------------
     rule <k> mkAcct ACCT => #newAccount ACCT ... </k>
 ```
 
 -   `load` loads an account or transaction into the world state.
 
 ```{.k .uiuck .rvk}
-    syntax EthereumCommand ::= "load" JSON
- // --------------------------------------
+    syntax IELECommand ::= "load" JSON
+ // ----------------------------------
     rule load DATA : { .JSONList } => .
     rule load DATA : { KEY : VALUE , REST } => load DATA : { KEY : VALUE } ~> load DATA : { REST }
       requires REST =/=K .JSONList andBool DATA =/=String "transactions"
@@ -550,8 +550,8 @@ The `"transactions"` key loads the transactions.
 -   `check_` checks if an account/transaction appears in the world-state as stated.
 
 ```{.k .uiuck .rvk}
-    syntax EthereumCommand ::= "check" JSON
- // ---------------------------------------
+    syntax IELECommand ::= "check" JSON
+ // -----------------------------------
     rule #exception ~> check J:JSON => check J ~> #exception
     rule check DATA : { .JSONList } => . requires DATA =/=String "transactions"
     rule check DATA : { (KEY:String) : VALUE , REST } => check DATA : { KEY : VALUE } ~> check DATA : { REST }

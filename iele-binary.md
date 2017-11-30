@@ -1,7 +1,8 @@
-
-========================================
+IELE Binary Encoding (Work In Progress)
+=======================================
 
 Here we define an ad-hoc binary encoding for IELE. This encoding is subject to change and should not be viewed as final. The actual semantics of IELE is defined in terms of a fragment of its textual representation.
+You can use the IELE assembler provided with the semantics to convert from the textual encoding into this binary encoding.
 
 ```{.k .uiuck .rvk}
 requires "iele.k"
@@ -12,11 +13,10 @@ module IELE-BINARY
     imports IELE-COMMON
 ```
 
-After interpreting the strings representing programs as a `WordStack`, it should be changed into a `Contract` for use by the IELE semantics.
-
--   `#dasmContract` interperets `WordStack` as a `Contract`.
--   `#dasmInstruction` disassembles the registers for a single instruction.
--   `#dasmOpCode` interperets a `Int` as an `OpCode`.
+Here we define the OpCode sort. An OpCode is the atomic unit of a IELE program in binary representation and a IELE contract can be expressed as a sequence of operations.
+Each operation consists of its OpCode plus zero or more bytes containing the register operands to the operation. The OpCode consists of between one and seven bytes.
+The first byte represents the operation in question, and contains enough information to determine and decode the rest of the OpCode. The remainder of the OpCode then
+contains enough information to determine and decode the rest of the operation.
 
 ```{.k .uiuck .rvk}
 
@@ -113,21 +113,32 @@ After interpreting the strings representing programs as a `WordStack`, it should
                     | BinOp
                     | FiveOp
 
+```
+
+After interpreting the strings representing programs as a `WordStack`, it should be changed into a `Contract` for use by the IELE semantics.
+
+-   `#dasmContract` interperets `WordStack` as a `Contract`.
+-   `#dasmFunction` interprets a single function of a contract represented as a `WordStack` into a `TopLevelDefinition`
+-   `#dasmInstruction` disassembles the registers for a single instruction.
+-   `#dasmOpCode` interperets a `Int` as an `OpCode`.
+
+```{.k .uiuck .rvk}
+
     syntax Contract ::= #dasmContract ( WordStack , IeleName )       [function]
                       | #dasmContract ( WordStack , Int , Map, IeleName , TopLevelDefinitions, Int , Int ) [function, klabel(#dasmContractAux)]
- // -----------------------------------------------------------------------------
+ // -------------------------------------------------------------------------------------------------------------------------------------------
     rule #dasmContract( .WordStack, _) => #emptyCode
     rule #dasmContract( 99 : NBITS : WS, NAME ) => #dasmContract(WS, NBITS, 0 |-> "init", NAME, .TopLevelDefinitions, 1, #sizeWordStack(WS) +Int 2)
     rule #dasmContract( 105 : W1 : W2 : WS, NBITS, FUNCS, NAME, DEFS, N, SIZE ) => #dasmContract(#drop(W1 *Int 256 +Int W2, WS), NBITS, N |-> #parseToken("IeleName", #unparseByteStack(#take(W1 *Int 256 +Int W2, WS))) FUNCS, NAME, DEFS, N +Int 1, SIZE )
     rule #dasmContract( 106 : W1 : W2 : WS, NBITS, FUNCS, NAME, DEFS, N, SIZE ) => #dasmContract(#take(W1 *Int 256 +Int W2, WS), NAME +.+IeleName N) ++Contract #dasmContract(#drop(W1 *Int 256 +Int W2, WS), NBITS, FUNCS, NAME, external contract NAME +.+IeleName N DEFS, N +Int 1, SIZE)
     rule #dasmContract( WS, NBITS, FUNCS, NAME, DEFS, N, SIZE ) => contract NAME ! SIZE { DEFS ++TopLevelDefinitions #dasmFunctions(WS, NBITS, FUNCS) } .Contract [owise]
 
-    syntax Contract ::= Contract "++Contract" Contract [function, klabel(contractAppend)]
     syntax priorities contractDefinitionList > contractAppend
-    syntax TopLevelDefinitions ::= TopLevelDefinitions "++TopLevelDefinitions" TopLevelDefinitions [function, klabel(topLevelAppend)]
     syntax priorities topLevelDefinitionList > topLevelAppend
     syntax IeleName ::= IeleName "+.+IeleName" IeleName [function]
- // -----------------------------------------------------------------------------
+    syntax Contract ::= Contract "++Contract" Contract [function, klabel(contractAppend)]
+    syntax TopLevelDefinitions ::= TopLevelDefinitions "++TopLevelDefinitions" TopLevelDefinitions [function, klabel(topLevelAppend)]
+ // ---------------------------------------------------------------------------------------------------------------------------------
     rule .Contract ++Contract Cs => Cs
     rule C Cs ++Contract Cs' => C (Cs ++Contract Cs')
     rule .TopLevelDefinitions ++TopLevelDefinitions Ds => Ds
@@ -136,9 +147,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
 
     syntax TopLevelDefinitions ::= #dasmFunctions ( WordStack , Int , Map ) [function]
     syntax TopLevelDefinitions ::= #dasmFunction ( Bool , IeleName , Int , WordStack , Int , Map , Instructions , K ) [function]
-    syntax Blocks ::= #toBlocks ( Instructions ) [function]
-                    | #toBlocks ( Instructions , Blocks ) [function, klabel(#toBlockAux)]
- // -----------------------------------------------------------------------------
+ // ----------------------------------------------------------------------------------------------------------------------------
     rule #dasmFunctions(103 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS) => #dasmFunction(false, W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, WS, NBITS, FUNCS, .Instructions, .K)
     rule #dasmFunctions(104 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS) => #dasmFunction(true, {FUNCS [ W1 *Int 256 +Int W2 ]}:>IeleName, W3 *Int 256 +Int W4, WS, NBITS, FUNCS, .Instructions, .K)
 
@@ -174,6 +183,9 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmFunction(PUBLIC, NAME, SIG, 245 : W1 : W2 : W3 : W4 : W5 : W6 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, STATICCALL(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, W5 *Int 256 +Int W6))
     rule #dasmFunction(PUBLIC, NAME, SIG, 248 : W1 : W2 : W3 : W4 : W5 : W6 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, SIG, WS, NBITS, FUNCS, INSTRS, LOCALCALL(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, W5 *Int 256 +Int W6))
 
+    syntax Blocks ::= #toBlocks ( Instructions ) [function]
+                    | #toBlocks ( Instructions , Blocks ) [function, klabel(#toBlockAux)]
+ // -------------------------------------------------------------------------------------
     rule #toBlocks(INSTRS) => #toBlocks(INSTRS, .LabeledBlocks)
     rule #toBlocks(.Instructions, BLOCKS) => BLOCKS
     rule #toBlocks(label(LABEL) INSTRS, UNLABELEDBLOCK::Instructions BLOCKS) => #toBlocks(INSTRS, LABEL : UNLABELEDBLOCK BLOCKS)
@@ -186,11 +198,11 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #toBlocks(INSTR INSTRS, .LabeledBlocks) => #toBlocks(INSTRS, INSTR .Instructions .LabeledBlocks)
       requires notBool isPseudoInstruction(INSTR)
 
-    syntax Instruction ::= #dasmInstruction ( OpCode , WordStack , Int , Map ) [function]
-                         | #dasmInstruction ( OpCode , Int , Int , Int , Map ) [function, klabel(#dasmInstructionAux)]
     syntax PseudoInstruction ::= label ( Int )
     syntax Instruction ::= PseudoInstruction
- // -------------------------------------------------------------------------------------
+    syntax Instruction ::= #dasmInstruction ( OpCode , WordStack , Int , Map ) [function]
+                         | #dasmInstruction ( OpCode , Int , Int , Int , Map ) [function, klabel(#dasmInstructionAux)]
+ // ------------------------------------------------------------------------------------------------------------------
     rule #dasmInstruction ( LOADPOS(N, W), WS, NBITS, FUNCS ) => #dasmInstruction(LOADPOS(N, W), #asUnsigned(#take(NBITS up/Int 8, WS)),                            NBITS, (1 <<Int NBITS) -Int 1, FUNCS)
     rule #dasmInstruction ( LOADNEG(N, W), WS, NBITS, FUNCS ) => #dasmInstruction(LOADNEG(N, W), #asUnsigned(#take(NBITS up/Int 8, WS)),                            NBITS, (1 <<Int NBITS) -Int 1, FUNCS)
     rule #dasmInstruction ( OP,            WS, NBITS, FUNCS ) => #dasmInstruction(OP,            #asUnsigned(#take(#opWidth(OP, NBITS) -Int #opCodeWidth(OP), WS)), NBITS, (1 <<Int NBITS) -Int 1, FUNCS) [owise]
@@ -277,16 +289,16 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmInstruction ( RETURN(0), R, W, M, _ ) => ret void
 
     syntax LValue ::= "%" "(" Int "," Int "," Int "," Int ")" [function]
- // -----------------------------------------------------------------
+ // --------------------------------------------------------------------
     rule %(REGS, WIDTH, MASK, IDX) => #fun(REGNUM => #if REGNUM <Int (1 <<Int (WIDTH -Int 1)) #then % REGNUM #else @ (REGNUM -Int (1 <<Int (WIDTH -Int 1))) #fi)((REGS >>Int (IDX *Int WIDTH)) &Int MASK)
 
     syntax Operands ::= "%o" "(" Int "," Int "," Int "," Int "," Int ")" [function]
- // --------------------------------------------------------------------------
+ // -------------------------------------------------------------------------------
     rule %o(REGS, WIDTH, MASK, IDX, 0) => .Operands
     rule %o(REGS, WIDTH, MASK, IDX, COUNT) => %(REGS, WIDTH, MASK, IDX) , %o(REGS, WIDTH, MASK, IDX +Int 1, COUNT -Int 1) [owise]
 
     syntax LValues ::= "%l" "(" Int "," Int "," Int "," Int "," Int ")" [function]
- // --------------------------------------------------------------------------
+ // ------------------------------------------------------------------------------
     rule %l(REGS, WIDTH, MASK, IDX, 0) => .LValues
     rule %l(REGS, WIDTH, MASK, IDX, COUNT) => %(REGS, WIDTH, MASK, IDX) , %l(REGS, WIDTH, MASK, IDX +Int 1, COUNT -Int 1) [owise]
 
@@ -328,8 +340,8 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #numArgs ( CREATE(_, ARGS) )             => ARGS
     rule #numArgs ( COPYCREATE(ARGS) )            => ARGS
 
-    syntax OpCode ::= #dasmOpCode ( Int) [function]
- // -----------------------------------------------------------
+    syntax OpCode ::= #dasmOpCode ( Int ) [function]
+ // ------------------------------------------------
     rule #dasmOpCode(   1 ) => ADD ()
     rule #dasmOpCode(   2 ) => MUL ()
     rule #dasmOpCode(   3 ) => SUB ()

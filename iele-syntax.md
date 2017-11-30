@@ -1,3 +1,8 @@
+IELE Textual Syntax
+===================
+
+Here we define the textual syntax of IELE assembly code. The syntax represented here has some syntactic sugar which is removed by the assembler. However, a fragment of this textual encoding is used by the semantics to express the rules of the language itself.
+
 ```{.k .uiuck .rvk}
 module IELE-SYNTAX
   imports IELE-COMMON
@@ -8,6 +13,7 @@ module IELE-SYNTAX
 endmodule
 
 module IELE-COMMON
+  // Identifiers
   syntax NumericIeleName ::= Int
   syntax IeleName ::= NumericIeleName
 
