@@ -139,7 +139,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
          <activeAccounts> ... ACCTFROM |-> (_ => false) ... </activeAccounts>
 
     rule <k> loadTx(ACCTFROM)
-          => #call ACCTFROM ACCTTO deposit (GLIMIT -Int G0(SCHED, .WordStack, ARGS, false)) VALUE ARGS false
+          => #call ACCTFROM ACCTTO FUNC (GLIMIT -Int G0(SCHED, .WordStack, ARGS, false)) VALUE ARGS false
           ~> #finishTx ~> #adjustGas ~> #finalizeTx(false) ~> startTx
          ...
          </k>
@@ -155,6 +155,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            <sendto>     ACCTTO </sendto>
            <value>      VALUE  </value>
            <args>       ARGS   </args>
+           <func>       FUNC   </func>
            ...
          </message>
          <account>
@@ -536,7 +537,7 @@ The `"transactions"` key loads the transactions.
                <txGasPrice> #asUnsigned(#parseByteStack(TP))     </txGasPrice>
                <txGasLimit> #asUnsigned(#parseByteStack(TG))     </txGasLimit>
                <sendto>     #asAccount(#parseByteStack(TT))      </sendto>
-               <func>       FUNC                                 </func>
+               <func>       {#parseToken("IeleName", FUNC)}:>IeleName        </func>
                <value>      #asUnsigned(#parseByteStack(TV))     </value>
                <v>          #asUnsigned(#parseByteStack(TW))     </v>
                <r>          #padToWidth(32, #parseByteStack(TR)) </r>
