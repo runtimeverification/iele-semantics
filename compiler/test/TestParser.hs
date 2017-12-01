@@ -269,6 +269,14 @@ instructionTests =
       "empty arguments AccountCall"
       (CallOp (CALL "@c" 1 0) ["%ok","@b"] ["%gas","%acct","%amt"])
       "%ok , @b = call @c at %acct() send %amt, gaslimit %gas"
+  , testInstruction
+      "StaticCall"
+      (CallOp (STATICCALL "@c" 2 2) ["%ok","%a","@b"] ["%gas","%acct","%amt","%10","%11"])
+      "%ok,%a,@b=staticcall@c at %acct(%10,%11)send %amt, gaslimit %gas"
+  , testInstruction
+      "empty arguments StaticCall"
+      (CallOp (STATICCALL "@c" 1 0) ["%ok","@b"] ["%gas","%acct","%amt"])
+      "%ok , @b = staticcall @c at %acct() send %amt, gaslimit %gas"
   , testCase
       "reject empty lvalues AccountCall"
       (parseFailure instruction

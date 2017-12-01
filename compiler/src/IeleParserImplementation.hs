@@ -210,6 +210,7 @@ withResult p = try (lValue <* equal) >>= p
 ieleOp :: Parser Instruction
 ieleOp = try localCallInst
      <|> try accountCallInst
+     <|> try staticCallInst
      <|> ieleOp1
      <|> ieleVoidOp
 
@@ -390,6 +391,18 @@ accountCallInst = do
   gas <- comma *> skipKeyword "gaslimit" *> lValue
   let op = CALL name (length16 results - 1) (length16 args)
   pure (CallOp op results ([gas,tgt,value]++args))
+
+staticCallInst :: Parser Instruction
+staticCallInst = do
+  results <- nonEmptyLValues <* equal
+  name <- skipKeyword "staticcall" *> globalNameInclReserved
+  tgt <- skipKeyword "at" *> lValue
+  args <- parens lValues
+  value <- skipKeyword "send" *> lValue
+  gas <- comma *> skipKeyword "gaslimit" *> lValue
+  let op = STATICCALL name (length16 results - 1) (length16 args)
+  pure (CallOp op results ([gas,tgt,value]++args))
+
 
 argumentsOrVoid :: Parser [LValue]
 argumentsOrVoid = nonEmptyLValues <|> [] <$ skipKeyword "void"

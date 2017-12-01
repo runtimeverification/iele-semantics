@@ -70,6 +70,16 @@ prettyInst (LiOp LOADNEG tgt i) = inst [tgt] empty [integer (negate i)]
 prettyInst (CallOp (LOCALCALL name _ _) results args) =
   prettyResults results <+> text "call" <+> prettyName name
     <> char '(' <> commaList (map prettyVal args) <> char ')'
+prettyInst (CallOp (CALL name _ _) results (gas:acct:val:args)) =
+  prettyResults results <+> text "call" <+> prettyName name
+    <+> text "at" <+> prettyVal acct
+    <> char '(' <> commaList (map prettyVal args) <> char ')'
+    <+> text "send" <+> prettyVal val <> comma <+> text "gaslimit" <+> prettyVal gas
+prettyInst (CallOp (STATICCALL name _ _) results (gas:acct:val:args)) =
+  prettyResults results <+> text "staticcall" <+> prettyName name
+    <+> text "at" <+> prettyVal acct
+    <> char '(' <> commaList (map prettyVal args) <> char ')'
+    <+> text "send" <+> prettyVal val <> comma <+> text "gaslimit" <+> prettyVal gas
 
 prettyInst o = text ('#':show o)
 
