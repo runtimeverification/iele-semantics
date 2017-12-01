@@ -54,9 +54,9 @@ Unlike EVM, in which a contract is a sequence of instructions, a IELE contract c
 IELE no longer has dynamic jump instructions. They are replaced with jumps that take a named label as an argument, and with a call/return instruction system to allow function calls that return to the caller.
 
 * The code within a function contains named labels. Any instruction can be prefixed by a named label that makes this instruction a valid target of a jump.
-* The `br` instruction has two variants. It can used with a named label as a single argument for unconditional jumps within a function body, or with an additional register holding a condition value for conditional jumps when the condition value is not zero. The instruction prefixed by the named label is the target of the jump. Therefore all jump targets can be known statically
+* The `br` instruction has two variants. It can used with a named label as a single argument for unconditional jumps within a function body, or with an additional register holding a condition value for conditional jumps when the condition value is not zero. The instruction prefixed by the named label is the target of the jump. Therefore all jump targets can be known statically.
 * The contract is malformed if multiple labels within the same function have the same name.
-* The contract is malformed if the label argument of the `br` instruction is not found as a label in the function containing the instruction. This is unlike the corresponding behavior in EVM, where an exception is thrown if the argument of JUMP or JUMPI is not the program counter of a JUMPDEST instruction
+* The contract is malformed if the label argument of the `br` instruction is not found as a label in the function containing the instruction. This is unlike the corresponding behavior in EVM, where an exception is thrown if the argument of JUMP or JUMPI is not the program counter of a JUMPDEST instruction.
 
 ## Function Call/Return
 
@@ -85,8 +85,8 @@ Unlike EVM, which uses 32-byte unsigned words, IELE has arbitrary-precision sign
 Unlike EVM, where each instruction is just an opcode operating in the values found in the top of the stack, IELE instructions follow a syntax similar to LLVM: each instruction is an opcode followed by some arguments in the form of registers. If the instruction produces a result, it is formed as an assignment where the LHS contains the register(s) to hold the result(s) and the RHS contains the opcode and the arguments. Other changes with respect to EVM include:
 
 * IELE has one integer comparison instruction, namely `cmp`, that accepts various predicates. In addition to the predicates `lt`, `gt`, and `eq`, which have corresponding EVM instructions, the predicates `le`, `ge`, and `ne` are also supported.
-* Various EVM instructions that query local and/or network state (e.g. GAS, BALANCE, etc.) have been replaced by IELE builtins that can be called using the `call` instruction (e.g. `%balance = call @iele.balance(%bank.account)`. The names of all IELE builtins start with the prefix `@iele.`, following a similar to the LLVM intrinsics. All names for globals (registers and/or functions) starting with this prefix are reserved: A contract is malformed if it contains user-defined registers and/or functions with names starting with `@iele.`.
-* Precompiled contracts in IELE are also invoked using corresponding builtins (e,g, `@iele.ecpairing`).
+* Various EVM instructions that query local and/or network state (e.g. GAS, BALANCE, etc.) have been replaced by IELE builtins that can be called using the `call` instruction (e.g. `%balance = call @iele.balance(%bank.account)`). The names of all IELE builtins start with the prefix `@iele.`, following a convention similar to the LLVM intrinsics. All names for globals (registers and/or functions) starting with this prefix are reserved: A contract is malformed if it contains user-defined registers and/or functions with names starting with `@iele.`.
+* Precompiled contracts in IELE are also invoked using corresponding builtins (e.g. `@iele.ecpairing`).
 
 ## Contract Creation
 
