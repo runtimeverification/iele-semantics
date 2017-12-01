@@ -22,12 +22,13 @@ bb.1:
     br %3, exit
 
 bb.2:
-    %4 = cmp eq @highest.bid, 0
+    %5 = 0
+    %4 = cmp eq @highest.bid, %5
     br %4, bb.4
 
 bb.3:
-    send @highest.bid to @highest.bidder
-
+    %0 = 0
+    %0 = call @deposit at @highest.bidder() send @highest.bid, gaslimit %0
 bb.4:
     @highest.bidder = call @iele.caller()
     @highest.bid = %bid.value
@@ -47,7 +48,8 @@ bb.1:
 
 bb.2:
     @ended = 1
-    send @highest.bid to @beneficiary
+    %0 = 0
+    %0 = call @deposit at @beneficiary() send  @highest.bid, gaslimit %0
     ret void
 
 exit:

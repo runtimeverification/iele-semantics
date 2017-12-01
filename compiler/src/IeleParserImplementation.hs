@@ -1,145 +1,81 @@
+{-# LANGUAGE DeriveDataTypeable, OverloadedStrings #-}
 module IeleParserImplementation
-    ( AccountCallInst
-      ( AccountCallInst, accountCallLValues, accountCallName
-      , accountCallAddress, accountCallOperands, accountCallSend
-      , accountCallGasLimit)
-    , accountCallInst
-    , AssignInst (AssignInst, assignLeft, assignRight)
+    ( accountCallInst
     , assignInst
     , at
-    , BinaryOperationInst
-      ( BinaryOperationInst, binaryOperationType, binaryOperationLeft
-      , binaryOperationFirst, binaryOperationSecond)
-    , binaryOperationInst
-    , BinaryOperationType
-      ( AddInst, MulInst, SubInst, DivInst, ExpInst, ModInst, AndInst
-      , OrInst, XorInst, Sha3Inst, ByteInst, SExtInst, TwosInst)
-    , closedCurlyBrace
-    , closedParenthesis
+    , binaryInst
+    , closeCurlyBrace
+    , closeParenthesis
     , colon
     , comma
-    , CondJumpInst (CondJumpInst, condJumpOperand, condJumpLabel)
-    , condJumpInst
     , contract
-    , Contract
-    , CreateInst
-      ( CreateInst, createLValue, createContractName, createOperands
-      , createSendValue)
     , createInst
     , equal
-    , FunctionDefinition
-      ( FunctionDefinition, functionDefinitionSignature
-      , functionDefinitionBlocks)
     , functionDefinition
-    , FunctionParameters (FunctionParameters)
     , functionParameters
-    , FunctionSignature
-      (FunctionSignature, functionSignatureName, functionSignatureParameters)
-    , functionSignature
-    , GlobalName (GlobalName)
     , globalName
-    , GlobalVariableDefinition
-      (GlobalVariableDefinition, globalVariableName, globalVariableValue)
-    , globalVariableDefinition
+    , globalNameInclReserved
     , ieleNameFirstChar
     , ieleNameNonFirstChar
-    , IeleName(IeleName)
     , ieleNameToken
     , ieleParser
-    , Instruction
-      ( InstructionAssign, InstructionLoad, InstructionStore, InstructionSLoad
-      , InstructionSStore, InstructionIsZero, InstructionNot
-      , InstructionBinaryOperation, InstructionTernaryOperation
-      , InstructionPredicateOperation, InstructionJump, InstructionCondJump
-      , InstructionLocalCall, InstructionAccountCall, InstructionSend
-      , InstructionReturn, InstructionRevert, InstructionStop, InstructionLog
-      , InstructionCreate, InstructionSelfdestruct)
+    , ieleParser1
     , instruction
-    , Instructions (Instructions)
     , instructions
-    , IntToken (IntToken)
     , intToken
-    , IsZeroInst (IsZeroInst, isZeroLeft, isZeroRight)
     , isZeroInst
-    , JumpInst (JumpInst)
     , jumpInst
-    , LabeledBlock (LabeledBlock, labeledBlockLabel, labeledBlockInstructions)
     , labeledBlock
-    , LabeledBlocks (LabeledBlocks)
     , labeledBlocks
     , lexeme
-    , LoadInst (LoadInst, loadLeft, loadIndex, loadSizeInBytes)
     , loadInst
-    , LocalCallInst
-      (LocalCallInst, localCallLValues, localCallName, localCallOperands)
     , localCallInst
-    , LocalName (LocalName)
     , localName
-    , LocalNames (LocalNames)
-    , localNames
-    , LogInst (LogInst, logIndex, logSizeInBytes, logContent)
     , logInst
-    , LValue (LValueGlobalName, LValueLocalName)
     , lValue
+    , lValues
     , minus
-    , LValues (LValues)
     , nonEmptyLValues
-    , nonEmptyOperands
-    , NotInst (NotInst, notLeft, notRight)
     , notInst
     , openCurlyBrace
     , openParenthesis
-    , Operand (OperandInt, OperandLValue)
-    , operand
-    , Operands (Operands)
-    , operands
     , percent
-    , PredicateOperationInst
-      ( PredicateOperationInst, predicateOperationType, predicateOperationLeft
-      , predicateOperationFirst, predicateOperationSecond)
-    , predicateOperationInst
-    , PredicateOperationType
-      ( LtPredicateInst, LePredicateInst, GtPredicateInst, GePredicateInst
-      , EqPredicateInst, NePredicateInst)
-    , ReturnInst (ReturnInst)
+    , predicateInst
     , returnInst
-    , RevertInst (RevertInst)
     , revertInst
-    , SelfdestructInst (SelfdestructInst, selfdestructAccountToSendBalance)
     , selfDestructInst
-    , SendInst (SendInst, sendValue, sendDestinationAccount)
-    , sendInst
     , skipKeyword
-    , SLoadInst (SLoadInst, sloadLeft, sloadIndex, sloadSizeInBytes)
     , sloadInst
-    , SStoreInst (SStoreInst, sstoreValue, sstoreIndex, sstoreSizeInBytes)
     , sstoreInst
-    , StopInst (StopInst)
-    , stopInst
-    , StoreInst (StoreInst, storeValue, storeIndex, storeSizeInBytes)
     , storeInst
-    , TernaryOperationInst
-      ( TernaryOperationInst, ternaryOperationType, ternaryOperationLeft
-      , ternaryOperationFirst, ternaryOperationSecond, ternaryOperationDivisor)
-    , ternaryOperationInst
-    , TernaryOperationType (AddModInst, MulModInst, ExpModInst)
-    , TopLevelDefinition
-      (TopLevelDefinitionGlobalVariable, TopLevelDefinitionFunction)
+    , ternaryInst
     , topLevelDefinition
-    , TopLevelDefinitions (TopLevelDefinitions)
-    , topLevelDefinitions
     , whitespace
+    , withResult
     ) where
+import Prelude hiding (LT,EQ,GT)
+
+import qualified Data.Map.Strict as Map
+import Data.Map.Strict(Map)
 
 import Control.Applicative ((<|>), (<*), many)
 import Control.Monad (void)
-import Text.Parsec (try, (<?>))
+import Text.Parsec (try, (<?>), skipMany, satisfy)
 import Text.Parsec.Char (char, digit, letter, oneOf, string)
 import Text.Parsec.Combinator (eof, many1, choice, notFollowedBy, sepBy, sepBy1)
 import Text.Parsec.String (Parser)
 
+import Data.Word
+import Data.Data
+
+import IeleTypes hiding (instructions)
+import IeleInstructions
+
 whitespace :: Parser ()
-whitespace = void (many (oneOf " \n\t"))
+whitespace = void (many (spaceChar <|> lineComment))
+ where
+  spaceChar = void (oneOf " \n\t")
+  lineComment = try (string "//") *> skipMany (satisfy (/='\n'))
 
 lexeme :: Parser a -> Parser a
 lexeme p = p <* whitespace
@@ -165,20 +101,20 @@ colon = lexeme (char ':')
 openParenthesis :: Parser Char
 openParenthesis = lexeme (char '(')
 
-closedParenthesis :: Parser Char
-closedParenthesis = lexeme (char ')')
+closeParenthesis :: Parser Char
+closeParenthesis = lexeme (char ')')
 
 parens :: Parser a -> Parser a
-parens p = openParenthesis *> p <* closedParenthesis
+parens p = openParenthesis *> p <* closeParenthesis
 
 openCurlyBrace :: Parser Char
 openCurlyBrace = lexeme (char '{')
 
-closedCurlyBrace :: Parser Char
-closedCurlyBrace = lexeme (char '}')
+closeCurlyBrace :: Parser Char
+closeCurlyBrace = lexeme (char '}')
 
 braces :: Parser a -> Parser a
-braces p = openCurlyBrace *> p <* closedCurlyBrace
+braces p = openCurlyBrace *> p <* closeCurlyBrace
 
 -- Matches the empty string, so it may enter an infinite loop when used with,
 -- say, 'many'.
@@ -195,28 +131,25 @@ ieleNameNonFirstChar :: Parser Char
 ieleNameNonFirstChar = ieleNameFirstChar <|> digit
 
 skipKeyword :: String -> Parser ()
-skipKeyword s = try $ lexeme $ string s *> notFollowedBy ieleNameNonFirstChar
-
-whitespaceColon :: Parser ()
-whitespaceColon = whitespace <* colon
+skipKeyword s = (try $ lexeme $ string s *> notFollowedBy ieleNameNonFirstChar)
+  <?> s
 
 ---------------------------------------------
 
-newtype IeleName = IeleName String
-  deriving (Show, Eq)
+positiveInt :: Parser Int
+positiveInt = lexeme (read <$> many1 digit <* notFollowedBy ieleNameNonFirstChar)
+  <?> "number"
 
 ieleNameTokenNotNumber :: Parser IeleName
 ieleNameTokenNotNumber =
-  lexeme $ IeleName <$> ((:) <$> ieleNameFirstChar <*> many ieleNameNonFirstChar)
+  lexeme $ IeleNameText <$> ((:) <$> ieleNameFirstChar <*> many ieleNameNonFirstChar)
 
 ieleNameTokenNumber :: Parser IeleName
 ieleNameTokenNumber =
-    lexeme $ IeleName <$> many1 digit <* notFollowedBy ieleNameNonFirstChar
+    lexeme $ IeleNameNumber . read <$> many1 digit <* notFollowedBy ieleNameNonFirstChar
 
 ieleNameToken :: Parser IeleName
 ieleNameToken = ieleNameTokenNotNumber <|> ieleNameTokenNumber
-
-newtype IntToken = IntToken Integer deriving (Show, Eq)
 
 positiveIntToken :: Parser IntToken
 positiveIntToken = lexeme $ IntToken . read <$>
@@ -235,353 +168,271 @@ falseToken = IntToken 0 <$ skipKeyword "false"
 intToken :: Parser IntToken
 intToken = positiveIntToken <|> negativeIntToken <|> trueToken <|> falseToken
 
-newtype GlobalName = GlobalName IeleName  -- TODO: A string may be more efficient than the full AST
-  deriving (Show, Eq)
-globalName :: Parser GlobalName
-globalName = GlobalName <$ at <*> ieleNameToken
+globalNameInclReserved :: Parser GlobalName
+globalNameInclReserved = GlobalName <$ at <*> ieleNameToken
 
-newtype LocalName = LocalName IeleName  -- TODO: A string may be more efficient than the full AST
-  deriving (Show, Eq)
+globalName :: Parser GlobalName
+globalName = do
+  name <- globalNameInclReserved
+  case name of
+    GlobalName (IeleNameText str) | take 5 str == "iele." ->
+      fail $ "All names beginning \"@iele.\" are reserved"
+    _ -> pure name
+
 localName :: Parser LocalName
 localName = LocalName <$ percent <*> ieleNameToken
 
--- Matches the empty string, so it may enter an infinite loop when used with,
--- say, 'many'.
-newtype LocalNames = LocalNames [LocalName] deriving (Show, Eq)
-localNames :: Parser LocalNames
-localNames = LocalNames <$> commaSep0 localName
-
-data LValue =
-    LValueGlobalName GlobalName
-  | LValueLocalName LocalName
-  deriving (Show, Eq)
 
 lValue :: Parser LValue
 lValue =
       LValueGlobalName <$> globalName
   <|> LValueLocalName <$> localName
 
-data Operand =
-    OperandLValue LValue
-  | OperandInt IntToken
-  deriving (Show, Eq)
-
-operand :: Parser Operand
-operand =
-      OperandLValue <$> lValue
-  <|> OperandInt <$> intToken
-
 -- Matches the empty string, so it may enter an infinite loop when used with,
 -- say, 'many'.
-newtype Operands = Operands [Operand] deriving (Show, Eq)
-operands :: Parser Operands
-operands = Operands <$> commaSep0 operand
+lValues :: Parser [LValue]
+lValues = commaSep0 lValue
 
-data AssignInst = AssignInst
-  { assignLeft :: LValue
-  , assignRight :: Operand
-  } deriving (Show, Eq)
-assignInst :: Parser AssignInst
-assignInst =
-  AssignInst <$> lValue <* equal <*> operand
+assignInst :: LValue -> Parser Instruction
+assignInst result=
+  loadImmediate result <|> Op MOVE result . (:[]) <$> lValue
 
-data LoadInst = LoadInst
-  { loadLeft :: LValue
-  , loadIndex :: Operand
-  , loadSizeInBytes :: Operand
-  } deriving (Show, Eq)
-loadInst :: Parser LoadInst
-loadInst =
-  LoadInst <$> lValue <* equal <* skipKeyword "load" <*> operand <* comma <*> operand
+loadImmediate :: LValue -> Parser Instruction
+loadImmediate result = build <$> intToken
+ where
+  build (IntToken i)
+    | i >= 0 = LiOp LOADPOS result i
+    | otherwise = LiOp LOADNEG result (negate i)
 
-data StoreInst = StoreInst
-  { storeValue :: Operand
-  , storeIndex :: Operand
-  , storeSizeInBytes :: Operand
-  } deriving (Show, Eq)
-storeInst :: Parser StoreInst
+withResult :: (LValue -> Parser a) -> Parser a
+withResult p = try (lValue <* equal) >>= p
+
+ieleOp :: Parser Instruction
+ieleOp = try localCallInst
+     <|> try accountCallInst
+     <|> ieleOp1
+     <|> ieleVoidOp
+
+ieleOp1 :: Parser Instruction
+ieleOp1 = do
+  result <- try (lValue <* equal)
+  choice . map ($ result) $
+    [ assignInst
+    , loadInst
+    , sloadInst
+    , isZeroInst
+    , notInst
+    , shaInst
+    , binaryInst
+    , ternaryInst
+    , predicateInst
+    , createInst
+    , copycreateInst]
+
+ieleVoidOp :: Parser Instruction
+ieleVoidOp = choice
+  [ storeInst
+  , sstoreInst
+  , jumpInst
+  , returnInst
+  , revertInst
+  , selfDestructInst
+  , logInst
+  ]
+  <?> "instruction without result"
+
+simpleOp :: String -> Int -> ([LValue] -> Instruction) -> Parser Instruction
+simpleOp name arity build = build <$ skipKeyword name <*> simpleArgs arity
+
+simpleArgs :: Int -> Parser [LValue]
+simpleArgs 0 = pure []
+simpleArgs arity = sequenceA (lValue:replicate (arity-1) (comma *> lValue))
+
+simpleOp1 :: String -> Int -> IeleOpcode1P -> (LValue -> Parser Instruction)
+simpleOp1 name arity opcode = simpleOp name arity . Op opcode
+
+simpleOp0 :: String -> Int -> IeleOpcode0P -> Parser Instruction
+simpleOp0 name arity opcode = simpleOp name arity (VoidOp opcode)
+
+loadInst :: LValue -> Parser Instruction
+loadInst result =
+  try (simpleOp "load" 3 (Op MLOADN result))
+   <|> simpleOp "load" 1 (Op MLOAD result)
+
+storeInst :: Parser Instruction
 storeInst =
-  StoreInst <$ skipKeyword "store" <*> operand <* comma <*> operand <* comma <*> operand
+  try (simpleOp0 "store" 4 MSTOREN)
+  <|>  simpleOp0 "store" 2 MSTORE
 
-data SLoadInst = SLoadInst
-  { sloadLeft :: LValue
-  , sloadIndex :: Operand
-  , sloadSizeInBytes :: Operand
-  } deriving (Show, Eq)
-sloadInst :: Parser SLoadInst
-sloadInst =
-  SLoadInst <$> lValue <* equal <* skipKeyword "sload" <*> operand <* comma <*> operand
+sloadInst :: LValue -> Parser Instruction
+sloadInst = simpleOp1 "sload" 1 SLOAD
 
-data SStoreInst = SStoreInst
-  { sstoreValue :: Operand
-  , sstoreIndex :: Operand
-  , sstoreSizeInBytes :: Operand
-  } deriving (Show, Eq)
-sstoreInst :: Parser SStoreInst
-sstoreInst =
-  SStoreInst <$ skipKeyword "sstore" <*> operand <* comma <*> operand <* comma <*> operand
+sstoreInst :: Parser Instruction
+sstoreInst = simpleOp0 "sstore" 2 SSTORE
 
-data IsZeroInst = IsZeroInst
-  { isZeroLeft :: LValue
-  , isZeroRight :: Operand
-  } deriving (Show, Eq)
-isZeroInst :: Parser IsZeroInst
-isZeroInst = IsZeroInst <$> lValue <* equal <* skipKeyword "iszero" <*> operand
+jumpInst :: Parser Instruction
+jumpInst = do
+  skipKeyword "br"
+  condition <- Just <$> lValue <* comma <|> pure Nothing
+  lbl <- ieleNameToken
+  pure $ case condition of
+    Nothing -> VoidOp (JUMP lbl) []
+    Just reg -> VoidOp (JUMPI lbl) [reg]
 
-data NotInst = NotInst
-  { notLeft :: LValue
-  , notRight :: Operand
-  } deriving (Show, Eq)
-notInst :: Parser NotInst
-notInst = NotInst <$> lValue <* equal <* skipKeyword "not" <*> operand
+isZeroInst :: LValue -> Parser Instruction
+isZeroInst = simpleOp1 "iszero" 1 ISZERO
 
-data BinaryOperationType =
-    AddInst
-  | MulInst
-  | SubInst
-  | DivInst
-  | ExpInst
-  | ModInst
-  | AndInst
-  | OrInst
-  | XorInst
-  | Sha3Inst
-  | ByteInst
-  | SExtInst
-  | TwosInst
-  deriving (Show, Eq)
+notInst :: LValue -> Parser Instruction
+notInst = simpleOp1 "not" 1 NOT
+
+shaInst :: LValue -> Parser Instruction
+shaInst = simpleOp1 "sha3" 1 SHA3
 
 enumParser :: [(String,a)] -> Parser a
 enumParser options =
   choice [val <$ skipKeyword name | (name,val) <- options]
 
-binaryOperations :: [(String,BinaryOperationType)]
+binaryOperations :: [(String,IeleOpcode1P)]
 binaryOperations =
-  [("add",AddInst)
-  ,("mul",MulInst)
-  ,("sub",SubInst)
-  ,("div",DivInst)
-  ,("exp",ExpInst)
-  ,("mod",ModInst)
-  ,("and",AndInst)
-  ,("or", OrInst)
-  ,("xor",XorInst)
-  ,("sha3",Sha3Inst)
-  ,("byte",ByteInst)
-  ,("sext",SExtInst)
-  ,("twos",TwosInst)
+  [("add",ADD)
+  ,("mul",MUL)
+  ,("sub",SUB)
+  ,("div",DIV)
+  ,("mod",MOD)
+  ,("exp",EXP)
+  ,("and",AND)
+  ,("or", OR)
+  ,("xor",XOR)
+  ,("byte",BYTE)
+  ,("sext",SIGNEXTEND)
+  ,("twos",TWOS)
   ]
 
-data BinaryOperationInst = BinaryOperationInst
-  { binaryOperationType :: BinaryOperationType
-  , binaryOperationLeft :: LValue
-  , binaryOperationFirst :: Operand
-  , binaryOperationSecond :: Operand
-  } deriving (Show, Eq)
+binaryInst :: LValue -> Parser Instruction
+binaryInst result =
+  choice [simpleOp1 name 2 opcode result | (name,opcode) <- binaryOperations]
 
-binaryOperationInst :: Parser BinaryOperationInst
-binaryOperationInst =
-  flip BinaryOperationInst <$> lValue <* equal <*> enumParser binaryOperations
-    <*> operand <* comma <*> operand
-
-data TernaryOperationType =
-    AddModInst
-  | MulModInst
-  | ExpModInst
-  deriving (Show, Eq)
-
-ternaryOperators :: [(String, TernaryOperationType)]
-ternaryOperators = [("addmod",AddModInst)
-                   ,("mulmod",MulModInst)
-                   ,("expmod",ExpModInst)
+ternaryOperators :: [(String, IeleOpcode1P)]
+ternaryOperators = [("addmod",ADDMOD)
+                   ,("mulmod",MULMOD)
+                   ,("expmod",EXPMOD)
                    ]
 
-data TernaryOperationInst = TernaryOperationInst
-  { ternaryOperationType :: TernaryOperationType
-  , ternaryOperationLeft :: LValue
-  , ternaryOperationFirst :: Operand
-  , ternaryOperationSecond :: Operand
-  , ternaryOperationDivisor :: Operand
-  } deriving (Show, Eq)
+ternaryInst :: LValue -> Parser Instruction
+ternaryInst result =
+  flip Op result <$> enumParser ternaryOperators <*> simpleArgs 3
 
-ternaryOperationInst :: Parser TernaryOperationInst
-ternaryOperationInst =
-  flip TernaryOperationInst <$> lValue <* equal <*> enumParser ternaryOperators
-    <*> operand <* comma <*> operand <* comma <*> operand
+predicateFlags :: [(String, IeleOpcode1P)]
+predicateFlags = [("lt",LT)
+                 ,("le",LE)
+                 ,("gt",GT)
+                 ,("ge",GE)
+                 ,("eq",EQ)
+                 ,("ne",NE)
+                 ]
 
-data PredicateOperationType =
-    LtPredicateInst
-  | LePredicateInst
-  | GtPredicateInst
-  | GePredicateInst
-  | EqPredicateInst
-  | NePredicateInst
-  deriving (Show, Eq)
+predicateInst :: LValue -> Parser Instruction
+predicateInst result = skipKeyword "cmp" >>
+  flip Op result <$> enumParser predicateFlags <*> simpleArgs 2
 
-predicateOperationTypes :: Parser PredicateOperationType
-predicateOperationTypes = enumParser
-  [("lt",LtPredicateInst)
-  ,("le",LePredicateInst)
-  ,("gt",GtPredicateInst)
-  ,("ge",GePredicateInst)
-  ,("eq",EqPredicateInst)
-  ,("ne",NePredicateInst)
+nonEmptyLValues :: Parser [LValue]
+nonEmptyLValues = commaSep1 lValue
+
+callResult :: Parser [LValue]
+callResult =  nonEmptyLValues <* equal <|> pure []
+
+builtins :: Map GlobalName (IeleOpcodeQuery,Int)
+builtins = Map.fromList
+  [bi "iele.callvalue" CALLVALUE 0
+  ,bi "iele.gaslimit" GASLIMIT 0
+  ,bi "iele.gasprice" GASPRICE 0
+  ,bi "iele.gas" GAS 0
+  ,bi "iele.address" ADDRESS 0
+  ,bi "iele.origin" ORIGIN 0
+  ,bi "iele.caller" CALLER 0
+  ,bi "iele.codesize" CODESIZE 0
+  ,bi "iele.beneficiary" BENEFICIARY 0
+  ,bi "iele.timestamp" TIMESTAMP 0
+  ,bi "iele.number" NUMBER 0
+  ,bi "iele.difficulty" DIFFICULTY 0
+  ,bi "iele.msize" MSIZE 0
+
+  ,bi "iele.extcodesize" EXTCODESIZE 1
+  ,bi "iele.blockhash" BLOCKHASH 1
+  ,bi "iele.balance" BALANCE 1
   ]
+ where bi name opcode arity = (GlobalName (IeleNameText name),(opcode,arity))
 
-data PredicateOperationInst = PredicateOperationInst
-    { predicateOperationType :: PredicateOperationType
-    , predicateOperationLeft :: LValue
-    , predicateOperationFirst :: Operand
-    , predicateOperationSecond :: Operand
-    } deriving (Show, Eq)
+localCallInst :: Parser Instruction
+localCallInst = do
+  results <- callResult
+  name <- skipKeyword "call" *> globalNameInclReserved
+  args <- parens lValues
+  let call = CallOp (LOCALCALL name (length16 results) (length16 args)) results args
+  case Map.lookup name builtins of
+    Nothing | name /= GlobalName (IeleNameText "iele.invalid") -> pure call
+            | not (null results) -> fail $ "builtin iele.invalid returns no results"
+            | not (null args) -> fail $ "builtin iele.invalid takes no arguments"
+            | otherwise -> pure $ VoidOp INVALID []
+    Just (op,arity)
+      | length results /= 1 -> fail $ "builtin "++show name++" returns exactly one result"
+      | arity == length args -> pure $ Op (IeleOpcodesQuery op) (head results) args
+      | otherwise -> fail $ "builtin "++show name++" expects "++show arity++" arguments"
 
-predicateOperationInst :: Parser PredicateOperationInst
-predicateOperationInst =
-  flip PredicateOperationInst <$> lValue <* equal <* skipKeyword "cmp" <*> predicateOperationTypes
-    <*> operand <* comma <*> operand
 
-newtype JumpInst = JumpInst IeleName deriving (Show, Eq)
-jumpInst :: Parser JumpInst
-jumpInst = JumpInst <$ skipKeyword "br" <*> ieleNameToken
+accountCallInst :: Parser Instruction
+accountCallInst = do
+  results <- nonEmptyLValues <* equal
+  name <- skipKeyword "call" *> globalNameInclReserved
+  tgt <- skipKeyword "at" *> lValue
+  args <- parens lValues
+  value <- skipKeyword "send" *> lValue
+  gas <- comma *> skipKeyword "gaslimit" *> lValue
+  let op = CALL name (length16 results - 1) (length16 args)
+  pure (CallOp op results ([gas,tgt,value]++args))
 
-data CondJumpInst = CondJumpInst
-  { condJumpOperand :: Operand
-  , condJumpLabel :: IeleName
-  } deriving (Show, Eq)
-condJumpInst :: Parser CondJumpInst
-condJumpInst =
-  CondJumpInst <$ skipKeyword "br" <*> operand <* comma <*> ieleNameToken
+argumentsOrVoid :: Parser [LValue]
+argumentsOrVoid = nonEmptyLValues <|> [] <$ skipKeyword "void"
 
-newtype LValues = LValues [LValue] deriving (Show, Eq)
-nonEmptyLValues :: Parser LValues
-nonEmptyLValues = LValues <$> commaSep1 lValue
+returnInst :: Parser Instruction
+returnInst = skipKeyword "ret" *>
+  fmap (\args -> VoidOp (RETURN (fromIntegral (length args))) args) argumentsOrVoid
 
-callResult :: Parser LValues
-callResult =  nonEmptyLValues <* equal <|> return (LValues [])
+revertInst :: Parser Instruction
+revertInst = skipKeyword "revert" *>
+  fmap (\args -> VoidOp (REVERT (fromIntegral (length args))) args) argumentsOrVoid
 
-data LocalCallInst = LocalCallInst
-  { localCallLValues :: LValues
-  , localCallName :: GlobalName
-  , localCallOperands :: Operands
-  } deriving (Show, Eq)
-localCallInst :: Parser LocalCallInst
-localCallInst =
-  LocalCallInst <$> callResult <* skipKeyword "call" <*> globalName <*> parens operands
+selfDestructInst :: Parser Instruction
+selfDestructInst = simpleOp0 "selfdestruct" 1 SELFDESTRUCT
 
-data AccountCallInst = AccountCallInst
-  { accountCallLValues :: LValues
-  , accountCallName :: GlobalName
-  , accountCallAddress :: Operand
-  , accountCallOperands :: Operands
-  , accountCallSend :: Operand
-  , accountCallGasLimit :: Operand
-  } deriving (Show, Eq)
-accountCallInst :: Parser AccountCallInst
-accountCallInst =
-  AccountCallInst <$> callResult <* skipKeyword "call"
-    <*> globalName <* skipKeyword "at" <*> operand <*> parens operands
-    <* skipKeyword "send" <*> operand
-    <* comma <* skipKeyword "gaslimit" <*> operand
+upto :: Int -> Parser a -> Parser [a]
+upto 0 _ = pure []
+upto n p = ((:) <$> p <*> upto (n-1) p) <|> pure []
 
-data SendInst = SendInst
-  { sendValue :: Operand
-  , sendDestinationAccount :: Operand
-  } deriving (Show, Eq)
-sendInst :: Parser SendInst
-sendInst = SendInst <$ skipKeyword "send" <*> operand <* skipKeyword "to" <*> operand
+logInst :: Parser Instruction
+logInst = do
+  skipKeyword "log"
+  arg1 <- lValue
+  args <- upto 4 (comma *> lValue)
+  pure $ VoidOp (LOG (fromIntegral (length args))) (arg1:args)
 
-nonEmptyOperands :: Parser Operands
-nonEmptyOperands = Operands <$> commaSep1 operand
+createInst :: LValue -> Parser Instruction
+createInst result =
+   build <$ skipKeyword "create" <*> ieleNameToken <*> parens lValues
+         <* skipKeyword "send" <*> lValue
+ where
+   build name args val = Op (CREATE name (length16 args)) result (val:args)
 
-argumentsOrVoid :: Parser Operands
-argumentsOrVoid = parens nonEmptyOperands <|> Operands [] <$ skipKeyword "void"
+copycreateInst :: LValue -> Parser Instruction
+copycreateInst result =
+   build <$ skipKeyword "copycreate" <*> lValue <*> parens lValues
+         <* skipKeyword "send" <*> lValue
+ where
+   build from args val = Op (COPYCREATE (length16 args)) result (val:from:args)
 
-newtype ReturnInst = ReturnInst Operands deriving (Show, Eq)
-returnInst :: Parser ReturnInst
-returnInst = ReturnInst <$ skipKeyword "ret" <*> argumentsOrVoid
-
-newtype RevertInst = RevertInst Operands deriving (Show, Eq)
-revertInst :: Parser RevertInst
-revertInst = RevertInst <$ skipKeyword "revert" <*> argumentsOrVoid
-
-data StopInst = StopInst deriving (Show, Eq)
-stopInst :: Parser StopInst
-stopInst = StopInst <$ skipKeyword "stop"
-
-data LogInst = LogInst
-  { logIndex :: Operand
-  , logSizeInBytes :: Operand
-  , logContent :: Operands
-  } deriving (Show, Eq)
-logInst :: Parser LogInst
-logInst = LogInst <$ skipKeyword "log" <*> operand <* comma <*> operand <*> logArgs
-  where logArgs = Operands <$> many (comma *> operand)
-
-data CreateInst = CreateInst
-  { createLValue :: LValue
-  , createContractName :: IeleName
-  , createOperands :: Operands
-  , createSendValue :: Operand
-  } deriving (Show, Eq)
-createInst :: Parser CreateInst
-createInst = CreateInst <$> lValue <* equal <* skipKeyword "create"
-  <*> ieleNameToken <*> parens operands <* skipKeyword "send" <*> operand
-
-newtype SelfdestructInst = SelfdestructInst
-  { selfdestructAccountToSendBalance :: Operand} deriving (Show, Eq)
-selfDestructInst :: Parser SelfdestructInst
-selfDestructInst = SelfdestructInst <$ skipKeyword "selfdestruct" <*> operand
-
-data Instruction =
-    InstructionAssign AssignInst
-  | InstructionLoad LoadInst
-  | InstructionStore StoreInst
-  | InstructionSLoad SLoadInst
-  | InstructionSStore SStoreInst
-  | InstructionIsZero IsZeroInst
-  | InstructionNot NotInst
-  | InstructionBinaryOperation BinaryOperationInst
-  | InstructionTernaryOperation TernaryOperationInst
-  | InstructionPredicateOperation PredicateOperationInst
-  | InstructionJump JumpInst
-  | InstructionCondJump CondJumpInst
-  | InstructionLocalCall LocalCallInst
-  | InstructionAccountCall AccountCallInst
-  | InstructionSend SendInst
-  | InstructionReturn ReturnInst
-  | InstructionRevert RevertInst
-  | InstructionStop StopInst
-  | InstructionLog LogInst
-  | InstructionCreate CreateInst
-  | InstructionSelfdestruct SelfdestructInst
-  deriving (Show, Eq)
 
 instruction :: Parser Instruction
-instruction =
-      try (InstructionAssign <$> assignInst)
-  <|> try (InstructionLoad <$> loadInst)
-  <|> try (InstructionStore <$> storeInst)
-  <|> try (InstructionSLoad <$> sloadInst)
-  <|> try (InstructionSStore <$> sstoreInst)
-  <|> try (InstructionIsZero <$> isZeroInst)
-  <|> try (InstructionNot <$> notInst)
-  <|> try (InstructionBinaryOperation <$> binaryOperationInst)
-  <|> try (InstructionTernaryOperation <$> ternaryOperationInst)
-  <|> try (InstructionPredicateOperation <$> predicateOperationInst)
-  -- condJumpInst must be before jumpInst otherwise it's harder to parse things,
-  -- i.e. 'br 10, a' gets parsed as 'br 10' with a leftover of ', a'.
-  <|> try (InstructionCondJump <$> condJumpInst)
-  <|> try (InstructionJump <$> jumpInst)
-  <|> try (InstructionLocalCall <$> localCallInst)
-  <|> try (InstructionAccountCall <$> accountCallInst)
-  <|> try (InstructionSend <$> sendInst)
-  <|> try (InstructionReturn <$> returnInst)
-  <|> try (InstructionRevert <$> revertInst)
-  <|> try (InstructionStop <$> stopInst)
-  <|> try (InstructionLog <$> logInst)
-  <|> try (InstructionCreate <$> createInst)
-  <|> try (InstructionSelfdestruct <$> selfDestructInst)
-  <?> "instruction"
+instruction = ieleOp <?> "instruction"
 -- The try at the end, which I usually leave out, is needed here because we may
 -- try to parse a label as an instruction and we must be able to recover from
 -- that.
@@ -589,73 +440,45 @@ instruction =
 blockLabel :: Parser IeleName
 blockLabel = try $ ieleNameToken <* void colon
 
-newtype Instructions = Instructions [Instruction] deriving (Show, Eq)
-instructions :: Parser Instructions
-instructions = Instructions <$> many (try (instruction <* notFollowedBy colon))
+instructions :: Parser [Instruction]
+instructions = many instruction
 
-data LabeledBlock = LabeledBlock
-  { labeledBlockLabel :: IeleName
-  , labeledBlockInstructions :: Instructions
-  } deriving (Show, Eq)
 labeledBlock :: Parser LabeledBlock
 labeledBlock =
   LabeledBlock <$> blockLabel <*> instructions
 
--- Matches the empty string, so it may enter an infinite loop when used with,
--- say, 'many'.
-newtype LabeledBlocks = LabeledBlocks [LabeledBlock] deriving (Show, Eq)
-labeledBlocks :: Parser LabeledBlocks
-labeledBlocks =
-  LabeledBlocks <$> many labeledBlock
+labeledBlocks :: Parser [LabeledBlock]
+labeledBlocks = many labeledBlock
 
--- Matches the empty string, so it may enter an infinite loop when used with,
--- say, 'many'.
-newtype FunctionParameters = FunctionParameters LocalNames deriving (Show, Eq)
-functionParameters :: Parser FunctionParameters
-functionParameters =
-  FunctionParameters <$> localNames
+functionParameters :: Parser [LocalName]
+functionParameters = parens (commaSep0 localName)
+  <?> "function parameters"
 
-data FunctionSignature = FunctionSignature
-  { functionSignatureName :: GlobalName
-  , functionSignatureParameters :: FunctionParameters
-  } deriving (Show, Eq)
-functionSignature :: Parser FunctionSignature
-functionSignature =
-  FunctionSignature <$> globalName <*> parens functionParameters
-
-data FunctionDefinition = FunctionDefinition
-  { functionDefinitionSignature :: FunctionSignature
-  , functionDefinitionBlocks :: LabeledBlocks
-  } deriving (Show, Eq)
 functionDefinition :: Parser FunctionDefinition
-functionDefinition =
-  FunctionDefinition <$ skipKeyword "define" <*> functionSignature <*> braces labeledBlocks
+functionDefinition = do
+  skipKeyword "define"
+  public <- True <$ skipKeyword "public" <|> pure False
+  name <- globalName
+  params <- functionParameters
+  openCurlyBrace
+  entry <- instructions
+  blocks <- labeledBlocks
+  closeCurlyBrace
+  return (FunctionDefinition public name params entry blocks)
 
-data GlobalVariableDefinition = GlobalVariableDefinition
-  { globalVariableName :: GlobalName
-  , globalVariableValue :: IntToken
-  } deriving (Show, Eq)
-globalVariableDefinition :: Parser GlobalVariableDefinition
-globalVariableDefinition = GlobalVariableDefinition <$> globalName <* equal <*> intToken
-
-data TopLevelDefinition =
-    TopLevelDefinitionGlobalVariable GlobalVariableDefinition
-  | TopLevelDefinitionFunction FunctionDefinition
-  deriving (Show, Eq)
 topLevelDefinition :: Parser TopLevelDefinition
 topLevelDefinition =
-      TopLevelDefinitionGlobalVariable <$> globalVariableDefinition
+      TopLevelDefinitionContract <$ skipKeyword "contract" <*> globalName
   <|> TopLevelDefinitionFunction <$> functionDefinition
 
-newtype TopLevelDefinitions =
-  TopLevelDefinitions [TopLevelDefinition] deriving (Show, Eq)
-topLevelDefinitions :: Parser TopLevelDefinitions
-topLevelDefinitions =
-    TopLevelDefinitions <$> many topLevelDefinition
-
-newtype Contract = Contract TopLevelDefinitions deriving (Show, Eq)
 contract :: Parser Contract
-contract = Contract <$> topLevelDefinitions
+contract = Contract <$ skipKeyword "contract" <*> ieleNameToken
+                    <* char '!' <*> positiveInt
+                    <*> braces (many topLevelDefinition)
+                    <?> "contract"
 
-ieleParser :: Parser Contract
-ieleParser = whitespace *> contract <* eof
+ieleParser1 :: Parser Contract
+ieleParser1 = whitespace *> contract <* eof
+
+ieleParser :: Parser [Contract]
+ieleParser = whitespace *> many contract <* eof
