@@ -246,36 +246,36 @@ instructionTests =
 
   , testInstruction
       "LocalCall"
-      (CallOp (LOCALCALL "@c" 2 2) ["%a","@b"] ["%10","%11"])
+      (CallOp (LOCALCALL "@c" (mkArgs 2) (mkRets 2)) ["%a","@b"] ["%10","%11"])
       "%a,@b=call@c(%10,%11)"
   , testInstruction
       "empty arguments LocalCall"
-      (CallOp (LOCALCALL "@c" 2 0) ["%a","@b"] [])
+      (CallOp (LOCALCALL "@c" (mkArgs 0) (mkRets 2)) ["%a","@b"] [])
       "%a,@b=call@c()"
   , testInstruction
       "empty results LocalCall"
-      (CallOp (LOCALCALL "@c" 0 2) [] ["%10","%11"])
+      (CallOp (LOCALCALL "@c" (mkArgs 2) (mkRets 0)) [] ["%10","%11"])
       "call@c(%10,%11)"
   , testInstruction
       "empty lvalues arguments LocalCall"
-      (CallOp (LOCALCALL "@c" 0 0) [] [])
+      (CallOp (LOCALCALL "@c" (mkArgs 0) (mkRets 0)) [] [])
       "call@c()"
 
   , testInstruction
       "AccountCall"
-      (CallOp (CALL "@c" 2 2) ["%ok","%a","@b"] ["%gas","%acct","%amt","%10","%11"])
+      (CallOp (CALL "@c" (mkArgs 2) (mkRets (3-1))) ["%ok","%a","@b"] ["%gas","%acct","%amt","%10","%11"])
       "%ok,%a,@b=call@c at %acct(%10,%11)send %amt, gaslimit %gas"
   , testInstruction
       "empty arguments AccountCall"
-      (CallOp (CALL "@c" 1 0) ["%ok","@b"] ["%gas","%acct","%amt"])
+      (CallOp (CALL "@c" (mkArgs 0) (mkRets (2-1))) ["%ok","@b"] ["%gas","%acct","%amt"])
       "%ok , @b = call @c at %acct() send %amt, gaslimit %gas"
   , testInstruction
       "StaticCall"
-      (CallOp (STATICCALL "@c" 2 2) ["%ok","%a","@b"] ["%gas","%acct","%amt","%10","%11"])
+      (CallOp (STATICCALL "@c" (mkArgs 2) (mkRets (3-1))) ["%ok","%a","@b"] ["%gas","%acct","%amt","%10","%11"])
       "%ok,%a,@b=staticcall@c at %acct(%10,%11)send %amt, gaslimit %gas"
   , testInstruction
       "empty arguments StaticCall"
-      (CallOp (STATICCALL "@c" 1 0) ["%ok","@b"] ["%gas","%acct","%amt"])
+      (CallOp (STATICCALL "@c" (mkArgs 0) (mkRets (2-1))) ["%ok","@b"] ["%gas","%acct","%amt"])
       "%ok , @b = staticcall @c at %acct() send %amt, gaslimit %gas"
   , testCase
       "reject empty lvalues AccountCall"
@@ -283,19 +283,19 @@ instructionTests =
         "call@c at %acct(%10,%11)send %amt, gaslimit %gas")
   , testInstruction
       "Return"
-      (VoidOp (RETURN 2) ["@10","%11"])
+      (VoidOp (RETURN (mkRets 2)) ["@10","%11"])
       "ret @10, %11"
   , testInstruction
       "empty Return"
-      (VoidOp (RETURN 0) [])
+      (VoidOp (RETURN (mkRets 0)) [])
       "ret void"
   , testInstruction
       "Revert"
-      (VoidOp (REVERT 2) ["%10","@11"])
+      (VoidOp (REVERT (mkRets 2)) ["%10","@11"])
       "revert %10, @11"
   , testInstruction
       "empty Revert"
-      (VoidOp (REVERT 0) [])
+      (VoidOp (REVERT (mkRets 0)) [])
       "revert void"
   , testInstruction
       "Log 0"
@@ -322,11 +322,11 @@ instructionTests =
       (parseFailure (instruction <* eof) "log %idx, %1, %2, %3, %4, %5")
   , testInstruction
       "create"
-      (Op (CREATE "b" 2) "%a" ["%12","%10","%11"])
+      (Op (CREATE "b" (mkArgs 2)) "%a" ["%12","%10","%11"])
       "%a=create b(%10,%11) send %12"
   , testInstruction
       "copycreate"
-      (Op (COPYCREATE 2) "%a" ["%val","%acct","%10","%11"])
+      (Op (COPYCREATE (mkArgs 2)) "%a" ["%val","%acct","%10","%11"])
       "%a=copycreate %acct(%10,%11) send %val"
   , testInstruction
       "SelfDestruct"

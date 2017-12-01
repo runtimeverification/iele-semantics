@@ -11,6 +11,12 @@ import IeleInstructions
 putAsciiString :: Putter String
 putAsciiString str = putByteString (C.pack str)
 
+putArgs16 :: Putter (Args Word16)
+putArgs16 nargs = putWord16be (argsCount nargs)
+
+putRets16 :: Putter (Rets Word16)
+putRets16 nrets = putWord16be (retsCount nrets)
+
 asm_iele_opcode1 :: IeleOpcode1 -> Put
 asm_iele_opcode1 op1 = case op1 of
   ADD -> putWord8 0x01
@@ -48,8 +54,8 @@ asm_iele_opcode1 op1 = case op1 of
 
   MOVE -> putWord8 0x60
 
-  CREATE contract nargs -> putWord8 0xf0 >> putWord16be contract >> putWord16be nargs
-  COPYCREATE nargs -> putWord8 0xf1 >> putWord16be nargs
+  CREATE contract nargs -> putWord8 0xf0 >> putWord16be contract >> putArgs16 nargs
+  COPYCREATE nargs -> putWord8 0xf1 >> putArgs16 nargs
 
   IeleOpcodesQuery queryOp -> putWord8 $ case queryOp of
     ADDRESS -> 0x30
@@ -82,8 +88,8 @@ asm_iele_opcode0 op0 = case op0 of
   JUMPI i -> putWord8 0x65 >> putWord16be i
 
   JUMPDEST i -> putWord8 0x66 >> putWord16be i
-  CALLDEST lbl nargs -> putWord8 0x67 >> putWord16be lbl >> putWord16be nargs
-  EXTCALLDEST lbl nargs -> putWord8 0x68 >> putWord16be lbl >> putWord16be nargs
+  CALLDEST lbl nargs -> putWord8 0x67 >> putWord16be lbl >> putArgs16 nargs
+  EXTCALLDEST lbl nargs -> putWord8 0x68 >> putWord16be lbl >> putArgs16 nargs
   FUNCTION(name) -> putWord8 0x69 >> putWord16be (fromIntegral (length name)) >> putAsciiString name
   CONTRACT(code) -> putWord8 0x6a >> putWord16be (fromIntegral (B.length code)) >> putByteString code
 
@@ -91,8 +97,8 @@ asm_iele_opcode0 op0 = case op0 of
   LOG n | n <= 4 -> putWord8 (0xa0 + n)
         | otherwise -> error "LOG only takes up to 4 values"
 
-  RETURN nreturn -> putWord8 0xf6 >> putWord16be nreturn
-  REVERT nreturn -> putWord8 0xf7 >> putWord16be nreturn
+  RETURN nreturn -> putWord8 0xf6 >> putWord16be (retsCount nreturn)
+  REVERT nreturn -> putWord8 0xf7 >> putWord16be (retsCount nreturn)
 
   INVALID -> putWord8 0xfe
 
@@ -105,9 +111,9 @@ asm_iele_opcode_li opLi = case opLi of
 
 asm_iele_opcode_call :: IeleOpcodeCall Word16 -> Put
 asm_iele_opcode_call opCall = case opCall of
-  CALL call nargs nreturn -> putWord8 0xf2 >> putWord16be call >> putWord16be nargs >> putWord16be nreturn
-  STATICCALL call nargs nreturn -> putWord8 0xf5 >> putWord16be call >> putWord16be nargs >> putWord16be nreturn
-  LOCALCALL call nargs nreturn -> putWord8 0xf8 >> putWord16be call >> putWord16be nargs >> putWord16be nreturn
+  CALL call nargs nreturn -> putWord8 0xf2 >> putWord16be call >> putArgs16 nargs >> putRets16 nreturn
+  STATICCALL call nargs nreturn -> putWord8 0xf5 >> putWord16be call >> putArgs16 nargs >> putRets16 nreturn
+  LOCALCALL call nargs nreturn -> putWord8 0xf8 >> putWord16be call >> putArgs16 nargs >> putRets16 nreturn
 
 -- Register numbers are packed bitwise
 asm_iele_regs :: Word8 -> [Int] -> Put

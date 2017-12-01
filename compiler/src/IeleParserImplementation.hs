@@ -369,7 +369,7 @@ localCallInst = do
   results <- callResult
   name <- skipKeyword "call" *> globalNameInclReserved
   args <- parens lValues
-  let call = CallOp (LOCALCALL name (length16 results) (length16 args)) results args
+  let call = CallOp (LOCALCALL name (argsLength args) (retsLength results)) results args
   case Map.lookup name builtins of
     Nothing | name /= GlobalName (IeleNameText "iele.invalid") -> pure call
             | not (null results) -> fail $ "builtin iele.invalid returns no results"
@@ -389,7 +389,7 @@ accountCallInst = do
   args <- parens lValues
   value <- skipKeyword "send" *> lValue
   gas <- comma *> skipKeyword "gaslimit" *> lValue
-  let op = CALL name (length16 results - 1) (length16 args)
+  let op = CALL name (argsLength args) (fmap (subtract 1) (retsLength results))
   pure (CallOp op results ([gas,tgt,value]++args))
 
 staticCallInst :: Parser Instruction
@@ -400,7 +400,7 @@ staticCallInst = do
   args <- parens lValues
   value <- skipKeyword "send" *> lValue
   gas <- comma *> skipKeyword "gaslimit" *> lValue
-  let op = STATICCALL name (length16 results - 1) (length16 args)
+  let op = STATICCALL name (argsLength args) (fmap (subtract 1) (retsLength results))
   pure (CallOp op results ([gas,tgt,value]++args))
 
 
@@ -409,11 +409,11 @@ argumentsOrVoid = nonEmptyLValues <|> [] <$ skipKeyword "void"
 
 returnInst :: Parser Instruction
 returnInst = skipKeyword "ret" *>
-  fmap (\args -> VoidOp (RETURN (fromIntegral (length args))) args) argumentsOrVoid
+  fmap (\args -> VoidOp (RETURN (retsLength args)) args) argumentsOrVoid
 
 revertInst :: Parser Instruction
 revertInst = skipKeyword "revert" *>
-  fmap (\args -> VoidOp (REVERT (fromIntegral (length args))) args) argumentsOrVoid
+  fmap (\args -> VoidOp (REVERT (retsLength args)) args) argumentsOrVoid
 
 selfDestructInst :: Parser Instruction
 selfDestructInst = simpleOp0 "selfdestruct" 1 SELFDESTRUCT
@@ -434,14 +434,14 @@ createInst result =
    build <$ skipKeyword "create" <*> ieleNameToken <*> parens lValues
          <* skipKeyword "send" <*> lValue
  where
-   build name args val = Op (CREATE name (length16 args)) result (val:args)
+   build name args val = Op (CREATE name (argsLength args)) result (val:args)
 
 copycreateInst :: LValue -> Parser Instruction
 copycreateInst result =
    build <$ skipKeyword "copycreate" <*> lValue <*> parens lValues
          <* skipKeyword "send" <*> lValue
  where
-   build from args val = Op (COPYCREATE (length16 args)) result (val:from:args)
+   build from args val = Op (COPYCREATE (argsLength args)) result (val:from:args)
 
 
 instruction :: Parser Instruction
