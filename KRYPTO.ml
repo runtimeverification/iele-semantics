@@ -41,7 +41,7 @@ let hook_ecdsaRecover c lbl sort config ff = match c with
     let messageBuffer = Bigarray.Array1.of_array Bigarray.char Bigarray.c_layout messageArray in
     let publicKey = match Secp256k1.RecoverableSign.recover context signature messageBuffer with
         Some k -> k
-      | None -> raise (Failure "key recovery failed") in
+      | None -> failwith "key recovery failed" in
     let publicBuffer = Secp256k1.Public.to_bytes ~compress:false context publicKey in
     if Bigarray.Array1.dim publicBuffer <> 65 then failwith "invalid public key length" else
     let publicStr = String.init 64 (fun idx -> Bigarray.Array1.get publicBuffer (idx + 1)) in
