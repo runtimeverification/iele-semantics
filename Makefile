@@ -8,8 +8,8 @@ K_VERSION=rvk
 all: build split-vm-tests
 
 clean:
-	rm -r .build
-	find tests/proofs/ -name '*.k' -delete
+	rm -rf .build
+	if [ -d tests/proofs/ ] ; then find tests/proofs/ -name '*.k' -delete ; fi
 
 build: tangle .build/${K_VERSION}/ethereum-kompiled/extras/timestamp
 
@@ -25,7 +25,7 @@ defn: $(defn_files)
 .build/${K_VERSION}/%.k: %.md
 	@echo "==  tangle: $@"
 	mkdir -p $(dir $@)
-	pandoc-tangle --from markdown --to code-k --code ${K_VERSION} $< > $@
+	pandoc --from markdown --to tangle.lua -M code:"k $(K_VERSION)" $< > $@
 
 proof_dir=tests/proofs
 proof_files= 
@@ -34,17 +34,17 @@ proofs: $(proof_files)
 tests/proofs/sum-to-n-spec.k: proofs/sum-to-n.md
 	@echo "==  tangle: $@"
 	mkdir -p $(dir $@)
-	pandoc-tangle --from markdown --to code-k --code sum-to-n $< > $@
+	pandoc --from markdown --to tangle.lua -M code:"k sum-to-n" $< > $@
 
 tests/proofs/hkg/%-spec.k: proofs/hkg.md
 	@echo "==  tangle: $@"
 	mkdir -p $(dir $@)
-	pandoc-tangle --from markdown --to code-k --code $* $< > $@
+	pandoc --from markdown --to tangle.lua -M code:"k $*" $< > $@
 
 tests/proofs/bad/hkg-token-buggy-spec.k: proofs/token-buggy-spec.md
 	@echo "==  tangle: $@"
 	mkdir -p $(dir $@)
-	pandoc-tangle --from markdown --to code-k --code k $< > $@
+	pandoc --from markdown --to tangle -M code:k $< > $@
 
 # Tests
 # -----
