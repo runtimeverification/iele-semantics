@@ -1,5 +1,22 @@
 {-# LANGUAGE DeriveDataTypeable, DeriveTraversable #-}
-module IeleInstructions where
+module IeleInstructions
+  (length16
+  ,Args,argsCount,mkArgs
+  ,argsLength
+  ,Rets,retsCount,mkRets
+  ,retsLength
+  ,IeleOpcode1
+  ,IeleOpcode1G(..)
+  ,IeleOpcodeQuery(..)
+  ,IeleOpcode0
+  ,IeleOpcode0G(..)
+  ,relabelOpcode0
+  ,IeleOpcodeLi(..)
+  ,IeleOpcodeCall(..)
+  ,IeleOp
+  ,IeleOpG(..)
+  )
+where
 import Data.Data
 
 import qualified Data.ByteString as B
@@ -8,6 +25,24 @@ import Data.Word
 -- a utility for getting lengths of argument lists
 length16 :: [a] -> Word16
 length16 l = fromIntegral (length l)
+
+newtype Args a = Args {argsCount :: a}
+  deriving (Show, Eq, Data, Functor, Foldable, Traversable)
+
+newtype Rets a = Rets {retsCount :: a}
+  deriving (Show, Eq, Data, Functor, Foldable, Traversable)
+
+mkArgs :: a -> Args a
+mkArgs = Args
+
+mkRets :: a -> Rets a
+mkRets = Rets
+
+argsLength :: [a] -> Args Word16
+argsLength l = Args (length16 l)
+
+retsLength :: [a] -> Rets Word16
+retsLength l = Rets (length16 l)
 
 type IeleOpcode1 = IeleOpcode1G Word16
 data IeleOpcode1G contractId =
@@ -46,8 +81,8 @@ data IeleOpcode1G contractId =
 
  | MOVE
 
- | CREATE contractId Word16 -- contract Id
- | COPYCREATE Word16
+ | CREATE contractId (Args Word16) -- contract Id
+ | COPYCREATE (Args Word16)
 
  | IeleOpcodesQuery IeleOpcodeQuery
   deriving (Show, Eq, Data, Functor, Foldable, Traversable)
@@ -84,16 +119,16 @@ data IeleOpcode0G funId lblId =
  | JUMPI lblId
  | JUMPDEST lblId
 
- | CALLDEST funId Word16
- | EXTCALLDEST funId Word16
+ | CALLDEST funId (Args Word16)
+ | EXTCALLDEST funId (Args Word16)
 
  | FUNCTION String
  | CONTRACT B.ByteString
 
  | LOG Word8
 
- | RETURN Word16
- | REVERT Word16
+ | RETURN (Rets Word16)
+ | REVERT (Rets Word16)
 
  | INVALID
  | SELFDESTRUCT
@@ -131,9 +166,9 @@ data IeleOpcodeLi =
   deriving (Show, Eq, Data)
 
 data IeleOpcodeCall funId =
-   CALL funId Word16 Word16
- | STATICCALL funId Word16 Word16
- | LOCALCALL funId Word16 Word16
+   CALL funId (Args Word16) (Rets  Word16)
+ | STATICCALL funId (Args Word16) (Rets Word16)
+ | LOCALCALL funId (Args Word16) (Rets Word16)
   deriving (Show, Eq, Data, Functor, Foldable, Traversable)
 
 type IeleOp = IeleOpG Word16 Word16 Word16 Int

@@ -112,7 +112,7 @@ data TopLevelDefinition =
   deriving (Show, Eq, Data)
 data Contract = Contract
   { contractName :: IeleName
-  , contractSize :: Int
+  , contractSize :: Maybe Int
   , contractDefinitions :: [TopLevelDefinition]
   }
   deriving (Show, Eq, Data)

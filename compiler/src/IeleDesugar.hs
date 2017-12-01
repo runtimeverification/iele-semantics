@@ -102,7 +102,7 @@ flattenFundef :: FunctionDefinition -> [IeleOp']
 flattenFundef (FunctionDefinition isPublic name args entry blocks) =
   let GlobalName (IeleNameNumber funNum) = name
       funNum16 = fromIntegral funNum
-  in [VoidOp ((if isPublic then EXTCALLDEST else CALLDEST) funNum16 (length16 args)) []]
+  in [VoidOp ((if isPublic then EXTCALLDEST else CALLDEST) funNum16 (argsLength args)) []]
   ++ flattenInsts entry
   ++ concatMap flattenBlock blocks
 
