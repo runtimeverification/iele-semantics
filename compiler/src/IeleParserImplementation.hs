@@ -34,6 +34,8 @@ module IeleParserImplementation
     , logInst
     , lValue
     , lValues
+    , operand
+    , operands
     , minus
     , nonEmptyLValues
     , notInst
@@ -181,7 +183,12 @@ globalName = do
     _ -> pure name
 
 localName :: Parser LocalName
-localName = LocalName <$ percent <*> ieleNameToken
+localName = do
+  name <- percent *> ieleNameToken
+  case name of
+    IeleNameText str | take 5 str == "iele." ->
+      fail $ "All names beginning \"%iele.\" are reserved"
+    _ -> pure (LocalName name)
 
 lValue :: Parser LValue
 lValue = LValueLocalName <$> localName
@@ -191,16 +198,19 @@ lValue = LValueLocalName <$> localName
 lValues :: Parser [LValue]
 lValues = commaSep0 lValue
 
+operand :: Parser Operand
+operand = RegOperand <$> lValue
+      <|> ImmOperand <$> intToken
+      <|> GlobalOperand <$> globalName
+
+operands :: Parser [Operand]
+operands = commaSep0 operand
+
 assignInst :: LValue -> Parser Instruction
-assignInst result = buildImm <$> intToken
-                <|> buildGlobal <$> globalName
-                <|> buildMove <$> lValue
- where
-  buildImm (IntToken i)
-    | i >= 0 = IeleInst (LiOp LOADPOS result i)
-    | otherwise = IeleInst (LiOp LOADNEG result (negate i))
-  buildGlobal g = SugarInst (LoadGlobal result g)
-  buildMove val = IeleInst (Op MOVE result [val])
+assignInst result = build <$> operand
+  where
+   build (ImmOperand (IntToken i)) = loadImm result i
+   build arg = Op MOVE result [arg]
 
 withResult :: (LValue -> Parser a) -> Parser a
 withResult p = try (lValue <* equal) >>= p
@@ -213,10 +223,11 @@ callInsts = try localCallInst
 ieleOp1 :: Parser Instruction
 ieleOp1 = do
   result <- try (lValue <* equal)
-  assignInst result <|> choice [IeleInst <$> parser result | parser <- oneResults]
+  choice [parser result | parser <- oneResults]
  where
   oneResults =
-    [ loadInst
+    [ assignInst
+    , loadInst
     , sloadInst
     , isZeroInst
     , notInst
@@ -237,12 +248,12 @@ ieleVoidOp = choice
   ]
   <?> "instruction without result"
 
-simpleOp :: String -> Int -> ([LValue] -> IeleOpP) -> Parser IeleOpP
+simpleOp :: String -> Int -> ([Operand] -> IeleOpP) -> Parser IeleOpP
 simpleOp name arity build = build <$ skipKeyword name <*> simpleArgs arity
 
-simpleArgs :: Int -> Parser [LValue]
+simpleArgs :: Int -> Parser [Operand]
 simpleArgs 0 = pure []
-simpleArgs arity = sequenceA (lValue:replicate (arity-1) (comma *> lValue))
+simpleArgs arity = sequenceA (operand:replicate (arity-1) (comma *> operand))
 
 simpleOp1 :: String -> Int -> IeleOpcode1 -> (LValue -> Parser IeleOpP)
 simpleOp1 name arity opcode = simpleOp name arity . Op opcode
@@ -269,7 +280,7 @@ sstoreInst = simpleOp0 "sstore" 2 SSTORE
 jumpInst :: Parser IeleOpP
 jumpInst = do
   skipKeyword "br"
-  condition <- Just <$> lValue <* comma <|> pure Nothing
+  condition <- Just <$> operand <* comma <|> pure Nothing
   lbl <- ieleNameToken
   pure $ case condition of
     Nothing -> VoidOp (JUMP lbl) []
@@ -363,7 +374,7 @@ localCallInst :: Parser IeleOpP
 localCallInst = do
   results <- callResult
   name <- skipKeyword "call" *> globalNameInclReserved
-  args <- parens lValues
+  args <- parens operands
   let call = CallOp (LOCALCALL name (argsLength args) (retsLength results)) results args
   case Map.lookup name builtins of
     Nothing | name /= GlobalName (IeleNameText "iele.invalid") -> pure call
@@ -380,10 +391,10 @@ accountCallInst :: Parser IeleOpP
 accountCallInst = do
   results <- nonEmptyLValues <* equal
   name <- skipKeyword "call" *> globalNameInclReserved
-  tgt <- skipKeyword "at" *> lValue
-  args <- parens lValues
-  value <- skipKeyword "send" *> lValue
-  gas <- comma *> skipKeyword "gaslimit" *> lValue
+  tgt <- skipKeyword "at" *> operand
+  args <- parens operands
+  value <- skipKeyword "send" *> operand
+  gas <- comma *> skipKeyword "gaslimit" *> operand
   let op = CALL name (argsLength args) (fmap (subtract 1) (retsLength results))
   pure (CallOp op results ([gas,tgt,value]++args))
 
@@ -391,16 +402,16 @@ staticCallInst :: Parser IeleOpP
 staticCallInst = do
   results <- nonEmptyLValues <* equal
   name <- skipKeyword "staticcall" *> globalNameInclReserved
-  tgt <- skipKeyword "at" *> lValue
-  args <- parens lValues
-  value <- skipKeyword "send" *> lValue
-  gas <- comma *> skipKeyword "gaslimit" *> lValue
+  tgt <- skipKeyword "at" *> operand
+  args <- parens operands
+  value <- skipKeyword "send" *> operand
+  gas <- comma *> skipKeyword "gaslimit" *> operand
   let op = STATICCALL name (argsLength args) (fmap (subtract 1) (retsLength results))
   pure (CallOp op results ([gas,tgt,value]++args))
 
 
-argumentsOrVoid :: Parser [LValue]
-argumentsOrVoid = nonEmptyLValues <|> [] <$ skipKeyword "void"
+argumentsOrVoid :: Parser [Operand]
+argumentsOrVoid = commaSep1 operand <|> [] <$ skipKeyword "void"
 
 returnInst :: Parser IeleOpP
 returnInst = skipKeyword "ret" *>
@@ -419,34 +430,34 @@ upto n p = ((:) <$> p <*> upto (n-1) p) <|> pure []
 logInst :: Parser IeleOpP
 logInst = do
   skipKeyword "log"
-  arg1 <- lValue
-  args <- upto 4 (comma *> lValue)
+  arg1 <- operand
+  args <- upto 4 (comma *> operand)
   pure $ VoidOp (LOG (fromIntegral (length args))) (arg1:args)
 
 createInst :: Parser Instruction
 createInst =
   build <$> lValue <* comma <*> lValue <* equal
-        <* skipKeyword "create" <*> ieleNameToken <*> parens lValues
-        <* skipKeyword "send" <*> lValue
+        <* skipKeyword "create" <*> ieleNameToken <*> parens operands
+        <* skipKeyword "send" <*> operand
  where
    build status addr name args val =
-     IeleInst (CallOp (CREATE name (argsLength args)) [status,addr] (val:args))
+     CallOp (CREATE name (argsLength args)) [status,addr] (val:args)
 
 copycreateInst :: Parser Instruction
 copycreateInst =
   build <$> lValue <* comma <*> lValue <* equal
-        <* skipKeyword "copycreate" <*> lValue <*> parens lValues
-        <* skipKeyword "send" <*> lValue
+        <* skipKeyword "copycreate" <*> operand <*> parens operands
+        <* skipKeyword "send" <*> operand
  where
    build status addr from args val =
-     IeleInst (CallOp (COPYCREATE (argsLength args)) [status,addr] (val:from:args))
+     CallOp (COPYCREATE (argsLength args)) [status,addr] (val:from:args)
 
 instruction :: Parser Instruction
-instruction = IeleInst <$> callInsts
+instruction = try callInsts
      <|> try createInst
      <|> try copycreateInst
      <|> ieleOp1
-     <|> IeleInst <$> ieleVoidOp
+     <|> ieleVoidOp
      <?> "instruction"
 
 instructions :: Parser [Instruction]
@@ -455,18 +466,18 @@ instructions = many instruction
 blockLabel :: Parser IeleName
 blockLabel = try $ ieleNameToken <* void colon
 
-labeledBlock :: Parser LabeledBlock
+labeledBlock :: Parser LabeledBlockP
 labeledBlock =
   LabeledBlock <$> blockLabel <*> instructions
 
-labeledBlocks :: Parser [LabeledBlock]
+labeledBlocks :: Parser [LabeledBlockP]
 labeledBlocks = many labeledBlock
 
-functionParameters :: Parser [LocalName]
-functionParameters = parens (commaSep0 localName)
+functionParameters :: Parser [LValue]
+functionParameters = parens (commaSep0 lValue)
   <?> "function parameters"
 
-functionDefinition :: Parser FunctionDefinition
+functionDefinition :: Parser FunctionDefinitionP
 functionDefinition = do
   skipKeyword "define"
   public <- True <$ skipKeyword "public" <|> pure False
@@ -487,14 +498,14 @@ topLevelDefinition =
  where
   int = fmap (\(IntToken i) -> i) intToken
 
-contract :: Parser Contract
-contract = Contract <$ skipKeyword "contract" <*> ieleNameToken
-                    <*> (Just <$ char '!' <*> positiveInt <|> pure Nothing)
-                    <*> braces (many topLevelDefinition)
-                    <?> "contract"
+contract :: Parser ContractP
+contract = ContractP <$ skipKeyword "contract" <*> ieleNameToken
+                     <*> (Just <$ char '!' <*> positiveInt <|> pure Nothing)
+                     <*> braces (many topLevelDefinition)
+                     <?> "contract"
 
-ieleParser1 :: Parser Contract
+ieleParser1 :: Parser ContractP
 ieleParser1 = whitespace *> contract <* eof
 
-ieleParser :: Parser [Contract]
+ieleParser :: Parser [ContractP]
 ieleParser = whitespace *> many contract <* eof
