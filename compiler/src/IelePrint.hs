@@ -30,7 +30,8 @@ blank = text ""
 
 prettyContract :: Contract -> Doc
 prettyContract (Contract name size defs) =
-  braceGroupFlat (text "contract" <+> prettyName name <+> char '!' <> int size)
+  braceGroupFlat (text "contract" <+> prettyName name
+                  <+> maybe empty (\sz -> char '!' <> int sz) size)
     (empty:map prettyDef defs++[empty])
 
 prettyDef :: TopLevelDefinition -> Doc

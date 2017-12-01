@@ -473,7 +473,7 @@ topLevelDefinition =
 
 contract :: Parser Contract
 contract = Contract <$ skipKeyword "contract" <*> ieleNameToken
-                    <* char '!' <*> positiveInt
+                    <*> (Just <$ char '!' <*> positiveInt <|> pure Nothing)
                     <*> braces (many topLevelDefinition)
                     <?> "contract"
 
