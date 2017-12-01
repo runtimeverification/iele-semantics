@@ -1,0 +1,133 @@
+contract ERC20 {
+
+// computes a unique index in the account storage for a particular value by partitioning
+// the storage into different regions. %region represents a unique bit prefix on the
+// key that will be ored with the specified address.
+define @mapKey(%region, %address) {
+  @addressMask = 1461501637330902918203684832716283019655932542975 // 2^160 - 1
+  @addressShift = 1461501637330902918203684832716283019655932542976 // 2^160
+  %realAddress = and %address, @addressMask
+  %shifted = mul @addressShift, %region
+  %ored = or %shifted, %realAddress
+  ret %ored
+}
+
+define @setBalance(%account, %value) {
+  @balanceRegion = 1
+  %key = call @mapKey(@balanceRegion, %account)
+  sstore %value, %key
+  ret void
+}
+
+define @setAllowance(%owner, %spender, %allowance) {
+  @allowanceRegion = 2
+  %key1 = call @mapKey(@allowanceRegion, %owner)
+  %key2 = call @mapKey(%key1, %spender)
+  sstore %allowance, %key2
+  ret void
+}
+
+define @log.Approval(%owner, %spender, %allowance) {
+  // hash of event name
+  @approvalEvent = 51203953783612407010867880206449430888987723574256155352892809266431502985471
+  @logCell = 0
+  store %allowance, @logCell
+  log @logCell, @approvalEvent, %owner, %spender
+  ret void
+}
+
+define @log.Transfer(%from, %to, %value) {
+  // hash of event name
+  @transferEvent = 108826829889743193495150187174564778908056497375576552531120215125716493244137
+  @logCell = 0
+  store %value, @logCell
+  log @logCell, @transferEvent, %from, %to
+  ret void
+}
+
+define public @totalSupply() {
+  @supply = 10000
+  ret @supply
+}
+
+define @init() {
+  @supply = 10000
+  %caller = call @iele.caller()
+  call @setBalance(%caller, @supply)
+  ret void
+}
+
+define public @balanceOf(%id) {
+  @balanceRegion = 1
+  %key = call @mapKey(@balanceRegion, %id)
+  %balance = sload %key
+  ret %balance
+}
+
+define public @allowance(%owner, %spender) {
+  @allowanceRegion = 2
+  %key1 = call @mapKey(@allowanceRegion, %owner)
+  %key2 = call @mapKey(%key1, %spender)
+  %allowance = sload %key2
+  ret %allowance
+}
+
+define public @approve(%spender, %allowance) {
+  @zero = 0
+  @retval = 1
+  %lt = cmp lt %allowance, @zero   // this check burns gas :(
+  br %lt, throw
+  %owner = call @iele.caller()  // written as msg.sender in Viper
+  call @setAllowance(%owner, %spender, %allowance)
+  call @log.Approval(%owner, %spender, %allowance)
+  ret @retval   // should always return true
+throw:
+  call @iele.invalid() // throwing exception
+}
+
+define public @transfer(%to, %value) {
+  @zero = 0
+  @retval = 1
+  %lt = cmp lt %value, @zero   // this check burns gas :(
+  br %lt, throw
+  %from = call @iele.caller()
+  %balanceFrom = call @balanceOf(%from)
+  %lt = cmp lt %balanceFrom, %value
+  br %lt, throw
+  %balanceFrom = sub %balanceFrom, %value
+  %balanceTo = call @balanceOf(%to)
+  %balanceTo = add %balanceTo, %value  // no worries of overflow
+  call @setBalance(%from, %balanceFrom)
+  call @setBalance(%to, %balanceTo)
+  call @log.Transfer(%from, %to, %value)
+  ret @retval  // should either return true or throw
+throw:
+  call @iele.invalid() // throwing exception
+}
+
+define public @transferFrom(%from, %to, %value) {
+  @zero = 0
+  @retval = 1
+  %lt = cmp lt %value, @zero   // this check burns gas :(
+  br %lt, throw
+  %caller = call @iele.caller()
+  %balanceFrom = call @balanceOf(%from)
+  %lt = cmp lt %balanceFrom, %value
+  br %lt, throw
+  %allowance = call @allowance(%from, %caller)
+  %lt = cmp lt %allowance, %value
+  br %lt, throw
+  %balanceFrom = sub %balanceFrom, %value
+  %allowance = sub %allowance, %value
+  %balanceTo = call @balanceOf(%to)
+  %balanceTo = add %balanceTo, %value  // no worries of overflow
+  call @setBalance(%from, %balanceFrom)
+  call @setAllowance(%from, %caller, %allowance)
+  call @setBalance(%to, %balanceTo)
+  call @log.Transfer(%from, %to, %value)
+  ret @retval  // should either return true or throw
+throw:
+  call @iele.invalid() // throwing exception
+}
+
+}
