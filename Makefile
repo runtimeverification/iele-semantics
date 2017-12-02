@@ -3,14 +3,17 @@ K_VERSION=rvk
 # Common to all versions of K
 # ===========================
 
-.PHONY: all clean build tangle defn proofs split-tests test vm-test blockchain-test deps
+.PHONY: all clean build tangle defn proofs split-tests test vm-test blockchain-test deps assembler
 
 all: build split-vm-tests
 
 clean:
 	rm -r .build
 
-build: tangle .build/${K_VERSION}/ethereum-kompiled/extras/timestamp
+build: tangle .build/${K_VERSION}/ethereum-kompiled/extras/timestamp assembler
+
+assembler:
+	cd compiler && stack build --install-ghc
 
 # Tangle from *.md files
 # ----------------------
