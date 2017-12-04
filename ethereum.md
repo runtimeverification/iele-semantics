@@ -170,6 +170,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
     syntax IELECommand ::= "#adjustGas"
  // -----------------------------------
     rule <k> #adjustGas => . ... </k>
+         <checkGas> false </checkGas>
          <gas> _ => GLIMIT -Int GUSED </gas>
          <refund> _ => 0 </refund>
          <gasUsed> GUSED </gasUsed>
@@ -179,6 +180,8 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            <txGasLimit> GLIMIT </txGasLimit>
            ...
          </message>
+
+    rule <k> #adjustGas => . ... </k> <checkGas> true </checkGas>
 
     syntax IELECommand ::= "#finishTx"
  // ----------------------------------
@@ -275,7 +278,7 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
 ```{.k .uiuck .rvk}
     syntax Set ::= "#loadKeys" [function]
  // -------------------------------------
-    rule #loadKeys => ( SetItem("env") SetItem("pre") SetItem("blockHeader") SetItem("transactions") SetItem("uncleHeaders") SetItem("network") SetItem("genesisRLP") )
+    rule #loadKeys => ( SetItem("env") SetItem("pre") SetItem("blockHeader") SetItem("transactions") SetItem("uncleHeaders") SetItem("network") SetItem("genesisRLP") SetItem("checkGas") )
 
     rule run TESTID : { KEY : (VAL:JSON) , REST } => load KEY : VAL ~> run TESTID : { REST } requires KEY in #loadKeys
 
@@ -459,6 +462,9 @@ Since IELE is a new language with no hard forks yet, we only support the latest 
     syntax Schedule ::= #asScheduleString ( String ) [function]
  // -----------------------------------------------------------
     rule #asScheduleString("Byzantium")      => ALBE
+
+    rule <k> load "checkGas" : CHECKGAS => . ... </k>
+         <checkGas> _ => CHECKGAS </checkGas>
 ```
 
 The `"blockHeader"` key loads the block information.
@@ -650,7 +656,8 @@ Here we check the other post-conditions associated with an EVM test.
     rule check TESTID : { "gas" : GLEFT } => check "gas" : GLEFT ~> failure TESTID
  // ------------------------------------------------------------------------------
     rule check "gas" : ((GLEFT:String) => #parseWord(GLEFT))
-    rule <k> check "gas" : GLEFT => . ... </k> //<gas> GLEFT </gas>
+    rule <k> check "gas" : GLEFT => . ... </k> <checkGas> false </checkGas>
+    rule <k> check "gas" : GLEFT => . ... </k> <checkGas> true  </checkGas> <gas> GLEFT </gas>
 
     rule check TESTID : { "callcreates" : CCREATES } => check "callcreates" : CCREATES ~> failure TESTID
  // ----------------------------------------------------------------------------------------------------

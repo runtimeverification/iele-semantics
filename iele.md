@@ -30,6 +30,7 @@ In the comments next to each cell, we've marked which component of the yellowpap
                   <exit-code exit=""> 1 </exit-code>
                   <mode> $MODE:Mode </mode>
                   <schedule> $SCHEDULE:Schedule </schedule>
+                  <checkGas> true </checkGas>
                   <analysis> .Map </analysis>
 
                   // IELE Specific
