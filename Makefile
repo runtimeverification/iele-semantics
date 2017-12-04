@@ -92,7 +92,7 @@ tests/BlockchainTests/%.test: tests/BlockchainTests/% | build
 	./blockchaintest $<
 	touch $@
 
-tests/%/make.timestamp: tests/ethereum-tests/%.json tests/evm-to-iele/evm-to-iele
+tests/%/make.timestamp: tests/ethereum-tests/%.json tests/evm-to-iele/evm-to-iele tests/evm-to-iele/evm-test-to-iele
 	@echo "==   split: $@"
 	mkdir -p $(dir $@)
 	tests/split-test.py $< $(dir $@)

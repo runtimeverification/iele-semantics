@@ -40,6 +40,8 @@ def convertToIele(json):
           else:
             json["function"] = u"deposit"
           json["arguments"] = convertCallData(json["data"], isCreateTx)
+        if "network" in json.keys() or "callcreates" in json.keys():
+          json["checkGas"] = False
         for key, value in json.iteritems():
             if key == "code" or (key == "data" and isCreateTx):
                 res[key] = convertCodeToIele(value)
