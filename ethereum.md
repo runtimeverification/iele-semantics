@@ -4,17 +4,13 @@ Ethereum Backwards-Compatibility Testing
 Here we test the Ethereum test suite against the new IELE VM.
 Actual execution of IELE is defined in [the IELE file](iele.md).
 
-```{.k .uiuck}
-requires "verification.k"
-```
-
 ```{.k .uiuck .rvk}
 requires "iele.k"
-requires "analysis.k"
+requires "iele-binary.k"
 
 module ETHEREUM-SIMULATION
     imports IELE
-    imports IELE-ANALYSIS
+    imports IELE-BINARY
 ```
 
 ```{.k .uiuck}
@@ -25,27 +21,27 @@ module ETHEREUM-SIMULATION
     imports K-REFLECTION
 ```
 
-An Ethereum simulation is a list of Ethereum commands.
-Some Ethereum commands take an Ethereum specification (eg. for an account or transaction).
+A IELE simulation is a list of IELE commands.
+Some IELE commands take a specification of IELE state (eg. for an account or transaction).
 
 ```{.k .uiuck .rvk}
-    syntax EthereumSimulation ::= ".EthereumSimulation"
-                                | EthereumCommand EthereumSimulation
- // ----------------------------------------------------------------
-    rule .EthereumSimulation => .
-    rule ETC:EthereumCommand ETS:EthereumSimulation => ETC ~> ETS
+    syntax IELESimulation ::= ".IELESimulation"
+                                | IELECommand IELESimulation
+ // --------------------------------------------------------
+    rule .IELESimulation => .
+    rule IEC:IELECommand IES:IELESimulation => IEC ~> IES
 
-    syntax EthereumSimulation ::= JSON
- // ----------------------------------
-    rule <k> JSONINPUT:JSON => run JSONINPUT success .EthereumSimulation </k>
+    syntax IELESimulation ::= JSON
+ // ------------------------------
+    rule <k> JSONINPUT:JSON => run JSONINPUT success .IELESimulation </k>
 ```
 
 For verification purposes, it's much easier to specify a program in terms of its op-codes and not the hex-encoding that the tests use.
 To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a "pretti-fication" to the nicer input form.
 
 ```{.k .uiuck .rvk}
-    syntax JSON ::= Int | WordStack | Ops | Map | Call | SubstateLogEntry | Account
- // -----------------------------------------------------------------------------------
+    syntax JSON ::= Int | WordStack | Map | SubstateLogEntry | Account
+ // ------------------------------------------------------------------
 
     syntax JSONList ::= #sortJSONList ( JSONList )            [function]
                       | #sortJSONList ( JSONList , JSONList ) [function, klabel(#sortJSONListAux)]
@@ -73,25 +69,26 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
 -   `flush` places `#finalize` on the `<k>` cell once it sees `#end` in the `<k>` cell, clearing any exceptions it finds.
 
 ```{.k .uiuck .rvk}
-    syntax EthereumCommand ::= "start"
- // ----------------------------------
-    rule <mode> NORMAL     </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData>
-    rule <mode> VMTESTS    </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData>
-    rule <mode> GASANALYZE </mode> <k> start => #load #regRange(#sizeRegs(VALUES)) VALUES ~> #gasAnalyze ... </k> <callData> VALUES </callData>
+    syntax IELECommand ::= "start"
+ // ------------------------------
+    rule <mode> NORMAL     </mode> <k> start => #loads #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData> <fid> _ => deposit </fid>
+    rule <mode> VMTESTS    </mode> <k> start => #loads #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData> <fid> _ => deposit </fid>
+ // rule <mode> GASANALYZE </mode> <k> start => #loads #regRange(#sizeRegs(VALUES)) VALUES ~> #gasAnalyze ... </k> <callData> VALUES </callData> <fid> _ => deposit </fid>
 
-    syntax EthereumCommand ::= "flush"
- // ----------------------------------
+    syntax IELECommand ::= "flush"
+ // ------------------------------
     rule <k> #end       ~> flush => #finalizeTx(false)               ... </k>
     rule <k> #exception ~> flush => #finalizeTx(false) ~> #exception ... </k>
 ```
 
 -   `startTx` computes the sender of the transaction, and places loadTx on the `k` cell.
 -   `loadTx(_)` loads the next transaction to be executed into the current state.
+-   `#adjustGas` fakes the gas usage of the transaction since the EVM-to-IELE conversion does not preserve gas usage.
 -   `finishTx` is a place-holder for performing necessary cleanup after a transaction.
 
 ```{.k .uiuck .rvk}
-    syntax EthereumCommand ::= "startTx"
- // ------------------------------------
+    syntax IELECommand ::= "startTx"
+ // --------------------------------
     rule <k> startTx => #finalizeBlock ... </k>
          <txPending> .List </txPending>
 
@@ -102,7 +99,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            <txNonce>    TN   </txNonce>
            <txGasPrice> TP   </txGasPrice>
            <txGasLimit> TG   </txGasLimit>
-           <to>         TT   </to>
+           <sendto>     TT   </sendto>
            <value>      TV   </value>
            <v>          TW   </v>
            <r>          TR   </r>
@@ -110,11 +107,11 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            <data>       DATA </data>
          </message>
 
-    syntax EthereumCommand ::= loadTx ( Int )
- // -----------------------------------------
+    syntax IELECommand ::= loadTx ( Int )
+ // -------------------------------------
     rule <k> loadTx(ACCTFROM)
-          => #create ACCTFROM #newAddr(ACCTFROM, NONCE) (GLIMIT -Int G0(SCHED, CODE, true)) VALUE CODE
-          ~> #execute ~> #finishTx ~> #adjustGas ~> #finalizeTx(false) ~> startTx
+          => #create ACCTFROM #newAddr(ACCTFROM, NONCE) (GLIMIT -Int G0(SCHED, CODE, true)) VALUE #dasmContract(CODE, Main) .Ints
+          ~> #codeDeposit #newAddr(ACCTFROM, NONCE) #sizeWordStack(CODE) #dasmContract(CODE, Main) %0 true ~> #adjustGas ~> #finalizeTx(false) ~> startTx
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -126,7 +123,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            <msgID>      TXID     </msgID>
            <txGasPrice> GPRICE   </txGasPrice>
            <txGasLimit> GLIMIT   </txGasLimit>
-           <to>         .Account </to>
+           <sendto>     .Account </sendto>
            <value>      VALUE    </value>
            <data>       CODE     </data>
            ...
@@ -140,8 +137,8 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
          <activeAccounts> ... ACCTFROM |-> (_ => false) ... </activeAccounts>
 
     rule <k> loadTx(ACCTFROM)
-          => #call ACCTFROM ACCTTO ACCTTO (GLIMIT -Int G0(SCHED, DATA, false)) VALUE VALUE (#sizeWordStack(DATA) #asUnsigned(DATA) .Regs) false
-          ~> #execute ~> #finishTx ~> #adjustGas ~> #finalizeTx(false) ~> startTx
+          => #call ACCTFROM ACCTTO deposit (GLIMIT -Int G0(SCHED, DATA, false)) VALUE (#sizeWordStack(DATA) , #asUnsigned(DATA) , .Ints) false
+          ~> #finishTx ~> #adjustGas ~> #finalizeTx(false) ~> startTx
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -153,7 +150,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            <msgID>      TXID   </msgID>
            <txGasPrice> GPRICE </txGasPrice>
            <txGasLimit> GLIMIT </txGasLimit>
-           <to>         ACCTTO </to>
+           <sendto>     ACCTTO </sendto>
            <value>      VALUE  </value>
            <data>       DATA   </data>
            ...
@@ -167,10 +164,11 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
          <activeAccounts> ... ACCTFROM |-> (_ => false) ... </activeAccounts>
       requires ACCTTO =/=K .Account
 
-    syntax EthereumCommand ::= "#adjustGas"
- // ---------------------------------------
+    syntax IELECommand ::= "#adjustGas"
+ // -----------------------------------
     rule <k> #adjustGas => . ... </k>
          <gas> _ => GLIMIT -Int GUSED </gas>
+         <refund> _ => 0 </refund>
          <gasUsed> GUSED </gasUsed>
          <txPending> ListItem(TXID:Int) ... </txPending>
          <message>
@@ -179,42 +177,33 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            ...
          </message>
 
-    syntax EthereumCommand ::= "#finishTx"
- // --------------------------------------
+    syntax IELECommand ::= "#finishTx"
+ // ----------------------------------
     rule <k> #exception ~> #finishTx => #popCallStack ~> #popWorldState ~> #popSubstate ... </k>
     rule <k> #revert    ~> #finishTx => #popCallStack ~> #popWorldState ~> #popSubstate ~> #refund GAVAIL ... </k> <gas> GAVAIL </gas>       
-
-    rule <k> #end ~> #finishTx => #mkCodeDeposit ACCT %0 ... </k>
-         <id> ACCT </id>
-         <txPending> ListItem(TXID:Int) ... </txPending>
-         <message>
-           <msgID> TXID     </msgID>
-           <to>    .Account </to>
-           ...
-         </message>
 
     rule <k> #end ~> #finishTx => #popCallStack ~> #dropWorldState ~> #dropSubstate ~> #refund GAVAIL ... </k>
          <id> ACCT </id>
          <gas> GAVAIL </gas>
          <txPending> ListItem(TXID:Int) ... </txPending>
          <message>
-           <msgID> TXID </msgID>
-           <to>    TT   </to>
+           <msgID>  TXID </msgID>
+           <sendto> TT   </sendto>
            ...
          </message>
       requires TT =/=K .Account
 ```
 
 -   `#finalizeBlock` is used to signal that block finalization procedures should take place (after transactions have executed).
--   `#rewardOmmers(_)` pays out the reward to uncle blocks so that blocks are orphaned less often in Ethereum.
+-   `#rewardOmmers(_)` pays out the reward to uncle blocks so that blocks are orphaned less often.
 
 ```{.k .uiuck .rvk}
-    syntax EthereumCommand ::= "#finalizeBlock" | #rewardOmmers ( JSONList )
- // ------------------------------------------------------------------------
+    syntax IELECommand ::= "#finalizeBlock" | #rewardOmmers ( JSONList )
+ // --------------------------------------------------------------------
     rule <k> #finalizeBlock => #rewardOmmers(OMMERS) ... </k>
          <schedule> SCHED </schedule>
          <ommerBlockHeaders> [ OMMERS ] </ommerBlockHeaders>
-         <coinbase> MINER </coinbase>
+         <beneficiary> MINER </beneficiary>
          <account>
            <acctID> MINER </acctID>
            <balance> MINBAL => MINBAL +Int Rb < SCHED > </balance>
@@ -223,14 +212,14 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
          <activeAccounts> ... MINER |-> (_ => false) ... </activeAccounts>
 
     rule <k> (.K => #newAccount MINER) ~> #finalizeBlock ... </k>
-         <coinbase> MINER </coinbase>
+         <beneficiary> MINER </beneficiary>
          <activeAccounts> ACCTS </activeAccounts>
       requires notBool MINER in_keys(ACCTS)
 
     rule <k> #rewardOmmers(.JSONList) => . ... </k>
     rule <k> #rewardOmmers([ _ , _ , OMMER , _ , _ , _ , _ , _ , OMMNUM , _ ] , REST) => #rewardOmmers(REST) ... </k>
          <schedule> SCHED </schedule>
-         <coinbase> MINER </coinbase>
+         <beneficiary> MINER </beneficiary>
          <number> CURNUM </number>
          <account>
            <acctID> MINER </acctID>
@@ -249,8 +238,8 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
 -   `failure_` holds the name of a test that failed if a test does fail.
 
 ```{.k .uiuck .rvk}
-    syntax EthereumCommand ::= "exception" | "failure" String | "success"
- // ---------------------------------------------------------------------
+    syntax IELECommand ::= "exception" | "failure" String | "success"
+ // -----------------------------------------------------------------
     rule <k> #exception ~> exception => . ... </k>
     rule <k> success => . ... </k> <exit-code> _ => 0 </exit-code>
     rule failure _ => .
@@ -263,8 +252,8 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
 Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`.
 
 ```{.k .uiuck .rvk}
-    syntax EthereumCommand ::= "run" JSON
- // -------------------------------------
+    syntax IELECommand ::= "run" JSON
+ // ---------------------------------
     rule run { .JSONList } => .
     rule run { TESTID : { TEST:JSONList } , TESTS }
       => run ( TESTID : { #sortJSONList(TEST) } )
@@ -283,7 +272,7 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
 ```{.k .uiuck .rvk}
     syntax Set ::= "#loadKeys" [function]
  // -------------------------------------
-    rule #loadKeys => ( SetItem("env") SetItem("pre") SetItem("rlp") SetItem("network") SetItem("genesisRLP") )
+    rule #loadKeys => ( SetItem("env") SetItem("pre") SetItem("blockHeader") SetItem("transactions") SetItem("uncleHeaders") SetItem("network") SetItem("genesisRLP") )
 
     rule run TESTID : { KEY : (VAL:JSON) , REST } => load KEY : VAL ~> run TESTID : { REST } requires KEY in #loadKeys
 
@@ -313,7 +302,7 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
     rule #postKeys    => ( SetItem("post") SetItem("postState") )
     rule #allPostKeys => ( #postKeys SetItem("expect") SetItem("export") SetItem("expet") )
     rule #checkKeys   => ( #allPostKeys SetItem("logs") SetItem("callcreates") SetItem("out") SetItem("gas")
-                           SetItem("blockHeader") SetItem("transactions") SetItem("uncleHeaders") SetItem("genesisBlockHeader")
+                           SetItem("genesisBlockHeader")
                          )
 
     rule run TESTID : { KEY : (VAL:JSON) , REST } => run TESTID : { REST } ~> check TESTID : { "post" : VAL } requires KEY in #allPostKeys
@@ -325,7 +314,7 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
 ```{.k .uiuck .rvk}
     syntax Set ::= "#discardKeys" [function]
  // ----------------------------------------
-    rule #discardKeys => ( SetItem("//") SetItem("_info") )
+    rule #discardKeys => ( SetItem("//") SetItem("_info") SetItem("rlp") )
 
     rule run TESTID : { KEY : _ , REST } => run TESTID : { REST } requires KEY in #discardKeys
 ```
@@ -336,68 +325,15 @@ State Manipulation
 ### Clearing State
 
 -   `clear` clears all the execution state of the machine.
--   `clearX` clears the substate `X`, for `TX`, `BLOCK`, and `NETWORK`.
 
 ```{.k .uiuck .rvk}
-    syntax EthereumCommand ::= "clear"
- // ----------------------------------
-    rule <k> clear => clearTX ~> clearBLOCK ~> clearNETWORK ... </k>
+    syntax IELECommand ::= "clear"
+ // ------------------------------
+    rule <k> clear => . ... </k>
          <analysis> _ => .Map </analysis>
+         <schedule> _ => DEFAULT </schedule>
+         (<iele> _ </iele> => <iele> ... .Bag </iele>)
 
-    syntax EthreumCommand ::= "clearTX"
- // -----------------------------------
-    rule <k> clearTX => . ... </k>
-         <output>       _ => .Regs      </output>
-         <memoryUsed>   _ => 0          </memoryUsed>
-         <callDepth>    _ => 0          </callDepth>
-         <callStack>    _ => .List      </callStack>
-         <callLog>      _ => .Set       </callLog>
-         <program>      _ => .Map       </program>
-         <programBytes> _ => .WordStack </programBytes>
-         <jumpTable>    _ => .Map       </jumpTable>
-         <id>           _ => 0          </id>
-         <caller>       _ => 0          </caller>
-         <callData>     _ => .Regs      </callData>
-         <callValue>    _ => 0          </callValue>
-         <regs>         _ => .Array     </regs>
-         <localMem>     _ => .Array     </localMem>
-         <pc>           _ => 0          </pc>
-         <gas>          _ => 0          </gas>
-         <previousGas>  _ => 0          </previousGas>
-         <selfDestruct> _ => .Set       </selfDestruct>
-         <log>          _ => .List      </log>
-         <refund>       _ => 0          </refund>
-         <gasPrice>     _ => 0          </gasPrice>
-         <origin>       _ => 0          </origin>
-
-    syntax EthreumCommand ::= "clearBLOCK"
- // --------------------------------------
-    rule <k> clearBLOCK => . ... </k>
-         <previousHash>      _ => 0             </previousHash>
-         <ommersHash>        _ => 0             </ommersHash>
-         <coinbase>          _ => 0             </coinbase>
-         <stateRoot>         _ => 0             </stateRoot>
-         <transactionsRoot>  _ => 0             </transactionsRoot>
-         <receiptsRoot>      _ => 0             </receiptsRoot>
-         <logsBloom>         _ => .WordStack    </logsBloom>
-         <difficulty>        _ => 0             </difficulty>
-         <number>            _ => 0             </number>
-         <gasLimit>          _ => 0             </gasLimit>
-         <gasUsed>           _ => 0             </gasUsed>
-         <timestamp>         _ => 0             </timestamp>
-         <extraData>         _ => .WordStack    </extraData>
-         <mixHash>           _ => 0             </mixHash>
-         <blockNonce>        _ => 0             </blockNonce>
-         <ommerBlockHeaders> _ => [ .JSONList ] </ommerBlockHeaders>
-         <blockhash>         _ => .List         </blockhash>
-
-    syntax EthreumCommand ::= "clearNETWORK"
- // ----------------------------------------
-    rule <k> clearNETWORK => . ... </k>
-         <activeAccounts> _ => .Map    </activeAccounts>
-         <accounts>       _ => .Bag    </accounts>
-         <messages>       _ => .Bag    </messages>
-         <schedule>       _ => DEFAULT </schedule>
 ```
 
 ### Loading State
@@ -405,19 +341,19 @@ State Manipulation
 -   `mkAcct_` creates an account with the supplied ID (assuming it's already been chopped to 160 bits).
 
 ```{.k .uiuck .rvk}
-    syntax EthereumCommand ::= "mkAcct" Int
- // ---------------------------------------
+    syntax IELECommand ::= "mkAcct" Int
+ // -----------------------------------
     rule <k> mkAcct ACCT => #newAccount ACCT ... </k>
 ```
 
 -   `load` loads an account or transaction into the world state.
 
 ```{.k .uiuck .rvk}
-    syntax EthereumCommand ::= "load" JSON
- // --------------------------------------
+    syntax IELECommand ::= "load" JSON
+ // ----------------------------------
     rule load DATA : { .JSONList } => .
     rule load DATA : { KEY : VALUE , REST } => load DATA : { KEY : VALUE } ~> load DATA : { REST }
-      requires REST =/=K .JSONList andBool DATA =/=String "transaction"
+      requires REST =/=K .JSONList andBool DATA =/=String "transactions"
 
     rule load DATA : [ .JSONList ] => .
     rule load DATA : [ { TEST } , REST ] => load DATA : { TEST } ~> load DATA : [ REST ]
@@ -451,7 +387,7 @@ The individual fields of the accounts are dealt with here.
     rule <k> load "account" : { ACCT : { "code" : (CODE:WordStack) } } => . ... </k>
          <account>
            <acctID> ACCT </acctID>
-           <code> _ => CODE </code>
+           <code> _ => #dasmContract(CODE, Main) </code>
            ...
          </account>
          <activeAccounts> ... ACCT |-> (EMPTY => #if CODE =/=K .WordStack #then false #else EMPTY #fi) ... </activeAccounts>
@@ -480,7 +416,7 @@ Here we load the environmental information.
     rule load "env" : { KEY : ((VAL:String) => #parseHexWord(VAL)) }
       requires KEY in (SetItem("currentCoinbase") SetItem("previousHash"))
  // ----------------------------------------------------------------------
-    rule <k> load "env" : { "currentCoinbase"   : (CB:Int)     } => . ... </k> <coinbase>     _ => CB     </coinbase>
+    rule <k> load "env" : { "currentCoinbase"   : (CB:Int)     } => . ... </k> <beneficiary>     _ => CB     </beneficiary>
     rule <k> load "env" : { "currentDifficulty" : (DIFF:Int)   } => . ... </k> <difficulty>   _ => DIFF   </difficulty>
     rule <k> load "env" : { "currentGasLimit"   : (GLIMIT:Int) } => . ... </k> <gasLimit>     _ => GLIMIT </gasLimit>
     rule <k> load "env" : { "currentNumber"     : (NUM:Int)    } => . ... </k> <number>       _ => NUM    </number>
@@ -504,15 +440,14 @@ Here we load the environmental information.
     rule load "exec" : { "data" : ((DATA:String) => #parseByteStack(DATA)) }
     rule load "exec" : { "data" : ((DATA:WordStack) => [#asUnsigned(DATA), #sizeWordStack(DATA)]) } 
  // -----------------------------------------------------------------------------------------------
-    rule <k> load "exec" : { "data" : [DATA:Int, LEN:Int] } => . ... </k> <callData> _ => LEN DATA .Regs </callData>
+    rule <k> load "exec" : { "data" : [DATA:Int, LEN:Int] } => . ... </k> <callData> _ => LEN , DATA , .Ints </callData>
     rule <k> load "exec" : { "code" : (CODE:WordStack) } => . ... </k>
-         <program>  _ => #asMapOps(#dasmOps(CODE, SCHED)) </program>
-         <programBytes> _ => CODE </programBytes>
-         <jumpTable> _ => #computeJumpTable(#asMapOps(#dasmOps(CODE, SCHED))) </jumpTable>
+         (<program>  _ </program> => #loadCode(#dasmContract(CODE, Main)))
          <schedule> SCHED </schedule>
 ```
 
 The `"network"` key allows setting the fee schedule inside the test.
+Since IELE is a new language with no hard forks yet, we only support the latest EVM gas schedule.
 
 ```{.k .uiuck .rvk}
     rule <k> load "network" : SCHEDSTRING => . ... </k>
@@ -523,52 +458,87 @@ The `"network"` key allows setting the fee schedule inside the test.
     rule #asScheduleString("Byzantium")      => ALBE
 ```
 
-The `"rlp"` key loads the block information.
+The `"blockHeader"` key loads the block information.
 
 ```{.k .uiuck .rvk}
-    rule load "rlp" : (VAL:String => #rlpDecode(#unparseByteStack(#parseByteStack(VAL))))
+    rule <k> load "blockHeader" : { "nonce" : (HN:String) } => . ...</k> 
+         <blockNonce> _ => #asUnsigned(#parseByteStack(HN)) </blockNonce>
+
+    rule <k> load "blockHeader" : { "receiptTrie" : (HE:String) } => . ...</k> 
+         <receiptsRoot> _ => #asUnsigned(#parseByteStack(HE)) </receiptsRoot>
+
+    rule load "blockHeader" : { "hash" : _ } => .
+
+    rule <k> load "blockHeader" : { "uncleHash" : (HO:String) } => . ...</k> 
+         <ommersHash> _ => #asUnsigned(#parseByteStack(HO)) </ommersHash>
+
+    rule <k> load "blockHeader" : { "mixHash" : (HM:String) } => . ...</k> 
+         <mixHash> _ => #asUnsigned(#parseByteStack(HM)) </mixHash>
+
+    rule <k> load "blockHeader" : { "parentHash" : (HP:String) } => . ...</k> 
+         <previousHash> _ => #asUnsigned(#parseByteStack(HP)) </previousHash>
+
+    rule <k> load "blockHeader" : { "extraData" : (HX:String) } => . ...</k> 
+         <extraData> _ => #parseByteStack(HX) </extraData>
+
+    rule <k> load "blockHeader" : { "gasLimit" : (HL:String) } => . ...</k> 
+         <gasLimit> _ => #asUnsigned(#parseByteStack(HL)) </gasLimit>
+
+    rule <k> load "blockHeader" : { "number" : (HI:String) } => . ...</k> 
+         <number> _ => #asUnsigned(#parseByteStack(HI)) </number>
+
+    rule <k> load "blockHeader" : { "stateRoot" : (HR:String) } => . ...</k> 
+         <stateRoot> _ => #asUnsigned(#parseByteStack(HR)) </stateRoot>
+
+    rule <k> load "blockHeader" : { "difficulty" : (HD:String) } => . ...</k> 
+         <difficulty> _ => #asUnsigned(#parseByteStack(HD)) </difficulty>
+
+    rule <k> load "blockHeader" : { "timestamp" : (HS:String) } => . ...</k> 
+         <timestamp> _ => #asUnsigned(#parseByteStack(HS)) </timestamp>
+
+    rule <k> load "blockHeader" : { "coinbase" : (HC:String) } => . ...</k> 
+         <beneficiary> _ => #asUnsigned(#parseByteStack(HC)) </beneficiary>
+
+    rule <k> load "blockHeader" : { "transactionsTrie" : (HT:String) } => . ...</k> 
+         <transactionsRoot> _ => #asUnsigned(#parseByteStack(HT)) </transactionsRoot>
+
+    rule <k> load "blockHeader" : { "bloom" : (HB:String) } => . ...</k> 
+         <logsBloom> _ => #parseByteStack(HB) </logsBloom>
+
+    rule <k> load "blockHeader" : { "gasUsed" : (HG:String) } => . ...</k> 
+         <gasUsed> _ => #asUnsigned(#parseByteStack(HG)) </gasUsed>
+
+    rule <k> load "uncleHeaders" : [ .JSONList ] => . ...</k>
+         <ommerBlockHeaders> _ => [ .JSONList ] </ommerBlockHeaders>
+
     rule load "genesisRLP" : (VAL:String => #rlpDecode(#unparseByteStack(#parseByteStack(VAL))))
  // --------------------------------------------------------------------------------------------
-    rule <k> load "rlp" : [ [ HP , HO , HC , HR , HT , HE , HB , HD , HI , HL , HG , HS , HX , HM , HN , .JSONList ] , BT , BU , .JSONList ]
-          => load "transaction" : BT
-         ...
-         </k>
-         <previousHash>      _ => #asUnsigned(#parseByteStackRaw(HP)) </previousHash>
-         <ommersHash>        _ => #asUnsigned(#parseByteStackRaw(HO)) </ommersHash>
-         <coinbase>          _ => #asUnsigned(#parseByteStackRaw(HC)) </coinbase>
-         <stateRoot>         _ => #asUnsigned(#parseByteStackRaw(HR)) </stateRoot>
-         <transactionsRoot>  _ => #asUnsigned(#parseByteStackRaw(HT)) </transactionsRoot>
-         <receiptsRoot>      _ => #asUnsigned(#parseByteStackRaw(HE)) </receiptsRoot>
-         <logsBloom>         _ => #parseByteStackRaw(HB)          </logsBloom>
-         <difficulty>        _ => #asUnsigned(#parseByteStackRaw(HD)) </difficulty>
-         <number>            _ => #asUnsigned(#parseByteStackRaw(HI)) </number>
-         <gasLimit>          _ => #asUnsigned(#parseByteStackRaw(HL)) </gasLimit>
-         <gasUsed>           _ => #asUnsigned(#parseByteStackRaw(HG)) </gasUsed>
-         <timestamp>         _ => #asUnsigned(#parseByteStackRaw(HS)) </timestamp>
-         <extraData>         _ => #parseByteStackRaw(HX)          </extraData>
-         <mixHash>           _ => #asUnsigned(#parseByteStackRaw(HM)) </mixHash>
-         <blockNonce>        _ => #asUnsigned(#parseByteStackRaw(HN)) </blockNonce>
-         <ommerBlockHeaders> _ => BU                              </ommerBlockHeaders>
-
     rule <k> load "genesisRLP": [ [ HP, HO, HC, HR, HT, HE:String, HB, HD, HI, HL, HG, HS, HX, HM, HN, .JSONList ], _, _, .JSONList ] => .K ... </k>
          <blockhash> .List => ListItem(#blockHeaderHash(HP, HO, HC, HR, HT, HE, HB, HD, HI, HL, HG, HS, HX, HM, HN)) ListItem(#asUnsigned(#parseByteStackRaw(HP))) ... </blockhash>
+```
 
-    rule <k> load "transaction" : [ [ TN , TP , TG , TT , TV , TI , TW , TR , TS ] , REST => REST ] ... </k>
+The `"transactions"` key loads the transactions.
+
+```{.k .uiuck .rvk}
+    rule load "transactions" : { TX } => load "transactions" : { #sortJSONList(TX) }
+         requires notBool #isSorted(TX)
+
+    rule <k> load "transactions" : { "data" : TI , "gasLimit" : TG , "gasPrice" : TP , "nonce" : TN , "r" : TR , "s" : TS , "to" : TT , "v" : TW , "value" : TV , .JSONList } => . ... </k>
          <txOrder>   ... .List => ListItem(!ID) </txOrder>
          <txPending> ... .List => ListItem(!ID) </txPending>
          <messages>
            ( .Bag
           => <message>
                <msgID>      !ID:Int                                 </msgID>
-               <txNonce>    #asUnsigned(#parseByteStackRaw(TN))         </txNonce>
-               <txGasPrice> #asUnsigned(#parseByteStackRaw(TP))         </txGasPrice>
-               <txGasLimit> #asUnsigned(#parseByteStackRaw(TG))         </txGasLimit>
-               <to>         #asAccount(#parseByteStackRaw(TT))      </to>
-               <value>      #asUnsigned(#parseByteStackRaw(TV))         </value>
-               <v>          #asUnsigned(#parseByteStackRaw(TW))         </v>
-               <r>          #padToWidth(32, #parseByteStackRaw(TR)) </r>
-               <s>          #padToWidth(32, #parseByteStackRaw(TS)) </s>
-               <data>       #parseByteStackRaw(TI)                  </data>
+               <txNonce>    #asUnsigned(#parseByteStack(TN))         </txNonce>
+               <txGasPrice> #asUnsigned(#parseByteStack(TP))         </txGasPrice>
+               <txGasLimit> #asUnsigned(#parseByteStack(TG))         </txGasLimit>
+               <sendto>     #asAccount(#parseByteStack(TT))          </sendto>
+               <value>      #asUnsigned(#parseByteStack(TV))         </value>
+               <v>          #asUnsigned(#parseByteStack(TW))         </v>
+               <r>          #padToWidth(32, #parseByteStack(TR)) </r>
+               <s>          #padToWidth(32, #parseByteStack(TS)) </s>
+               <data>       #parseByteStack(TI)                  </data>
              </message>
            )
            ...
@@ -580,8 +550,8 @@ The `"rlp"` key loads the block information.
 -   `check_` checks if an account/transaction appears in the world-state as stated.
 
 ```{.k .uiuck .rvk}
-    syntax EthereumCommand ::= "check" JSON
- // ---------------------------------------
+    syntax IELECommand ::= "check" JSON
+ // -----------------------------------
     rule #exception ~> check J:JSON => check J ~> #exception
     rule check DATA : { .JSONList } => . requires DATA =/=String "transactions"
     rule check DATA : { (KEY:String) : VALUE , REST } => check DATA : { KEY : VALUE } ~> check DATA : { REST }
@@ -628,7 +598,13 @@ The `"rlp"` key loads the block information.
     rule <k> check "account" : { ACCT : { "code" : (CODE:WordStack) } } => . ... </k>
          <account>
            <acctID> ACCT </acctID>
-           <code> CODE </code>
+           <code> CONTRACT </code>
+           ...
+         </account>
+         requires #dasmContract(CODE, Main) ==K CONTRACT
+    rule <k> check "account" : { ACCT : { "code" : .WordStack } } => . ... </k>
+         <account>
+           <acctID> ACCT </acctID>
            ...
          </account>
 
@@ -644,12 +620,12 @@ Here we check the other post-conditions associated with an EVM test.
     rule check TESTID : { "out" : OUT } => check "out" : OUT ~> failure TESTID
  // --------------------------------------------------------------------------
     rule check "out" : ((OUT:String) => #parseHexWord(OUT))
-    rule <k> check "out" : OUT => . ... </k> <output> OUT .Regs </output>
-    rule <k> check "out" : 0   => . ... </k> <output> .Regs </output>
+    rule <k> check "out" : OUT => . ... </k> <output> OUT , .Ints </output>
+    rule <k> check "out" : 0   => . ... </k> <output> .Ints </output>
 
     rule check TESTID : { "logs" : LOGS } => check "logs" : LOGS ~> failure TESTID
  // ------------------------------------------------------------------------------
-    rule <k> check "logs" : HASH:String => . ... </k> <log> SL </log> requires #parseHexBytes(Keccak256(#rlpEncodeLogs(SL))) ==K #parseByteStack(HASH)
+    rule <k> check "logs" : HASH:String => . ... </k> <logData> SL </logData> requires #parseHexBytes(Keccak256(#rlpEncodeLogs(SL))) ==K #parseByteStack(HASH)
 
     syntax String ::= #rlpEncodeLogs(List)        [function]
                     | #rlpEncodeLogsAux(List)     [function]
@@ -669,56 +645,7 @@ Here we check the other post-conditions associated with an EVM test.
     rule check TESTID : { "callcreates" : CCREATES } => check "callcreates" : CCREATES ~> failure TESTID
  // ----------------------------------------------------------------------------------------------------
     rule check "callcreates" : { ("data" : (DATA:String)) , ("destination" : (ACCTTO:String)) , ("gasLimit" : (GLIMIT:String)) , ("value" : (VAL:String)) , .JSONList }
-      => check "callcreates" : { #parseAddr(ACCTTO) | 0 | #parseWord(VAL) | #parseHexWord(DATA) .Regs }
-    rule <k> check "callcreates" : C:Call => . ... </k> <callLog> CL </callLog> requires C in CL
-    rule <callLog> SetItem({ _ | GLIMIT => 0 | _ | _ }) ... </callLog> requires GLIMIT =/=Int 0
-
-    rule check TESTID : { "blockHeader" : BLOCKHEADER } => check "blockHeader" : BLOCKHEADER ~> failure TESTID
- // ----------------------------------------------------------------------------------------------------------
-    rule check "blockHeader" : { KEY : VALUE , REST } => check "blockHeader" : { KEY : VALUE } ~> check "blockHeader" : { REST } requires REST =/=K .JSONList
-
-    rule check "blockHeader" : { KEY : (VALUE:String => #parseByteStack(VALUE)) }
-
-    rule check "blockHeader" : { KEY : (VALUE:WordStack => #asUnsigned(VALUE)) }
-      requires KEY in ( SetItem("coinbase") SetItem("difficulty") SetItem("gasLimit") SetItem("gasUsed")
-                        SetItem("mixHash") SetItem("nonce") SetItem("number") SetItem("parentHash")
-                        SetItem("receiptTrie") SetItem("stateRoot") SetItem("timestamp")
-                        SetItem("transactionsTrie") SetItem("uncleHash")
-                      )
-
-    rule <k> check "blockHeader" : { "bloom"            : VALUE } => . ... </k> <logsBloom>        VALUE </logsBloom>
-    rule <k> check "blockHeader" : { "coinbase"         : VALUE } => . ... </k> <coinbase>         VALUE </coinbase>
-    rule <k> check "blockHeader" : { "difficulty"       : VALUE } => . ... </k> <difficulty>       VALUE </difficulty>
-    rule <k> check "blockHeader" : { "extraData"        : VALUE } => . ... </k> <extraData>        VALUE </extraData>
-    rule <k> check "blockHeader" : { "gasLimit"         : VALUE } => . ... </k> <gasLimit>         VALUE </gasLimit>
-    rule <k> check "blockHeader" : { "gasUsed"          : VALUE } => . ... </k> <gasUsed>          VALUE </gasUsed>
-    rule <k> check "blockHeader" : { "mixHash"          : VALUE } => . ... </k> <mixHash>          VALUE </mixHash>
-    rule <k> check "blockHeader" : { "nonce"            : VALUE } => . ... </k> <blockNonce>       VALUE </blockNonce>
-    rule <k> check "blockHeader" : { "number"           : VALUE } => . ... </k> <number>           VALUE </number>
-    rule <k> check "blockHeader" : { "parentHash"       : VALUE } => . ... </k> <previousHash>     VALUE </previousHash>
-    rule <k> check "blockHeader" : { "receiptTrie"      : VALUE } => . ... </k> <receiptsRoot>     VALUE </receiptsRoot>
-    rule <k> check "blockHeader" : { "stateRoot"        : VALUE } => . ... </k> <stateRoot>        VALUE </stateRoot>
-    rule <k> check "blockHeader" : { "timestamp"        : VALUE } => . ... </k> <timestamp>        VALUE </timestamp>
-    rule <k> check "blockHeader" : { "transactionsTrie" : VALUE } => . ... </k> <transactionsRoot> VALUE </transactionsRoot>
-    rule <k> check "blockHeader" : { "uncleHash"        : VALUE } => . ... </k> <ommersHash>       VALUE </ommersHash>
-
-    rule <k> check "blockHeader" : { "hash": HASH:WordStack } => . ...</k>
-         <previousHash>     HP </previousHash>
-         <ommersHash>       HO </ommersHash>
-         <coinbase>         HC </coinbase>
-         <stateRoot>        HR </stateRoot>
-         <transactionsRoot> HT </transactionsRoot>
-         <receiptsRoot>     HE </receiptsRoot>
-         <logsBloom>        HB </logsBloom>
-         <difficulty>       HD </difficulty>
-         <number>           HI </number>
-         <gasLimit>         HL </gasLimit>
-         <gasUsed>          HG </gasUsed>
-         <timestamp>        HS </timestamp>
-         <extraData>        HX </extraData>
-         <mixHash>          HM </mixHash>
-         <blockNonce>       HN </blockNonce>
-      requires #blockHeaderHash(HP, HO, HC, HR, HT, HE, HB, HD, HI, HL, HG, HS, HX, HM, HN) ==Int #asUnsigned(HASH)
+      => .
 
     rule check TESTID : { "genesisBlockHeader" : BLOCKHEADER } => check "genesisBlockHeader" : BLOCKHEADER ~> failure TESTID
  // ------------------------------------------------------------------------------------------------------------------------
@@ -728,34 +655,6 @@ Here we check the other post-conditions associated with an EVM test.
     rule check "genesisBlockHeader" : { "hash": (HASH:String => #asUnsigned(#parseByteStack(HASH))) }
     rule <k> check "genesisBlockHeader" : { "hash": HASH } => . ... </k>
          <blockhash> ... ListItem(HASH) ListItem(_) </blockhash>
-
-    rule check TESTID : { "transactions" : TRANSACTIONS } => check "transactions" : TRANSACTIONS ~> failure TESTID
- // --------------------------------------------------------------------------------------------------------------
-    rule <k> check "transactions" : [ .JSONList ] => . ... </k> <txOrder> .List </txOrder>
-    rule check "transactions" : [ TRANSACTION , REST ] => check "transactions" : TRANSACTION ~> check "transactions" : [ REST ]
-    rule check "transactions" : { KEY : VALUE , REST } => check "transactions" : (KEY : VALUE) ~> check "transactions" : { REST }
-    rule <k> check "transactions" : { .JSONList } => . ... </k> <txOrder> ListItem(_) => .List ... </txOrder>
-
-    rule check "transactions" : (KEY : (VALUE:String => #parseByteStack(VALUE)))
-
-    rule check "transactions" : (KEY : (VALUE:WordStack => #padToWidth(32, VALUE))) requires (KEY ==String "r" orBool KEY ==String "s") andBool #sizeWordStack(VALUE) <Int 32
-
-    rule check "transactions" : ("to" : (VALUE:WordStack => #asAccount(VALUE)))
-
-    rule check "transactions" : (KEY : (VALUE:WordStack => #asUnsigned(VALUE)))
-      requires KEY in ( SetItem("gasLimit") SetItem("gasPrice") SetItem("nonce")
-                        SetItem("v") SetItem("value")
-                      )
-
-    rule <k> check "transactions" : ("data"     : VALUE) => . ... </k> <txOrder> ListItem(TXID) ... </txOrder> <message> <msgID> TXID </msgID> <data>       VALUE </data>       ... </message>
-    rule <k> check "transactions" : ("gasLimit" : VALUE) => . ... </k> <txOrder> ListItem(TXID) ... </txOrder> <message> <msgID> TXID </msgID> <txGasLimit> VALUE </txGasLimit> ... </message>
-    rule <k> check "transactions" : ("gasPrice" : VALUE) => . ... </k> <txOrder> ListItem(TXID) ... </txOrder> <message> <msgID> TXID </msgID> <txGasPrice> VALUE </txGasPrice> ... </message>
-    rule <k> check "transactions" : ("nonce"    : VALUE) => . ... </k> <txOrder> ListItem(TXID) ... </txOrder> <message> <msgID> TXID </msgID> <txNonce>    VALUE </txNonce>    ... </message>
-    rule <k> check "transactions" : ("r"        : VALUE) => . ... </k> <txOrder> ListItem(TXID) ... </txOrder> <message> <msgID> TXID </msgID> <r>          VALUE </r>          ... </message>
-    rule <k> check "transactions" : ("s"        : VALUE) => . ... </k> <txOrder> ListItem(TXID) ... </txOrder> <message> <msgID> TXID </msgID> <s>          VALUE </s>          ... </message>
-    rule <k> check "transactions" : ("to"       : VALUE) => . ... </k> <txOrder> ListItem(TXID) ... </txOrder> <message> <msgID> TXID </msgID> <to>         VALUE </to>         ... </message>
-    rule <k> check "transactions" : ("v"        : VALUE) => . ... </k> <txOrder> ListItem(TXID) ... </txOrder> <message> <msgID> TXID </msgID> <v>          VALUE </v>          ... </message>
-    rule <k> check "transactions" : ("value"    : VALUE) => . ... </k> <txOrder> ListItem(TXID) ... </txOrder> <message> <msgID> TXID </msgID> <value>      VALUE </value>      ... </message>
 ```
 
 TODO: case with nonzero ommers.
