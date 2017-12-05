@@ -8,7 +8,7 @@ K_VERSION=rvk
 all: build split-vm-tests
 
 clean:
-	rm -r .build
+	rm -rf .build
 
 build: tangle .build/${K_VERSION}/ethereum-kompiled/extras/timestamp assembler
 
@@ -24,16 +24,15 @@ defn_dir=.build/${K_VERSION}
 defn_files=${defn_dir}/ethereum.k ${defn_dir}/data.k ${defn_dir}/iele.k ${defn_dir}/iele-binary.k ${defn_dir}/krypto.k ${defn_dir}/iele-syntax.k
 defn: $(defn_files)
 
-TANGLE=.build/pandoc-tangle/bin/pandoc-tangle
-
 .build/${K_VERSION}/%.k: %.md
 	@echo "==  tangle: $@"
 	mkdir -p $(dir $@)
-	${TANGLE} --from markdown --to code-k --code ${K_VERSION} $< > $@
+	pandoc --from markdown --to tangle.lua --metadata=code:"k $(K_VERSION)" $< > $@
 
 proof_dir=tests/proofs
 proof_files= 
 proofs: $(proof_files)
+
 # Tests
 # -----
 
