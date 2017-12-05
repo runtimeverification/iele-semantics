@@ -3,15 +3,17 @@ K_VERSION=rvk
 # Common to all versions of K
 # ===========================
 
-.PHONY: all clean build tangle defn proofs split-tests test vm-test blockchain-test
+.PHONY: all clean build tangle defn proofs split-tests test vm-test blockchain-test deps assembler
 
 all: build split-vm-tests
 
 clean:
 	rm -rf .build
-	if [ -d tests/proofs/ ] ; then find tests/proofs/ -name '*.k' -delete ; fi
 
-build: tangle .build/${K_VERSION}/ethereum-kompiled/extras/timestamp
+build: tangle .build/${K_VERSION}/ethereum-kompiled/extras/timestamp assembler
+
+assembler:
+	cd compiler && stack build --install-ghc
 
 # Tangle from *.md files
 # ----------------------
@@ -30,21 +32,6 @@ defn: $(defn_files)
 proof_dir=tests/proofs
 proof_files= 
 proofs: $(proof_files)
-
-tests/proofs/sum-to-n-spec.k: proofs/sum-to-n.md
-	@echo "==  tangle: $@"
-	mkdir -p $(dir $@)
-	pandoc --from markdown --to tangle.lua -M code:"k sum-to-n" $< > $@
-
-tests/proofs/hkg/%-spec.k: proofs/hkg.md
-	@echo "==  tangle: $@"
-	mkdir -p $(dir $@)
-	pandoc --from markdown --to tangle.lua -M code:"k $*" $< > $@
-
-tests/proofs/bad/hkg-token-buggy-spec.k: proofs/token-buggy-spec.md
-	@echo "==  tangle: $@"
-	mkdir -p $(dir $@)
-	pandoc --from markdown --to tangle -M code:k $< > $@
 
 # Tests
 # -----
@@ -105,21 +92,20 @@ tests/ethereum-tests/%.json:
 	@echo "==  git submodule: cloning upstreams test repository"
 	git submodule update --init
 
-# UIUC K Specific
-# ---------------
+KOMPILE=tests/ci/rv-k/k-distribution/target/release/k/bin/kompile
 
-.build/uiuck/ethereum-kompiled/extras/timestamp: $(defn_files)
-	@echo "== kompile: $@"
-	kompile --debug --main-module ETHEREUM-SIMULATION \
-					--syntax-module ETHEREUM-SIMULATION $< --directory .build/uiuck
-
-# RVK Specific
-# ------------
+deps:
+	cd tests/ci/rv-k && mvn package
+	opam init
+	opam repository add k "tests/ci/rv-k/k-distribution/target/release/k/lib/opam" || opam repository set-url k "tests/ci/rv-k/k-distribution/target/release/k/lib/opam"
+	opam update
+	opam switch 4.03.0+k
+	opam install mlgmp zarith uuidm cryptokit secp256k1 bn128 hex
 
 .build/rvk/ethereum-kompiled/extras/timestamp: .build/rvk/ethereum-kompiled/interpreter
 .build/rvk/ethereum-kompiled/interpreter: $(defn_files) KRYPTO.ml
 	@echo "== kompile: $@"
-	kompile --debug --main-module ETHEREUM-SIMULATION \
+	${KOMPILE} --debug --main-module ETHEREUM-SIMULATION \
 					--syntax-module ETHEREUM-SIMULATION $< --directory .build/rvk \
 					--hook-namespaces KRYPTO --gen-ml-only -O3 --non-strict
 	ocamlfind opt -c .build/rvk/ethereum-kompiled/constants.ml -package gmp -package zarith
@@ -127,7 +113,7 @@ tests/ethereum-tests/%.json:
 	ocamlfind opt -a -o semantics.cmxa KRYPTO.cmx
 	ocamlfind remove iele-semantics-plugin
 	ocamlfind install iele-semantics-plugin META semantics.cmxa semantics.a KRYPTO.cmi KRYPTO.cmx
-	kompile --debug --main-module ETHEREUM-SIMULATION \
+	${KOMPILE} --debug --main-module ETHEREUM-SIMULATION \
 					--syntax-module ETHEREUM-SIMULATION $< --directory .build/rvk \
 					--hook-namespaces KRYPTO --packages iele-semantics-plugin -O3 --non-strict
 	cd .build/rvk/ethereum-kompiled && ocamlfind opt -o interpreter constants.cmx prelude.cmx plugin.cmx parser.cmx lexer.cmx run.cmx interpreter.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin -linkpkg -inline 20 -nodynlink -O3 -linkall
