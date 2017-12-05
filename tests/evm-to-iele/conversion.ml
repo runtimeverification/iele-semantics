@@ -809,7 +809,7 @@ let rec postprocess_iele iele label memcells = match iele with
 | VoidOp(`STOP, []) :: tl -> LiOp(`LOADPOS, -1, Z.zero) :: VoidOp(`RETURN(1), [-1]) :: postprocess_iele tl label memcells
 | Op((`DIV|`MOD), reg, [v1;v2]) as op :: tl when compatibility -> VoidOp(`JUMPI(label), [v2]) :: LiOp(`LOADPOS, reg, Z.zero) :: VoidOp(`JUMP(label-1),[]) :: VoidOp(`JUMPDEST(label),[]) :: op :: VoidOp(`JUMPDEST(label-1),[]) :: postprocess_iele tl (label-2) memcells
 | Op((`ADDMOD|`MULMOD), reg, [v1;v2;v3]) as op :: tl when compatibility -> VoidOp(`JUMPI(label), [v3]) :: LiOp(`LOADPOS, reg, Z.zero) :: VoidOp(`JUMP(label-1),[]) :: VoidOp(`JUMPDEST(label),[]) :: op :: VoidOp(`JUMPDEST(label-1),[]) :: postprocess_iele tl (label-2) memcells
-| VoidOp(`SSTORE, [r1;r2]) :: tl -> VoidOp(`SSTORE, [r2;r1]) :: postprocess_iele tl label memcells
+| VoidOp(`SSTORE, [r1;r2]) :: tl -> LiOp(`LOADPOS, -1, _32) :: Op(`TWOS, r2, [-1; r2]) :: VoidOp(`SSTORE, [r2;r1]) :: postprocess_iele tl label memcells
 | VoidOp(`MSTORE, [r1;r2]) :: tl -> VoidOp(`MSTORE, [r2;r1]) :: postprocess_iele tl label memcells
 | VoidOp(`MSTOREN, [r1;r2;r3;r4]) :: tl -> VoidOp(`MSTOREN, [r3;r1;r2;r4]) :: postprocess_iele tl label memcells
 | hd :: tl -> hd :: postprocess_iele tl label memcells

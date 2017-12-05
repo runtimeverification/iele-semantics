@@ -573,7 +573,7 @@ The `"transactions"` key loads the transactions.
     rule check DATA : { (KEY:String) : VALUE , REST } => check DATA : { KEY : VALUE } ~> check DATA : { REST }
       requires REST =/=K .JSONList andBool notBool DATA in (SetItem("callcreates") SetItem("transactions"))
 
-    rule check DATA : [ .JSONList ] => . requires DATA =/=String "ommerHeaders"
+    rule check DATA : [ .JSONList ] => . requires DATA =/=String "ommerHeaders" andBool DATA =/=String "out"
     rule check DATA : [ { TEST } , REST ] => check DATA : { TEST } ~> check DATA : [ REST ] requires DATA =/=String "transactions"
 
     rule check (KEY:String) : { JS:JSONList => #sortJSONList(JS) }
@@ -609,7 +609,7 @@ The `"transactions"` key loads the transactions.
            <storage> ACCTSTORAGE </storage>
            ...
          </account>
-      requires #removeZeros(#adjustStorageValues(ACCTSTORAGE)) ==K STORAGE
+      requires #removeZeros(ACCTSTORAGE) ==K STORAGE
 
     rule <k> check "account" : { ACCT : { "code" : (CODE:WordStack) } } => . ... </k>
          <account>
@@ -623,11 +623,6 @@ The `"transactions"` key loads the transactions.
            <acctID> ACCT </acctID>
            ...
          </account>
-
-    syntax Map ::= #adjustStorageValues(Map) [function]
- // ---------------------------------------------------
-    rule #adjustStorageValues(K |-> V M) => K |-> chop(V) #adjustStorageValues(M)
-    rule #adjustStorageValues(.Map) => .Map
 ```
 
 Here we check the other post-conditions associated with an EVM test.
@@ -638,6 +633,7 @@ Here we check the other post-conditions associated with an EVM test.
     rule check "out" : ((OUT:String) => #parseHexWord(OUT))
     rule <k> check "out" : OUT => . ... </k> <output> OUT , .Ints </output>
     rule <k> check "out" : 0   => . ... </k> <output> .Ints </output>
+    rule <k> check "out" : [ OUT ] => . ... </k> <output> OUTPUT </output> requires #toInts(OUT) ==K OUTPUT
 
     rule check TESTID : { "logs" : LOGS } => check "logs" : LOGS ~> failure TESTID
  // ------------------------------------------------------------------------------
