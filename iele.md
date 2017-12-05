@@ -1702,15 +1702,115 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     rule <k> #gasExec(SCHED, _ = call @iele.msize ( .Ints ))       => Gbase < SCHED > ... </k>
     rule <k> #gasExec(SCHED, _ = call @iele.gas ( .Ints ))         => Gbase < SCHED > ... </k>
 
+    // Unary boolean
+    rule <k>
+      #gasExec(SCHED, _ = not ARG)  =>
+        GNotConstant < SCHED > +Int
+        (GNotVariable < SCHED > *Int registerSize(ARG))
+      ... </k>
+
+    // Binary boolean
+    rule <k>
+      #gasExec(SCHED, _ = and ARG1, ARG2) =>
+        GAndConstant < SCHED > +Int
+        (GAndVariable < SCHED > *Int
+          minInt(registerSize(ARG1), registerSize(ARG2)))
+      ... </k>
+    rule <k>
+      #gasExec(SCHED, _ = or ARG1, ARG2) =>
+        GOrConstant < SCHED > +Int
+        (GOrVariable < SCHED > *Int
+          maxInt(registerSize(ARG1), registerSize(ARG2)))
+      ... </k>
+    rule <k>
+      #gasExec(SCHED, _ = xor ARG1, ARG2) =>
+        GXorConstant < SCHED > +Int
+        (GXorVariable < SCHED > *Int
+          maxInt(registerSize(ARG1), registerSize(ARG2)))
+      ... </k>
+
+    rule <k>
+      #gasExec(SCHED, _ = iszero ARG) => GIsZeroConstant < SCHED > ... </k>
+
+    rule <k>
+      #gasExec(SCHED, _ = cmp _ ARG1, ARG2) =>
+        GCmpConstant < SCHED > +Int
+        // TODO: This has branches in the .md file.
+        (GCmpVariable < SCHED > *Int
+          maxInt(registerSize(ARG1), registerSize(ARG2)))
+      ... </k>
+
+    rule <k> #gasExec(SCHED, _:IsZeroInst) => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, _:CmpInst)    => Gverylow < SCHED > ... </k>
+
+    syntax Int ::= "GAndConstant"             "<" Schedule ">"  [function]
+                 | "GAndVariable"             "<" Schedule ">"  [function]
+                 | "GCmpConstant"             "<" Schedule ">"  [function]
+                 | "GCmpVariable"             "<" Schedule ">"  [function]
+                 | "GIsZeroConstant"          "<" Schedule ">"  [function]
+                 | "GNotConstant"             "<" Schedule ">"  [function]
+                 | "GNotVariable"             "<" Schedule ">"  [function]
+                 | "GOrConstant"              "<" Schedule ">"  [function]
+                 | "GOrVariable"              "<" Schedule ">"  [function]
+                 | "GXorConstant"             "<" Schedule ">"  [function]
+                 | "GXorVariable"             "<" Schedule ">"  [function]
+                 ///////////////////////////////////
+                 | "GBaseBoolBinaryOp"        "<" Schedule ">"  [function]
+                 | "GBaseNot"                 "<" Schedule ">"  [function]
+                 | "GBoolBinaryOpVariable"    "<" Schedule ">"  [function]
+                 | "GBoolOpConstant"          "<" Schedule ">"  [function]
+                 | "GForIteration"            "<" Schedule ">"  [function]
+                 | "GForStart"                "<" Schedule ">"  [function]
+                 | "GIncrement"               "<" Schedule ">"  [function]
+                 | "GRegisterMaintenanceCost" "<" Schedule ">"  [function]
+                 | "GSetWordCost"             "<" Schedule ">"  [function]
+                 | "GTestAndBranch"           "<" Schedule ">"  [function]
+
+    rule GAndConstant < SCHED > => GBoolOpConstant < SCHED >
+    rule GAndVariable < SCHED > => GBoolBinaryOpVariable < SCHED >
+    rule GCmpConstant < SCHED > =>  // TODO: This is different fom the .md file.
+      GSetWordCost < SCHED > +Int
+      GRegisterMaintenanceCost <SCHED> +Int
+      GForStart < SCHED >
+    rule GCmpVariable < SCHED > =>
+      GTestAndBranch < SCHED > +Int GForIteration < SCHED >
+    rule GIsZeroConstant < SCHED > =>
+      GTestAndBranch < SCHED > +Int GSetWordCost < SCHED > +Int
+      GRegisterMaintenanceCost < SCHED >
+    rule GNotConstant < SCHED > => GBoolOpConstant < SCHED >
+    rule GNotVariable < SCHED > =>
+      GBaseNot < SCHED > +Int GForIteration < SCHED >
+    rule GOrConstant < SCHED > => GBoolOpConstant < SCHED >
+    rule GOrVariable < SCHED > => GBoolBinaryOpVariable < SCHED >
+    rule GXorConstant < SCHED > => GBoolOpConstant < SCHED >
+    rule GXorVariable < SCHED > => GBoolBinaryOpVariable < SCHED >
+
+    ///////////////////////////////
+
+    rule GBoolOpConstant < SCHED > =>
+      GRegisterMaintenanceCost < SCHED > +Int GForStart < SCHED >
+    rule BinaryBoolOpVariable < SCHED > =>
+       GBaseBoolBinaryOp< SCHED > +Int GForIteration < SCHED >
+
+    rule GForIteration < SCHED > =>
+      GIncrement < SCHED > +Int GTestAndBranch<SCHED>
+
+    rule GBaseNot                 < _ > => 2
+    rule GForStart                < _ > => 2
+    rule GRegisterMaintenanceCost < _ > => 6
+    rule GIncrement               < _ > => 1
+    rule GSetWordCost             < _ > => 1
+    rule GTestAndBranch           < _ > => 2
+
+    syntax Int ::= registerSize(Int) [function]
+                 | "numberBase"      [function]
+    rule registerSize(R) =>
+      #if R ==Int 0 #then 0 #else 1 +Int registerSize(R /Int numberBase) #fi
+    rule numberBase => 2 ^Int 64
+
     // Wverylow
     rule <k> #gasExec(SCHED, _:AddInst)    => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, _:SubInst)    => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:NotInst)    => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:CmpInst)    => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:IsZeroInst) => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:AndInst)    => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:OrInst)     => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:XorInst)    => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, _:ByteInst)   => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, _:LoadInst)   => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, _:StoreInst)  => Gverylow < SCHED > ... </k>
