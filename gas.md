@@ -1118,11 +1118,33 @@ dm n = dm n + mul n + add (3*n+1) +
            dm n + mul n + add(2*n+2) +
            4*add(2*n) + 2*add(2*n)
          = 2 * dm (n/2) + 2*mul (n/2) + 17 * add(n/2) + const
+         = 2*mul(n/2) + 17 * add(n/2) + const +
+           4*mul(n/4) + 17 * 2 * add(n/4) + 2*const +
+           ................ +
+           2^k*mul(n/2^k) + 17 * 2^(k-1) * add(n/2^k) + 2^(k-1) * const
+         = sum(k=1,log_2 n, 2^k*(mulConst2*n^constKara/(2^constKara)^k + mulConst1 * n / 2^k + mulConst0)) + 17/2*sum(k=1, log_2 n, 2^k*(posAddConst1 * n / 2^k + posAddConst0)) + const * (n - 1)
+         = mulConst2*n^constKara * 2^(1-constKara) * (1 - (2^(1-constKara))^log_2 n) / (1 - 2^(1-constKara)) + 2*mulConst1*n * (log_2 n - 1) + mulConst0 * (n - 1) +
+           17*(posAddConst1 * n * (log_2 n - 1) + posAddConst0 * (n - 1)) +
+           const * (n - 1)
+           // note that (2^(1-constKara))^log_2 n = n / n ^ constKara
+         = mulConst2 * 2^(1-constKara) / (1 - 2^(1-constKara)) * (n^constKara - n) +
+           (2*mulConst1  +  17 * posAddConst1) * n * log_2 n +
+           n * (17 * posAddConst0 + mulConst0 + const - 2*mulConst1 - 17 * posAddConst1) - mulCost0 - posAddConst0 - const
+        // let dmConst3 = mulConst2 * 2^(1-constKara) / (1 - 2^(1-constKara))
+        // let dmConst2 = 2*mulConst1  +  17 * posAddConst1
+        // let dmConst1 = 17 * posAddConst0 + mulConst0 + const - dmConst2 - 2*mulConst1 - 17 * posAddConst1
+        // let dmConst0 = - mulCost0 - posAddConst0 - const
+         = dmConst3 * n^constKara + dmConst2 * n * log n + dmConst1 * n + dmConst0
 ```
 
-Solving the recursion, we obtain:
+Therefore:
 ```
 dm n = dmConst3 * n ^ constKara + dmConst2 * n * log n + dmConst1 * n + dmConst0
+  where
+    dmConst3 = mulConst2 * 2^(1-constKara) / (1 - 2^(1-constKara))
+    dmConst2 = 2*mulConst1  +  17 * posAddConst1
+    dmConst1 = 17 * posAddConst0 + mulConst0 + const - dmConst2 - 2*mulConst1 - 17 * posAddConst1
+    dmConst0 = - mulCost0 - posAddConst0 - const
 ```
 
 ##### `x divmod y` when size of `x` is larger than twice the size of `y`

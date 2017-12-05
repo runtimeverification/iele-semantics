@@ -1755,9 +1755,14 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
       ... </k>
 
     rule <k> #gasExec(SCHED, _ = mul ARG1 , ARG2)  =>
-        2 *Int GTestAndBranch < SCHED > +Int
         GMulCost(SCHED, registerSize(ARG1), registerSize(ARG2))
       ... </k>
+
+    rule <k> #gasExec(SCHED, _ = div ARG1 , ARG2)  =>
+        GDivModCost(SCHED, registerSize(ARG1), registerSize(ARG2))
+      ... </k>
+
+    rule <k> #gasExec(SCHED, _:DivInst)  => Glow < SCHED > ... </k>
 
     syntax Int ::= "GAndConstant"             "<" Schedule ">"  [function]
                  | "GAndVariable"             "<" Schedule ">"  [function]
@@ -1772,6 +1777,7 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
                  | "GXorVariable"             "<" Schedule ">"  [function]
                  ///////////////////////////////////
                  | GMulCost(Schedule, Int, Int)                 [function]
+                 | GDivModCost(Schedule, Int, Int)              [function]
                  ///////////////////////////////////
                  | "GAddConst0"               "<" Schedule ">"  [function]
                  | "GAddConst1"               "<" Schedule ">"  [function]
@@ -1814,7 +1820,7 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
       GRegisterMaintenanceCost < SCHED >
     rule GNotConstant < SCHED > => GBoolOpConstant < SCHED >
     rule GNotVariable < SCHED > =>
-      GBaseNot < SCHED > +Int GForIteration < SCHED >
+      GBaseNot < 2SCHED > +Int GForIteration < SCHED >
     rule GOrConstant < SCHED > => GBoolOpConstant < SCHED >
     rule GOrVariable < SCHED > => GBoolBinaryOpVariable < SCHED >
     rule GXorConstant < SCHED > => GBoolOpConstant < SCHED >
@@ -1834,6 +1840,18 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
         GMulConst0 < SCHED >
       requires L1 >=Int L2
     rule GMulCost(SCHED, L1, L2) => GMulCost(SCHED, L2, L1)
+      requires L1 <Int L2
+
+    rule GDivModSameSize(SCHED, L) =>
+      (GDivModSameSizeConst3 < SCHED > *Int kara(L)) +Int
+      (GDivModSameSizeConst2 < SCHED > *Int L *Int log2(L)) +Int
+      (GDivModSameSizeConst1 < SCHED > *Int L) +Int
+      GDivModSameSizeConst0 < SCHED >
+
+    rule GDivModCost(SCHED, L1, L2) => GDivModSameSize(L1)
+        //TODO copy actual costs from the gas model
+      requires L1 >=Int L2
+    rule GDivModCost(SCHED, L1, L2) => GDivModCost(SCHED, L2, L1)
       requires L1 <Int L2
 
     ///////////////////////////////
@@ -1903,7 +1921,6 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     // Wlow
     rule <k> #gasExec(SCHED, _:SExtInst) => Glow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, _:TwosInst) => Glow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:DivInst)  => Glow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, _:ModInst)  => Glow < SCHED > ... </k>
 
     // Wmid
