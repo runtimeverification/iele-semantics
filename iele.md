@@ -698,7 +698,7 @@ Executing the INVALID instruction results in an exception.
 
 An account to which code has never been deployed has a size in bytes of zero, but contains an implicit public function `@deposit` which takes
 no arguments, returns no values, and does nothing. This function exists to allow accounts to receive payment even if they do not have a contract
-deployed to them. Note that a contract can forbid payments by refusing to declare the @deposit function, and explicitly raising an exception
+deployed to them. Note that a contract can forbid payments by refusing to declare the `@deposit` function, and explicitly raising an exception
 if any of its entry points are invoked with a balance transfer.
 
 ```{.k .uiuck .rvk}
@@ -1004,7 +1004,6 @@ Operators that require access to the rest of the IELE network world-state can be
 
 -   `REG = call @iele.balance(ACCT)` returns the balance of the specified account (zero if the account does not exist).
 -   `REG = call @iele.extcodesize(ACCT)` returns the code si of the specified account (zero if the account does not exist).
-
 
 ```{.k .uiuck .rvk}
     rule <k> #exec REG = call @iele.balance ( ACCT ) => #load REG BAL ... </k>
@@ -1357,8 +1356,8 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
     rule <k> #exception ~> #finishCodeDeposit _ _ REG => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG 0 ... </k>
 ```
 
--    `create` will attempt to `#create` the named contract using the initialization code and cleans up the result with `#codeDeposit`.
--    `copycreate` will attempt to `#create` a copy of the contract at the specified address using the initialization code and cleans up the result with `#codeDeposit`
+-   `create` will attempt to `#create` the named contract using the initialization code and cleans up the result with `#codeDeposit`.
+-   `copycreate` will attempt to `#create` a copy of the contract at the specified address using the initialization code and cleans up the result with `#codeDeposit`
 
 ```{.k .uiuck .rvk}
     rule <k> #exec REG = create NAME ( ARGS ) send VALUE
@@ -1587,7 +1586,6 @@ Precompiled Contract
     rule #checkPoint ~> #ecpairing(ListItem(AK::G1Point) _, ListItem(BK::G2Point) _, _) => #exception
       requires notBool isValidPoint(AK) orBool notBool isValidPoint(BK)
 ```
-    
 
 IELE Gas Calculation
 ====================
@@ -1987,3 +1985,4 @@ The following code processes a `Contract` and loads it into the `<program>` cell
     rule #computeJumpTable(_::UnlabeledBlock BLOCKS, JUMPS, LABELS) => #computeJumpTable(BLOCKS, JUMPS, LABELS) [owise]
 endmodule
 ```
+

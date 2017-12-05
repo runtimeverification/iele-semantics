@@ -34,3 +34,4 @@ module KRYPTO
                   | isValidPoint(G2Point) [function, klabel(isValidG2Point), hook(KRYPTO.bn128g2valid)]
 endmodule
 ```
+

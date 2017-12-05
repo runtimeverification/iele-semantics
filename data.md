@@ -446,9 +446,11 @@ We are using the polymorphic `Array` sort for these word maps.
 
     rule #range(WM, END, 0,     WS) => WS
 ```
+
 ```{.k .uiuck}
     rule #range(WM, END, WIDTH, WS) => #range(WM, END -Int 1, WIDTH -Int 1, WM [ END ]:>Int : WS) requires (WIDTH >Int 0)
 ```
+
 ```{.k .rvk}
     rule #range(WM, END, WIDTH, WS) => #range(WM, END -Int 1, WIDTH -Int 1, {WM [ END ]}:>Int : WS) requires (WIDTH >Int 0)
 ```
@@ -653,3 +655,4 @@ Decoding
     rule #loadOffset ( B0 : WS ) => B0 -Int 182 requires B0 >=Int 184 andBool B0  <Int 192
 endmodule
 ```
+
