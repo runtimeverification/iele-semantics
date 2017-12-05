@@ -1,8 +1,6 @@
-Gas Model
-=========
+# Gas Model
 
-General considerations
-----------------------
+## General considerations
 
 One change from EVM to IELE is that integers are no longer limited to 256 bits,
 being allowd to grow arbitrarily large.
@@ -83,7 +81,8 @@ gas/memory) to contain that size.
 * `NOT rREG wREG`
   - Computation requires all words of `wREG` to be processed, so
     ```hs
-    computationCost(NOT rREG wREG) = registerSize(wREG) * wordCost
+    computationCost(NOT rREG wREG) =
+      (constBaseNot + forIterationManagement) * registerSize(wREG) + registerMaintenanceCost
     ```
   - Size is the same as that of the input
     ```hs
@@ -92,7 +91,9 @@ gas/memory) to contain that size.
 * `AND RREG wREG1 wREG2`
   - Computation requires pairwise AND of the registers' words so:
     ```hs
-    computationCost(AND rREG wREG1 wREG2) = constBaseAnd * wordCost * m
+    computationCost(AND rREG wREG1 wREG2) =
+      (constBaseBoolBinOp + forIterationManagement) * m + registerMaintenanceCost +
+      limbComparisonCost  -- for length computation
     ```
   - Size of result is the minimum of the two (as and-ing with 0 yields 0)
     ```hs
@@ -102,7 +103,9 @@ gas/memory) to contain that size.
 * `OR RREG wREG1 wREG2`
   - Computation requires pairwise OR of the registers' words so:
     ```hs
-    computationCost(OR rREG wREG1 wREG2) = constBaseOr * wordCost * m
+    computationCost(OR rREG wREG1 wREG2) =
+      (constBaseBoolBinOp + forIterationManagement) * m + registerMaintenanceCost +
+      limbComparisonCost  -- for length computation
     ```
   - Size of result is the maximum of the two
     ```hs
@@ -112,7 +115,9 @@ gas/memory) to contain that size.
 * `XOR RREG wREG1 wREG2`
   - Computation requires pairwise XOR of the registers' words so:
     ```hs
-    computationCost(XOR rREG wREG1 wREG2) = constBaseXOr * wordCost * m
+    computationCost(XOR rREG wREG1 wREG2) =
+      (constBaseBoolBinOp + forIterationManagement) * m + registerMaintenanceCost +
+      limbComparisonCost  -- for length computation
     ```
   - Size of result is the maximum of the two
     ```hs
@@ -124,7 +129,8 @@ gas/memory) to contain that size.
 * `ISZERO rREG wREG`
   - Computation requires inspecting just one bit of `wREG`:
     ```hs
-    computationCost(ISZERO rREG wREG) = bitCost + copyWordCost
+    computationCost(ISZERO rREG wREG) =
+      limbComparisonCost0 + setWordCost + registerMaintenanceCost1
     ````
   - Result size is 1
     ```hs
@@ -133,20 +139,29 @@ gas/memory) to contain that size.
 * `CMP RREG wREG1 wREG2` where `CMP` in `[LT, GT, EQ]`
   - Computation requires pairwise comparison of the registers' words so:
     ```hs
-    computationCost(LT rREG wREG1 wREG2)
-      | registerSize wREG1 /= registerSize wREG2 = lenCost + copyWordCost
-      | otherwise                                = constBaseLT * wordCost * registerSize wREG1
+    computationCost(CMP rREG wREG1 wREG2) =
+      setWordCost + registerMaintenanceCost1 +
+      limbComparisonCost +  -- for testing the length and branching
+      if registerSize wREG1 /= registerSize wREG2
+        then 0
+        else (limbComparisonCost + forIterationManagement) * registerSize wREG1
     ```
   - Result size is 1
     ```hs
-    estimatedResultSize(LT rREG wREG1 wREG2) = 1
+    estimatedResultSize(CMP rREG wREG1 wREG2) = 1
     ```
 
 #### Regular arithmetic
 * `ADD RREG wREG1 wREG2`
   - Computation requires pairwise addition of the registers' words so:
     ```hs
-    computationCost(ADD rREG wREG1 wREG2) = constBaseAdd * wordCost * m
+    computationCost(ADD rREG wREG1 wREG2) =
+      2 * wordTestCost +  -- check operand sign
+      computationCost(LT lREG, wREG1 wREG2) +  -- for subtract, find the largest one
+      wordAddSetCost * m +  -- actual addition
+      wordSetCost +  -- add overflow for the last digit
+      registerMaintenanceCost -- includes sign setting cost
+
     ```
   - Size of result is about the maximum of the two
     ```hs
@@ -156,7 +171,8 @@ gas/memory) to contain that size.
 * `SUB rREG wREG1 wREG2`
   - Subtraction has the same complexity as addition
     ```hs
-    computationCost(SUB rREG wREG1 wREG2) = constBaseSub * wordCost * m
+    computationCost(SUB rREG wREG1 wREG2) =
+      computationCost(ADD rREG wREG1 wREG2)
     ```
   - Size of result is about the maximum of the two
     ```hs
@@ -167,8 +183,8 @@ gas/memory) to contain that size.
   -  Multiplication complexity depends on the algorithm used.
     ```hs
     computationCost(MUL rREG wREG1 wREG2)
-      | isZero wREG1 || isZero wREG2    = 2 * bitCost + wordCost
-      | otherWise                       = mulCost l1 l2
+      | isZero wREG1 || isZero wREG2    = 2 * limbTestCost + registerMaintenanceCost1
+      | otherWise                       = 2 * limbTestCost + mulCost l1 l2
     ```
   - Size of result is the sum of sizes of the operands, except when one of them is 0
     ```hs
@@ -184,9 +200,9 @@ gas/memory) to contain that size.
     basecase division method.
     ```hs
     computationCost(DIV rREG wREG1 wREG2)
-      | isZero wREG2 = bitCost + wordCopyCost
-      | l2 > l1      = lenCost + wordCopyCost
-      | otherwise    = divCost l1 l1
+      | isZero wREG2 = limbTestCost + registerMaintenanceCost1 -- TODO: this might change
+      | l2 > l1      = limbTestCost + limbComparisonTest + registerMaintenanceCost1
+      | otherwise    = limbTestCost + limbComparisonTest + registerMaintenanceCost + divModCost l1 l2
     ```
   - if the result is 0 its size is 1, otherwise it's about the difference
     between sizes
@@ -201,10 +217,8 @@ gas/memory) to contain that size.
 * `MOD rREG wREG1 wREG2`
   - The complexity of `MOD` is similar to that of `DIV`
     ```hs
-    computationCost(MOD rREG wREG1 wREG2)
-      | isZero wREG2 = bitCost + wordCopyCost
-      | l2 > l1      = lenCost + l1*wordCopyCost
-      | otherwise    = divCost l1 l2
+    computationCost(MOD rREG wREG1 wREG2) =
+      computationCost(DIV rREG wREG1 wREG2)
     ```
   - if the result is 0 its size is 1, otherwise it's the minimum of the
     operands sizes
@@ -220,9 +234,10 @@ gas/memory) to contain that size.
     intermediate results for the non-zero bits of `wEXPONENT`.
     This leads to a result of size `lb*e` where `lb` is the length of `wBASE`
     and `e` is the value of `wEXPONENT`.
+    TODO:  redo
     ```hs
     computationCost(EXP rREG wBASE wEXPONENT)
-      | isZero wEXPONENT = bitCost + wordCopyCost
+      | isZero wEXPONENT = limbComparisonCost0 + registerMaintenanceCost1 + limbSetCost
       | otherwise    = constExp * wordCost * (0.5 * approxKara lb * (approxKara e - 1) + 2 * lb * (e - 1)))
       where lb = registerSize wBASE
             e = value wEXPONENT
@@ -241,7 +256,9 @@ gas/memory) to contain that size.
 * `ADDMOD RREG wREG1 wREG2 wREG3`
   - Computation requires an addition possibly followed by a subtraction.
     ```hs
-    computationCost(ADDMOD rREG wREG1 wREG2 wREG3) = constBaseAddMod * wordCost * (m + 1) + divCost (m + 1) l3
+    computationCost(ADDMOD rREG wREG1 wREG2 wREG3) =
+      registerMaintenanceCost +
+      computationCost(ADD rREG wREG1 wREG2) + divModCost (m + 1) l3
     ```
   - Size of result is that of the module
     ```hs
@@ -255,10 +272,12 @@ gas/memory) to contain that size.
      taking modulo again.
     ```hs
     computationCost(MULMOD rREG wREG1 wREG2 wREG3)
-      | isZero wREG1
-      || isZero wREG2  = 2 * bitCost + wordCopyCost
+      | isZero wREG1 || isZero wREG2 =
+        2 * wordTestCost + registerMaintenanceCost1
       | l1 + l2 < l3   = cc
-      | otherwise      = divCost l1 l3 + divCost l2 l3 + mulModCost l3
+      | otherwise      =
+        divModCost l1 l3 + divModCost l2 l3 +
+        cc + divModCost (2*l3) l3 + mulModConst0
     ```
   - Size of result is that of the module
     ```hs
@@ -273,17 +292,25 @@ gas/memory) to contain that size.
             cc = mulCost ml1 ml2
     ```
 * `EXPMOD rREG wREG1 wREG2 wREG3`
-  - Exponentiation is done by repeatedly squareing `WREG1` and multiplying those
+  - Exponentiation is done by repeatedly squaring `WREG1` and multiplying those
     intermediate results for the non-zero bits of `WREG2`, all modulo `WREG3`.
     Modulo is taken by computing the `(2^limbSize)^(2*l3) / (value wREG3)` once,
     then performing division by multiplying with the inverse (see `mulModCost0`).
     ```hs
     computationCost(EXPMOD rREG wBASE wEXP wMOD)
-      | isZero wREG2 = bitCost + wordCopyCost
-      | otherwise    = divCost lBASE lMOD + lMOD * wordCopyCost + divModCost lMOD + 2 * blEXP * (mulModCost0 lMOD) + constExpMod
+      | isZero wREG2 = wordTestCost + registerMaintenanceCost1
+      | otherwise    =
+        divModCost lBASE lMOD + lMOD * wordCopyCost + divModCost (2*lMOD) lMOD +
+        2 * blEXP * (mulModCost0 lMOD + constInnerLoop) + constExpMod
       where lBASE = registerSize wBASE
             blEXP = limbSize * registerSize wEXP
             lMOD = registerSize wMOD
+            constExpMod = wordTestCost +
+                          registerMaintenanceCost +  -- for the final result
+                          registerMaintenanceCost +  -- for the first div
+                          ...
+            constInnerLoop =
+              forIterationManagement + 2 * registerMaintenanceCost
     ```
   - Size of the result is capped by the size of the modulo
     ```hs
@@ -297,7 +324,8 @@ gas/memory) to contain that size.
 * `SHA3 rREG wMEMSTART wMEMWIDTH`
   - Computation cost is the similar as for EVM
     ```hs
-    computationCost(SHA3 rREG wMEMSTART wMEMWIDTH) = constSHA3  + w * constSHA3Word
+    computationCost(SHA3 rREG wMEMSTART wMEMWIDTH) =
+      constSHA3  + w * constSHA3Word
       where w = ceiling (value wMEMWIDTH * 8 / limbSize)
     ```
   - Result size is 256 bits
@@ -310,7 +338,7 @@ gas/memory) to contain that size.
 * `BYTE rREG wINDEX w`
   - Getting a byte is done by a simple lookup and some word manipulation
     ```hs
-    computationCost(BYTE rREG wINDEX w) = wordCost
+    computationCost(BYTE rREG wINDEX w) = registerMaintenanceCost1 + setWordCost
     ```
   - The size of a byte is 1
     ```hs
@@ -319,11 +347,12 @@ gas/memory) to contain that size.
 * `SIGNOP rREG wN wREG` where `SIGNOP` in `[TWOS, SIGNEXTEND]`
   - Both operation process a maximum of `2^wN` bits
     ```hs
-    computationCost(SIGNOP rREG wN wREG) = constTwos * wordCost * l2N
+    computationCost(SIGNOP rREG wN wREG) =
+      registerMaintenanceCost1 + constSignOp * l2N
     ```
   - the new size is `2^wN` bits
     ```hs
-    estimatedResultSize(TWOS rREG wN wREG) = l2N
+    estimatedResultSize(SIGNOP rREG wN wREG) = l2N
       where l2N  = value wN `div` limbSize
     ```
 
@@ -333,34 +362,39 @@ We assume that all operations interrogating the local state have complexity
 
 * `LOCALOP rREG`, where `LOCALOP` in `[PC, GAS, GASPRICE, GASLIMIT, COINBASE, NUMBER, MSIZE, CODESIZE]`
     ```hs
-    computationCost(LOCALOP rREG) = localStateCost
+    computationCost(LOCALOP rREG) = registerMaintenanceCost1 + localStateCost
     estimatedResultSize(LOCALOP rREG) = 1
     ```
 * `LOCALADDROP rREG`, where `LOCALOP` in `[COINBASE, ADDRESS, ORIGIN, CALLER]`
     ```hs
-    computationCost(LOCALOP rREG) = localStateCost + addressSize*copyWordCost
-    estimatedResultSize(LOCALOP rREG) = addressSize
+    computationCost(LOCALADDROP rREG) =
+      registerMaintenanceCost + localStateCost + addressSize * wordCopyCost
+    estimatedResultSize(LOCALADDROP rREG) = addressSize
     ```
 * `TIMESTAMP rREG`
     ```hs
-    computationCost(LOCALOP rREG) = localStateCost + timeStampSize*copyWordCost
-    estimatedResultSize(LOCALOP rREG) = timeStampSize
+    computationCost(TIMESTAMP rREG) =
+      registerMaintenanceCost + localStateCost + timeStampSize * wordCopyCost
+    estimatedResultSize(TIMESTAMP rREG) = timeStampSize
     ```
 * `DIFFICULTY rREG`
     ```hs
-    computationCost(LOCALOP rREG) = localStateCost + difficultySize()*copyWordCost
-    estimatedResultSize(LOCALOP rREG) = difficultySize()
+    computationCost(DIFFICULTY rREG) =
+      registerMaintenanceCost + localStateCost + difficultySize() * wordCopyCost
+    estimatedResultSize(DIFFICULTY rREG) = difficultySize()
     ```
 * `CALLVALUE rREG`
     ```hs
-    computationCost(CALLVALUE rREG) = localStateCost + callValueSize()*copyWordCost
+    computationCost(CALLVALUE rREG) =
+      registerMaintenanceCost + localStateCost + callValueSize() * copyWordCost
     estimatedResultSize(CALLVALUE rREG) = callValueSize()
     ```
 * `BLOCKHASH rREG wN`
   - Computation cost is a constant; result size is *blockHashSize*
     ```hs
-    computationCost(CALLVALUE rREG) = blockHashCost + blockHashSize*copyWordCost
-    estimatedResultSize(CALLVALUE rREG) = blockHashSize
+    computationCost(BLOCKHASH rREG) =
+      registerMaintenanceCost + blockHashCost + blockHashSize*copyWordCost
+    estimatedResultSize(BLOCKHASH rREG) = blockHashSize
     ```
 
 #### JUMPs
@@ -870,9 +904,7 @@ of the logged registers.
   computationCost(X, COPYCREATE) = computationCost(X, CREATE)
   ```
 
-
-Definitions
------------
+## Definitions
 
 * *limbSize* - size in bits of a machine word
   (e.g., 32 for 32-bit architectures, 64 for 64-bit architectures)
@@ -893,39 +925,41 @@ Definitions
 
 * *callValueSize()* - the size in machine words of the call value
 
-* Multiplication cost function *mulCost*.
-  ```hs
-  mulCost l1 l2
-    | m < treshBaseMul = constBaseMul * wordCost * l1 * l2
-    | otherwise        = constKaratsubaMul * wordCost * (3 * m ^ constKara - 2 * m)
-    where m = max l1 l2
-  ```
+### Multiplication, division, exponentiation, modulo
 
-  The Karatsuba method for multiplying two numbers of size `2*n` (base `b`).
+#### Multiplication
 
-  * Split the numbers, into two numbers, each of size `n`
-    `x = b^n * x1 + x0,  y = b^n * y1 + y0`
-  * Then `x * y = (b^n * x1 + x0) * (b^n * y1 + y0)`, leading to
-    `x * y  = b^2n * x1 * y1 + b^n * (x1 * y0 + x2 * y0) + x0 * y0`
-  * Note that `x1 * y0 + x0 * y1 = (x1 + x0) * (y1 + y0) - x1 * y1 - x0 * y0`
-  * Let `z0 = x0 * y0`, `z2 = x1 * y1`, `t = (x1 + x0) * (y1 + y0)`, and
-    `z1 = t - z0 - z2`.
-  * Suppose `mul x` is the cost of computing the multiplication of two numbers
-    of `x` limbs and `add x` is the cost of computing the addition of two
-    numbers of size `x`. Then,
-    * `time z0 = time z2 = mul n`, and `size z0 = size z2 = 2 * n`
-    * `time (x1 + x0) = time (y1 + y0) = add n` and
-      `size (x1 + x0) = size (y1 + y0) = n + 1`
-    * `time t = 2 * add n + mul (n + 1)` and `size t = 2 * n + 2`
-    * `time z1 = time t + 2 * add (2 * n + 2)` and `size z1 = 2 * n + 2`
-    * Since the shifting is done by limbs, we can aggregate the cost for shifting
-      into that for addition, and have:
+The complexity for most multiplication operations is based on the
+[Karatsuba method](http://mathworld.wolfram.com/KaratsubaMultiplication.html),
+described below.
 
-      ```hs
-      mul (2*n) = time (x * y) = time z0 + time z1 + time z2 + 2 * add (4 * n) + const0
-                 = 2 * mul n + mul (n + 1) + 2 * add n + 2 * add (2 * n + 2) + 2 * add (4 * n) + const0
-      size x * y = 4 * n
-      ```
+##### Base case: `x` and `y` of same size
+
+Input: `x` and `y` of size `2*n`
+
+* Split the numbers
+  `x = b^n * x1 + x0,  y = b^n * y1 + y0`
+* Then `x * y = (b^n * x1 + x0) * (b^n * y1 + y0)`, leading to
+  `x * y  = b^2n * x1 * y1 + b^n * (x1 * y0 + x2 * y0) + x0 * y0`
+* Note that `x1 * y0 + x0 * y1 = (x1 + x0) * (y1 + y0) - x1 * y1 - x0 * y0`
+* Let `z0 = x0 * y0`, `z2 = x1 * y1`, `t = (x1 + x0) * (y1 + y0)`, and
+  `z1 = t - z0 - z2`.
+* Suppose `mul x` is the cost of computing the multiplication of two numbers
+  of `x` limbs and `add x` is the cost of computing the addition of two
+  numbers of size `x`. Then,
+  * `time z0 = time z2 = mul n`, and `size z0 = size z2 = 2 * n`
+  * `time (x1 + x0) = time (y1 + y0) = add n` and
+    `size (x1 + x0) = size (y1 + y0) = n + 1`
+  * `time t = 2 * add n + mul (n + 1)` and `size t = 2 * n + 2`
+  * `time z1 = time t + 2 * add (2 * n + 2)` and `size z1 = 2 * n + 2`
+  * Since the shifting is done by limbs, we can aggregate the cost for shifting
+    into that for addition, and have:
+
+    ```hs
+    mul (2*n) = time (x * y) = time z0 + time z1 + time z2 + 2 * add (4 * n) + const0
+               = 2 * mul n + mul (n + 1) + 2 * add n + 2 * add (2 * n + 2) + 2 * add (4 * n) + const0
+    size x * y = 4 * n
+    ```
 
   * Using that add is linear, we can assume constants `cAdd1` and `cAdd0` s.t.
     `add x = cAdd1 * x + cAdd0`, we can rewrite `mul (2*n)` to:
@@ -966,24 +1000,182 @@ Definitions
             mMul0 = -7*cAdd1 - const2 / 2 = -1/2 * (25 * cAdd1 + 6 * cAdd0 + const0)
             const2 = 11 * cAdd1 + 6 * cAdd0 + const0
     ```
-* Division cost: `a divmod m` when size of `a` is twice the size of `m`, say `n` division
-  can be done in a divide and conquer manner, with a complexity of `mul n * log n`
+
+##### `x` and `y` of different sizes
+
+Suppose size of `x` is larger than that of `y`.  Then divide `x` in blocks of
+the same size as `y`, multiply those blocks (using the algorithm above),
+and add and shift the results.
+
+* initialize result `r` with `0`
+* for the index `i` of each block `bi` of size `|y|` of `|x|`,
+  starting from the right (`i=0`):
+  * Invariant: `|r| <= i* |y| + |y| + 1`
+  * let `cd = r` such that `|d| = i * |y|`
+    * Note: `|c| <= |y| + 1`
+  * compute `b * y = e` using the algorithm above
+    * Note: `|e| <= 2*|y|`
+  * let `f = e + c`
+    * Note: `|f| <= 2*|y| + 1`
+  * let `r = fd`
+    * Invariant is preserved: `|r| = |f| + |d| <= (i + 1)*|y| + |y| + 1`
+
+Complexity: `|x|/|y| * (mul (|y| / 2) + add(2 * |y|))`
+
+##### Multiplication cost function *mulCost*.
   ```hs
-  divModCost n = mul n * (log n / log 2)
+  mulCost l1 l2 =
+    constMul2 * max12 * min12^(constKara - 1) + constMul1 * max12 + constMul0
+    where max12 = max l1 l2
+          min12 = min l1 l2
+
   ```
-* Multiplication modulo cost. Assuming size of arguments is equal to size of modulo, which is `n`
-  ```hs
-  mulModCost n = mul n + divCost (2 * n) n = mul n * (1 + log n)
-  ```
+
+#### Division and modulo
+
+For division and modulo we will use as a base a divide and conquer method.
+For further reading about the method, check [the relevant GMP webpage](https://gmplib.org/manual/Divide-and-Conquer-Division.html#Divide-and-Conquer-Division) and the references therein.
+
+The base case for the divide and conquer method would be a standard long
+division which is linear if the difference between the operands does not
+depend on their size.
+
+##### `x divmod y` when size of `x` is larger than the size of `y` by a constant
+
+`divModStandard(x,y)` where `|x| = |y| + k`, `k` constant
+
+1. if `x < y` return `(0,x)`
+1. let `x = ab` such that `|a| = |y|`
+1. if `a < y`:
+   1. let `x = ab` such that `|a| = |y| + 1`
+1. Binary search between `1` and `maxLimb` for maximal `c` such that
+   `c * y <= a`
+   * Note: this can be HEAVILY further optimized, (it is enough to consider
+     only the first two limbs of `y` to obtain `c` approximated by `1`, but
+     there are other large optimizations to be considered).
+     but it won't affect the asymptotic complexity.
+   * `d = a - c * y`
+1. `(q,r) = divModStandard(db, y)`
+1. return `(cq, r)`
+
+###### Complexity analysis
+
+```hs
+divModStandardCost(x, y) = limbSize * O(|y|) * (|x| - |y|)
+                         = O(|y| * (|x| - |y|))
+                         = dmStdConst1 * |y| * (|x| - |y|) + dmStdConst0
+```
+
+##### `x divmod y` when size of `x` is (about) twice the size of `y`
+
+Note: in the algorithm below, when writing a multidigit number,
+we let `(0x)` denote as many digits of `0` as the size of number `x`.
+
+`divmod0(abcd, ef)` where `|a|=|b|=|c|=|e|=|f|`, `|d| <= |a|`:
+
+  1. `(p, q) = divmod0(ab, e)`
+     * `ab = p*e + q`
+     * `|q| <= |a|`
+     * `|p| <= |a| + 1`
+     * `ab(0c)(0d) = p * e (0c)(0d) + q(0c)(0d)`
+  1. `t = qcd - p * f(0d)`
+     * `t = abcd - p * ef(0d)`
+         = `ab(0c)(0d) + cd - p * ef(0d)`
+         = `p * e (0c)(0d) + q(0c)(0d) + cd - p * e(0c)(0d) - p * f(0d)`
+         = `qcd - p * f(0d)`
+     * `|t| <= max (|qcd|, |p*f(0d)|) <= 2 * |a| + |d| + 1 <= 3 * |a| + 1`
+     * The maximum can be reached if `qcd` is `0`, so `t` would be negative.
+  1. if `t < 0`:
+     * assume `-t = ABCD` with `|A| = |B| = |C| = |e| = |f|`. Then `|D| <= 1`.
+     * `abcd = p * ef(0d) - (-t)`
+     1. `(P, Q) = divmod0 (AB, e)`
+        * `AB = P * e + Q`
+        * `|Q| <= |A|`
+        * `|P| <= |A| + 1`
+        * `AB(0C)(0D) = P * e (0C)(0D) + Q(0C)(0D)`
+     1. `T = QCD - P * f(0D)`
+        * As above, `T = ABCD - P * ef(0D) = QCD - P * f(0D)`
+        * As above, `|T| <= 2*|A| + |D| + 1 <= 2*|a| + 2`
+        * Maximum can be reached when `T` is negative
+     1. if `T < 0`:
+        1. `(r,s) = divmodStandard(-T, ef)`
+           * complexity is about `O(2*|ef|) = O(4*|a|)`
+           * `-T = r * ef + s`
+           * `ABCD = P*ef(0D) - r*ef - s`
+           * `-t = P*ef(0D) - r*ef - s`
+           * `abcd = p * ef(0d) + r * ef + s - P * ef(0D)`
+                  = `(p(0d) + r - P(0D)) * ef + s`
+        1. `return (p(0d) + r - P(0D), s)`
+     1. else: T is positive, but it's almost the same
+  1. else: t is positive, but it’s almost the same
+
+###### Complexity analysis
+
+Let `dm n` denote the cost of dividing `x` of size `2*n` to `y` of size `n`.
+
+```hs
+dm n = dm n + mul n + add (3*n+1) +
+           dm n + mul n + add(2*n+2) +
+           4*add(2*n) + 2*add(2*n)
+         = 2 * dm (n/2) + 2*mul (n/2) + 17 * add(n/2) + const
+```
+
+Solving the recursion, we obtain:
+```
+dm n = dmConst3 * n ^ constKara + dmConst2 * n * log n + dmConst1 * n + dmConst0
+```
+
+##### `x divmod y` when size of `x` is larger than twice the size of `y`
+
+Suppose size of `x` is larger than twice the size of `y`.
+Then divide `x` in blocks of the same size as `y`,
+apply the algorithm above on those blocks,
+and add and shift the results, with minor adjustments.
+
+1. Suppose `x` is splitted in blocks of size `|y|`, starting from the right
+   * leftmost block may have a smaller size
+1. initialize empty stack `stack`
+1. Let `q` be the leftmost block
+1. for each block `b` of `x'`, starting from the left, skipping the first:
+   1. `(p,q) = divmod0(qb, y)`
+      * Note: `|p| <= |qb| - |y| + 1 = |q| + 1 <= |y| + 1`
+   1. push `p` into `stack`
+1. pop `p` from `stack`
+1. let `i = 1`
+1. while `stack` not empty:
+   1. let `rs = p` such that `|s| = i * |y|`
+      * Note: `|r| <= 2`
+   1. pop `t` from `stack`
+   1. `t += r`
+   1. `p = ts`
+   1. `i += 1`
+1. return `(p,q)`
+
+###### Complexity analysis
+
+Both loops have maximum `|x| / |y|` iterations.
+
+```hs
+divModCost lx ly = max12 / min12 (dm min12 + add min12 + ct)
+                 = divModConst4 * max12 * min12^(constKara-1) +
+                   divModConst3 * max12 * log min12 +
+                   divModConst2 * max12 +
+                   divModConst1 * max12 / min12 +
+                   divModConst0
+```
+
+
+
+* Multiplication modulo cost.
   When doing multiple multiplications modulo `m` of size `n` for really large `n`,
-  one can compute only once the "inverse" `base^(2*n) / m`, with a cost of `divModCost n` as above, followed by
+  one can compute only once the "inverse" `base^(2*n) / m`, with a cost of `divModCost (2*n) n` as above, followed by
   repeated operations of cost `mulModCost0 n`
-  (Barrett reduction [https://en.wikipedia.org/wiki/Barrett_reduction]).
+  (Barrett reduction [https://en.wikipedia.org/wiki/Barrett_reduction]), where:
   ```hs
   mulModCost0 n = mul n + mul (n + 1) + 4 * add n
   ```
 
- 
+
 * *constKara = log 3 / log 2* - the exponent of the complexity for the Karatsuba
   algorithm
 
@@ -1047,3 +1239,49 @@ Definitions
 * RETURNDATACOPY
 * CODECOPY
 * EXTCODECOPY
+
+
+#  Chestii, Socoteli ...
+
+forIterationManagement = wordIncrementCost + limbComparisonCost
+
+approxKara -- why both this and mulCost?
+-- bitCost - time for a read-test-write thing on a limb, e.g.
+  * x = 1 if y = 0, x = 0 otherwise.
+-- copyWordCost - time to set a word?? (iszero)
+-- lenCost - time to compute the length of a register??
+registerMaintenanceCost
+  * allocating a new buffer for the register +
+  * updating the length +
+  * setting/copying the sign
+  * dellocating the buffer (this cost is paid at allocation time)
+registerMaintenanceCost1
+  * The 1-limb case of registerMaintenanceCost. Contains the value setting cost
+    in case the value is 0 since length = 0. TODO: Does it contain all consts?
+setWordCost - time for a read-test-write thing on a limb
+mulCost - cost of doing multiplication that writes the result in a given place
+divModCost - cost of doing division or modulo that writes the result in a given place
+
+wordAddCost - add or sub two limbs
+wordAddSetCost - wordAddCost + setWordCost
+limbComparisonCost - compare two limbs and branch
+limbComparisonCost0 - compare limb with 0 and branch
+wordCopyCost - cost to copy a limb
+wordIncrementCost - increment a limb
+wordTestCost - time for a read-test-branch thing on a limb
+wordTestSetCost - time for a read-test-write thing on a limb, replaces bitCost
+
+wordCost - time for a read-op-write thing on a limb, e.g.
+  * x = not y
+  * Should rename
+
+constBaseBoolBinOp
+constExp
+constSHA3, constSHA3Word
+constSignOp
+localStateCost - local state interrrogation complexity
+
+
+------------------
+min
+registerSize(wREG) - the size of a register in limbs
