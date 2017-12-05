@@ -11,7 +11,7 @@ dir_path = os.path.dirname(__file__)
 def assembleIele(code):
   if len(code) == 0:
     return ""
-  if code[0:1] == "0x":
+  if code[0:2] == "0x":
     return code
   if os.path.isabs(code):
     path = code
@@ -38,7 +38,7 @@ def convertToBinaryIele(json):
     for value in json:
       res.append(convertToBinaryIele(value))
     return res
-  elif isinstance(json, unicode) or isinastnce(json, bool) \
+  elif isinstance(json, unicode) or isinstance(json, bool) \
       or isinstance(json, long) or isinstance(json, int):
     return json
 
