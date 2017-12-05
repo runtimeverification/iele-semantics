@@ -4,9 +4,9 @@ contract ERC20 {
 // the storage into different regions. %region represents a unique bit prefix on the
 // key that will be ored with the specified address.
 define @mapKey(%region, %address) {
-  @addressMask = 1461501637330902918203684832716283019655932542975 // 2^160 - 1
+  @addressMask = 20
   @addressShift = 1461501637330902918203684832716283019655932542976 // 2^160
-  %realAddress = and %address, @addressMask
+  %realAddress = twos @addressMask, %address
   %shifted = mul @addressShift, %region
   %ored = or %shifted, %realAddress
   ret %ored
@@ -46,14 +46,16 @@ define @log.Transfer(%from, %to, %value) {
 }
 
 define public @totalSupply() {
-  @supply = 10000
-  ret @supply
+  @supplyKey = 0
+  %supply = sload @supplyKey
+  ret %supply
 }
 
-define @init() {
-  @supply = 10000
+define @init(%supply) {
+  @supplyKey = 0
+  sstore %supply, @supplyKey
   %caller = call @iele.caller()
-  call @setBalance(%caller, @supply)
+  call @setBalance(%caller, %supply)
   ret void
 }
 
@@ -95,9 +97,9 @@ define public @transfer(%to, %value) {
   %lt = cmp lt %balanceFrom, %value
   br %lt, throw
   %balanceFrom = sub %balanceFrom, %value
+  call @setBalance(%from, %balanceFrom)
   %balanceTo = call @balanceOf(%to)
   %balanceTo = add %balanceTo, %value  // no worries of overflow
-  call @setBalance(%from, %balanceFrom)
   call @setBalance(%to, %balanceTo)
   call @log.Transfer(%from, %to, %value)
   ret @retval  // should either return true or throw
@@ -118,11 +120,11 @@ define public @transferFrom(%from, %to, %value) {
   %lt = cmp lt %allowance, %value
   br %lt, throw
   %balanceFrom = sub %balanceFrom, %value
+  call @setBalance(%from, %balanceFrom)
   %allowance = sub %allowance, %value
+  call @setAllowance(%from, %caller, %allowance)
   %balanceTo = call @balanceOf(%to)
   %balanceTo = add %balanceTo, %value  // no worries of overflow
-  call @setBalance(%from, %balanceFrom)
-  call @setAllowance(%from, %caller, %allowance)
   call @setBalance(%to, %balanceTo)
   call @log.Transfer(%from, %to, %value)
   ret @retval  // should either return true or throw
