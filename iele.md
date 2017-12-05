@@ -1743,6 +1743,22 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     rule <k> #gasExec(SCHED, _:IsZeroInst) => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, _:CmpInst)    => Gverylow < SCHED > ... </k>
 
+    rule <k> #gasExec(SCHED, _ = add ARG1 , ARG2)  =>
+        (GAddConst1 < SCHED > *Int
+          maxInt(registerSize(ARG1), registerSize(ARG2))) +Int
+        GAddConst0 < SCHED >
+      ... </k>
+    rule <k> #gasExec(SCHED, _:SubInst)    =>
+        (GAddConst1 < SCHED > *Int
+          maxInt(registerSize(ARG1), registerSize(ARG2))) +Int
+        GAddConst0 < SCHED >
+      ... </k>
+
+    rule <k> #gasExec(SCHED, _ = mul ARG1 , ARG2)  =>
+        2 *Int GTestAndBranch < SCHED > +Int
+        GMulCost(SCHED, registerSize(ARG1), registerSize(ARG2))
+      ... </k>
+
     syntax Int ::= "GAndConstant"             "<" Schedule ">"  [function]
                  | "GAndVariable"             "<" Schedule ">"  [function]
                  | "GCmpConstant"             "<" Schedule ">"  [function]
@@ -1755,6 +1771,11 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
                  | "GXorConstant"             "<" Schedule ">"  [function]
                  | "GXorVariable"             "<" Schedule ">"  [function]
                  ///////////////////////////////////
+                 | GMulCost(Schedule, Int, Int)                 [function]
+                 ///////////////////////////////////
+                 | "GAddConst0"               "<" Schedule ">"  [function]
+                 | "GAddConst1"               "<" Schedule ">"  [function]
+                 | "GBaseAddSub"              "<" Schedule ">"  [function]
                  | "GBaseBoolBinaryOp"        "<" Schedule ">"  [function]
                  | "GBaseNot"                 "<" Schedule ">"  [function]
                  | "GBoolBinaryOpVariable"    "<" Schedule ">"  [function]
@@ -1762,10 +1783,25 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
                  | "GForIteration"            "<" Schedule ">"  [function]
                  | "GForStart"                "<" Schedule ">"  [function]
                  | "GIncrement"               "<" Schedule ">"  [function]
+                 | "GMulConst0"               "<" Schedule ">"  [function]
+                 | "GMulConst1x"              "<" Schedule ">"  [function]
+                 | "GMulConst1y"              "<" Schedule ">"  [function]
+                 | "GMulConst1xy"             "<" Schedule ">"  [function]
+                 | "GMulConst2"               "<" Schedule ">"  [function]
+                 | "GMulSameSizeCommonConst"  "<" Schedule ">"  [function]
+                 | "GMulSameSizeConst0"       "<" Schedule ">"  [function]
+                 | "GMulSameSizeConst1"       "<" Schedule ">"  [function]
+                 | "GMulSameSizeConst2"       "<" Schedule ">"  [function]
+                 | "GPositiveAddConst0"       "<" Schedule ">"  [function]
+                 | "GPositiveAddConst1"       "<" Schedule ">"  [function]
                  | "GRegisterMaintenanceCost" "<" Schedule ">"  [function]
                  | "GSetWordCost"             "<" Schedule ">"  [function]
                  | "GTestAndBranch"           "<" Schedule ">"  [function]
 
+    rule GAddConst0 < SCHED > =>
+      GPositiveAddConst0 < SCHED > +Int
+      (2 *Int GTestAndBranch <SCHED>)
+    rule GAddConst1   < SCHED > => GPositiveAddConst1 < SCHED >
     rule GAndConstant < SCHED > => GBoolOpConstant < SCHED >
     rule GAndVariable < SCHED > => GBoolBinaryOpVariable < SCHED >
     rule GCmpConstant < SCHED > =>  // TODO: This is different fom the .md file.
@@ -1787,6 +1823,49 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
 
     ///////////////////////////////
 
+    rule GMulSameSize(SCHED, L) =>
+      (GMulSameSizeConst2 < SCHED > *Int kara(L)) +Int
+      (GMulSameSizeConst1 < SCHED > *Int L) +Int
+      GMulSameSizeConst0 < SCHED >
+
+    rule GMulCost(SCHED, L1, L2) =>
+        GMulConst2 < SCHED > *Int L1 *Int karaMinus1(L2 /Int 2) +Int
+        GMulConst1xy < SCHED > *Int (L1 /Int L2)  +Int
+        GMulConst1x < SCHED > *Int L1 +Int
+        GMulConst1y < SCHED > *Int L2 +Int
+        GMulConst0 < SCHED >
+      requires L1 >=Int L2
+    rule GMulCost(SCHED, L1, L2) => GMulCost(SCHED, L2, L1)
+      requires L1 <Int L2
+
+    ///////////////////////////////
+
+    rule GMulSameSizeConst2 < SCHED > =>
+      21 +Int (3 *Int GMulSameSizeCommonConst < SCHED >) /Int 2
+    rule GMulSameSizeConst1 < SCHED > => -14 *Int GPositiveAddConst1 < SCHED >
+    rule GMulSameSizeConst0 < SCHED > =>
+      (-7 *Int GPositiveAddConst1 < SCHED >) -Int
+      GMulSameSizeCommonConst < SCHED >
+    rule GMulSameSizeCommonConst < SCHED > =>
+      (11 *Int GPositiveAddConst1 < SCHED >) +Int
+      (6 *Int GPositiveAddConst0 < SCHED >) +Int
+      GRegisterMaintenanceCost <SCHED>
+
+    rule GMulConst1 < SCHED > => GMulSameSizeConst2 < SCHED >
+    rule GMulConst1xy < SCHED > => GMulSameSizeConst0 < SCHED >
+    rule GMulConst1x < SCHED > => GMulSameSizeConst1 < SCHED >
+    rule GMulConst1y < SCHED > => 2 *Int GPositiveAddConst1 < SCHED >
+    rule GMulConst0 < SCHED > =>
+      GPositiveAddConst1 < SCHED > +Int GRegisterMaintenanceCost < SCHED >
+
+    rule GPositiveAddConst0 < SCHED > =>
+      GTestAndBranch <SCHED> +Int
+      GSetWordCost < SCHED > +Int
+      GRegisterMaintenanceCost < SCHED > +Int
+      GForStart < SCHED >
+    rule GPositiveAddConst1 < SCHED > =>
+      GBaseAddSub< SCHED > +Int GForIteration < SCHED >
+
     rule GBoolOpConstant < SCHED > =>
       GRegisterMaintenanceCost < SCHED > +Int GForStart < SCHED >
     rule BinaryBoolOpVariable < SCHED > =>
@@ -1795,6 +1874,7 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     rule GForIteration < SCHED > =>
       GIncrement < SCHED > +Int GTestAndBranch<SCHED>
 
+    rule GBaseAddSub              < _ > => 1
     rule GBaseNot                 < _ > => 2
     rule GForStart                < _ > => 2
     rule GRegisterMaintenanceCost < _ > => 6
@@ -1804,24 +1884,25 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
 
     syntax Int ::= registerSize(Int) [function]
                  | "numberBase"      [function]
+                 | kara(Int)         [function]
+                 | karaMinus1(Int)   [function]
     rule registerSize(R) =>
       #if R ==Int 0 #then 0 #else 1 +Int registerSize(R /Int numberBase) #fi
     rule numberBase => 2 ^Int 64
+    rule kara(L) => L *Int L  // TODO: Use a better approximation.
+    rule karaMinus1(L) => kara(L) /Int L
 
     // Wverylow
-    rule <k> #gasExec(SCHED, _:AddInst)    => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:SubInst)    => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, _:ByteInst)   => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, _:LoadInst)   => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, _:StoreInst)  => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, _:AssignInst) => Gverylow < SCHED > ... </k>
 
     // Wlow
-    rule <k> #gasExec(SCHED, _:MulInst)  => Glow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:DivInst)  => Glow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:ModInst)  => Glow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, _:SExtInst) => Glow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, _:TwosInst) => Glow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, _:DivInst)  => Glow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, _:ModInst)  => Glow < SCHED > ... </k>
 
     // Wmid
     rule <k> #gasExec(SCHED, _:AddModInst)    => Gmid < SCHED > ... </k>
