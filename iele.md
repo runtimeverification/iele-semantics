@@ -1748,7 +1748,7 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
           maxInt(registerSize(ARG1), registerSize(ARG2))) +Int
         GAddConst0 < SCHED >
       ... </k>
-    rule <k> #gasExec(SCHED, _:SubInst)    =>
+    rule <k> #gasExec(SCHED, _ = sub ARG1 , ARG2)  =>
         (GAddConst1 < SCHED > *Int
           maxInt(registerSize(ARG1), registerSize(ARG2))) +Int
         GAddConst0 < SCHED >
@@ -1785,7 +1785,6 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
                  | "GIncrement"               "<" Schedule ">"  [function]
                  | "GMulConst0"               "<" Schedule ">"  [function]
                  | "GMulConst1x"              "<" Schedule ">"  [function]
-                 | "GMulConst1y"              "<" Schedule ">"  [function]
                  | "GMulConst1xy"             "<" Schedule ">"  [function]
                  | "GMulConst2"               "<" Schedule ">"  [function]
                  | "GMulSameSizeCommonConst"  "<" Schedule ">"  [function]
@@ -1832,7 +1831,6 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
         GMulConst2 < SCHED > *Int L1 *Int karaMinus1(L2 /Int 2) +Int
         GMulConst1xy < SCHED > *Int (L1 /Int L2)  +Int
         GMulConst1x < SCHED > *Int L1 +Int
-        GMulConst1y < SCHED > *Int L2 +Int
         GMulConst0 < SCHED >
       requires L1 >=Int L2
     rule GMulCost(SCHED, L1, L2) => GMulCost(SCHED, L2, L1)
@@ -1852,11 +1850,15 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
       GRegisterMaintenanceCost <SCHED>
 
     rule GMulConst1 < SCHED > => GMulSameSizeConst2 < SCHED >
-    rule GMulConst1xy < SCHED > => GMulSameSizeConst0 < SCHED >
-    rule GMulConst1x < SCHED > => GMulSameSizeConst1 < SCHED >
-    rule GMulConst1y < SCHED > => 2 *Int GPositiveAddConst1 < SCHED >
+    rule GMulConst1xy < SCHED > =>
+      GMulSameSizeConst0 < SCHED > +Int GPositiveAddConst1 < SCHED >
+    rule GMulConst1x < SCHED > =>
+      GMulSameSizeConst1 < SCHED > +Int
+      2 *Int GPositiveAddConst1 < SCHED >
     rule GMulConst0 < SCHED > =>
-      GPositiveAddConst1 < SCHED > +Int GRegisterMaintenanceCost < SCHED >
+      GTestAndBranch < SCHED > +Int
+      GRegisterMaintenanceCost < SCHED > +Int
+      GForStart < SCHED >
 
     rule GPositiveAddConst0 < SCHED > =>
       GTestAndBranch <SCHED> +Int
