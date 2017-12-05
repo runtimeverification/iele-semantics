@@ -276,7 +276,8 @@ gas/memory) to contain that size.
         2 * wordTestCost + registerMaintenanceCost1
       | l1 + l2 < l3   = cc
       | otherwise      =
-        divModCost l1 l3 + divModCost l2 l3 + cc + divModCost (2*l3) l3
+        divModCost l1 l3 + divModCost l2 l3 +
+        cc + divModCost (2*l3) l3 + mulModConst0
     ```
   - Size of result is that of the module
     ```hs
@@ -299,7 +300,7 @@ gas/memory) to contain that size.
     computationCost(EXPMOD rREG wBASE wEXP wMOD)
       | isZero wREG2 = wordTestCost + registerMaintenanceCost1
       | otherwise    =
-        divCost lBASE lMOD + lMOD * wordCopyCost + divModCost (2*lMOD) lMOD +
+        divModCost lBASE lMOD + lMOD * wordCopyCost + divModCost (2*lMOD) lMOD +
         2 * blEXP * (mulModCost0 lMOD + constInnerLoop) + constExpMod
       where lBASE = registerSize wBASE
             blEXP = limbSize * registerSize wEXP
@@ -1024,7 +1025,7 @@ Complexity: `|x|/|y| * (mul (|y| / 2) + add(2 * |y|))`
 ##### Multiplication cost function *mulCost*.
   ```hs
   mulCost l1 l2 =
-    mMul2 * max12 * min12^(constKara - 1) + mMul2 * max12 + mMul0
+    constMul2 * max12 * min12^(constKara - 1) + constMul1 * max12 + constMul0
     where max12 = max l1 l2
           min12 = min l1 l2
 
@@ -1034,6 +1035,38 @@ Complexity: `|x|/|y| * (mul (|y| / 2) + add(2 * |y|))`
 
 For division and modulo we will use as a base a divide and conquer method.
 For further reading about the method, check [the relevant GMP webpage](https://gmplib.org/manual/Divide-and-Conquer-Division.html#Divide-and-Conquer-Division) and the references therein.
+
+The base case for the divide and conquer method would be a standard long
+division which is linear if the difference between the operands does not
+depend on their size.
+
+##### `x divmod y` when size of `x` is larger than the size of `y` by a constant
+
+`divModStandard(x,y)` where `|x| = |y| + k`, `k` constant
+
+1. if `x < y` return `(0,x)`
+1. let `x = ab` such that `|a| = |y|`
+1. if `a < y`:
+   1. let `x = ab` such that `|a| = |y| + 1`
+1. Binary search between `1` and `maxLimb` for maximal `c` such that
+   `c * y <= a`
+   * Note: this can be HEAVILY further optimized, (it is enough to consider
+     only the first two limbs of `y` to obtain `c` approximated by `1`, but
+     there are other large optimizations to be considered).
+     but it won't affect the asymptotic complexity.
+   * `d = a - c * y`
+1. `(q,r) = divModStandard(db, y)`
+1. return `(cq, r)`
+
+###### Complexity analysis
+
+```hs
+divModStandardCost(x, y) = limbSize * O(|y|) * (|x| - |y|)
+                         = O(|y| * (|x| - |y|))
+                         = dmStdConst1 * |y| * (|x| - |y|) + dmStdConst0
+```
+
+##### `x divmod y` when size of `x` is (about) twice the size of `y`
 
 Note: in the algorithm below, when writing a multidigit number,
 we let `(0x)` denote as many digits of `0` as the size of number `x`.
@@ -1076,21 +1109,68 @@ we let `(0x)` denote as many digits of `0` as the size of number `x`.
      1. else: T is positive, but it's almost the same
   1. else: t is positive, but it’s almost the same
 
-TODO(traiansf): Complexity analysis
+###### Complexity analysis
 
-* Division cost: `a divmod m` when size of `a` is twice the size of `m`, say `n` division
-  can be done in a divide and conquer manner, with a complexity of `mul n * log n`
-  ```hs
-  divModCost n = mul n * (log n / log 2)
-  ```
-* Multiplication modulo cost. Assuming size of arguments is equal to size of modulo, which is `n`
-  ```hs
-  mulModCost n = mul n + divCost (2 * n) n = mul n * (1 + log n)
-  ```
+Let `dm n` denote the cost of dividing `x` of size `2*n` to `y` of size `n`.
+
+```hs
+dm n = dm n + mul n + add (3*n+1) +
+           dm n + mul n + add(2*n+2) +
+           4*add(2*n) + 2*add(2*n)
+         = 2 * dm (n/2) + 2*mul (n/2) + 17 * add(n/2) + const
+```
+
+Solving the recursion, we obtain:
+```
+dm n = dmConst3 * n ^ constKara + dmConst2 * n * log n + dmConst1 * n + dmConst0
+```
+
+##### `x divmod y` when size of `x` is larger than twice the size of `y`
+
+Suppose size of `x` is larger than twice the size of `y`.
+Then divide `x` in blocks of the same size as `y`,
+apply the algorithm above on those blocks,
+and add and shift the results, with minor adjustments.
+
+1. Suppose `x` is splitted in blocks of size `|y|`, starting from the right
+   * leftmost block may have a smaller size
+1. initialize empty stack `stack`
+1. Let `q` be the leftmost block
+1. for each block `b` of `x'`, starting from the left, skipping the first:
+   1. `(p,q) = divmod0(qb, y)`
+      * Note: `|p| <= |qb| - |y| + 1 = |q| + 1 <= |y| + 1`
+   1. push `p` into `stack`
+1. pop `p` from `stack`
+1. let `i = 1`
+1. while `stack` not empty:
+   1. let `rs = p` such that `|s| = i * |y|`
+      * Note: `|r| <= 2`
+   1. pop `t` from `stack`
+   1. `t += r`
+   1. `p = ts`
+   1. `i += 1`
+1. return `(p,q)`
+
+###### Complexity analysis
+
+Both loops have maximum `|x| / |y|` iterations.
+
+```hs
+divModCost lx ly = max12 / min12 (dm min12 + add min12 + ct)
+                 = divModConst4 * max12 * min12^(constKara-1) +
+                   divModConst3 * max12 * log min12 +
+                   divModConst2 * max12 +
+                   divModConst1 * max12 / min12 +
+                   divModConst0
+```
+
+
+
+* Multiplication modulo cost.
   When doing multiple multiplications modulo `m` of size `n` for really large `n`,
-  one can compute only once the "inverse" `base^(2*n) / m`, with a cost of `divModCost n` as above, followed by
+  one can compute only once the "inverse" `base^(2*n) / m`, with a cost of `divModCost (2*n) n` as above, followed by
   repeated operations of cost `mulModCost0 n`
-  (Barrett reduction [https://en.wikipedia.org/wiki/Barrett_reduction]).
+  (Barrett reduction [https://en.wikipedia.org/wiki/Barrett_reduction]), where:
   ```hs
   mulModCost0 n = mul n + mul (n + 1) + 4 * add n
   ```
