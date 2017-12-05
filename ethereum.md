@@ -461,7 +461,7 @@ Since IELE is a new language with no hard forks yet, we only support the latest 
 
     syntax Schedule ::= #asScheduleString ( String ) [function]
  // -----------------------------------------------------------
-    rule #asScheduleString("Byzantium")      => ALBE
+    rule #asScheduleString("Albe")      => ALBE
 
     rule <k> load "checkGas" : CHECKGAS => . ... </k>
          <checkGas> _ => CHECKGAS </checkGas>

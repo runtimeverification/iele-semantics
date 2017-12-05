@@ -45,6 +45,8 @@ def convertToIele(json):
         for key, value in json.iteritems():
             if key == "code" or (key == "data" and isCreateTx):
                 res[key] = convertCodeToIele(value)
+            elif key == "network" and json[key] == "Byzantium":
+                res[key] = "Albe"
             else:
                 res[key] = convertToIele(value)
         return res
