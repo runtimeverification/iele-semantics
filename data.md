@@ -331,7 +331,7 @@ The local memory of execution is a byte-array (instead of a word-array).
  // -----------------------------------------------------------------------
     rule #numBytes(W) => #numBytes(W, 0)
     rule #numBytes(0, N) => N
-    rule #numBytes(W, N) => #numBytes(W >>Int 8, N +Int 1)
+    rule #numBytes(W, N) => #numBytes(W >>Int 8, N +Int 1) [owise]
 
     syntax WordStack ::= #asSignedBytes ( Int )                    [function]
                        | #asSignedBytes ( Int , WordStack , Bool ) [function, klabel(#asSignedBytesAux), smtlib(asSignedBytes)]
