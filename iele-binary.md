@@ -282,7 +282,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
 
     syntax LValue ::= "%" "(" Int "," Int "," Int "," Int ")" [function]
  // --------------------------------------------------------------------
-    rule %(REGS, WIDTH, MASK, IDX) => #fun(REGNUM => #if REGNUM <Int (1 <<Int (WIDTH -Int 1)) #then % REGNUM #else @ (REGNUM -Int (1 <<Int (WIDTH -Int 1))) #fi)((REGS >>Int (IDX *Int WIDTH)) &Int MASK)
+    rule %(REGS, WIDTH, MASK, IDX) => % ((REGS >>Int (IDX *Int WIDTH)) &Int MASK)
 
     syntax Operands ::= "%o" "(" Int "," Int "," Int "," Int "," Int ")" [function]
  // -------------------------------------------------------------------------------

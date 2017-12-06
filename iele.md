@@ -76,7 +76,6 @@ In the comments next to each cell, we've marked which component of the yellowpap
 
                       // \mu_*
                       <regs>        .Array  </regs>                        // \mu_s
-                      <globalRegs>  .Array  </globalRegs>                  // \mu_s
                       <localMem>    .Memory </localMem>                    // \mu_m
                       <memoryUsed>  .Map    </memoryUsed>                  // \mu_i
                       <fid>         deposit      </fid>
@@ -290,8 +289,7 @@ Simple commands controlling exceptions provide control-flow.
 
 Description of registers.
 
--   Local registers begin with `%`
--   Global registers begin with `@`
+-   Registers begin with `%`
 -   Registers are evaluated using heating to the values they contain.
 -   `#regRange(N)` generates the registers 0 to N-1.
 -   `#sizeRegs(R)` returns the number of regsiters in a list of registers.
@@ -301,7 +299,6 @@ Description of registers.
     syntax KResult ::= Int
  // ----------------------
     rule <k> % REG:Int => REGS [ REG ] ... </k> <regs> REGS </regs>
-    rule <k> @ REG:Int => REGS [ REG ] ... </k> <globalRegs> REGS </globalRegs>
 
     syntax Operands ::= Ints
     syntax NonEmptyOperands ::= Operands
@@ -311,7 +308,6 @@ Description of registers.
 
     syntax String ::= IeleName2String ( IeleName ) [function, hook(STRING.token2string)]
  // ------------------------------------------------------------------------------------
-    rule @ NAME:NumericIeleName => @ String2Int(IeleName2String(NAME)) requires notBool isInt(NAME)
     rule % NAME:NumericIeleName => % String2Int(IeleName2String(NAME)) requires notBool isInt(NAME)
 
     syntax LValues ::= #regRange ( Int ) [function]
@@ -722,15 +718,11 @@ Some operators don't calculate anything, they just manipulate the state of regis
     rule <k> #exec REG = W:Int => #load REG W ... </k> 
 
     rule <k> #exec REG1 = % REG2 => #load REG1 { REGS [ REG2 ] }:>Int ... </k> <regs> REGS </regs>
-    rule <k> #exec REG1 = @ REG2 => #load REG1 { REGS [ REG2 ] }:>Int ... </k> <globalRegs> REGS </globalRegs>
 
     syntax InternalOp ::= "#load" LValue Int
  // ----------------------------------------
     rule <k> #load % REG VALUE => . ... </k>
          <regs> REGS => REGS [ REG <- VALUE ] </regs>
-
-    rule <k> #load @ REG VALUE => . ... </k>
-         <globalRegs> REGS => REGS [ REG <- VALUE ] </globalRegs>
 
     syntax InternalOp ::= "#loads" LValues Ints
  // -------------------------------------------
@@ -901,7 +893,7 @@ These operators make queries about the current execution state.
 The `br` instruction jumps to a specified label, either unconditionally, or if its argument is nonzero.
 
 The call instruction for local calls (i.e. the form which does not specify an account, value, or gas limit), calls a function in the current contract.
-The called function executes in the same contract call frame (i.e. with the same value, gas limit, memory, and global registers), but with a fresh set of local registers.
+The called function executes in the same contract call frame (i.e. with the same value, gas limit, and memory), but with a fresh set of local registers.
 When execution of the callee reaches a `ret` instruction, control returns to the instruction following the call, and local registers are restored.
 
 ```{.k .uiuck .rvk}
