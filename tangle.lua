@@ -43,7 +43,8 @@ function Doc(body, metadata, variables)
   local targets = split_classes(metadata.code or '')
   local block = 1
   local function replace()
-    classes, code = table.unpack(blocks[block])
+    local classes = blocks[block][1]
+    local code = blocks[block][2]
     block = block + 1
     if keep(classes,targets) then
       return code
