@@ -814,7 +814,8 @@ Expression calculations are simple and don't require anything but the arguments 
     rule <k> #exec REG = expmod W0 , W1 , W2 => #exception                     ... </k> requires W1 <Int 0 andBool gcdInt(W0, W2) =/=Int 1
 
     rule <k> #exec REG = byte INDEX , W => #load REG byte(chop(INDEX), W)       ... </k>
-    rule <k> #exec REG = sext WIDTH , W => #load REG signextend(chop(WIDTH), W) ... </k>
+    rule <k> #exec REG = sext WIDTH , W => #load REG signextend(chop(WIDTH), W) ... </k> requires W >=Int 0
+    rule <k> #exec REG = sext WIDTH , W => #exception                           ... </k> requires W <Int 0
     rule <k> #exec REG = twos WIDTH , W => #load REG twos(chop(WIDTH), W)       ... </k>
 
     rule <k> #exec REG = and W0 , W1 => #load REG W0 &Int W1   ... </k>
