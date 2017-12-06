@@ -800,7 +800,8 @@ Expression calculations are simple and don't require anything but the arguments 
     rule <k> #exec REG = sub W0 , W1 => #load REG W0 -Int W1 ... </k>
     rule <k> #exec REG = div W0 , W1 => #load REG W0 /Int W1 ... </k> requires W1 =/=Int 0
     rule <k> #exec REG = div W0 ,  0 => #exception           ... </k>
-    rule <k> #exec REG = exp W0 , W1 => #load REG W0 ^Int W1 ... </k>
+    rule <k> #exec REG = exp W0 , W1 => #load REG W0 ^Int W1 ... </k> requires W1 >=Int 0
+    rule <k> #exec REG = exp W0 , W1 => #exception           ... </k> requires W1 <Int 0
     rule <k> #exec REG = mod W0 , W1 => #load REG W0 %Int W1 ... </k> requires W1 =/=Int 0
     rule <k> #exec REG = mod W0 ,  0 => #exception           ... </k>
 
