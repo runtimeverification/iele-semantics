@@ -272,12 +272,10 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmInstruction ( CALL (LABEL, ARGS, RETS), R, W, M, F ) => %l(R, W, M, 0, RETS +Int 1) = call @ {F [ LABEL ]}:>IeleName at %(R, W, M, 2 +Int RETS) ( %o(R, W, M, 4 +Int RETS, ARGS) ) send %(R, W, M, 3 +Int RETS) , gaslimit %(R, W, M, 1 +Int RETS)
     rule #dasmInstruction ( LOCALCALL (LABEL, ARGS, RETS), R, W, M, F ) => %l(R, W, M, 0, RETS) = call @ {F [ LABEL ] orDefault LABEL}:>IeleName ( %o(R, W, M, RETS, ARGS) )
 
-    rule #dasmInstruction ( CREATE (LABEL, ARGS), R, W, M, _ ) => %(R, W, M, 0) = create LABEL ( %o(R, W, M, 2, ARGS) ) send %(R, W, M, 1)
-    rule #dasmInstruction ( COPYCREATE (ARGS), R, W, M, _ ) => %(R, W, M, 0) = copycreate %(R, W, M, 2) ( %o(R, W, M, 3, ARGS) ) send %(R, W, M, 1)
+    rule #dasmInstruction ( CREATE (LABEL, ARGS), R, W, M, _ ) => %(R, W, M, 0) , %(R, W, M, 1) = create LABEL ( %o(R, W, M, 3, ARGS) ) send %(R, W, M, 2)
+    rule #dasmInstruction ( COPYCREATE (ARGS), R, W, M, _ ) => %(R, W, M, 0) , %(R, W, M, 1) = copycreate %(R, W, M, 3) ( %o(R, W, M, 4, ARGS) ) send %(R, W, M, 2)
 
-    rule #dasmInstruction ( REVERT(RETS), R, W, M, _ ) => revert %o(R, W, M, 0, RETS)
-      requires RETS =/=Int 0
-    rule #dasmInstruction ( REVERT(0), R, W, M, _ ) => revert void
+    rule #dasmInstruction ( REVERT(1), R, W, M, _ ) => revert %(R, W, M, 0)
     rule #dasmInstruction ( RETURN(RETS), R, W, M, _ ) => ret %o(R, W, M, 0, RETS)
       requires RETS =/=Int 0
     rule #dasmInstruction ( RETURN(0), R, W, M, _ ) => ret void

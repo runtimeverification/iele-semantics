@@ -78,7 +78,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
     syntax IELECommand ::= "flush"
  // ------------------------------
     rule <k> #end       ~> flush => #finalizeTx(false)               ... </k>
-    rule <k> #exception ~> flush => #finalizeTx(false) ~> #exception ... </k>
+    rule <k> #exception CODE ~> flush => #finalizeTx(false) ~> #exception CODE ... </k>
 ```
 
 -   `startTx` computes the sender of the transaction, and places loadTx on the `k` cell.
@@ -112,7 +112,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
  // -------------------------------------
     rule <k> loadTx(ACCTFROM)
           => #create ACCTFROM #newAddr(ACCTFROM, NONCE) (GLIMIT -Int G0(SCHED, CODE, ARGS, true)) VALUE #dasmContract(CODE, Main) ARGS
-          ~> #codeDeposit #newAddr(ACCTFROM, NONCE) #sizeWordStack(CODE) #dasmContract(CODE, Main) %0 true ~> #adjustGas ~> #finalizeTx(false) ~> startTx
+          ~> #codeDeposit #newAddr(ACCTFROM, NONCE) #sizeWordStack(CODE) #dasmContract(CODE, Main) %0 %1 true ~> #adjustGas ~> #finalizeTx(false) ~> startTx
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -185,8 +185,8 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
 
     syntax IELECommand ::= "#finishTx"
  // ----------------------------------
-    rule <k> #exception ~> #finishTx => #popCallStack ~> #popWorldState ~> #popSubstate ... </k>
-    rule <k> #revert    ~> #finishTx => #popCallStack ~> #popWorldState ~> #popSubstate ~> #refund GAVAIL ... </k> <gas> GAVAIL </gas>       
+    rule <k> #exception _ ~> #finishTx => #popCallStack ~> #popWorldState ~> #popSubstate ... </k>
+    rule <k> #revert _    ~> #finishTx => #popCallStack ~> #popWorldState ~> #popSubstate ~> #refund GAVAIL ... </k> <gas> GAVAIL </gas>       
 
     rule <k> #end ~> #finishTx => #popCallStack ~> #dropWorldState ~> #dropSubstate ~> #refund GAVAIL ... </k>
          <id> ACCT </id>
@@ -246,7 +246,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
 ```{.k .uiuck .rvk}
     syntax IELECommand ::= "exception" | "failure" String | "success"
  // -----------------------------------------------------------------
-    rule <k> #exception ~> exception => . ... </k>
+    rule <k> #exception _ ~> exception => . ... </k>
     rule <k> success => . ... </k> <exit-code> _ => 0 </exit-code>
     rule failure _ => .
 ```
@@ -568,7 +568,7 @@ The `"transactions"` key loads the transactions.
 ```{.k .uiuck .rvk}
     syntax IELECommand ::= "check" JSON
  // -----------------------------------
-    rule #exception ~> check J:JSON => check J ~> #exception
+    rule #exception CODE ~> check J:JSON => check J ~> #exception CODE
     rule check DATA : { .JSONList } => . requires DATA =/=String "transactions"
     rule check DATA : { (KEY:String) : VALUE , REST } => check DATA : { KEY : VALUE } ~> check DATA : { REST }
       requires REST =/=K .JSONList andBool notBool DATA in (SetItem("callcreates") SetItem("transactions"))

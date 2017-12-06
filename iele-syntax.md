@@ -94,16 +94,15 @@ module IELE-COMMON
 
   syntax ReturnInst ::= "ret" NonEmptyOperands [hybrid, strict(1)]
                       | "ret" "void"
-  syntax RevertInst ::= "revert" NonEmptyOperands [hybrid, strict(1)]
-                      | "revert" "void"
+  syntax RevertInst ::= "revert" Operand [hybrid, strict(1)]
 
   // Logging
   syntax LogInst ::= "log" /* index */ Operand [hybrid, strict(1)]
                    | "log" /* index */ Operand "," NonEmptyOperands [hybrid, seqstrict(1,2)]
 
   // Account creation/deletion
-  syntax CreateInst ::= LValue "=" "create" /* contract name */ IeleName "(" Operands ")" "send" Operand [hybrid, seqstrict(3,4)]
-  syntax CreateInst ::= LValue "=" "copycreate" /* contract address */ Operand "(" Operands ")" "send" Operand [hybrid, seqstrict(2,3)]
+  syntax CreateInst ::= LValue "," LValue "=" "create" /* contract name */ IeleName "(" Operands ")" "send" Operand [hybrid, seqstrict(3,4)]
+  syntax CreateInst ::= LValue "," LValue "=" "copycreate" /* contract address */ Operand "(" Operands ")" "send" Operand [hybrid, seqstrict(2,3)]
 
   syntax SelfdestructInst ::= "selfdestruct" /* account to send balance */ Operand [hybrid, strict(1)]
 
@@ -232,7 +231,6 @@ module IELE-COMMON
   rule call NAME at CONTRACT ( ARGS ) send VALUE , gaslimit GLIMIT => .LValues = call NAME at CONTRACT ( ARGS ) send VALUE , gaslimit GLIMIT [macro]
   rule staticcall NAME at CONTRACT ( ARGS ) gaslimit GLIMIT => .LValues = staticcall NAME at CONTRACT ( ARGS ) gaslimit GLIMIT [macro]
   rule ret void => ret .NonEmptyOperands [macro]
-  rule revert void => revert .NonEmptyOperands [macro]
 endmodule
 ```
 
