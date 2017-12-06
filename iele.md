@@ -750,17 +750,17 @@ These operations are getters/setters of the local execution memory.
 -   `REG = store VALUE, CELL` stores VALUE into the specified memory CELL, overwriting the previous value of the entire cell.
 
 ```{.k .uiuck .rvk}
-    rule <k> #exec REG = load CELL , OFFSET , WIDTH => #load REG #asSigned({LM [ CELL ]}:>WordStack [ OFFSET .. WIDTH ]) ... </k>
+    rule <k> #exec REG = load CELL , OFFSET , WIDTH => #load REG #asSigned({LM [ chop(CELL) ]}:>WordStack [ OFFSET .. WIDTH ]) ... </k>
          <localMem> LM </localMem>
 
-    rule <k> #exec REG = load CELL => #load REG #asSigned({LM [ CELL ]}:>WordStack) ... </k>
+    rule <k> #exec REG = load CELL => #load REG #asSigned({LM [ chop(CELL) ]}:>WordStack) ... </k>
          <localMem> LM </localMem>
 
     rule <k> #exec store VALUE , CELL , OFFSET , WIDTH => . ... </k>
-         <localMem> LM => LM [ CELL <- {LM [ CELL ]}:>WordStack [ OFFSET := #padToWidth(WIDTH, #asUnsignedBytes(VALUE modInt (2 ^Int (WIDTH *Int 8)))) ] ] </localMem>
+         <localMem> LM => LM [ chop(CELL) <- {LM [ chop(CELL) ]}:>WordStack [ OFFSET := #padToWidth(chop(WIDTH), #asUnsignedBytes(VALUE modInt (2 ^Int (chop(WIDTH) *Int 8)))) ] ] </localMem>
 
     rule <k> #exec store VALUE , CELL => . ... </k>
-         <localMem> LM => LM [ CELL <- #asSignedBytes(VALUE) ] </localMem>
+         <localMem> LM => LM [ chop(CELL) <- #asSignedBytes(VALUE) ] </localMem>
 ```
 
 ### Expressions
@@ -841,7 +841,7 @@ The sha3 instruction computes the keccak256 hash of an entire memory cell.
 
 ```{.k .uiuck .rvk}
 
-    rule <k> #exec REG = sha3 MEMINDEX => #load REG keccak({LM [ MEMINDEX ]}:>WordStack) ... </k>
+    rule <k> #exec REG = sha3 MEMINDEX => #load REG keccak({LM [ chop(MEMINDEX) ]}:>WordStack) ... </k>
          <localMem> LM </localMem>
 ```
 
@@ -993,7 +993,7 @@ The `log` instruction logs an entire memory cell to the substate log with zero t
     rule <k> #log MEMINDEX WS => . ... </k>
          <id> ACCT </id>
          <localMem> LM </localMem>
-         <logData> ... (.List => ListItem({ ACCT | WS | {LM [ MEMINDEX ]}:>WordStack })) </logData>
+         <logData> ... (.List => ListItem({ ACCT | WS | {LM [ chop(MEMINDEX) ]}:>WordStack })) </logData>
 ```
 
 Network Ops
