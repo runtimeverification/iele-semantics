@@ -1092,12 +1092,12 @@ The various `call*` (and other inter-contract control flow) operations will be d
 -   `#return__` is a placeholder for the calling program, specifying where to place the returned data in registers.
 
 ```{.k .uiuck .rvk}
-    syntax InternalOp ::= "#checkCall" Int Int
+    syntax InternalOp ::= "#checkCall" Int Int Int
                         | "#call" Int Int IeleName Int Int Ints Bool
                         | "#callWithCode" Int Int ProgramCell IeleName Int Int Ints Bool
                         | "#mkCall" Int Int ProgramCell IeleName Int Int Ints Bool
  // ----------------------------------------------------------------------------------
-    rule <k> #checkCall ACCT VALUE ~> #call _ _ _ GLIMIT _ _ _ => #refund GLIMIT ~> #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception ... </k>
+    rule <k> #checkCall ACCT VALUE GCAP ~> #call _ _ _ GLIMIT _ _ _ => #refund GLIMIT ~> #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception ... </k>
          <callDepth> CD </callDepth>
          <output> _ => .Ints </output>
          <account>
@@ -1105,16 +1105,16 @@ The various `call*` (and other inter-contract control flow) operations will be d
            <balance> BAL </balance>
            ...
          </account>
-      requires VALUE >Int BAL orBool CD >=Int 1024
+      requires VALUE >Int BAL orBool VALUE <Int 0 orBool GCAP <Int 0 orBool CD >=Int 1024
 
-     rule <k> #checkCall ACCT VALUE => . ... </k>
+     rule <k> #checkCall ACCT VALUE GCAP => . ... </k>
          <callDepth> CD </callDepth>
          <account>
            <acctID> ACCT </acctID>
            <balance> BAL </balance>
            ...
          </account>
-      requires notBool (VALUE >Int BAL orBool CD >=Int 1024)
+      requires notBool (VALUE >Int BAL orBool VALUE <Int 0 orBool GCAP <Int 0 orBool CD >=Int 1024)
 
     rule <k> #call ACCTFROM ACCTTO FUNC GLIMIT VALUE ARGS STATIC
           => #callWithCode ACCTFROM ACCTTO #precompiled FUNC GLIMIT VALUE ARGS STATIC
@@ -1236,7 +1236,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
 
 ```{.k .uiuck .rvk}
     rule <k> #exec REG , REGS = call @ LABEL at ACCTTO ( ARGS ) send VALUE , gaslimit GCAP
-          => #checkCall ACCTFROM VALUE
+          => #checkCall ACCTFROM VALUE GCAP
           ~> #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, VALUE) VALUE ARGS false
           ~> #return REGS REG
          ...
@@ -1247,7 +1247,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
          <previousGas> GAVAIL </previousGas>
 
     rule <k> #exec REG , REGS = staticcall @ LABEL at ACCTTO ( ARGS ) gaslimit GCAP
-          => #checkCall ACCTFROM 0
+          => #checkCall ACCTFROM 0 GCAP
           ~> #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0) 0 ARGS true
           ~> #return REGS REG
          ...
@@ -1277,7 +1277,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
            <balance> BAL </balance>
            ...
          </account>
-      requires VALUE >Int BAL orBool CD >=Int 1024
+      requires VALUE >Int BAL orBool VALUE <Int 0 orBool CD >=Int 1024
 
     rule <k> #checkCreate ACCT VALUE => . ... </k>
          <mode> EXECMODE </mode>
@@ -1289,7 +1289,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
            ...
          </account>
          <activeAccounts> ... ACCT |-> (EMPTY => #if EXECMODE ==K VMTESTS #then EMPTY #else false #fi) ... </activeAccounts>
-      requires notBool (VALUE >Int BAL orBool CD >=Int 1024)
+      requires notBool (VALUE >Int BAL orBool VALUE <Int 0 orBool CD >=Int 1024)
 
     rule #create ACCTFROM ACCTTO GAVAIL VALUE CODE ARGS
       => #pushCallStack ~> #pushWorldState ~> #pushSubstate
