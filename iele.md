@@ -1256,6 +1256,9 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
          <id> ACCTFROM </id>
          <activeAccounts> ACCTS </activeAccounts>
          <previousGas> GAVAIL </previousGas>
+
+    rule #exec .LValues = call _ at _ ( _ ) send _ , gaslimit _ => #exception
+    rule #exec .LValues = staticcall _ at _ ( _ ) gaslimit _ => #exception
 ```
 
 ### Account Creation/Deletion
