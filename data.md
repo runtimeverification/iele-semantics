@@ -147,7 +147,8 @@ Bitwise Operators
                  | byte ( Int , Int ) [function]
  // --------------------------------------------
     rule bit(N, W)  => (W >>Int (N)) %Int 2
-    rule byte(N, W) => (W >>Int (N *Int 8)) %Int 256
+    rule byte(N, W) => (W >>Int (N *Int 8)) %Int 256 requires W >=Int 0
+    rule byte(N, W) => 255 -Int (absInt(W +Int 1) >>Int (N *Int 8)) %Int 256 requires W <Int 0
 ```
 
 -   `#nBits` shifts in $N$ ones from the right.
