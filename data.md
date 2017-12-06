@@ -124,6 +124,18 @@ Here we provide simple syntactic sugar over our power-modulus operator.
     rule powmod(W0, W1, 0) => 0
 ```
 
+-   `gcdInt` computes the gcd of two integers.
+
+```{.k .uiuck .rvk}
+    syntax Int ::= gcdInt(Int, Int)  [function]
+                 | #gcdInt(Int, Int) [function]
+ // -------------------------------------------
+    rule gcdInt(A, B) => #gcdInt(absInt(A), absInt(B)) requires absInt(A) >=Int absInt(B)
+    rule gcdInt(A, B) => #gcdInt(absInt(B), absInt(A)) [owise]
+    rule #gcdInt(A, 0) => A
+    rule #gcdInt(A, B) => #gcdInt(B, A modInt B) [owise]
+```
+
 Bitwise Operators
 -----------------
 
