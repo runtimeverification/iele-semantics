@@ -1512,6 +1512,11 @@ Precompiled Contract
     rule <k> #exec ECREC => #end ... </k>
          <callData> HASH , V , R , S , .Ints </callData>
          <output> _ => #ecrec(#sender(#unparseByteStack(#padToWidth(32, #asUnsignedBytes(HASH))), V, #unparseByteStack(#padToWidth(32, #asUnsignedBytes(R))), #unparseByteStack(#padToWidth(32, #asUnsignedBytes(S))))) </output>
+         requires HASH >=Int 0 andBool V >=Int 0 andBool R >=Int 0 andBool S >=Int 0
+
+    rule <k> #exec ECREC => #exception ... </k>
+         <callData> HASH , V , R , S , .Ints </callData>
+         requires notBool (HASH >=Int 0 andBool V >=Int 0 andBool R >=Int 0 andBool S >=Int 0)
 
     syntax Ints ::= #ecrec ( Account ) [function]
  // ---------------------------------------------
@@ -1523,12 +1528,22 @@ Precompiled Contract
     rule <k> #exec SHA256 => #end ... </k>
          <callData> LEN , DATA , .Ints </callData>
          <output> _ => #parseHexWord(Sha256(#unparseByteStack(#padToWidth(LEN, #asUnsignedBytes(DATA))))) , .Ints </output>
+         requires LEN >=Int 0 andBool DATA >=Int 0
+
+    rule <k> #exec SHA256 => #exception ... </k>
+         <callData> LEN , DATA , .Ints </callData>
+         requires notBool (LEN >=Int 0 andBool DATA >=Int 0)
 
     syntax PrecompiledOp ::= "RIP160"
  // ---------------------------------
     rule <k> #exec RIP160 => #end ... </k>
          <callData> LEN , DATA , .Ints </callData>
          <output> _ => #parseHexWord(RipEmd160(#unparseByteStack(#padToWidth(LEN, #asUnsignedBytes(DATA))))) , .Ints </output>
+         requires LEN >=Int 0 andBool DATA >=Int 0
+
+    rule <k> #exec RIP160 => #exception ... </k>
+         <callData> LEN , DATA , .Ints </callData>
+         requires notBool (LEN >=Int 0 andBool DATA >=Int 0)
 
     syntax PrecompiledOp ::= "ID"
  // -----------------------------
