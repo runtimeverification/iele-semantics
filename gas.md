@@ -268,28 +268,30 @@ gas/memory) to contain that size.
     ```
 * `MULMOD rREG wREG1 wREG2 wREG3`
   -  Multiplication can be done by first modulo-ing the arguments;
-     then `mulModCost l3` computes the cost for multiplying and
-     taking modulo again.
+     then multiplying the results and taking modulo again.
     ```hs
     computationCost(MULMOD rREG wREG1 wREG2 wREG3)
       | isZero wREG1 || isZero wREG2 =
         2 * wordTestCost + registerMaintenanceCost1
-      | l1 + l2 < l3   = cc
+      | l1 + l2 < 2*l3 = mulCost l1 l2 + dmCost l3 + mulModConst0
       | otherwise      =
         divModCost l1 l3 + divModCost l2 l3 +
-        cc + divModCost (2*l3) l3 + mulModConst0
+        mulCost ml1 ml2 + dmCost l3 + mulModConst0
     ```
-  - Size of result is that of the module
+  - Size of result is that of the modulo
     ```hs
     estimatedResultSize(MULMOD rREG wREG1 wREG2 wREG3)
       | isZero wREG1 || isZero wREG2 = 0
       | otherwise = l3
-      where l1 = registerSize wREG1
-            l2 = registerSize wREG2
-            l3 = registerSize wREG3
-            ml1 = min l1 l3
-            ml2 = min l2 l3
-            cc = mulCost ml1 ml2
+      where
+        l1 = registerSize wREG1
+        l2 = registerSize wREG2
+        l3 = registerSize wREG3
+        ml1 = min l1 l3
+        ml2 = min l2 l3
+        cc = mulCost ml1 ml2
+        mulModConst0 = wordAddSetCost + leftShiftWordCost + limbComparisonCost +
+                       2 * registerManagementCost
     ```
 * `EXPMOD rREG wREG1 wREG2 wREG3`
   - Exponentiation is done by repeatedly squaring `WREG1` and multiplying those
@@ -300,7 +302,7 @@ gas/memory) to contain that size.
     computationCost(EXPMOD rREG wBASE wEXP wMOD)
       | isZero wREG2 = wordTestCost + registerMaintenanceCost1
       | otherwise    =
-        divModCost lBASE lMOD + lMOD * wordCopyCost + divModCost (2*lMOD) lMOD +
+        divModCost lBASE lMOD + lMOD * wordCopyCost + dmCost lMOD +
         2 * blEXP * (mulModCost0 lMOD + constInnerLoop) + constExpMod
       where lBASE = registerSize wBASE
             blEXP = limbSize * registerSize wEXP
@@ -1061,9 +1063,9 @@ depend on their size.
 ###### Complexity analysis
 
 ```hs
-divModStandardCost(x, y) = limbSize * O(|y|) * (|x| - |y|)
-                         = O(|y| * (|x| - |y|))
-                         = dmStdConst1 * |y| * (|x| - |y|) + dmStdConst0
+divModStandardCost lx ly = limbSize * O(ly) * (lx - ly)
+                         = O(ly * (lx - ly))
+                         = dmStdConst1 * ly * (lx - ly) + dmStdConst0
 ```
 
 ##### `x divmod y` when size of `x` is (about) twice the size of `y`
@@ -1111,13 +1113,14 @@ we let `(0x)` denote as many digits of `0` as the size of number `x`.
 
 ###### Complexity analysis
 
-Let `dm n` denote the cost of dividing `x` of size `2*n` to `y` of size `n`.
+Let `dmCost n` denote the cost of dividing `x` of size `2*n` to `y` of size `n`.
 
 ```hs
-dm n = dm n + mul n + add (3*n+1) +
-           dm n + mul n + add(2*n+2) +
-           4*add(2*n) + 2*add(2*n)
-         = 2 * dm (n/2) + 2*mul (n/2) + 17 * add(n/2) + const
+dmCost n = dmCost (n/2) + mul (n/2) + add (3*n/2+1) +
+           dmcost (n/2) + mul (n/2) + add(n+2) +
+           4*add(n) + 2*add(n)
+         = 2 * dmCost (n/2) + 2*mul (n/2) + 17 * add(n/2) + const
+         // let const = 3 * addConst1 - 8 * addConst0 + divideConquerConst
          = 2*mul(n/2) + 17 * add(n/2) + const +
            4*mul(n/4) + 17 * 2 * add(n/4) + 2*const +
            ................ +
@@ -1139,12 +1142,13 @@ dm n = dm n + mul n + add (3*n+1) +
 
 Therefore:
 ```
-dm n = dmConst3 * n ^ constKara + dmConst2 * n * log n + dmConst1 * n + dmConst0
+dmCost n = dmConst3 * n ^ constKara + dmConst2 * n * log n + dmConst1 * n + dmConst0
   where
     dmConst3 = mulConst2 * 2^(1-constKara) / (1 - 2^(1-constKara))
     dmConst2 = 2*mulConst1  +  17 * posAddConst1
     dmConst1 = 17 * posAddConst0 + mulConst0 + const - dmConst2 - 2*mulConst1 - 17 * posAddConst1
     dmConst0 = - mulCost0 - posAddConst0 - const
+    const = 3 * addConst1 - 8 * addConst0 + divideConquerConst
 ```
 
 ##### `x divmod y` when size of `x` is larger than twice the size of `y`
@@ -1178,12 +1182,20 @@ and add and shift the results, with minor adjustments.
 Both loops have maximum `|x| / |y|` iterations.
 
 ```hs
-divModCost lx ly = max12 / min12 (dm min12 + add min12 + ct)
-                 = divModConst4 * max12 * min12^(constKara-1) +
-                   divModConst3 * max12 * log min12 +
+divModCost lx ly
+  | max12 - min12 < tresh = divModStandardCost max12 min12
+  | otherwise
+  = max12 / min12 (dmCost min12 + addCost min12 + ct1) + divModConst0
+                 = dmConst3 * max12 * min12^(constKara-1) +
+                   dmConst2 * max12 * log min12 +
                    divModConst2 * max12 +
                    divModConst1 * max12 / min12 +
                    divModConst0
+  where
+    max12 = max lx ly
+    min12 = min lx ly
+    divModConst2 = dmConst1 + addConst1
+    divModConst1 = dmConst0 + addConst0 + ct
 ```
 
 
