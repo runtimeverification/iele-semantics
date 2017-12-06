@@ -205,12 +205,15 @@ module IELE-COMMON
     "define" FunctionSignature "{" Blocks "}"
   | "define" "public" FunctionSignature "{" Blocks "}"
 
+  syntax GlobalDefinition ::= GlobalName "=" Int
+
   // Contract declarations
   syntax ContractDeclaration ::= "external" "contract" IeleName
 
   // Top-level definitions
   syntax TopLevelDefinition ::=
     FunctionDefinition
+  | GlobalDefinition
   | ContractDeclaration
 
   syntax TopLevelDefinitions ::= List{TopLevelDefinition, ""} [klabel(topLevelDefinitionList)]
