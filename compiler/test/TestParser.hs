@@ -322,12 +322,12 @@ instructionTests =
       (parseFailure (instruction <* eof) "log %idx, %1, %2, %3, %4, %5")
   , testInstruction
       "create"
-      (Op (CREATE "b" (mkArgs 2)) "%a" ["%12","%10","%11"])
-      "%a=create b(%10,%11) send %12"
+      (CallOp (CREATE "b" (mkArgs 2)) ["%a","%b"] ["%12","%10","%11"])
+      "%a,%b=create b(%10,%11) send %12"
   , testInstruction
       "copycreate"
-      (Op (COPYCREATE (mkArgs 2)) "%a" ["%val","%acct","%10","%11"])
-      "%a=copycreate %acct(%10,%11) send %val"
+      (CallOp (COPYCREATE (mkArgs 2)) ["%a","%b"] ["%val","%acct","%10","%11"])
+      "%a,%b=copycreate %acct(%10,%11) send %val"
   , testInstruction
       "SelfDestruct"
       (VoidOp SELFDESTRUCT ["%10"])
@@ -461,21 +461,21 @@ parseFailure parser input =
 -- Instruction test utilities
 ------------------------------------
 
-testBinaryOperation :: String -> IeleOpcode1P ->  TestTree
+testBinaryOperation :: String -> IeleOpcode1 ->  TestTree
 testBinaryOperation name op =
   testInstruction
     name
     (Op op "%a" ["%10","@b"])
     ("%a=" ++ name ++ " %10,@b")
 
-testPredicateOperation :: String -> IeleOpcode1P ->  TestTree
+testPredicateOperation :: String -> IeleOpcode1 ->  TestTree
 testPredicateOperation name op =
   testInstruction
     name
     (Op op "%a" ["%10","@11"])
     ("%a=cmp " ++ name ++ " %10,@11")
 
-testTernaryOperation :: String -> IeleOpcode1P ->  TestTree
+testTernaryOperation :: String -> IeleOpcode1 ->  TestTree
 testTernaryOperation name op =
   testInstruction
     name
