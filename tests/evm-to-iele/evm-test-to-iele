@@ -17,8 +17,17 @@ def convertCodeToIele(evm_code):
   p = subprocess.Popen([dir_path + "/evm-to-iele"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
   stdout, stderr = p.communicate(evm_code[2:])
   assert p.poll() == 0
-  return stdout[:-1]
-        
+  return "0x" + stdout[:-1]
+
+def convertCallData(calldata, isCreateTx):
+  if isCreateTx:
+    return []
+  if len(calldata) == 0:
+    return [u"", u""]
+  assert calldata[0:2] == "0x"
+  calldatasize = (len(calldata) - 2)/2
+  return [unicode(hex(calldatasize)), calldata]
+          
 
 def convertToIele(json):
     if isinstance(json, dict):
@@ -27,9 +36,17 @@ def convertToIele(json):
         if "to" in json.keys():
           if json["to"] == "":
             isCreateTx = True
+            json["function"] = u""
+          else:
+            json["function"] = u"deposit"
+          json["arguments"] = convertCallData(json["data"], isCreateTx)
+        if "network" in json.keys() or "callcreates" in json.keys():
+          json["checkGas"] = False
         for key, value in json.iteritems():
             if key == "code" or (key == "data" and isCreateTx):
                 res[key] = convertCodeToIele(value)
+            elif key == "network" and json[key] == "Byzantium":
+                res[key] = "Albe"
             else:
                 res[key] = convertToIele(value)
         return res

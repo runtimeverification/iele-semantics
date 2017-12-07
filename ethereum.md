@@ -105,12 +105,13 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            <r>          TR   </r>
            <s>          TS   </s>
            <data>       DATA </data>
+           ...
          </message>
 
     syntax IELECommand ::= loadTx ( Int )
  // -------------------------------------
     rule <k> loadTx(ACCTFROM)
-          => #create ACCTFROM #newAddr(ACCTFROM, NONCE) (GLIMIT -Int G0(SCHED, CODE, true)) VALUE #dasmContract(CODE, Main) .Ints
+          => #create ACCTFROM #newAddr(ACCTFROM, NONCE) (GLIMIT -Int G0(SCHED, CODE, ARGS, true)) VALUE #dasmContract(CODE, Main) ARGS
           ~> #codeDeposit #newAddr(ACCTFROM, NONCE) #sizeWordStack(CODE) #dasmContract(CODE, Main) %0 true ~> #adjustGas ~> #finalizeTx(false) ~> startTx
          ...
          </k>
@@ -126,6 +127,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            <sendto>     .Account </sendto>
            <value>      VALUE    </value>
            <data>       CODE     </data>
+           <args>       ARGS     </args>
            ...
          </message>
          <account>
@@ -137,7 +139,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
          <activeAccounts> ... ACCTFROM |-> (_ => false) ... </activeAccounts>
 
     rule <k> loadTx(ACCTFROM)
-          => #call ACCTFROM ACCTTO deposit (GLIMIT -Int G0(SCHED, DATA, false)) VALUE (#sizeWordStack(DATA) , #asUnsigned(DATA) , .Ints) false
+          => #call ACCTFROM ACCTTO FUNC (GLIMIT -Int G0(SCHED, .WordStack, ARGS, false)) VALUE ARGS false
           ~> #finishTx ~> #adjustGas ~> #finalizeTx(false) ~> startTx
          ...
          </k>
@@ -152,7 +154,8 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            <txGasLimit> GLIMIT </txGasLimit>
            <sendto>     ACCTTO </sendto>
            <value>      VALUE  </value>
-           <data>       DATA   </data>
+           <args>       ARGS   </args>
+           <func>       FUNC   </func>
            ...
          </message>
          <account>
@@ -167,6 +170,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
     syntax IELECommand ::= "#adjustGas"
  // -----------------------------------
     rule <k> #adjustGas => . ... </k>
+         <checkGas> false </checkGas>
          <gas> _ => GLIMIT -Int GUSED </gas>
          <refund> _ => 0 </refund>
          <gasUsed> GUSED </gasUsed>
@@ -176,6 +180,8 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            <txGasLimit> GLIMIT </txGasLimit>
            ...
          </message>
+
+    rule <k> #adjustGas => . ... </k> <checkGas> true </checkGas>
 
     syntax IELECommand ::= "#finishTx"
  // ----------------------------------
@@ -272,7 +278,7 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
 ```{.k .uiuck .rvk}
     syntax Set ::= "#loadKeys" [function]
  // -------------------------------------
-    rule #loadKeys => ( SetItem("env") SetItem("pre") SetItem("blockHeader") SetItem("transactions") SetItem("uncleHeaders") SetItem("network") SetItem("genesisRLP") )
+    rule #loadKeys => ( SetItem("env") SetItem("pre") SetItem("blockHeader") SetItem("transactions") SetItem("uncleHeaders") SetItem("network") SetItem("genesisRLP") SetItem("checkGas") )
 
     rule run TESTID : { KEY : (VAL:JSON) , REST } => load KEY : VAL ~> run TESTID : { REST } requires KEY in #loadKeys
 
@@ -455,7 +461,10 @@ Since IELE is a new language with no hard forks yet, we only support the latest 
 
     syntax Schedule ::= #asScheduleString ( String ) [function]
  // -----------------------------------------------------------
-    rule #asScheduleString("Byzantium")      => ALBE
+    rule #asScheduleString("Albe")      => ALBE
+
+    rule <k> load "checkGas" : CHECKGAS => . ... </k>
+         <checkGas> _ => CHECKGAS </checkGas>
 ```
 
 The `"blockHeader"` key loads the block information.
@@ -523,26 +532,33 @@ The `"transactions"` key loads the transactions.
     rule load "transactions" : { TX } => load "transactions" : { #sortJSONList(TX) }
          requires notBool #isSorted(TX)
 
-    rule <k> load "transactions" : { "data" : TI , "gasLimit" : TG , "gasPrice" : TP , "nonce" : TN , "r" : TR , "s" : TS , "to" : TT , "v" : TW , "value" : TV , .JSONList } => . ... </k>
+    rule <k> load "transactions" : { "arguments" : [ ARGS ],  "data" : TI , "function" : FUNC, "gasLimit" : TG , "gasPrice" : TP , "nonce" : TN , "r" : TR , "s" : TS , "to" : TT , "v" : TW , "value" : TV , .JSONList } => . ... </k>
          <txOrder>   ... .List => ListItem(!ID) </txOrder>
          <txPending> ... .List => ListItem(!ID) </txPending>
          <messages>
            ( .Bag
           => <message>
-               <msgID>      !ID:Int                                 </msgID>
-               <txNonce>    #asUnsigned(#parseByteStack(TN))         </txNonce>
-               <txGasPrice> #asUnsigned(#parseByteStack(TP))         </txGasPrice>
-               <txGasLimit> #asUnsigned(#parseByteStack(TG))         </txGasLimit>
-               <sendto>     #asAccount(#parseByteStack(TT))          </sendto>
-               <value>      #asUnsigned(#parseByteStack(TV))         </value>
-               <v>          #asUnsigned(#parseByteStack(TW))         </v>
+               <msgID>      !ID:Int                              </msgID>
+               <txNonce>    #asUnsigned(#parseByteStack(TN))     </txNonce>
+               <txGasPrice> #asUnsigned(#parseByteStack(TP))     </txGasPrice>
+               <txGasLimit> #asUnsigned(#parseByteStack(TG))     </txGasLimit>
+               <sendto>     #asAccount(#parseByteStack(TT))      </sendto>
+               <func>       {#parseToken("IeleName", FUNC)}:>IeleName        </func>
+               <value>      #asUnsigned(#parseByteStack(TV))     </value>
+               <v>          #asUnsigned(#parseByteStack(TW))     </v>
                <r>          #padToWidth(32, #parseByteStack(TR)) </r>
                <s>          #padToWidth(32, #parseByteStack(TS)) </s>
                <data>       #parseByteStack(TI)                  </data>
+               <args>       #toInts(ARGS)                        </args>
              </message>
            )
            ...
          </messages>
+
+    syntax Ints ::= #toInts ( JSONList ) [function]
+ // -----------------------------------------------
+    rule #toInts(.JSONList) => .Ints
+    rule #toInts(WORD:String , ARGS) => #parseHexWord(WORD) , #toInts(ARGS)
 ```
 
 ### Checking State
@@ -557,7 +573,7 @@ The `"transactions"` key loads the transactions.
     rule check DATA : { (KEY:String) : VALUE , REST } => check DATA : { KEY : VALUE } ~> check DATA : { REST }
       requires REST =/=K .JSONList andBool notBool DATA in (SetItem("callcreates") SetItem("transactions"))
 
-    rule check DATA : [ .JSONList ] => . requires DATA =/=String "ommerHeaders"
+    rule check DATA : [ .JSONList ] => . requires DATA =/=String "ommerHeaders" andBool DATA =/=String "out"
     rule check DATA : [ { TEST } , REST ] => check DATA : { TEST } ~> check DATA : [ REST ] requires DATA =/=String "transactions"
 
     rule check (KEY:String) : { JS:JSONList => #sortJSONList(JS) }
@@ -593,7 +609,7 @@ The `"transactions"` key loads the transactions.
            <storage> ACCTSTORAGE </storage>
            ...
          </account>
-      requires #removeZeros(#adjustStorageValues(ACCTSTORAGE)) ==K STORAGE
+      requires #removeZeros(ACCTSTORAGE) ==K STORAGE
 
     rule <k> check "account" : { ACCT : { "code" : (CODE:WordStack) } } => . ... </k>
          <account>
@@ -607,11 +623,6 @@ The `"transactions"` key loads the transactions.
            <acctID> ACCT </acctID>
            ...
          </account>
-
-    syntax Map ::= #adjustStorageValues(Map) [function]
- // ---------------------------------------------------
-    rule #adjustStorageValues(K |-> V M) => K |-> chop(V) #adjustStorageValues(M)
-    rule #adjustStorageValues(.Map) => .Map
 ```
 
 Here we check the other post-conditions associated with an EVM test.
@@ -622,6 +633,7 @@ Here we check the other post-conditions associated with an EVM test.
     rule check "out" : ((OUT:String) => #parseHexWord(OUT))
     rule <k> check "out" : OUT => . ... </k> <output> OUT , .Ints </output>
     rule <k> check "out" : 0   => . ... </k> <output> .Ints </output>
+    rule <k> check "out" : [ OUT ] => . ... </k> <output> OUTPUT </output> requires #toInts(OUT) ==K OUTPUT
 
     rule check TESTID : { "logs" : LOGS } => check "logs" : LOGS ~> failure TESTID
  // ------------------------------------------------------------------------------
@@ -640,7 +652,8 @@ Here we check the other post-conditions associated with an EVM test.
     rule check TESTID : { "gas" : GLEFT } => check "gas" : GLEFT ~> failure TESTID
  // ------------------------------------------------------------------------------
     rule check "gas" : ((GLEFT:String) => #parseWord(GLEFT))
-    rule <k> check "gas" : GLEFT => . ... </k> //<gas> GLEFT </gas>
+    rule <k> check "gas" : GLEFT => . ... </k> <checkGas> false </checkGas>
+    rule <k> check "gas" : GLEFT => . ... </k> <checkGas> true  </checkGas> <gas> GLEFT </gas>
 
     rule check TESTID : { "callcreates" : CCREATES } => check "callcreates" : CCREATES ~> failure TESTID
  // ----------------------------------------------------------------------------------------------------

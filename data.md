@@ -39,7 +39,7 @@ Writing a JSON-ish parser in K takes 6 lines.
 ```{.k .uiuck .rvk}
     syntax JSONList ::= List{JSON,","}
     syntax JSONKey  ::= String | Int
-    syntax JSON     ::= String
+    syntax JSON     ::= String | Bool
                       | JSONKey ":" JSON
                       | "{" JSONList "}"
                       | "[" JSONList "]"
@@ -331,7 +331,7 @@ The local memory of execution is a byte-array (instead of a word-array).
  // -----------------------------------------------------------------------
     rule #numBytes(W) => #numBytes(W, 0)
     rule #numBytes(0, N) => N
-    rule #numBytes(W, N) => #numBytes(W >>Int 8, N +Int 1)
+    rule #numBytes(W, N) => #numBytes(W >>Int 8, N +Int 1) [owise]
 
     syntax WordStack ::= #asSignedBytes ( Int )                    [function]
                        | #asSignedBytes ( Int , WordStack , Bool ) [function, klabel(#asSignedBytesAux), smtlib(asSignedBytes)]

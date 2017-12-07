@@ -126,7 +126,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
                       | #dasmContract ( WordStack , Int , Map, IeleName , TopLevelDefinitions, Int , Int ) [function, klabel(#dasmContractAux)]
  // -------------------------------------------------------------------------------------------------------------------------------------------
     rule #dasmContract( .WordStack, _) => #emptyCode
-    rule #dasmContract( 99 : NBITS : WS, NAME ) => #dasmContract(WS, NBITS, 0 |-> "init", NAME, .TopLevelDefinitions, 1, #sizeWordStack(WS) +Int 2)
+    rule #dasmContract( 99 : NBITS : WS, NAME ) => #dasmContract(WS, NBITS, 0 |-> init, NAME, .TopLevelDefinitions, 1, #sizeWordStack(WS) +Int 2)
     rule #dasmContract( 105 : W1 : W2 : WS, NBITS, FUNCS, NAME, DEFS, N, SIZE ) => #dasmContract(#drop(W1 *Int 256 +Int W2, WS), NBITS, N |-> #parseToken("IeleName", #unparseByteStack(#take(W1 *Int 256 +Int W2, WS))) FUNCS, NAME, DEFS, N +Int 1, SIZE )
     rule #dasmContract( 106 : W1 : W2 : WS, NBITS, FUNCS, NAME, DEFS, N, SIZE ) => #dasmContract(#take(W1 *Int 256 +Int W2, WS), NAME +.+IeleName N) ++Contract #dasmContract(#drop(W1 *Int 256 +Int W2, WS), NBITS, FUNCS, NAME, external contract NAME +.+IeleName N DEFS, N +Int 1, SIZE)
     rule #dasmContract( WS, NBITS, FUNCS, NAME, DEFS, N, SIZE ) => contract NAME ! SIZE { DEFS ++TopLevelDefinitions #dasmFunctions(WS, NBITS, FUNCS) } .Contract [owise]
@@ -146,8 +146,8 @@ After interpreting the strings representing programs as a `WordStack`, it should
     syntax TopLevelDefinitions ::= #dasmFunctions ( WordStack , Int , Map ) [function]
     syntax TopLevelDefinitions ::= #dasmFunction ( Bool , IeleName , Int , WordStack , Int , Map , Instructions , K ) [function]
  // ----------------------------------------------------------------------------------------------------------------------------
-    rule #dasmFunctions(103 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS) => #dasmFunction(false, W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, WS, NBITS, FUNCS, .Instructions, .K)
-    rule #dasmFunctions(104 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS) => #dasmFunction(true, {FUNCS [ W1 *Int 256 +Int W2 ]}:>IeleName, W3 *Int 256 +Int W4, WS, NBITS, FUNCS, .Instructions, .K)
+    rule #dasmFunctions(103 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS) => #dasmFunction(false, {FUNCS [ W1 *Int 256 +Int W2 ] orDefault W1 *Int 256 +Int W2}:>IeleName, W3 *Int 256 +Int W4, WS, NBITS, FUNCS, .Instructions, .K)
+    rule #dasmFunctions(104 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS) => #dasmFunction(true, {FUNCS [ W1 *Int 256 +Int W2 ] orDefault W1 *Int 256 +Int W2}:>IeleName, W3 *Int 256 +Int W4, WS, NBITS, FUNCS, .Instructions, .K)
 
     rule #dasmFunction(false, NAME, SIG, W : WS, NBITS, FUNCS, INSTRS, .K) => define @ NAME ( SIG ) { #toBlocks(INSTRS) } #dasmFunctions(W : WS, NBITS, FUNCS)
       requires W ==Int 103 orBool W ==Int 104
@@ -232,8 +232,8 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmInstruction ( SHA3 (),        R, W, M, _ ) => %(R, W, M, 0) = sha3   %(R, W, M, 1)
     rule #dasmInstruction ( MLOAD (),       R, W, M, _ ) => %(R, W, M, 0) = load   %(R, W, M, 1)
     rule #dasmInstruction ( SLOAD (),       R, W, M, _ ) => %(R, W, M, 0) = sload  %(R, W, M, 1)
-    rule #dasmInstruction ( MSTORE (),      R, W, M, _ ) => store  %(R, W, M, 1) , %(R, W, M, 0)
-    rule #dasmInstruction ( SSTORE (),      R, W, M, _ ) => sstore %(R, W, M, 1) , %(R, W, M, 0)
+    rule #dasmInstruction ( MSTORE (),      R, W, M, _ ) => store  %(R, W, M, 0) , %(R, W, M, 1)
+    rule #dasmInstruction ( SSTORE (),      R, W, M, _ ) => sstore %(R, W, M, 0) , %(R, W, M, 1)
     rule #dasmInstruction ( LOG1 (),        R, W, M, _ ) => log    %(R, W, M, 0) , %(R, W, M, 1)
     rule #dasmInstruction ( EXTCODESIZE (), R, W, M, _ ) => %(R, W, M, 0) = call @iele.extcodesize ( %(R, W, M, 1) )
     rule #dasmInstruction ( BLOCKHASH (),   R, W, M, _ ) => %(R, W, M, 0) = call @iele.blockhash   ( %(R, W, M, 1) )
@@ -263,7 +263,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmInstruction ( MULMOD (),  R, W, M, _ ) => %(R, W, M, 0) = mulmod %(R, W, M, 1) , %(R, W, M, 2) , %(R, W, M, 3)
     rule #dasmInstruction ( EXPMOD (),  R, W, M, _ ) => %(R, W, M, 0) = expmod %(R, W, M, 1) , %(R, W, M, 2) , %(R, W, M, 3)
     rule #dasmInstruction ( MLOADN (),  R, W, M, _ ) => %(R, W, M, 0) = load   %(R, W, M, 1) , %(R, W, M, 2) , %(R, W, M, 3)
-    rule #dasmInstruction ( MSTOREN (), R, W, M, _ ) => store %(R, W, M, 2) , %(R, W, M, 0) , %(R, W, M, 1) , %(R, W, M, 3)
+    rule #dasmInstruction ( MSTOREN (), R, W, M, _ ) => store %(R, W, M, 0) , %(R, W, M, 1) , %(R, W, M, 2) , %(R, W, M, 3)
     rule #dasmInstruction ( LOG3 (),    R, W, M, _ ) => log %(R, W, M, 0) , %(R, W, M, 1) , %(R, W, M, 2) , %(R, W, M, 3)
 
     rule #dasmInstruction ( LOG4 (),    R, W, M, _ ) => log %(R, W, M, 0) , %(R, W, M, 1) , %(R, W, M, 2) , %(R, W, M, 3) , %(R, W, M, 4)

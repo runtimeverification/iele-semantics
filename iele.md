@@ -30,6 +30,7 @@ In the comments next to each cell, we've marked which component of the yellowpap
                   <exit-code exit=""> 1 </exit-code>
                   <mode> $MODE:Mode </mode>
                   <schedule> $SCHEDULE:Schedule </schedule>
+                  <checkGas> true </checkGas>
                   <analysis> .Map </analysis>
 
                   // IELE Specific
@@ -153,11 +154,13 @@ In the comments next to each cell, we've marked which component of the yellowpap
                         <txGasPrice> 0          </txGasPrice>         // T_p
                         <txGasLimit> 0          </txGasLimit>         // T_g
                         <sendto>     .Account   </sendto>             // T_t
+                        <func>       deposit    </func>
                         <value>      0          </value>              // T_v
                         <v>          0          </v>                  // T_w
                         <r>          .WordStack </r>                  // T_r
                         <s>          .WordStack </s>                  // T_s
                         <data>       .WordStack </data>               // T_i/T_e
+                        <args>       .Ints      </args>
                       </message>
                     </messages>
 
@@ -1140,7 +1143,7 @@ The various `call*` (and other inter-contract control flow) operations will be d
       ~> #mkCall ACCTFROM ACCTTO CODE FUNC GLIMIT VALUE ARGS STATIC
 
     rule <k> #mkCall ACCTFROM ACCTTO CODE FUNC GLIMIT VALUE ARGS STATIC:Bool
-          => #initVM(ARGS) ~> #initFun(FUNC, #sizeRegs(ARGS))
+          => #initVM(ARGS) ~> #initFun(FUNC, #sizeRegs(ARGS), false)
          ...
          </k>
          <callDepth> CD => CD +Int 1 </callDepth>
@@ -1159,8 +1162,8 @@ If the function being called is not public, does not exist, or has the wrong num
 
 ```{.k .uiuck .rvk}
     syntax KItem ::= #initVM ( Ints )
-                   | #initFun ( IeleName , Int )
- // --------------------------------------------
+                   | #initFun ( IeleName , Int , Bool )
+ // ---------------------------------------------------
     rule <k> #initVM(ARGS) => #loads #regRange(#sizeRegs(ARGS)) ARGS ... </k>
          <memoryUsed> _ => .Map    </memoryUsed>
          <output>     _ => .Ints   </output>
@@ -1168,21 +1171,21 @@ If the function being called is not public, does not exist, or has the wrong num
          <localMem>   _ => .Memory </localMem>
          <localCalls> _ => .List   </localCalls>
 
-    rule <k> #initFun(LABEL, _) => #exception ... </k>
+    rule <k> #initFun(LABEL, _, false) => #exception ... </k>
          <exported> FUNCS </exported>
       requires notBool LABEL in FUNCS
 
-    rule <k> #initFun(LABEL, _) => #exception ... </k>
+    rule <k> #initFun(LABEL, _, _) => #exception ... </k>
          <funcIds> LABELS </funcIds>
       requires notBool LABEL in LABELS
 
-    rule <k> #initFun(LABEL, NARGS) => #exception ... </k>
+    rule <k> #initFun(LABEL, NARGS, _) => #exception ... </k>
          <id> ACCT </id>
          <funcId> LABEL </funcId>
          <nparams> NPARAMS </nparams>
       requires NARGS =/=Int NPARAMS andBool notBool (ACCT ==Int #precompiledAccount andBool LABEL ==K iele.ecpairing)
 
-    rule <k> #initFun(LABEL, NARGS) => #if EXECMODE ==K VMTESTS #then #end #else #execute #fi ... </k>
+    rule <k> #initFun(LABEL, NARGS, ISCREATE:Bool) => #if EXECMODE ==K VMTESTS #then #end #else #execute #fi ... </k>
          <mode> EXECMODE </mode>
          <id> ACCT </id>
          <funcIds> ... SetItem(LABEL) </funcIds>
@@ -1190,7 +1193,7 @@ If the function being called is not public, does not exist, or has the wrong num
          <fid> _ => LABEL </fid>
          <funcId> LABEL </funcId>
          <nparams> NPARAMS </nparams>
-      requires LABEL in FUNCS andBool (NPARAMS ==Int NARGS orBool (ACCT ==Int #precompiledAccount andBool LABEL ==K iele.ecpairing))
+      requires (LABEL in FUNCS orBool ISCREATE) andBool (NPARAMS ==Int NARGS orBool (ACCT ==Int #precompiledAccount andBool LABEL ==K iele.ecpairing))
 
     syntax KItem ::= "#return" LValues LValue
  // -----------------------------------------
@@ -1293,7 +1296,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
 
     rule <mode> EXECMODE </mode>
          <k> #mkCreate ACCTFROM ACCTTO CODE GAVAIL VALUE ARGS
-          => #initVM(ARGS) ~> #initFun(init, #sizeRegs(ARGS))
+          => #initVM(ARGS) ~> #initFun(init, #sizeRegs(ARGS), true)
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -1800,13 +1803,15 @@ Note: These are all functions as the operator `#gasExec` has already loaded all 
  // ---------------------------------------------
     rule #allBut64th(N) => N -Int (N /Int 64)
 
-    syntax Int ::= G0 ( Schedule , WordStack , Bool ) [function]
+    syntax Int ::= G0 ( Schedule , WordStack , Ints , Bool ) [function]
  // ------------------------------------------------------------
-    rule G0(SCHED, .WordStack, true)  => Gtxcreate    < SCHED >
-    rule G0(SCHED, .WordStack, false) => Gtransaction < SCHED >
+    rule G0(SCHED, .WordStack, .Ints, true)  => Gtxcreate    < SCHED >
+    rule G0(SCHED, .WordStack, .Ints, false) => Gtransaction < SCHED >
 
-    rule G0(SCHED, 0 : REST, ISCREATE) => Gtxdatazero    < SCHED > +Int G0(SCHED, REST, ISCREATE)
-    rule G0(SCHED, N : REST, ISCREATE) => Gtxdatanonzero < SCHED > +Int G0(SCHED, REST, ISCREATE) requires N =/=Int 0
+    rule G0(SCHED, (WS => #asSignedBytes(I) ++ WS), (I , INTS => INTS), _)
+
+    rule G0(SCHED, 0 : REST, .Ints, ISCREATE) => Gtxdatazero    < SCHED > +Int G0(SCHED, REST, .Ints, ISCREATE)
+    rule G0(SCHED, N : REST, .Ints, ISCREATE) => Gtxdatanonzero < SCHED > +Int G0(SCHED, REST, .Ints, ISCREATE) requires N =/=Int 0
 
     syntax Int ::= "G*" "(" Int "," Int "," Int ")" [function]
  // ----------------------------------------------------------

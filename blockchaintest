@@ -1,10 +1,12 @@
 #!/bin/sh
 interpreter="$(dirname "$0")/.build/rvk/ethereum-kompiled/interpreter"
+assembled="$(mktemp)"
 kast="$(mktemp)"
 output="$(mktemp)"
 kast_output="$(mktemp)"
-trap "rm -rf $kast $output $kast_output" INT TERM EXIT
-"$(dirname "$0")/kast-json.py" "$1" > "$kast"
+trap "rm -rf $kast $output $kast_output $assembled" INT TERM EXIT
+"$(dirname "$0")/assemble-iele-test" "$1" > "$assembled"
+"$(dirname "$0")/kast-json.py" "$assembled" > "$kast"
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 $interpreter "$(dirname "$0")/.build/rvk/ethereum-kompiled/realdef.cma" -c PGM "$kast" textfile -c SCHEDULE '`DEFAULT_IELE`(.KList)' text -c MODE '`NORMAL_IELE`(.KList)' text --output-file "$output"
 exit=$?

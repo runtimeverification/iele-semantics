@@ -68,18 +68,22 @@ passing_targets=${passing_tests:=.test}
 passing_vm_targets=${passing_vm_tests:=.test}
 passing_blockchain_targets=${passing_blockchain_tests:=.test}
 
-test: $(passing_targets)
+iele_tests=$(wildcard tests/iele/*/*.iele.json)
+iele_targets=${iele_tests:=.test}
+
+test: $(passing_targets) ${iele_targets}
 vm-test: $(passing_vm_targets)
 blockchain-test: $(passing_blockchain_targets)
+iele-test: ${iele_targets}
 
 tests/VMTests/%.test: tests/VMTests/% | build
 	./vmtest $<
-	touch $@
 tests/BlockchainTests/%.test: tests/BlockchainTests/% | build
 	./blockchaintest $<
-	touch $@
+tests/iele/%.test: tests/iele/% | build
+	./blockchaintest $<
 
-tests/%/make.timestamp: tests/ethereum-tests/%.json tests/evm-to-iele/evm-to-iele
+tests/%/make.timestamp: tests/ethereum-tests/%.json tests/evm-to-iele/evm-to-iele tests/evm-to-iele/evm-test-to-iele
 	@echo "==   split: $@"
 	mkdir -p $(dir $@)
 	tests/split-test.py $< $(dir $@)
