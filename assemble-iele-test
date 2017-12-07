@@ -8,6 +8,8 @@ import tempfile
 import os 
 dir_path = os.path.dirname(__file__)
 
+tx = None
+
 def assembleIele(code):
   if len(code) == 0:
     return ""
@@ -21,6 +23,7 @@ def assembleIele(code):
   return binary
 
 def convertToBinaryIele(json):
+  global tx
   if isinstance(json, dict):
     res = {}
     isCreateTx = False
@@ -32,6 +35,18 @@ def convertToBinaryIele(json):
         res[key] = assembleIele(value)
       else:
         res[key] = convertToBinaryIele(value)
+    if "to" in json.keys() and "secretKey" in json.keys():
+      if not tx:
+        from ethereum.transactions import Transaction
+        tx = Transaction
+      data = res["data"]
+      binary = data.decode("hex")
+      t = tx(int(res["nonce"], 16), int(res["gasPrice"], 16), int(res["gasLimit"], 16), res["to"], int(res["value"], 16), binary)
+      t.sign(res["secretKey"])
+      del res["secretKey"]
+      res["v"] = hex(t.v)
+      res["r"] = format(t.r, "#066x")
+      res["s"] = format(t.s, "#066x")
     return res
   elif isinstance(json, list):
     res = []
