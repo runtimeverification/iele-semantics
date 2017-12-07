@@ -19,19 +19,15 @@ module IELE
 Configuration
 -------------
 
-The configuration has cells for the current account id, the current position in the program, the current gas, the gas price, the current program, the word stack, and the local memory.
-In addition, there are cells for the callstack and execution substate.
-
 We've broken up the configuration into two components; those parts of the state that mutate during execution of a single transaction and those that are static throughout.
-In the comments next to each cell, we've marked which component of the yellowpaper state corresponds to each cell.
+In the comments next to each cell, we explaikn the purpose of the cell.
 
 ```{.k .uiuck .rvk}
-    configuration <k> $PGM:IELESimulation </k>
-                  <exit-code exit=""> 1 </exit-code>
-                  <mode> $MODE:Mode </mode>
-                  <schedule> $SCHEDULE:Schedule </schedule>
-                  <checkGas> true </checkGas>
-                  <analysis> .Map </analysis>
+    configuration <k> $PGM:IELESimulation </k>                       // Current computation
+                  <exit-code exit=""> 1 </exit-code>                 // Exit code of interpreter procses
+                  <mode> $MODE:Mode </mode>                          // Execution mode: VMTESTS or NORMAL
+                  <schedule> $SCHEDULE:Schedule </schedule>          // Gas Schedule: DEFAULT or ALBE
+                  <checkGas> true </checkGas>                        // Enables/disables gas check in test driver
 
                   // IELE Specific
                   // =============
@@ -41,10 +37,10 @@ In the comments next to each cell, we've marked which component of the yellowpap
                     // Mutable during a single transaction
                     // -----------------------------------
 
-                    <output>        .Ints </output>                   // H_RETURN
-                    <callStack>     .List </callStack>
-                    <interimStates> .List </interimStates>
-                    <substateStack> .List </substateStack>
+                    <output>        .Ints </output>                  // Return registers of current call frame
+                    <callStack>     .List </callStack>               // Inter-contract call stack
+                    <interimStates> .List </interimStates>           // Checkpointed network state for rollback
+                    <substateStack> .List </substateStack>           // Checkpointed substate for rollback
 
                     // A single contract call frame
                     // ----------------------------
@@ -54,69 +50,58 @@ In the comments next to each cell, we've marked which component of the yellowpap
                       <program>
                         <functions>
                           <function multiplicity="*" type="Map">
-                            <funcId>       deposit </funcId>
-                            <nparams>      0       </nparams>
-                            <instructions> (.Instructions .LabeledBlocks):Blocks </instructions>
-                            <jumpTable>    .Map    </jumpTable>
+                            <funcId>       deposit </funcId>         // The name of the function
+                            <nparams>      0       </nparams>        // The number of parameters of the function
+                            <instructions> (.Instructions .LabeledBlocks):Blocks </instructions> // The blocks of the function
+                            <jumpTable>    .Map    </jumpTable>      // Map from jump label to blocks, for branch instruction
                           </function>
                         </functions>
-                        <funcIds>     .Set </funcIds>
-                        <exported>    .Set </exported>
-                        <programSize> 0    </programSize>
-                        <contractCode> .Contract </contractCode>
+                        <funcIds>     .Set </funcIds>                // Set of all names of functions in <functions> cell
+                        <exported>    .Set </exported>               // Set of all names of functions defined with define public
+                        <programSize> 0    </programSize>            // Size in bytes of currently loaded contract
+                        <contractCode> .Contract </contractCode>     // Disassembled entire contract
                       </program>
-                      <callDepth>    0          </callDepth>
-                      <localCalls>   .List      </localCalls>
+                      <callDepth>    0          </callDepth>         // Inter-contract call stack depth
+                      <localCalls>   .List      </localCalls>        // Intra-contract call stack 
 
                       // I_*
-                      <id>        0     </id>                         // I_a
-                      <caller>    0     </caller>                     // I_s
-                      <callData>  .Ints </callData>                   // I_d
-                      <callValue> 0     </callValue>                  // I_v
+                      <id>        0     </id>                         // Currently executing contract
+                      <caller>    0     </caller>                     // Contract that called current contract
+                      <callData>  .Ints </callData>                   // Copy of register arguments
+                      <callValue> 0     </callValue>                  // Value in funds passed to contract
 
                       // \mu_*
-                      <regs>        .Array  </regs>                        // \mu_s
-                      <localMem>    .Memory </localMem>                    // \mu_m
-                      <memoryUsed>  .Map    </memoryUsed>                  // \mu_i
-                      <fid>         deposit      </fid>
-                      <gas>         0       </gas>                         // \mu_g
-                      <previousGas> 0       </previousGas>
+                      <regs>        .Array  </regs>                   // Current values of registers
+                      <localMem>    .Memory </localMem>               // Current values of local memory
+                      <memoryUsed>  .Map    </memoryUsed>             // Local memory usage
+                      <fid>         deposit      </fid>               // Name of currently executing function
+                      <gas>         0       </gas>                    // Current gas remaining
+                      <previousGas> 0       </previousGas>            // Gas remaining prior to last decrease
 
-                      <static> false </static>
+                      <static> false </static>                        // Whether the call frame came from a staticcall
                     </callFrame>
 
                     // A_* (execution substate)
                     <substate>
-                      <selfDestruct> .Set  </selfDestruct>                 // A_s
-                      <logData>  .List </logData>                  // A_l
-                      <refund>       0     </refund>                       // A_r
+                      <selfDestruct> .Set  </selfDestruct>            // Set of contract ids that were destroyed by this transaction
+                      <logData>  .List </logData>                     // Log entries for this transaction
+                      <refund>       0     </refund>                  // Refund for this transaction
                     </substate>
 
                     // Immutable during a single transaction
                     // -------------------------------------
 
-                    <gasPrice> 0 </gasPrice>                               // I_p
-                    <origin>   0 </origin>                                 // I_o
+                    <gasPrice> 0 </gasPrice>                          // Price of gas for this transaction
+                    <origin>   0 </origin>                            // Sender of current transactiont 
 
                     // I_H* (block information)
-                    <previousHash>     0          </previousHash>          // I_Hp
-                    <ommersHash>       0          </ommersHash>            // I_Ho
-                    <beneficiary>      0          </beneficiary>           // I_Hc
-                    <stateRoot>        0          </stateRoot>             // I_Hr
-                    <transactionsRoot> 0          </transactionsRoot>      // I_Ht
-                    <receiptsRoot>     0          </receiptsRoot>          // I_He
-                    <logsBloom>        .WordStack </logsBloom>             // I_Hb
-                    <difficulty>       0          </difficulty>            // I_Hd
-                    <number>           0          </number>                // I_Hi
-                    <gasLimit>         0          </gasLimit>              // I_Hl
-                    <gasUsed>          0          </gasUsed>               // I_Hg
-                    <timestamp>        0          </timestamp>             // I_Hs
-                    <extraData>        .WordStack </extraData>             // I_Hx
-                    <mixHash>          0          </mixHash>               // I_Hm
-                    <blockNonce>       0          </blockNonce>            // I_Hn
-
-                    <ommerBlockHeaders> [ .JSONList ] </ommerBlockHeaders>
-                    <blockhash>         .List         </blockhash>
+                    <beneficiary>      0          </beneficiary>      // Miner of current block
+                    <difficulty>       0          </difficulty>       // Difficulty of current block
+                    <number>           0          </number>           // Number of current block
+                    <gasLimit>         0          </gasLimit>         // Gas limit of current block
+                    <gasUsed>          0          </gasUsed>          // Gas used by current block
+                    <timestamp>        0          </timestamp>        // Timestamp of current block
+                    <blockhash>         .List     </blockhash>        // List of previous block's hashes
 
                   </iele>
 
@@ -129,36 +114,36 @@ In the comments next to each cell, we've marked which component of the yellowpap
                     // Accounts Record
                     // ---------------
 
-                    <activeAccounts> .Map </activeAccounts>
+                    <activeAccounts> .Map </activeAccounts> // Mapping from account ids to boolean representing whether the account is empty
                     <accounts>
                       <account multiplicity="*" type="Map">
-                        <acctID>   0          </acctID>
-                        <balance>  0          </balance>
-                        <code>     #emptyCode </code>
-                        <storage>  .Map       </storage>
-                        <nonce>    0          </nonce>
+                        <acctID>   0          </acctID>     // ID of account
+                        <balance>  0          </balance>    // Balance of funds in account
+                        <code>     #emptyCode </code>       // Disassembled contract of account
+                        <storage>  .Map       </storage>    // Permanent storage of account (for sload/sstore)
+                        <nonce>    0          </nonce>      // Nonce of account
                       </account>
                     </accounts>
 
                     // Transactions Record
                     // -------------------
 
-                    <txOrder>   .List </txOrder>
-                    <txPending> .List </txPending>
+                    <txOrder>   .List </txOrder>            // Order of transactions in block
+                    <txPending> .List </txPending>          // Remaining transactions in block
 
                     <messages>
                       <message multiplicity="*" type="Map">
-                        <msgID>      0          </msgID>
-                        <txNonce>    0          </txNonce>            // T_n
-                        <txGasPrice> 0          </txGasPrice>         // T_p
-                        <txGasLimit> 0          </txGasLimit>         // T_g
-                        <sendto>     .Account   </sendto>             // T_t
-                        <func>       deposit    </func>
-                        <value>      0          </value>              // T_v
-                        <v>          0          </v>                  // T_w
-                        <r>          .WordStack </r>                  // T_r
-                        <s>          .WordStack </s>                  // T_s
-                        <data>       .WordStack </data>               // T_i/T_e
+                        <msgID>      0          </msgID>              // Unique ID of transaction
+                        <txNonce>    0          </txNonce>            // Nonce of transaction (not checked)
+                        <txGasPrice> 0          </txGasPrice>         // Gas price of trasaction
+                        <txGasLimit> 0          </txGasLimit>         // Gas limit of transaction
+                        <sendto>     .Account   </sendto>             // Destination of transaction (.Account for account creation)
+                        <func>       deposit    </func>               // Function to call by transaction
+                        <value>      0          </value>              // Value in funds to transfer by transaction
+                        <v>          0          </v>                  // Transaction signature (v)
+                        <r>          .WordStack </r>                  // Transaction siganture (r)
+                        <s>          .WordStack </s>                  // Transaction signature (s)
+                        <data>       .WordStack </data>               // Arguments to function called by transaction
                         <args>       .Ints      </args>
                       </message>
                     </messages>
