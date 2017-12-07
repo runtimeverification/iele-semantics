@@ -101,8 +101,8 @@ module IELE-COMMON
                    | "log" /* index */ Operand "," NonEmptyOperands [hybrid, seqstrict(1,2)]
 
   // Account creation/deletion
-  syntax CreateInst ::= LValue "," LValue "=" "create" /* contract name */ IeleName "(" Operands ")" "send" Operand [hybrid, seqstrict(3,4)]
-  syntax CreateInst ::= LValue "," LValue "=" "copycreate" /* contract address */ Operand "(" Operands ")" "send" Operand [hybrid, seqstrict(2,3)]
+  syntax CreateInst ::= LValue "," LValue "=" "create" /* contract name */ IeleName "(" Operands ")" "send" Operand [hybrid, seqstrict(4,5)]
+  syntax CreateInst ::= LValue "," LValue "=" "copycreate" /* contract address */ Operand "(" Operands ")" "send" Operand [hybrid, seqstrict(3,4,5)]
 
   syntax SelfdestructInst ::= "selfdestruct" /* account to send balance */ Operand [hybrid, strict(1)]
 

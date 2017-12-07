@@ -327,8 +327,8 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #numArgs ( LOCALCALL   (_, ARGS, RETS) ) => ARGS +Int RETS
     rule #numArgs ( RETURN(RETS) )                => RETS
     rule #numArgs ( REVERT(RETS) )                => RETS
-    rule #numArgs ( CREATE(_, ARGS) )             => ARGS
-    rule #numArgs ( COPYCREATE(ARGS) )            => ARGS
+    rule #numArgs ( CREATE(_, ARGS) )             => 3 +Int ARGS
+    rule #numArgs ( COPYCREATE(ARGS) )            => 4 +Int ARGS
 
     syntax OpCode ::= #dasmOpCode ( Int ) [function]
  // ------------------------------------------------
