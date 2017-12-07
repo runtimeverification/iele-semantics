@@ -11,7 +11,6 @@
         "lastblockhash": "0x1c61b4ee6a550aebe8a2f84ab93cd242779111e26b92f0a8d00d77a1e4ac4b8b", 
         "blocks": [
             {
-                "uncleHeaders": [], 
                 "transactions": [
                     {
                         "nonce": "0x00", 
