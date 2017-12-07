@@ -17,7 +17,6 @@ module IeleTypes
     -- type synonyms for parser's instantiations of IeleInstructions' types
     , Instruction
     , IeleOpcode0P
-    , IeleOpcode1P
 
     , HasName(name)
     , HasSize(size)
@@ -49,7 +48,6 @@ import Control.Lens
 import IeleInstructions
 
 type Instruction = IeleOpG IeleName GlobalName IeleName LValue
-type IeleOpcode1P = IeleOpcode1G IeleName
 type IeleOpcode0P = IeleOpcode0G GlobalName IeleName
 
 data IeleName = IeleNameNumber Int | IeleNameText String

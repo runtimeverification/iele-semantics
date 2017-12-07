@@ -5,12 +5,10 @@ module IeleInstructions
   ,argsLength
   ,Rets,retsCount,mkRets
   ,retsLength
-  ,IeleOpcode1
-  ,IeleOpcode1G(..)
+  ,IeleOpcode1(..)
   ,IeleOpcodeQuery(..)
   ,IeleOpcode0
   ,IeleOpcode0G(..)
-  ,relabelOpcode0
   ,IeleOpcodeLi(..)
   ,IeleOpcodeCall(..)
   ,IeleOp
@@ -21,6 +19,8 @@ import Data.Data
 
 import qualified Data.ByteString as B
 import Data.Word
+
+import Data.Bifunctor
 
 -- a utility for getting lengths of argument lists
 length16 :: [a] -> Word16
@@ -44,8 +44,7 @@ argsLength l = Args (length16 l)
 retsLength :: [a] -> Rets Word16
 retsLength l = Rets (length16 l)
 
-type IeleOpcode1 = IeleOpcode1G Word16
-data IeleOpcode1G contractId =
+data IeleOpcode1 =
    ADD
  | MUL
  | SUB
@@ -81,11 +80,8 @@ data IeleOpcode1G contractId =
 
  | MOVE
 
- | CREATE contractId (Args Word16) -- contract Id
- | COPYCREATE (Args Word16)
-
  | IeleOpcodesQuery IeleOpcodeQuery
-  deriving (Show, Eq, Data, Functor, Foldable, Traversable)
+  deriving (Show, Eq, Data)
 
 data IeleOpcodeQuery =
    ADDRESS
@@ -134,48 +130,58 @@ data IeleOpcode0G funId lblId =
  | SELFDESTRUCT
   deriving (Show, Eq, Data)
 
-relabelOpcode0 :: (Applicative f) => (a -> f a') -> (b -> f b') -> IeleOpcode0G a b -> f (IeleOpcode0G a' b')
-relabelOpcode0 fun lbl i = case i of
-   MSTOREN -> pure MSTOREN
-   MSTORE -> pure MSTORE
-   SSTORE -> pure SSTORE
+instance Bifunctor IeleOpcode0G where
+  bimap fun lbl i = case i of
+   MSTOREN -> MSTOREN
+   MSTORE -> MSTORE
+   SSTORE -> SSTORE
 
-   REGISTERS r -> pure (REGISTERS r)
+   REGISTERS r -> REGISTERS r
 
-   JUMP l -> JUMP <$> lbl l
-   JUMPI l -> JUMPI <$> lbl l
-   JUMPDEST l -> JUMPDEST <$> lbl l
+   JUMP l -> JUMP (lbl l)
+   JUMPI l -> JUMPI (lbl l)
+   JUMPDEST l -> JUMPDEST (lbl l)
 
-   CALLDEST f arity -> CALLDEST <$> fun f <*> pure arity
-   EXTCALLDEST f arity -> EXTCALLDEST <$> fun f <*> pure arity
+   CALLDEST f arity -> CALLDEST (fun f) arity
+   EXTCALLDEST f arity -> EXTCALLDEST (fun f) arity
 
-   FUNCTION f -> pure (FUNCTION f)
-   CONTRACT c -> pure (CONTRACT c)
+   FUNCTION f -> FUNCTION f
+   CONTRACT c -> CONTRACT c
 
-   LOG arity -> pure (LOG arity)
+   LOG arity -> LOG arity
 
-   RETURN arity -> pure (RETURN arity)
-   REVERT arity -> pure (REVERT arity)
+   RETURN arity -> RETURN arity
+   REVERT arity -> REVERT arity
 
-   INVALID -> pure INVALID
-   SELFDESTRUCT -> pure SELFDESTRUCT
+   INVALID -> INVALID
+   SELFDESTRUCT -> SELFDESTRUCT
 
 data IeleOpcodeLi =
    LOADPOS
  | LOADNEG
   deriving (Show, Eq, Data)
 
-data IeleOpcodeCall funId =
+data IeleOpcodeCall contractId funId =
    CALL funId (Args Word16) (Rets  Word16)
  | STATICCALL funId (Args Word16) (Rets Word16)
  | LOCALCALL funId (Args Word16) (Rets Word16)
+
+ | CREATE contractId (Args Word16) -- contract Id
+ | COPYCREATE (Args Word16)
   deriving (Show, Eq, Data, Functor, Foldable, Traversable)
+instance Bifunctor IeleOpcodeCall where
+  bimap contract fun i = case i of
+    CALL f nargs nrets -> CALL (fun f) nargs nrets
+    STATICCALL f nargs nrets -> STATICCALL (fun f) nargs nrets
+    LOCALCALL f nargs nrets -> LOCALCALL (fun f) nargs nrets
+    CREATE c nargs -> CREATE (contract c) nargs
+    COPYCREATE nargs -> COPYCREATE nargs
 
 type IeleOp = IeleOpG Word16 Word16 Word16 Int
 data IeleOpG contractId funId lblId regId =
    Nop
- | Op (IeleOpcode1G contractId) regId [regId]
+ | Op IeleOpcode1 regId [regId]
  | VoidOp (IeleOpcode0G funId lblId) [regId]
- | CallOp (IeleOpcodeCall funId) [regId] [regId]
+ | CallOp (IeleOpcodeCall contractId funId) [regId] [regId]
  | LiOp IeleOpcodeLi regId Integer
   deriving (Show, Eq, Data, Functor, Foldable, Traversable)

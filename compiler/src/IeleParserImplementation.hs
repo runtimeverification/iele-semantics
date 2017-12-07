@@ -211,6 +211,8 @@ ieleOp :: Parser Instruction
 ieleOp = try localCallInst
      <|> try accountCallInst
      <|> try staticCallInst
+     <|> try createInst
+     <|> try copycreateInst
      <|> ieleOp1
      <|> ieleVoidOp
 
@@ -226,9 +228,7 @@ ieleOp1 = do
     , shaInst
     , binaryInst
     , ternaryInst
-    , predicateInst
-    , createInst
-    , copycreateInst]
+    , predicateInst]
 
 ieleVoidOp :: Parser Instruction
 ieleVoidOp = choice
@@ -249,7 +249,7 @@ simpleArgs :: Int -> Parser [LValue]
 simpleArgs 0 = pure []
 simpleArgs arity = sequenceA (lValue:replicate (arity-1) (comma *> lValue))
 
-simpleOp1 :: String -> Int -> IeleOpcode1P -> (LValue -> Parser Instruction)
+simpleOp1 :: String -> Int -> IeleOpcode1 -> (LValue -> Parser Instruction)
 simpleOp1 name arity opcode = simpleOp name arity . Op opcode
 
 simpleOp0 :: String -> Int -> IeleOpcode0P -> Parser Instruction
@@ -293,7 +293,7 @@ enumParser :: [(String,a)] -> Parser a
 enumParser options =
   choice [val <$ skipKeyword name | (name,val) <- options]
 
-binaryOperations :: [(String,IeleOpcode1P)]
+binaryOperations :: [(String,IeleOpcode1)]
 binaryOperations =
   [("add",ADD)
   ,("mul",MUL)
@@ -313,7 +313,7 @@ binaryInst :: LValue -> Parser Instruction
 binaryInst result =
   choice [simpleOp1 name 2 opcode result | (name,opcode) <- binaryOperations]
 
-ternaryOperators :: [(String, IeleOpcode1P)]
+ternaryOperators :: [(String, IeleOpcode1)]
 ternaryOperators = [("addmod",ADDMOD)
                    ,("mulmod",MULMOD)
                    ,("expmod",EXPMOD)
@@ -323,7 +323,7 @@ ternaryInst :: LValue -> Parser Instruction
 ternaryInst result =
   flip Op result <$> enumParser ternaryOperators <*> simpleArgs 3
 
-predicateFlags :: [(String, IeleOpcode1P)]
+predicateFlags :: [(String, IeleOpcode1)]
 predicateFlags = [("lt",LT)
                  ,("le",LE)
                  ,("gt",GT)
@@ -429,19 +429,23 @@ logInst = do
   args <- upto 4 (comma *> lValue)
   pure $ VoidOp (LOG (fromIntegral (length args))) (arg1:args)
 
-createInst :: LValue -> Parser Instruction
-createInst result =
-   build <$ skipKeyword "create" <*> ieleNameToken <*> parens lValues
-         <* skipKeyword "send" <*> lValue
+createInst :: Parser Instruction
+createInst =
+  build <$> lValue <* comma <*> lValue <* equal
+        <* skipKeyword "create" <*> ieleNameToken <*> parens lValues
+        <* skipKeyword "send" <*> lValue
  where
-   build name args val = Op (CREATE name (argsLength args)) result (val:args)
+   build status addr name args val =
+     CallOp (CREATE name (argsLength args)) [status,addr] (val:args)
 
-copycreateInst :: LValue -> Parser Instruction
-copycreateInst result =
-   build <$ skipKeyword "copycreate" <*> lValue <*> parens lValues
-         <* skipKeyword "send" <*> lValue
+copycreateInst :: Parser Instruction
+copycreateInst =
+  build <$> lValue <* comma <*> lValue <* equal
+        <* skipKeyword "copycreate" <*> lValue <*> parens lValues
+        <* skipKeyword "send" <*> lValue
  where
-   build from args val = Op (COPYCREATE (argsLength args)) result (val:from:args)
+   build status addr from args val =
+     CallOp (COPYCREATE (argsLength args)) [status,addr] (val:from:args)
 
 
 instruction :: Parser Instruction

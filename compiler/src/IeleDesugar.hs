@@ -9,6 +9,8 @@ import qualified Data.Set as Set
 import Data.Map.Strict(Map,(!))
 import qualified Data.Map.Strict as Map
 
+import Data.Bifunctor
+
 import Data.Word
 import Data.Data
 
@@ -116,12 +118,11 @@ flattenInsts = map flattenInst
 
 flattenInst :: Instruction -> IeleOp'
 flattenInst Nop = Nop
-flattenInst (Op op1 result args) = Op (fmap flattenName op1) result args
-flattenInst (VoidOp op0 args) = VoidOp (flattenOp0 op0) args
-  where flattenOp0 op = op & relabelOpcode0 pure %~ flattenName
-                           & flip relabelOpcode0 pure %~ flattenGlobalName
+flattenInst (Op op1 result args) = Op op1 result args
+flattenInst (VoidOp op0 args) =
+  VoidOp (bimap flattenGlobalName flattenName op0) args
 flattenInst (CallOp callOp results args) =
-  CallOp (fmap flattenGlobalName callOp) results args
+  CallOp (bimap flattenName flattenGlobalName callOp) results args
 flattenInst (LiOp op result val) = LiOp op result val
 
 flattenName :: IeleName -> Word16
