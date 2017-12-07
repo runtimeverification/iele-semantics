@@ -1,4 +1,4 @@
-module IelePrint (prettyContracts, prettyContract) where
+module IelePrint (prettyContracts, prettyContract, prettyInst) where
 import Prelude hiding (LT,EQ,GT)
 
 import Text.PrettyPrint
@@ -53,35 +53,42 @@ prettyBlock (LabeledBlock name insts) =
   nest 4 (vcat (map prettyInst insts))
 
 prettyInst :: Instruction -> Doc
-prettyInst (Op MOVE tgt [src]) = inst [tgt] empty [prettyVal src]
-prettyInst (Op (IeleOpcodesQuery q) tgt []) =
+prettyInst (IeleInst i) = prettyIeleInst i
+prettyInst (SugarInst s) = prettySugarInst s
+
+prettySugarInst (LoadGlobal tgt g) =
+  prettyVal tgt <+> char '=' <+> prettyName g
+
+prettyIeleInst :: IeleOpP -> Doc
+prettyIeleInst (Op MOVE tgt [src]) = inst [tgt] empty [prettyVal src]
+prettyIeleInst (Op (IeleOpcodesQuery q) tgt []) =
   prettyVal tgt <+> char '=' <+> text "call" <+> text (queryName q) <> text "()"
-prettyInst (Op op tgt [a]) = instVals [tgt] (op1Name op) [a]
-prettyInst (Op op tgt [a,b]) = instVals [tgt] (op2Name op) [a,b]
-prettyInst (VoidOp (JUMP lbl) []) = prettyJump lbl
-prettyInst (VoidOp (JUMPI lbl) [reg]) = prettyCondJump reg lbl
-prettyInst (VoidOp (RETURN _) args) = prettyReturn args
-prettyInst (VoidOp INVALID []) = text "call @iele.invalid()"
-prettyInst (VoidOp SSTORE [val,tgt]) = instVals [] "sstore" [val,tgt]
-prettyInst (VoidOp MSTORE [val,tgt]) = instVals [] "mstore" [val,tgt]
-prettyInst (VoidOp (LOG _) args) = instVals [] "log" args
-prettyInst (LiOp LOADPOS tgt i) = inst [tgt] empty [integer i]
-prettyInst (LiOp LOADNEG tgt i) = inst [tgt] empty [integer (negate i)]
-prettyInst (CallOp (LOCALCALL name _ _) results args) =
+prettyIeleInst (Op op tgt [a]) = instVals [tgt] (op1Name op) [a]
+prettyIeleInst (Op op tgt [a,b]) = instVals [tgt] (op2Name op) [a,b]
+prettyIeleInst (VoidOp (JUMP lbl) []) = prettyJump lbl
+prettyIeleInst (VoidOp (JUMPI lbl) [reg]) = prettyCondJump reg lbl
+prettyIeleInst (VoidOp (RETURN _) args) = prettyReturn args
+prettyIeleInst (VoidOp INVALID []) = text "call @iele.invalid()"
+prettyIeleInst (VoidOp SSTORE [val,tgt]) = instVals [] "sstore" [val,tgt]
+prettyIeleInst (VoidOp MSTORE [val,tgt]) = instVals [] "mstore" [val,tgt]
+prettyIeleInst (VoidOp (LOG _) args) = instVals [] "log" args
+prettyIeleInst (LiOp LOADPOS tgt i) = inst [tgt] empty [integer i]
+prettyIeleInst (LiOp LOADNEG tgt i) = inst [tgt] empty [integer (negate i)]
+prettyIeleInst (CallOp (LOCALCALL name _ _) results args) =
   prettyResults results <+> text "call" <+> prettyName name
     <> char '(' <> commaList (map prettyVal args) <> char ')'
-prettyInst (CallOp (CALL name _ _) results (gas:acct:val:args)) =
+prettyIeleInst (CallOp (CALL name _ _) results (gas:acct:val:args)) =
   prettyResults results <+> text "call" <+> prettyName name
     <+> text "at" <+> prettyVal acct
     <> char '(' <> commaList (map prettyVal args) <> char ')'
     <+> text "send" <+> prettyVal val <> comma <+> text "gaslimit" <+> prettyVal gas
-prettyInst (CallOp (STATICCALL name _ _) results (gas:acct:val:args)) =
+prettyIeleInst (CallOp (STATICCALL name _ _) results (gas:acct:val:args)) =
   prettyResults results <+> text "staticcall" <+> prettyName name
     <+> text "at" <+> prettyVal acct
     <> char '(' <> commaList (map prettyVal args) <> char ')'
     <+> text "send" <+> prettyVal val <> comma <+> text "gaslimit" <+> prettyVal gas
 
-prettyInst o = text ('#':show o)
+prettyIeleInst o = text ('#':show o)
 
 queryName CALLER = "@iele.caller"
 queryName q = '#':show q
@@ -107,7 +114,6 @@ op2Name o = case o of
 
   _ -> '#':show o
 
-prettyVal (LValueGlobalName n) = prettyName n
 prettyVal (LValueLocalName n) = prettyName n
 
 prettyJump :: IeleName -> Doc

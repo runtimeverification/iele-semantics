@@ -167,6 +167,7 @@ falseToken = IntToken 0 <$ skipKeyword "false"
 
 intToken :: Parser IntToken
 intToken = positiveIntToken <|> negativeIntToken <|> trueToken <|> falseToken
+  <?> "literal value"
 
 globalNameInclReserved :: Parser GlobalName
 globalNameInclReserved = GlobalName <$ at <*> ieleNameToken
@@ -182,11 +183,8 @@ globalName = do
 localName :: Parser LocalName
 localName = LocalName <$ percent <*> ieleNameToken
 
-
 lValue :: Parser LValue
-lValue =
-      LValueGlobalName <$> globalName
-  <|> LValueLocalName <$> localName
+lValue = LValueLocalName <$> localName
 
 -- Matches the empty string, so it may enter an infinite loop when used with,
 -- say, 'many'.
@@ -194,34 +192,31 @@ lValues :: Parser [LValue]
 lValues = commaSep0 lValue
 
 assignInst :: LValue -> Parser Instruction
-assignInst result=
-  loadImmediate result <|> Op MOVE result . (:[]) <$> lValue
-
-loadImmediate :: LValue -> Parser Instruction
-loadImmediate result = build <$> intToken
+assignInst result = buildImm <$> intToken
+                <|> buildGlobal <$> globalName
+                <|> buildMove <$> lValue
  where
-  build (IntToken i)
-    | i >= 0 = LiOp LOADPOS result i
-    | otherwise = LiOp LOADNEG result (negate i)
+  buildImm (IntToken i)
+    | i >= 0 = IeleInst (LiOp LOADPOS result i)
+    | otherwise = IeleInst (LiOp LOADNEG result (negate i))
+  buildGlobal g = SugarInst (LoadGlobal result g)
+  buildMove val = IeleInst (Op MOVE result [val])
 
 withResult :: (LValue -> Parser a) -> Parser a
 withResult p = try (lValue <* equal) >>= p
 
-ieleOp :: Parser Instruction
-ieleOp = try localCallInst
-     <|> try accountCallInst
-     <|> try staticCallInst
-     <|> try createInst
-     <|> try copycreateInst
-     <|> ieleOp1
-     <|> ieleVoidOp
+callInsts :: Parser IeleOpP
+callInsts = try localCallInst
+        <|> try accountCallInst
+        <|> try staticCallInst
 
 ieleOp1 :: Parser Instruction
 ieleOp1 = do
   result <- try (lValue <* equal)
-  choice . map ($ result) $
-    [ assignInst
-    , loadInst
+  assignInst result <|> choice [IeleInst <$> parser result | parser <- oneResults]
+ where
+  oneResults =
+    [ loadInst
     , sloadInst
     , isZeroInst
     , notInst
@@ -230,7 +225,7 @@ ieleOp1 = do
     , ternaryInst
     , predicateInst]
 
-ieleVoidOp :: Parser Instruction
+ieleVoidOp :: Parser IeleOpP
 ieleVoidOp = choice
   [ storeInst
   , sstoreInst
@@ -242,36 +237,36 @@ ieleVoidOp = choice
   ]
   <?> "instruction without result"
 
-simpleOp :: String -> Int -> ([LValue] -> Instruction) -> Parser Instruction
+simpleOp :: String -> Int -> ([LValue] -> IeleOpP) -> Parser IeleOpP
 simpleOp name arity build = build <$ skipKeyword name <*> simpleArgs arity
 
 simpleArgs :: Int -> Parser [LValue]
 simpleArgs 0 = pure []
 simpleArgs arity = sequenceA (lValue:replicate (arity-1) (comma *> lValue))
 
-simpleOp1 :: String -> Int -> IeleOpcode1 -> (LValue -> Parser Instruction)
+simpleOp1 :: String -> Int -> IeleOpcode1 -> (LValue -> Parser IeleOpP)
 simpleOp1 name arity opcode = simpleOp name arity . Op opcode
 
-simpleOp0 :: String -> Int -> IeleOpcode0P -> Parser Instruction
+simpleOp0 :: String -> Int -> IeleOpcode0P -> Parser IeleOpP
 simpleOp0 name arity opcode = simpleOp name arity (VoidOp opcode)
 
-loadInst :: LValue -> Parser Instruction
+loadInst :: LValue -> Parser IeleOpP
 loadInst result =
   try (simpleOp "load" 3 (Op MLOADN result))
    <|> simpleOp "load" 1 (Op MLOAD result)
 
-storeInst :: Parser Instruction
+storeInst :: Parser IeleOpP
 storeInst =
   try (simpleOp0 "store" 4 MSTOREN)
   <|>  simpleOp0 "store" 2 MSTORE
 
-sloadInst :: LValue -> Parser Instruction
+sloadInst :: LValue -> Parser IeleOpP
 sloadInst = simpleOp1 "sload" 1 SLOAD
 
-sstoreInst :: Parser Instruction
+sstoreInst :: Parser IeleOpP
 sstoreInst = simpleOp0 "sstore" 2 SSTORE
 
-jumpInst :: Parser Instruction
+jumpInst :: Parser IeleOpP
 jumpInst = do
   skipKeyword "br"
   condition <- Just <$> lValue <* comma <|> pure Nothing
@@ -280,13 +275,13 @@ jumpInst = do
     Nothing -> VoidOp (JUMP lbl) []
     Just reg -> VoidOp (JUMPI lbl) [reg]
 
-isZeroInst :: LValue -> Parser Instruction
+isZeroInst :: LValue -> Parser IeleOpP
 isZeroInst = simpleOp1 "iszero" 1 ISZERO
 
-notInst :: LValue -> Parser Instruction
+notInst :: LValue -> Parser IeleOpP
 notInst = simpleOp1 "not" 1 NOT
 
-shaInst :: LValue -> Parser Instruction
+shaInst :: LValue -> Parser IeleOpP
 shaInst = simpleOp1 "sha3" 1 SHA3
 
 enumParser :: [(String,a)] -> Parser a
@@ -309,7 +304,7 @@ binaryOperations =
   ,("twos",TWOS)
   ]
 
-binaryInst :: LValue -> Parser Instruction
+binaryInst :: LValue -> Parser IeleOpP
 binaryInst result =
   choice [simpleOp1 name 2 opcode result | (name,opcode) <- binaryOperations]
 
@@ -319,7 +314,7 @@ ternaryOperators = [("addmod",ADDMOD)
                    ,("expmod",EXPMOD)
                    ]
 
-ternaryInst :: LValue -> Parser Instruction
+ternaryInst :: LValue -> Parser IeleOpP
 ternaryInst result =
   flip Op result <$> enumParser ternaryOperators <*> simpleArgs 3
 
@@ -332,7 +327,7 @@ predicateFlags = [("lt",LT)
                  ,("ne",NE)
                  ]
 
-predicateInst :: LValue -> Parser Instruction
+predicateInst :: LValue -> Parser IeleOpP
 predicateInst result = skipKeyword "cmp" >>
   flip Op result <$> enumParser predicateFlags <*> simpleArgs 2
 
@@ -364,7 +359,7 @@ builtins = Map.fromList
   ]
  where bi name opcode arity = (GlobalName (IeleNameText name),(opcode,arity))
 
-localCallInst :: Parser Instruction
+localCallInst :: Parser IeleOpP
 localCallInst = do
   results <- callResult
   name <- skipKeyword "call" *> globalNameInclReserved
@@ -381,7 +376,7 @@ localCallInst = do
       | otherwise -> fail $ "builtin "++show name++" expects "++show arity++" arguments"
 
 
-accountCallInst :: Parser Instruction
+accountCallInst :: Parser IeleOpP
 accountCallInst = do
   results <- nonEmptyLValues <* equal
   name <- skipKeyword "call" *> globalNameInclReserved
@@ -392,7 +387,7 @@ accountCallInst = do
   let op = CALL name (argsLength args) (fmap (subtract 1) (retsLength results))
   pure (CallOp op results ([gas,tgt,value]++args))
 
-staticCallInst :: Parser Instruction
+staticCallInst :: Parser IeleOpP
 staticCallInst = do
   results <- nonEmptyLValues <* equal
   name <- skipKeyword "staticcall" *> globalNameInclReserved
@@ -407,22 +402,22 @@ staticCallInst = do
 argumentsOrVoid :: Parser [LValue]
 argumentsOrVoid = nonEmptyLValues <|> [] <$ skipKeyword "void"
 
-returnInst :: Parser Instruction
+returnInst :: Parser IeleOpP
 returnInst = skipKeyword "ret" *>
   fmap (\args -> VoidOp (RETURN (retsLength args)) args) argumentsOrVoid
 
-revertInst :: Parser Instruction
+revertInst :: Parser IeleOpP
 revertInst = skipKeyword "revert" *>
   fmap (\args -> VoidOp (REVERT (retsLength args)) args) argumentsOrVoid
 
-selfDestructInst :: Parser Instruction
+selfDestructInst :: Parser IeleOpP
 selfDestructInst = simpleOp0 "selfdestruct" 1 SELFDESTRUCT
 
 upto :: Int -> Parser a -> Parser [a]
 upto 0 _ = pure []
 upto n p = ((:) <$> p <*> upto (n-1) p) <|> pure []
 
-logInst :: Parser Instruction
+logInst :: Parser IeleOpP
 logInst = do
   skipKeyword "log"
   arg1 <- lValue
@@ -436,7 +431,7 @@ createInst =
         <* skipKeyword "send" <*> lValue
  where
    build status addr name args val =
-     CallOp (CREATE name (argsLength args)) [status,addr] (val:args)
+     IeleInst (CallOp (CREATE name (argsLength args)) [status,addr] (val:args))
 
 copycreateInst :: Parser Instruction
 copycreateInst =
@@ -445,20 +440,21 @@ copycreateInst =
         <* skipKeyword "send" <*> lValue
  where
    build status addr from args val =
-     CallOp (COPYCREATE (argsLength args)) [status,addr] (val:from:args)
-
+     IeleInst (CallOp (COPYCREATE (argsLength args)) [status,addr] (val:from:args))
 
 instruction :: Parser Instruction
-instruction = ieleOp <?> "instruction"
--- The try at the end, which I usually leave out, is needed here because we may
--- try to parse a label as an instruction and we must be able to recover from
--- that.
-
-blockLabel :: Parser IeleName
-blockLabel = try $ ieleNameToken <* void colon
+instruction = IeleInst <$> callInsts
+     <|> try createInst
+     <|> try copycreateInst
+     <|> ieleOp1
+     <|> IeleInst <$> ieleVoidOp
+     <?> "instruction"
 
 instructions :: Parser [Instruction]
 instructions = many instruction
+
+blockLabel :: Parser IeleName
+blockLabel = try $ ieleNameToken <* void colon
 
 labeledBlock :: Parser LabeledBlock
 labeledBlock =
@@ -485,8 +481,12 @@ functionDefinition = do
 
 topLevelDefinition :: Parser TopLevelDefinition
 topLevelDefinition =
-      TopLevelDefinitionContract <$ skipKeyword "contract" <*> globalName
+      TopLevelDefinitionContract <$ skipKeyword "external" <* skipKeyword "contract"
+        <*> ieleNameTokenNotNumber
   <|> TopLevelDefinitionFunction <$> functionDefinition
+  <|> TopLevelDefinitionGlobal <$> globalName <* equal <*> int
+ where
+  int = fmap (\(IntToken i) -> i) intToken
 
 contract :: Parser Contract
 contract = Contract <$ skipKeyword "contract" <*> ieleNameToken
