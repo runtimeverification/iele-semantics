@@ -285,11 +285,11 @@ gas/memory) to contain that size.
       | otherwise = l3
       where
         l1 = registerSize wREG1
-        l2 = registerSize wREG2
-        l3 = registerSize wREG3
-        ml1 = min l1 l3
-        ml2 = min l2 l3
-        cc = mulCost ml1 ml2
+            l2 = registerSize wREG2
+            l3 = registerSize wREG3
+            ml1 = min l1 l3
+            ml2 = min l2 l3
+            cc = mulCost ml1 ml2
         mulModConst0 = wordAddSetCost + leftShiftWordCost + limbComparisonCost +
                        2 * registerManagementCost
     ```
@@ -1009,17 +1009,17 @@ Suppose size of `x` is larger than that of `y`.  Then divide `x` in blocks of
 the same size as `y`, multiply those blocks (using the algorithm above),
 and add and shift the results.
 
-* initialize result `r` with `0`
-* for the index `i` of each block `bi` of size `|y|` of `|x|`,
-  starting from the right (`i=0`):
-  * Invariant: `|r| <= i* |y| + |y| + 1`
-  * let `cd = r` such that `|d| = i * |y|`
+1. initialize result `r` with `0`
+1. for the index `i` of each block `bi` of size `|y|` of `|x|`,
+   starting from the right (`i=0`):
+  1. Invariant: `|r| <= i* |y| + |y| + 1`
+  1. let `cd = r` such that `|d| = i * |y|`
     * Note: `|c| <= |y| + 1`
-  * compute `b * y = e` using the algorithm above
+  1. compute `b * y = e` using the algorithm above
     * Note: `|e| <= 2*|y|`
-  * let `f = e + c`
+  1. let `f = e + c`
     * Note: `|f| <= 2*|y| + 1`
-  * let `r = fd`
+  1. let `r = fd`
     * Invariant is preserved: `|r| = |f| + |d| <= (i + 1)*|y| + |y| + 1`
 
 Complexity: `|x|/|y| * (mul (|y| / 2) + add(2 * |y|))`
@@ -1126,17 +1126,47 @@ dmCost n = dmCost (n/2) + mul (n/2) + add (3*n/2+1) +
            ................ +
            2^k*mul(n/2^k) + 17 * 2^(k-1) * add(n/2^k) + 2^(k-1) * const
          = sum(k=1,log_2 n, 2^k*(mulConst2*n^constKara/(2^constKara)^k + mulConst1 * n / 2^k + mulConst0)) + 17/2*sum(k=1, log_2 n, 2^k*(posAddConst1 * n / 2^k + posAddConst0)) + const * (n - 1)
-         = mulConst2*n^constKara * 2^(1-constKara) * (1 - (2^(1-constKara))^log_2 n) / (1 - 2^(1-constKara)) + 2*mulConst1*n * (log_2 n - 1) + mulConst0 * (n - 1) +
-           17*(posAddConst1 * n * (log_2 n - 1) + posAddConst0 * (n - 1)) +
-           const * (n - 1)
-           // note that (2^(1-constKara))^log_2 n = n / n ^ constKara
-         = mulConst2 * 2^(1-constKara) / (1 - 2^(1-constKara)) * (n^constKara - n) +
-           (2*mulConst1  +  17 * posAddConst1) * n * log_2 n +
-           n * (17 * posAddConst0 + mulConst0 + const - 2*mulConst1 - 17 * posAddConst1) - mulCost0 - posAddConst0 - const
+         = mulConst2 * n^constKara * sum(k=1,log_2 n, 2^k * /(2^constKara)^k) +
+           mulConst1 * n * sum(k=1,log_2 n, 2^k / 2^k) +
+           mulConst0 * sum(k=1,log_2 n, 2^k) +
+
+           17/2 * posAddConst1 * n * sum(k=1, log_2 n, 2^k / 2^k) +
+           17/2 * posAddConst0 * sum(k=1, log_2 n, 2^k)) +
+
+           const * n - const
+         // Now, sum(k=1,log_2 n, 2^(k * (1 - constKara)))
+         // is 2^(1 - constKara) * (1-2^(1 - constKara)^log_2 n) / (1 - 2^(1 - constKara))
+         // i.e. 2^(1 - constKara) * (1 - n^(1 - constkara)) / (1 - 2^(1 - constKara))
+         = mulConst2 * n^constKara * 2^(1 - constKara) *
+           (1 - n^(1 - constkara))  / (1 - 2^(1 - constKara)) +
+           2 * mulConst1 * n * (log_2 n - 1) +
+           mulConst0 * (2 * n - 2)
+
+           17/2 * posAddConst1 * n * 2 * (log_2 n - 1)
+           17/2 * posAddConst0 * 2 * (n - 1)
+
+           const * n - const
+         = mulConst2 * n^constKara * 2^(1 - constKara) / (1 - 2^(1 - constKara)) -
+           mulConst2 * n * 2^(1 - constKara) / (1 - 2^(1 - constKara)) +
+           2 * mulConst1 * n * log_2 n -
+           2 * mulConst1 * n +
+           2 * mulConst0 * n -
+           2 * mulConst0 +
+           17 * posAddConst1 * n * log_2 n -
+           17 * posAddConst1 * n
+           17 * posAddConst0 * n -
+           17 * posAddConst0 +
+
+           const * n - const
         // let dmConst3 = mulConst2 * 2^(1-constKara) / (1 - 2^(1-constKara))
         // let dmConst2 = 2*mulConst1  +  17 * posAddConst1
-        // let dmConst1 = 17 * posAddConst0 + mulConst0 + const - dmConst2 - 2*mulConst1 - 17 * posAddConst1
-        // let dmConst0 = - mulCost0 - posAddConst0 - const
+        // let dmConst1 = 17 * posAddConst0 + 2 * mulConst0 + const - dmConst2 - 2*mulConst1 - 17 * posAddConst1
+        // let dmConst0 = - 2 * mulCost0 - posAddConst0 - const
+        // Of course, let us notice that 2^(1-constKara) =
+        //      1 / (2^(constKara - 1)) =
+        //      1 / 2 ^ (log2 3 - 1) =
+        //      2 / 2 ^ log2 3 = 2/3
+        // so dmConst3 = mulConst2 * 2/3 / (1/3) = 2 * mulConst2
          = dmConst3 * n^constKara + dmConst2 * n * log n + dmConst1 * n + dmConst0
 ```
 

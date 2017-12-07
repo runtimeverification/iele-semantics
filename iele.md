@@ -1764,44 +1764,51 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
 
     rule <k> #gasExec(SCHED, _:DivInst)  => Glow < SCHED > ... </k>
 
-    syntax Int ::= "GAndConstant"             "<" Schedule ">"  [function]
-                 | "GAndVariable"             "<" Schedule ">"  [function]
-                 | "GCmpConstant"             "<" Schedule ">"  [function]
-                 | "GCmpVariable"             "<" Schedule ">"  [function]
-                 | "GIsZeroConstant"          "<" Schedule ">"  [function]
-                 | "GNotConstant"             "<" Schedule ">"  [function]
-                 | "GNotVariable"             "<" Schedule ">"  [function]
-                 | "GOrConstant"              "<" Schedule ">"  [function]
-                 | "GOrVariable"              "<" Schedule ">"  [function]
-                 | "GXorConstant"             "<" Schedule ">"  [function]
-                 | "GXorVariable"             "<" Schedule ">"  [function]
+    syntax Int ::= "GAndConstant"                   "<" Schedule ">"  [function]
+                 | "GAndVariable"                   "<" Schedule ">"  [function]
+                 | "GCmpConstant"                   "<" Schedule ">"  [function]
+                 | "GCmpVariable"                   "<" Schedule ">"  [function]
+                 | "GIsZeroConstant"                "<" Schedule ">"  [function]
+                 | "GNotConstant"                   "<" Schedule ">"  [function]
+                 | "GNotVariable"                   "<" Schedule ">"  [function]
+                 | "GOrConstant"                    "<" Schedule ">"  [function]
+                 | "GOrVariable"                    "<" Schedule ">"  [function]
+                 | "GXorConstant"                   "<" Schedule ">"  [function]
+                 | "GXorVariable"                   "<" Schedule ">"  [function]
                  ///////////////////////////////////
-                 | GMulCost(Schedule, Int, Int)                 [function]
-                 | GDivModCost(Schedule, Int, Int)              [function]
+                 | GMulCost(Schedule, Int, Int)                       [function]
+                 | GDivModCost(Schedule, Int, Int)                    [function]
+                 | GDivModSameSize(Schedule, Int)                     [function]
                  ///////////////////////////////////
-                 | "GAddConst0"               "<" Schedule ">"  [function]
-                 | "GAddConst1"               "<" Schedule ">"  [function]
-                 | "GBaseAddSub"              "<" Schedule ">"  [function]
-                 | "GBaseBoolBinaryOp"        "<" Schedule ">"  [function]
-                 | "GBaseNot"                 "<" Schedule ">"  [function]
-                 | "GBoolBinaryOpVariable"    "<" Schedule ">"  [function]
-                 | "GBoolOpConstant"          "<" Schedule ">"  [function]
-                 | "GForIteration"            "<" Schedule ">"  [function]
-                 | "GForStart"                "<" Schedule ">"  [function]
-                 | "GIncrement"               "<" Schedule ">"  [function]
-                 | "GMulConst0"               "<" Schedule ">"  [function]
-                 | "GMulConst1x"              "<" Schedule ">"  [function]
-                 | "GMulConst1xy"             "<" Schedule ">"  [function]
-                 | "GMulConst2"               "<" Schedule ">"  [function]
-                 | "GMulSameSizeCommonConst"  "<" Schedule ">"  [function]
-                 | "GMulSameSizeConst0"       "<" Schedule ">"  [function]
-                 | "GMulSameSizeConst1"       "<" Schedule ">"  [function]
-                 | "GMulSameSizeConst2"       "<" Schedule ">"  [function]
-                 | "GPositiveAddConst0"       "<" Schedule ">"  [function]
-                 | "GPositiveAddConst1"       "<" Schedule ">"  [function]
-                 | "GRegisterMaintenanceCost" "<" Schedule ">"  [function]
-                 | "GSetWordCost"             "<" Schedule ">"  [function]
-                 | "GTestAndBranch"           "<" Schedule ">"  [function]
+                 | "GAddConst0"                     "<" Schedule ">"  [function]
+                 | "GAddConst1"                     "<" Schedule ">"  [function]
+                 | "GBaseAddSub"                    "<" Schedule ">"  [function]
+                 | "GBaseBoolBinaryOp"              "<" Schedule ">"  [function]
+                 | "GBaseNot"                       "<" Schedule ">"  [function]
+                 | "GBoolBinaryOpVariable"          "<" Schedule ">"  [function]
+                 | "GBoolOpConstant"                "<" Schedule ">"  [function]
+                 | "GDivideAnConquerDivCost"        "<" Schedule ">"  [function]
+                 | "GDivModSameSizeCommonConst"     "<" Schedule ">"  [function]
+                 | "GDivModSameSizeConst0"          "<" Schedule ">"  [function]
+                 | "GDivModSameSizeConst1"          "<" Schedule ">"  [function]
+                 | "GDivModSameSizeConst2"          "<" Schedule ">"  [function]
+                 | "GDivModSameSizeConst3"          "<" Schedule ">"  [function]
+                 | "GForIteration"                  "<" Schedule ">"  [function]
+                 | "GForStart"                      "<" Schedule ">"  [function]
+                 | "GIncrement"                     "<" Schedule ">"  [function]
+                 | "GMulConst0"                     "<" Schedule ">"  [function]
+                 | "GMulConst1x"                    "<" Schedule ">"  [function]
+                 | "GMulConst1xy"                   "<" Schedule ">"  [function]
+                 | "GMulConst2"                     "<" Schedule ">"  [function]
+                 | "GMulSameSizeCommonConst"        "<" Schedule ">"  [function]
+                 | "GMulSameSizeConst0"             "<" Schedule ">"  [function]
+                 | "GMulSameSizeConst1"             "<" Schedule ">"  [function]
+                 | "GMulSameSizeConst2"             "<" Schedule ">"  [function]
+                 | "GPositiveAddConst0"             "<" Schedule ">"  [function]
+                 | "GPositiveAddConst1"             "<" Schedule ">"  [function]
+                 | "GRegisterMaintenanceCost"       "<" Schedule ">"  [function]
+                 | "GSetWordCost"                   "<" Schedule ">"  [function]
+                 | "GTestAndBranch"                 "<" Schedule ">"  [function]
 
     rule GAddConst0 < SCHED > =>
       GPositiveAddConst0 < SCHED > +Int
@@ -1820,7 +1827,7 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
       GRegisterMaintenanceCost < SCHED >
     rule GNotConstant < SCHED > => GBoolOpConstant < SCHED >
     rule GNotVariable < SCHED > =>
-      GBaseNot < 2SCHED > +Int GForIteration < SCHED >
+      GBaseNot < SCHED > +Int GForIteration < SCHED >
     rule GOrConstant < SCHED > => GBoolOpConstant < SCHED >
     rule GOrVariable < SCHED > => GBoolBinaryOpVariable < SCHED >
     rule GXorConstant < SCHED > => GBoolOpConstant < SCHED >
@@ -1844,11 +1851,11 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
 
     rule GDivModSameSize(SCHED, L) =>
       (GDivModSameSizeConst3 < SCHED > *Int kara(L)) +Int
-      (GDivModSameSizeConst2 < SCHED > *Int L *Int log2(L)) +Int
+      (GDivModSameSizeConst2 < SCHED > *Int L *Int log2Int(L)) +Int
       (GDivModSameSizeConst1 < SCHED > *Int L) +Int
       GDivModSameSizeConst0 < SCHED >
 
-    rule GDivModCost(SCHED, L1, L2) => GDivModSameSize(L1)
+    rule GDivModCost(SCHED, L1, L2) => GDivModSameSize(SCHED, L1)
         //TODO copy actual costs from the gas model
       requires L1 >=Int L2
     rule GDivModCost(SCHED, L1, L2) => GDivModCost(SCHED, L2, L1)
@@ -1878,6 +1885,27 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
       GRegisterMaintenanceCost < SCHED > +Int
       GForStart < SCHED >
 
+    rule GDivModSameSizeConst3 < SCHED > =>
+      2 *Int GMulSameSizeConst2 < SCHED >
+    rule GDivModSameSizeConst2 < SCHED > =>
+      (2 *Int GMulSameSizeConst1 < SCHED >) +Int
+      (17 *Int GPositiveAddConst1 < SCHED >)
+    rule GDivModSameSizeConst1 < SCHED > =>
+      (17 *Int GPositiveAddConst0 < SCHED >) +Int
+      2 *Int GMulSameSizeConst0 < SCHED > +Int
+      GDivModSameSizeCommonConst < SCHED > -Int
+      GDivModSameSizeConst2 < SCHED > -Int
+      (2 *Int GMulSameSizeConst1 < SCHED >) -Int
+      (17 *Int GPositiveAddConst1 < SCHED >)
+    rule GDivModSameSizeConst0 < SCHED > =>
+      -2 *Int GMulSameSizeConst0 < SCHED > -Int
+      GPositiveAddConst0 < SCHED > -Int
+      GDivModSameSizeCommonConst < SCHED >
+    rule GDivModSameSizeCommonConst < SCHED > =>
+      (3 *Int GAddConst1 < SCHED >) -Int
+      (8 *Int GAddConst0 < SCHED >) +Int
+      GDivideAnConquerDivCost < SCHED >
+
     rule GPositiveAddConst0 < SCHED > =>
       GTestAndBranch <SCHED> +Int
       GSetWordCost < SCHED > +Int
@@ -1901,6 +1929,7 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     rule GIncrement               < _ > => 1
     rule GSetWordCost             < _ > => 1
     rule GTestAndBranch           < _ > => 2
+    rule GDivideAnConquerDivCost  < _ > => 3  // TODO: Decompose in basic costs.
 
     syntax Int ::= registerSize(Int) [function]
                  | "numberBase"      [function]
