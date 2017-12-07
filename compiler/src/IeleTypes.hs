@@ -10,14 +10,15 @@ module IeleTypes
     , LabeledBlock (LabeledBlock, labeledBlockLabel, labeledBlockInstructions)
     , GlobalName (GlobalName)
     , LocalName (LocalName)
-    , LValue (LValueGlobalName, LValueLocalName)
+    , LValue (LValueLocalName)
     , TopLevelDefinition
-      (TopLevelDefinitionContract, TopLevelDefinitionFunction)
+      (TopLevelDefinitionContract, TopLevelDefinitionFunction, TopLevelDefinitionGlobal)
 
     -- type synonyms for parser's instantiations of IeleInstructions' types
-    , Instruction
+    , Instruction(IeleInst,SugarInst)
+    , SugarInstruction(LoadGlobal)
+    , IeleOpP
     , IeleOpcode0P
-    , IeleOpcode1P
 
     , HasName(name)
     , HasSize(size)
@@ -29,13 +30,13 @@ module IeleTypes
     , HasLabel(label)
     , HasInstructions(instructions)
     , _LValueLocalName
-    , _LValueGlobalName
     , _LocalName
     , _GlobalName
     , _TopLevelDefinitionFunction
     , instructionRegisters
     , instructionJumpDest
     , instructionCallName
+    , instructionContractName
     , functionInsts
     ) where
 import Data.Char
@@ -48,9 +49,17 @@ import Control.Lens
 
 import IeleInstructions
 
-type Instruction = IeleOpG IeleName GlobalName IeleName LValue
-type IeleOpcode1P = IeleOpcode1G IeleName
+type IeleOpP = IeleOpG IeleName GlobalName IeleName LValue
 type IeleOpcode0P = IeleOpcode0G GlobalName IeleName
+
+data Instruction =
+   IeleInst IeleOpP
+ | SugarInst SugarInstruction
+  deriving (Show, Eq, Data)
+
+data SugarInstruction =
+  LoadGlobal LValue GlobalName
+  deriving (Show, Eq, Data)
 
 data IeleName = IeleNameNumber Int | IeleNameText String
   deriving (Show, Eq, Ord, Data)
@@ -84,13 +93,10 @@ instance IsString LocalName where
   fromString ('%':str) = LocalName (fromString str)
   fromString str = error $ "LocalName must begin with % in "++show str
 
-data LValue =
-    LValueGlobalName GlobalName
-  | LValueLocalName LocalName
+newtype LValue = LValueLocalName LocalName
   deriving (Show, Eq, Data)
 
 instance IsString LValue where
-  fromString str@('@':_) = LValueGlobalName (fromString str)
   fromString str@('%':_) = LValueLocalName (fromString str)
   fromString str = error $ "LValue must begin with % or @ in "++show str
 
@@ -107,8 +113,9 @@ data FunctionDefinition = FunctionDefinition
   , functionDefinitionBlocks :: [LabeledBlock]
   } deriving (Show, Eq, Data)
 data TopLevelDefinition =
-    TopLevelDefinitionContract GlobalName
+    TopLevelDefinitionContract IeleName
   | TopLevelDefinitionFunction FunctionDefinition
+  | TopLevelDefinitionGlobal GlobalName Integer
   deriving (Show, Eq, Data)
 data Contract = Contract
   { contractName :: IeleName
@@ -121,15 +128,21 @@ instructionRegisters :: Traversal' Instruction LValue
 instructionRegisters = template
 
 instructionJumpDest :: Traversal' Instruction IeleName
-instructionJumpDest f (VoidOp (JUMP tgt) [])
-  = fmap (\tgt -> VoidOp (JUMP tgt) []) (f tgt)
-instructionJumpDest f (VoidOp (JUMPI tgt) [arg])
-  = fmap (\tgt -> VoidOp (JUMPI tgt) [arg]) (f tgt)
+instructionJumpDest f (IeleInst (VoidOp (JUMP tgt) []))
+  = fmap (\tgt -> IeleInst (VoidOp (JUMP tgt) [])) (f tgt)
+instructionJumpDest f (IeleInst (VoidOp (JUMPI tgt) [arg]))
+  = fmap (\tgt -> IeleInst (VoidOp (JUMPI tgt) [arg])) (f tgt)
 instructionJumpDest _ i = pure i
 
-instructionCallName :: Traversal' Instruction GlobalName
-instructionCallName f (CallOp callOp results args) = (\o' -> CallOp o' results args) <$> traverse f callOp
+instructionCallName :: Traversal' IeleOpP GlobalName
+instructionCallName f (CallOp callOp results args) =
+  (\o' -> CallOp o' results args) <$> traverse f callOp
 instructionCallName _ inst = pure inst
+
+instructionContractName :: Traversal' IeleOpP IeleName
+instructionContractName f (CallOp (CREATE c nargs) results args) =
+  fmap (\c' -> CallOp (CREATE c' nargs) results args) (f c)
+instructionContractName _ inst = pure inst
 
 functionInsts :: Traversal' FunctionDefinition Instruction
 functionInsts = template

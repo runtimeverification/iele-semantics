@@ -17,7 +17,7 @@ import Text.Parsec (parse)
 import Text.Parsec.String (Parser)
 import System.Environment
 
-import IeleParser (ieleParser1)
+import IeleParser (ieleParser)
 import IeleAssembler (assemble)
 import IeleTypes
 import IelePrint
@@ -93,16 +93,16 @@ main = do
   case args of
     [file] -> do
       contents <- readFile file
-      case parse ieleParser1 file contents of
+      case parse ieleParser file contents of
         Left err  -> print err
-        Right c  -> do
+        Right cs  -> do
           {-
           writeFile "test1.iele" (show (prettyContract c))
           let (defs,c') = processContract c
           mapM_ print defs
           writeFile "test2.iele" (show (prettyContract c'))
            -}
-          B.putStr . b16Enc . assemble . compileContract $ c
+          B.putStr . b16Enc . assemble . compileContracts $ cs
     _ -> putStrLn "Usage: iele-assemble FILE"
 
 --parse anyChar "" "a"

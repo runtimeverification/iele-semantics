@@ -54,9 +54,6 @@ asm_iele_opcode1 op1 = case op1 of
 
   MOVE -> putWord8 0x60
 
-  CREATE contract nargs -> putWord8 0xf0 >> putWord16be contract >> putArgs16 nargs
-  COPYCREATE nargs -> putWord8 0xf1 >> putArgs16 nargs
-
   IeleOpcodesQuery queryOp -> putWord8 $ case queryOp of
     ADDRESS -> 0x30
     BALANCE -> 0x31
@@ -97,8 +94,8 @@ asm_iele_opcode0 op0 = case op0 of
   LOG n | n <= 4 -> putWord8 (0xa0 + n)
         | otherwise -> error "LOG only takes up to 4 values"
 
-  RETURN nreturn -> putWord8 0xf6 >> putWord16be (retsCount nreturn)
-  REVERT nreturn -> putWord8 0xf7 >> putWord16be (retsCount nreturn)
+  RETURN nargs -> putWord8 0xf6 >> putArgs16 nargs
+  REVERT nargs -> putWord8 0xf7 >> putArgs16 nargs
 
   INVALID -> putWord8 0xfe
 
@@ -109,11 +106,14 @@ asm_iele_opcode_li opLi = case opLi of
   LOADPOS -> putWord8 0x61
   LOADNEG -> putWord8 0x62
 
-asm_iele_opcode_call :: IeleOpcodeCall Word16 -> Put
+asm_iele_opcode_call :: IeleOpcodeCall Word16 Word16 -> Put
 asm_iele_opcode_call opCall = case opCall of
   CALL call nargs nreturn -> putWord8 0xf2 >> putWord16be call >> putArgs16 nargs >> putRets16 nreturn
   STATICCALL call nargs nreturn -> putWord8 0xf5 >> putWord16be call >> putArgs16 nargs >> putRets16 nreturn
   LOCALCALL call nargs nreturn -> putWord8 0xf8 >> putWord16be call >> putArgs16 nargs >> putRets16 nreturn
+
+  CREATE contract nargs -> putWord8 0xf0 >> putWord16be contract >> putArgs16 nargs
+  COPYCREATE nargs -> putWord8 0xf1 >> putArgs16 nargs
 
 -- Register numbers are packed bitwise
 asm_iele_regs :: Word8 -> [Int] -> Put

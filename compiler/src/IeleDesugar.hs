@@ -1,19 +1,24 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module IeleDesugar where
-import IeleTypes
-import IeleInstructions
-
 import Data.IntSet(IntSet)
 import qualified Data.IntSet as IntSet
 import qualified Data.Set as Set
 import Data.Map.Strict(Map,(!))
 import qualified Data.Map.Strict as Map
+import qualified Data.ByteString as B
+
+import Data.Bifunctor
 
 import Data.Word
 import Data.Data
 
 import Control.Lens
 import Data.Data.Lens
+
+import IeleInstructions
+import IeleAssembler
+import IeleTypes
+import IelePrint(prettyInst)
 
 type IeleNameNum = Int
 
@@ -64,12 +69,22 @@ numberLocals funDef =
   in funDef & funParams %~ rename
             & funLocalRegs %~ rename
 
-numberGlobals :: Contract -> Contract
-numberGlobals contract =
-  let globalRegs :: Traversal' Contract IeleName
-      globalRegs = template . _LValueGlobalName . _GlobalName
-      rename = applyIeleNameMap (numberIeleNames (contract ^.. globalRegs))
-  in contract & template . _LValueGlobalName . _GlobalName %~ rename
+expandGlobals :: Contract -> Contract
+expandGlobals contract =
+  let globalVals = Map.fromList [(g,val) | TopLevelDefinitionGlobal g val <-
+                                    contractDefinitions contract]
+      definitions = [d | d <- contractDefinitions contract,
+                         case d of {TopLevelDefinitionGlobal _ _ -> False; _ -> True}]
+      desugarLoadGlobal :: Instruction -> Instruction
+      desugarLoadGlobal i@(SugarInst (LoadGlobal dest g))
+        | Just v <- Map.lookup g globalVals =
+            if v >= 0
+            then IeleInst (LiOp LOADPOS dest v)
+            else IeleInst (LiOp LOADNEG dest (abs v))
+        | otherwise = error $ "attempting to load unknown global in "++show (prettyInst i)
+      desugarLoadGlobal i = i
+  in contract {contractDefinitions = definitions}
+        & template %~ desugarLoadGlobal
 
 functionDefinitions :: Traversal' Contract FunctionDefinition
 functionDefinitions = template
@@ -80,21 +95,31 @@ calledFunctions = template . instructionCallName . _GlobalName
 declaredFunctions :: Traversal' Contract IeleName
 declaredFunctions = functionDefinitions . name . _GlobalName
 
-numberFunctions :: Contract -> ([IeleName],Contract)
-numberFunctions contract = let
+createdContracts :: Traversal' Contract IeleName
+createdContracts = template . instructionContractName
+
+numberDecls :: Contract -> ([IeleName],[IeleName],[FunctionDefinition])
+numberDecls contract = let
   funNames = contract ^.. declaredFunctions ++ contract ^.. calledFunctions
   funDecls = Set.delete (IeleNameText "init") (Set.fromList funNames)
+  contractDecls = [name | TopLevelDefinitionContract name <- contractDefinitions contract]
   functionTable = Set.toList funDecls
   functionMapping = Map.insert (IeleNameText "init") (IeleNameNumber 0)
       (Map.fromList (zip functionTable (map IeleNameNumber [1..])))
+  contractNums = map IeleNameNumber [1 + length functionTable..]
+  contractMapping = Map.fromList (zip contractDecls contractNums)
  in (functionTable,
+     contractDecls,
+     toListOf functionDefinitions $
       contract & calledFunctions %~ (functionMapping !)
-               & declaredFunctions %~ (functionMapping !))
+               & declaredFunctions %~ (functionMapping !)
+               & createdContracts %~ (contractMapping !))
 
-processContract :: Contract -> ([IeleName],Contract)
+processContract :: Contract -> ([IeleName],[IeleName],[FunctionDefinition])
 processContract contract =
-  let locallyNumbered = contract & functionDefinitions  %~ numberLocals . numberBlocks
-  in numberFunctions (numberGlobals locallyNumbered)
+  let (funDecls,contractDecls,funDefs) = numberDecls (expandGlobals contract)
+      numberedFuns = map (numberLocals . numberBlocks) funDefs
+  in  (funDecls,contractDecls,numberedFuns)
 
 type IeleOp' = IeleOpG Word16 Word16 Word16 LValue
 
@@ -115,14 +140,17 @@ flattenInsts :: [Instruction] -> [IeleOp']
 flattenInsts = map flattenInst
 
 flattenInst :: Instruction -> IeleOp'
-flattenInst Nop = Nop
-flattenInst (Op op1 result args) = Op (fmap flattenName op1) result args
-flattenInst (VoidOp op0 args) = VoidOp (flattenOp0 op0) args
-  where flattenOp0 op = op & relabelOpcode0 pure %~ flattenName
-                           & flip relabelOpcode0 pure %~ flattenGlobalName
-flattenInst (CallOp callOp results args) =
-  CallOp (fmap flattenGlobalName callOp) results args
-flattenInst (LiOp op result val) = LiOp op result val
+flattenInst (IeleInst i) = flattenIeleInst i
+flattenInst (SugarInst s) = error "sugar-only instructions should have been expanded by now"
+
+flattenIeleInst :: IeleOpP -> IeleOp'
+flattenIeleInst Nop = Nop
+flattenIeleInst (Op op1 result args) = Op op1 result args
+flattenIeleInst (VoidOp op0 args) =
+  VoidOp (bimap flattenGlobalName flattenName op0) args
+flattenIeleInst (CallOp callOp results args) =
+  CallOp (bimap flattenName flattenGlobalName callOp) results args
+flattenIeleInst (LiOp op result val) = LiOp op result val
 
 flattenName :: IeleName -> Word16
 flattenName (IeleNameNumber i) = fromIntegral i
@@ -131,24 +159,35 @@ flattenName (IeleNameText t) = error $ "residual text name "++t
 flattenGlobalName :: GlobalName -> Word16
 flattenGlobalName (GlobalName i) = flattenName i
 
+neededBits :: Integral a => a -> Int
+neededBits max = ceiling (logBase 2 (fromIntegral max+1))
+
 countRegisters :: [IeleOp'] -> [IeleOp]
 countRegisters ops' =
   let maxRegs = maximumOf (traverse . traverse . to regNum) ops'
       nbits = case maxRegs of
         Nothing -> 0
-        Just maxNum -> 1 + ceiling (logBase 2 (fromIntegral maxNum))
-      globalOffset = 2^(nbits-1)
+        Just maxNum -> neededBits maxNum
       regNum (LValueLocalName (LocalName (IeleNameNumber i))) = i
-      regNum (LValueGlobalName (GlobalName (IeleNameNumber i))) = i
       regNum l = error $ "Residual textual name "++show l
       valToInt (LValueLocalName (LocalName (IeleNameNumber i))) = i
-      valToInt (LValueGlobalName (GlobalName (IeleNameNumber i))) = globalOffset + i
   in [VoidOp (REGISTERS (fromIntegral nbits)) []]
      ++ over (traverse . traverse) valToInt ops'
 
-compileContract :: Contract -> [IeleOp]
-compileContract contract =
-  let (functions,Contract _ _ defs) = processContract contract
+compileContract :: Map IeleName B.ByteString -> Contract -> [IeleOp]
+compileContract childContracts contract =
+  let (functions,contracts,fundefs) = processContract contract
       ops' = [VoidOp (FUNCTION t) [] | IeleNameText t <- functions]
-             ++ concatMapOf (traverse . _TopLevelDefinitionFunction) flattenFundef defs
+             ++ [VoidOp (CONTRACT (childContracts ! c)) [] | c <- contracts]
+             ++ concatMap flattenFundef fundefs
   in countRegisters ops'
+
+compileContracts :: [Contract] -> [IeleOp]
+compileContracts [] = []
+compileContracts (c:cs) = go Map.empty c cs
+  where go childContracts main [] = compileContract childContracts main
+        go childContracts c (c':cs) =
+          go (Map.insert (contractName c)
+                         (assemble (compileContract childContracts c))
+                         childContracts)
+             c' cs

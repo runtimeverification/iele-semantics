@@ -21,7 +21,7 @@ main =
       "All Tests"
       [ testGroup "Token Tests" tokenTests
       , testGroup "Instruction Tests" instructionTests
---      , testGroup "Other Tests" otherTests
+      , testGroup "Other Tests" otherTests
       ]
     )
 
@@ -86,18 +86,16 @@ localNameCounterexamples =
 lValueExamples :: [(LValue, String)]
 lValueExamples =
   [ (LValueLocalName (LocalName (IeleNameText "a")), "%a")
-  , (LValueGlobalName (GlobalName (IeleNameText "a")), "@a")
   ]
 
 lValueCounterexamples :: [String]
 lValueCounterexamples =
-  ["%", "a", "@"]
+  ["%", "@a", "a", "@"]
 
 nonEmptyLValuesExamples :: [([LValue], String)]
 nonEmptyLValuesExamples =
     [ ([LValueLocalName "%a"], "%a")
-    , ([LValueLocalName "%a", LValueGlobalName "@b"], "%a,@b")
-    , ([LValueGlobalName "@a", LValueLocalName "%b"], "@a, %b")
+    , ([LValueLocalName "%a", LValueLocalName "%b"], "%a, %b")
     ]
 
 nonEmptyLValuesCounterexamples :: [String]
@@ -107,19 +105,19 @@ nonEmptyLValuesCounterexamples =
 lvaluesExamples :: [([LValue], String)]
 lvaluesExamples =
   [ ([LValueLocalName "%a"], "%a")
-  , ([LValueLocalName "%a", LValueGlobalName "@b"], "%a,@b")
-  , ([LValueGlobalName "@a", LValueLocalName "%b"], "@a, %b")
+  , ([LValueLocalName "%a", LValueLocalName "%b"], "%a,%b")
+  , ([LValueLocalName "%a", LValueLocalName "%b"], "%a, %b")
   , ([], "")
   ]
 
 lvaluesCounterexamples :: [String]
 lvaluesCounterexamples =
-  ["%", "@"]
+  ["%", "@", "@a"]
 
 
 nonEmptyOperandsCounterexamples :: [String]
 nonEmptyOperandsCounterexamples =
-    ["%", "@", ""]
+    ["%", "@", "", "@a"]
 
 functionParametersExamples :: [([LocalName], String)]
 functionParametersExamples =
@@ -161,47 +159,47 @@ tokenTests =
 
 instructionTests :: [TestTree]
 instructionTests =
-  [ testInstruction
+  [ testIeleInst
       "Load Immediate Pos"
       (LiOp LOADPOS "%a" 10)
       "%a=10"
-  , testInstruction
+  , testIeleInst
       "Load Immediate Neg"
       (LiOp LOADNEG "%a" 10)
       "%a=-10"
-  , testInstruction
+  , testIeleInst
       "Move"
-      (Op  MOVE "%a" ["@b"])
-      "%a=@b"
-  , testInstruction
+      (Op  MOVE "%a" ["%b"])
+      "%a=%b"
+  , testIeleInst
       "Load"
       (Op MLOAD "%a" ["%10"])
       "%a=load %10"
-  , testInstruction
+  , testIeleInst
       "LoadN"
       (Op MLOADN "%a" ["%10","%off","%size"])
       "%a=load %10, %off, %size"
-  , testInstruction
+  , testIeleInst
       "Store"
       (VoidOp MSTORE ["%9","%10"])
       "store %9, %10"
-  , testInstruction
+  , testIeleInst
       "StoreN"
       (VoidOp MSTOREN ["%9","%10","%off","%size"])
       "store %9, %10, %off, %size"
-  , testInstruction
+  , testIeleInst
       "SLoad"
       (Op SLOAD "%a" ["%10"])
       "%a=sload %10"
-  , testInstruction
+  , testIeleInst
       "SStore"
       (VoidOp SSTORE ["%9","%10"])
       "sstore %9, %10"
-  , testInstruction
+  , testIeleInst
       "IsZero"
       (Op ISZERO "%a" ["%10"])
       "%a=iszero %10"
-  , testInstruction
+  , testIeleInst
       "Not"
       (Op NOT "%a" ["%b"])
       "%a = not %b"
@@ -231,104 +229,100 @@ instructionTests =
   , testPredicateOperation "eq" EQ
   , testPredicateOperation "ne" NE
 
-  , testInstruction "sha3"
+  , testIeleInst "sha3"
       (Op SHA3 "%a" ["%b"])
       "%a = sha3 %b"
 
-  , testInstruction
+  , testIeleInst
       "Jump"
       (VoidOp (JUMP "a") [])
       "br a"
-  , testInstruction
+  , testIeleInst
       "CondJump"
       (VoidOp (JUMPI "a") ["%10"])
       "br %10, a"
 
-  , testInstruction
+  , testIeleInst
       "LocalCall"
-      (CallOp (LOCALCALL "@c" (mkArgs 2) (mkRets 2)) ["%a","@b"] ["%10","%11"])
-      "%a,@b=call@c(%10,%11)"
-  , testInstruction
+      (CallOp (LOCALCALL "@c" (mkArgs 2) (mkRets 2)) ["%a","%b"] ["%10","%11"])
+      "%a,%b=call@c(%10,%11)"
+  , testIeleInst
       "empty arguments LocalCall"
-      (CallOp (LOCALCALL "@c" (mkArgs 0) (mkRets 2)) ["%a","@b"] [])
-      "%a,@b=call@c()"
-  , testInstruction
+      (CallOp (LOCALCALL "@c" (mkArgs 0) (mkRets 2)) ["%a","%b"] [])
+      "%a,%b=call@c()"
+  , testIeleInst
       "empty results LocalCall"
       (CallOp (LOCALCALL "@c" (mkArgs 2) (mkRets 0)) [] ["%10","%11"])
       "call@c(%10,%11)"
-  , testInstruction
+  , testIeleInst
       "empty lvalues arguments LocalCall"
       (CallOp (LOCALCALL "@c" (mkArgs 0) (mkRets 0)) [] [])
       "call@c()"
 
-  , testInstruction
+  , testIeleInst
       "AccountCall"
-      (CallOp (CALL "@c" (mkArgs 2) (mkRets (3-1))) ["%ok","%a","@b"] ["%gas","%acct","%amt","%10","%11"])
-      "%ok,%a,@b=call@c at %acct(%10,%11)send %amt, gaslimit %gas"
-  , testInstruction
+      (CallOp (CALL "@c" (mkArgs 2) (mkRets (3-1))) ["%ok","%a","%b"] ["%gas","%acct","%amt","%10","%11"])
+      "%ok,%a,%b=call@c at %acct(%10,%11)send %amt, gaslimit %gas"
+  , testIeleInst
       "empty arguments AccountCall"
-      (CallOp (CALL "@c" (mkArgs 0) (mkRets (2-1))) ["%ok","@b"] ["%gas","%acct","%amt"])
-      "%ok , @b = call @c at %acct() send %amt, gaslimit %gas"
-  , testInstruction
+      (CallOp (CALL "@c" (mkArgs 0) (mkRets (2-1))) ["%ok","%b"] ["%gas","%acct","%amt"])
+      "%ok , %b = call @c at %acct() send %amt, gaslimit %gas"
+  , testIeleInst
       "StaticCall"
-      (CallOp (STATICCALL "@c" (mkArgs 2) (mkRets (3-1))) ["%ok","%a","@b"] ["%gas","%acct","%amt","%10","%11"])
-      "%ok,%a,@b=staticcall@c at %acct(%10,%11)send %amt, gaslimit %gas"
-  , testInstruction
+      (CallOp (STATICCALL "@c" (mkArgs 2) (mkRets (3-1))) ["%ok","%a","%b"] ["%gas","%acct","%amt","%10","%11"])
+      "%ok,%a,%b=staticcall@c at %acct(%10,%11)send %amt, gaslimit %gas"
+  , testIeleInst
       "empty arguments StaticCall"
-      (CallOp (STATICCALL "@c" (mkArgs 0) (mkRets (2-1))) ["%ok","@b"] ["%gas","%acct","%amt"])
-      "%ok , @b = staticcall @c at %acct() send %amt, gaslimit %gas"
+      (CallOp (STATICCALL "@c" (mkArgs 0) (mkRets (2-1))) ["%ok","%b"] ["%gas","%acct","%amt"])
+      "%ok , %b = staticcall @c at %acct() send %amt, gaslimit %gas"
   , testCase
       "reject empty lvalues AccountCall"
       (parseFailure instruction
         "call@c at %acct(%10,%11)send %amt, gaslimit %gas")
-  , testInstruction
+  , testIeleInst
       "Return"
-      (VoidOp (RETURN (mkRets 2)) ["@10","%11"])
-      "ret @10, %11"
-  , testInstruction
+      (VoidOp (RETURN (mkArgs 2)) ["%10","%11"])
+      "ret %10, %11"
+  , testIeleInst
       "empty Return"
-      (VoidOp (RETURN (mkRets 0)) [])
+      (VoidOp (RETURN (mkArgs 0)) [])
       "ret void"
-  , testInstruction
+  , testIeleInst
       "Revert"
-      (VoidOp (REVERT (mkRets 2)) ["%10","@11"])
-      "revert %10, @11"
-  , testInstruction
-      "empty Revert"
-      (VoidOp (REVERT (mkRets 0)) [])
-      "revert void"
-  , testInstruction
+      (VoidOp (REVERT (mkArgs 1)) ["%10"])
+      "revert %10"
+  , testIeleInst
       "Log 0"
       (VoidOp (LOG 0) ["%idx"])
       "log %idx"
-  , testInstruction
+  , testIeleInst
       "Log 1"
       (VoidOp (LOG 1) ["%idx","%1"])
       "log %idx, %1"
-  , testInstruction
+  , testIeleInst
       "Log 2"
       (VoidOp (LOG 2) ["%idx","%1","%2"])
       "log %idx, %1, %2"
-  , testInstruction
+  , testIeleInst
       "Log 3"
       (VoidOp (LOG 3) ["%idx","%1","%2","%3"])
       "log %idx, %1, %2, %3"
-  , testInstruction
+  , testIeleInst
       "Log 4"
       (VoidOp (LOG 4) ["%idx","%1","%2","%3","%4"])
       "log %idx, %1, %2, %3, %4"
   , testCase
       "Reject Log 5"
       (parseFailure (instruction <* eof) "log %idx, %1, %2, %3, %4, %5")
-  , testInstruction
+  , testIeleInst
       "create"
-      (Op (CREATE "b" (mkArgs 2)) "%a" ["%12","%10","%11"])
-      "%a=create b(%10,%11) send %12"
-  , testInstruction
+      (CallOp (CREATE "b" (mkArgs 2)) ["%a","%b"] ["%12","%10","%11"])
+      "%a,%b=create b(%10,%11) send %12"
+  , testIeleInst
       "copycreate"
-      (Op (COPYCREATE (mkArgs 2)) "%a" ["%val","%acct","%10","%11"])
-      "%a=copycreate %acct(%10,%11) send %val"
-  , testInstruction
+      (CallOp (COPYCREATE (mkArgs 2)) ["%a","%b"] ["%val","%acct","%10","%11"])
+      "%a,%b=copycreate %acct(%10,%11) send %val"
+  , testIeleInst
       "SelfDestruct"
       (VoidOp SELFDESTRUCT ["%10"])
       "selfdestruct %10"
@@ -336,7 +330,7 @@ instructionTests =
 
 otherTests :: [TestTree]
 otherTests =
-  let dummy = LiOp LOADPOS "%0" 0 in
+  let dummy = IeleInst (LiOp LOADPOS "%0" 0) in
   [ testCase
       "empty LabelledBlock"
       (parseSuccess
@@ -421,12 +415,18 @@ otherTests =
         "define@a(){b:%0=0}"
       )
   , testCase
-      "global variable TopLevelDefinition"
+      "external contract declaration"
       (parseSuccess
         (TopLevelDefinitionContract "a")
         topLevelDefinition
-        "contract a"
+        "external contract a"
       )
+  , testCase
+      "global definition"
+      (parseSuccess
+        (TopLevelDefinitionGlobal "@a" 12)
+        topLevelDefinition
+        "@a = 12")
   , testCase
       "TopLevelDefinitions"
       (parseSuccess
@@ -436,9 +436,10 @@ otherTests =
             [ LabeledBlock "b" [dummy,dummy]
             , LabeledBlock "c" [dummy]])
          , TopLevelDefinitionContract "a"
+         , TopLevelDefinitionGlobal "@b" 10
          ]
         (many topLevelDefinition)
-        "define@a(){%0=0 %0=0 b:%0=0 %0=0 c:%0=0}contract a"
+        "define@a(){%0=0 %0=0 b:%0=0 %0=0 c:%0=0}external contract a @b=10"
       )
   ]
 
@@ -451,36 +452,36 @@ parseSuccess expected parser input =
   assertEqual
     "Expecting parse success!"
     (Right expected)
-    (parse parser "" input)
+    (parse (parser <* eof) "" input)
 
 parseFailure :: (Show a, Eq a) => Parser a -> String -> Assertion
 parseFailure parser input =
-  assertBool "Expecting parse failure!" (isLeft (parse parser "" input))
+  assertBool "Expecting parse failure!" (isLeft (parse (parser <* eof) "" input))
 
 ------------------------------------
--- Instruction test utilities
+-- IeleOp test utilities
 ------------------------------------
 
-testBinaryOperation :: String -> IeleOpcode1P ->  TestTree
+testBinaryOperation :: String -> IeleOpcode1 ->  TestTree
 testBinaryOperation name op =
-  testInstruction
+  testIeleInst
     name
-    (Op op "%a" ["%10","@b"])
-    ("%a=" ++ name ++ " %10,@b")
+    (Op op "%a" ["%10","%b"])
+    ("%a=" ++ name ++ " %10,%b")
 
-testPredicateOperation :: String -> IeleOpcode1P ->  TestTree
+testPredicateOperation :: String -> IeleOpcode1 ->  TestTree
 testPredicateOperation name op =
-  testInstruction
+  testIeleInst
     name
-    (Op op "%a" ["%10","@11"])
-    ("%a=cmp " ++ name ++ " %10,@11")
+    (Op op "%a" ["%10","%11"])
+    ("%a=cmp " ++ name ++ " %10,%11")
 
-testTernaryOperation :: String -> IeleOpcode1P ->  TestTree
+testTernaryOperation :: String -> IeleOpcode1 ->  TestTree
 testTernaryOperation name op =
-  testInstruction
+  testIeleInst
     name
-    (Op op "%a" ["%10","@11","%12"])
-    ("%a=" ++ name ++ " %10,@11, %12")
+    (Op op "%a" ["%10","%11","%12"])
+    ("%a=" ++ name ++ " %10,%11, %12")
 
 testInstruction :: String -> Instruction -> String -> TestTree
 testInstruction name expected input =
@@ -496,6 +497,9 @@ testInstruction name expected input =
               (input ++ " " ++ input)
           )
       ]
+
+testIeleInst :: String -> IeleOpP -> String -> TestTree
+testIeleInst name expected input = testInstruction name (IeleInst expected) input
 
 ------------------------------------
 -- Token test utilities
