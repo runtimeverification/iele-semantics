@@ -1,0 +1,19 @@
+contract Forwarder {
+  define @init() {
+    %parent = call @iele.caller()
+    %zero = 0
+    sstore %parent, %zero
+  }
+
+  define public @deposit() {
+    %value = call @iele.callvalue()
+    %zero = 0
+    %sender = sload %zero
+    %gas = call @iele.gas()
+    %status = call @deposit at %sender () send %value , gaslimit %gas
+    br %status, throw
+    ret void
+  throw:
+    call @iele.invalid()
+  }
+}

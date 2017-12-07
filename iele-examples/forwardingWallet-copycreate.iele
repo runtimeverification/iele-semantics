@@ -1,0 +1,39 @@
+contract Wallet {
+  define @init(%owner, %forwarder) {
+    %zero = 0
+    %one = 1
+    sstore %owner, %zero
+    sstore %forwarder, %one
+  }
+ 
+  define public @deposit() {}
+
+  define public @withdraw(%to, %value) {
+    %zero = 0
+    %owner = sload %zero
+    %caller = call @iele.caller()
+    %isnotowner = cmp ne %caller, %owner
+    br %isnotowner, throw
+    %gas = call @iele.gas()
+    %status = call @deposit at %to () send %value , gaslimit %gas
+    br %status, throw
+    ret void
+  throw:
+    call @iele.invalid()
+  }
+
+  define public @newForwarder() {
+    %zero = 0
+    %owner = sload %zero
+    %caller = call @iele.caller()
+    %isnotowner = cmp ne %caller, %owner
+    br %isnotowner, throw
+    %one = 1
+    %forwarder = sload %one
+    %status, %addr = copycreate %forwarder () send %zero
+    br %status, throw
+    ret %addr
+  throw:
+    call @iele.invalid()
+  }
+}

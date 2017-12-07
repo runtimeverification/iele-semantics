@@ -1,0 +1,52 @@
+contract Forwarder {
+  define @init() {
+    %parent = call @iele.caller()
+    sstore %parent, 0
+  }
+
+  define public @deposit() {
+    %value = call @iele.callvalue()
+    %sender = sload 0
+    %gas = call @iele.gas()
+    %status = call @deposit at %sender () send %value , gaslimit %gas
+    br %status, throw
+    ret void
+  throw:
+    call @iele.invalid()
+  }
+}
+
+contract Wallet {
+  external contract Forwarder
+
+  define @init(%owner) {
+    sstore %owner, 0
+  }
+ 
+  define public @deposit() {}
+
+  define public @withdraw(%to, %value) {
+    %owner = sload 0
+    %caller = call @iele.caller()
+    %isnotowner = cmp ne %caller, %owner
+    br %isnotowner, throw
+    %gas = call @iele.gas()
+    %status = call @deposit at %to () send %value , gaslimit %gas
+    br %status, throw
+    ret void
+  throw:
+    call @iele.invalid()
+  }
+
+  define public @newForwarder() {
+    %owner = sload 0
+    %caller = call @iele.caller()
+    %isnotowner = cmp ne %caller, %owner
+    br %isnotowner, throw
+    %status, %addr = create Forwarder () send 0
+    br %status, throw
+    ret %addr
+  throw:
+    call @iele.invalid()
+  }
+}
