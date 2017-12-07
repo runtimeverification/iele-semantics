@@ -42,21 +42,11 @@
                     }
                 ], 
                 "blockHeader": {
-                    "nonce": "", 
-                    "receiptTrie": "",
-                    "hash": "",
-                    "uncleHash": "",
-                    "mixHash": "",
-                    "parentHash": "",
-                    "extraData": "", 
                     "gasLimit": "0x174876e800", 
                     "number": "0x01", 
-                    "stateRoot": "",
                     "difficulty": "0x020000", 
                     "timestamp": "0x03e8", 
                     "coinbase": "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba", 
-                    "transactionsTrie": "",
-                    "bloom": "",
                     "gasUsed": ""
                 }
             }
