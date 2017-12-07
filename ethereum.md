@@ -577,7 +577,7 @@ The `"transactions"` key loads the transactions.
            <code> CONTRACT </code>
            ...
          </account>
-         requires #dasmContract(CODE, Main) ==K CONTRACT
+         requires #dasmContract(CODE, #mainContract(CONTRACT)) ==K CONTRACT
     rule <k> check "account" : { ACCT : { "code" : .WordStack } } => . ... </k>
          <account>
            <acctID> ACCT </acctID>

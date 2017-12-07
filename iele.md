@@ -1298,7 +1298,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
 
     syntax Contract ::= #subcontract ( Contract , IeleName ) [function]
  // -------------------------------------------------------------------
-    rule #subcontract ( (contract NAME ! _ { _ } #as CONTRACT) _, NAME ) => CONTRACT
+    rule #subcontract ( (contract NAME ! _ { _ } #as CONTRACT) _, NAME ) => CONTRACT .Contract
     rule #subcontract ( CONTRACT CONTRACTS, NAME ) => CONTRACT #subcontract(CONTRACTS, NAME) [owise]
 
     syntax KItem ::= "#codeDeposit" Int Int Contract LValue LValue Bool
