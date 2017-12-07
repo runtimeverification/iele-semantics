@@ -1,17 +1,19 @@
 contract Forwarder {
+  // Forwarder forwards deposits to the contract that created it
   define @init() {
     %parent = call @iele.caller()
     %zero = 0
     sstore %parent, %zero
   }
 
+  // deposit calls deposit on the contract to be forwarded to
   define public @deposit() {
     %value = call @iele.callvalue()
     %zero = 0
     %sender = sload %zero
     %gas = call @iele.gas()
     %status = call @deposit at %sender () send %value , gaslimit %gas
-    br %status, throw
+    br %status, throw // contract call failed
     ret void
   throw:
     call @iele.invalid()
