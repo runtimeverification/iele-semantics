@@ -204,11 +204,10 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
 -   `#rewardOmmers(_)` pays out the reward to uncle blocks so that blocks are orphaned less often.
 
 ```{.k .uiuck .rvk}
-    syntax IELECommand ::= "#finalizeBlock" | #rewardOmmers ( JSONList )
- // --------------------------------------------------------------------
-    rule <k> #finalizeBlock => #rewardOmmers(OMMERS) ... </k>
+    syntax IELECommand ::= "#finalizeBlock"
+ // ---------------------------------------
+    rule <k> #finalizeBlock => . ... </k>
          <schedule> SCHED </schedule>
-         <ommerBlockHeaders> [ OMMERS ] </ommerBlockHeaders>
          <beneficiary> MINER </beneficiary>
          <account>
            <acctID> MINER </acctID>
@@ -221,23 +220,6 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
          <beneficiary> MINER </beneficiary>
          <activeAccounts> ACCTS </activeAccounts>
       requires notBool MINER in_keys(ACCTS)
-
-    rule <k> #rewardOmmers(.JSONList) => . ... </k>
-    rule <k> #rewardOmmers([ _ , _ , OMMER , _ , _ , _ , _ , _ , OMMNUM , _ ] , REST) => #rewardOmmers(REST) ... </k>
-         <schedule> SCHED </schedule>
-         <beneficiary> MINER </beneficiary>
-         <number> CURNUM </number>
-         <account>
-           <acctID> MINER </acctID>
-           <balance> MINBAL => MINBAL +Int Rb < SCHED > /Int 32 </balance>
-          ...
-         </account>
-         <account>
-           <acctID> OMMER </acctID>
-           <balance> OMMBAL => OMMBAL +Int Rb < SCHED > +Int (OMMNUM -Int CURNUM) *Int (Rb < SCHED > /Int 8) </balance>
-          ...
-         </account>
-         <activeAccounts> ... MINER |-> (_ => false) OMMER |-> (_ => false) ... </activeAccounts>
 ```
 
 -   `exception` only clears from the `<k>` cell if there is an exception preceding it.
@@ -336,7 +318,6 @@ State Manipulation
     syntax IELECommand ::= "clear"
  // ------------------------------
     rule <k> clear => . ... </k>
-         <analysis> _ => .Map </analysis>
          <schedule> _ => DEFAULT </schedule>
          (<iele> _ </iele> => <iele> ... .Bag </iele>)
 
@@ -426,7 +407,7 @@ Here we load the environmental information.
     rule <k> load "env" : { "currentDifficulty" : (DIFF:Int)   } => . ... </k> <difficulty>   _ => DIFF   </difficulty>
     rule <k> load "env" : { "currentGasLimit"   : (GLIMIT:Int) } => . ... </k> <gasLimit>     _ => GLIMIT </gasLimit>
     rule <k> load "env" : { "currentNumber"     : (NUM:Int)    } => . ... </k> <number>       _ => NUM    </number>
-    rule <k> load "env" : { "previousHash"      : (HASH:Int)   } => . ... </k> <previousHash> _ => HASH   </previousHash>
+    rule <k> load "env" : { "previousHash"      : (HASH:Int)   } => . ... </k>
     rule <k> load "env" : { "currentTimestamp"  : (TS:Int)     } => . ... </k> <timestamp>    _ => TS     </timestamp>
 
     rule load "exec" : { KEY : ((VAL:String) => #parseWord(VAL)) }
@@ -470,34 +451,22 @@ Since IELE is a new language with no hard forks yet, we only support the latest 
 The `"blockHeader"` key loads the block information.
 
 ```{.k .uiuck .rvk}
-    rule <k> load "blockHeader" : { "nonce" : (HN:String) } => . ...</k> 
-         <blockNonce> _ => #asUnsigned(#parseByteStack(HN)) </blockNonce>
-
-    rule <k> load "blockHeader" : { "receiptTrie" : (HE:String) } => . ...</k> 
-         <receiptsRoot> _ => #asUnsigned(#parseByteStack(HE)) </receiptsRoot>
-
+    rule load "blockHeader" : { "nonce" : (HN:String) } => .
+    rule load "blockHeader" : { "receiptTrie" : (HE:String) } => .
     rule load "blockHeader" : { "hash" : _ } => .
-
-    rule <k> load "blockHeader" : { "uncleHash" : (HO:String) } => . ...</k> 
-         <ommersHash> _ => #asUnsigned(#parseByteStack(HO)) </ommersHash>
-
-    rule <k> load "blockHeader" : { "mixHash" : (HM:String) } => . ...</k> 
-         <mixHash> _ => #asUnsigned(#parseByteStack(HM)) </mixHash>
-
-    rule <k> load "blockHeader" : { "parentHash" : (HP:String) } => . ...</k> 
-         <previousHash> _ => #asUnsigned(#parseByteStack(HP)) </previousHash>
-
-    rule <k> load "blockHeader" : { "extraData" : (HX:String) } => . ...</k> 
-         <extraData> _ => #parseByteStack(HX) </extraData>
+    rule load "blockHeader" : { "uncleHash" : (HO:String) } => .
+    rule load "blockHeader" : { "mixHash" : (HM:String) } => .
+    rule load "blockHeader" : { "parentHash" : (HP:String) } => .
+    rule load "blockHeader" : { "extraData" : (HX:String) } => .
+    rule load "blockHeader" : { "stateRoot" : (HR:String) } => .
+    rule load "blockHeader" : { "transactionsTrie" : (HT:String) } => .
+    rule load "blockHeader" : { "bloom" : (HB:String) } => .
 
     rule <k> load "blockHeader" : { "gasLimit" : (HL:String) } => . ...</k> 
          <gasLimit> _ => #asUnsigned(#parseByteStack(HL)) </gasLimit>
 
     rule <k> load "blockHeader" : { "number" : (HI:String) } => . ...</k> 
          <number> _ => #asUnsigned(#parseByteStack(HI)) </number>
-
-    rule <k> load "blockHeader" : { "stateRoot" : (HR:String) } => . ...</k> 
-         <stateRoot> _ => #asUnsigned(#parseByteStack(HR)) </stateRoot>
 
     rule <k> load "blockHeader" : { "difficulty" : (HD:String) } => . ...</k> 
          <difficulty> _ => #asUnsigned(#parseByteStack(HD)) </difficulty>
@@ -508,17 +477,8 @@ The `"blockHeader"` key loads the block information.
     rule <k> load "blockHeader" : { "coinbase" : (HC:String) } => . ...</k> 
          <beneficiary> _ => #asUnsigned(#parseByteStack(HC)) </beneficiary>
 
-    rule <k> load "blockHeader" : { "transactionsTrie" : (HT:String) } => . ...</k> 
-         <transactionsRoot> _ => #asUnsigned(#parseByteStack(HT)) </transactionsRoot>
-
-    rule <k> load "blockHeader" : { "bloom" : (HB:String) } => . ...</k> 
-         <logsBloom> _ => #parseByteStack(HB) </logsBloom>
-
     rule <k> load "blockHeader" : { "gasUsed" : (HG:String) } => . ...</k> 
          <gasUsed> _ => #asUnsigned(#parseByteStack(HG)) </gasUsed>
-
-    rule <k> load "uncleHeaders" : [ .JSONList ] => . ...</k>
-         <ommerBlockHeaders> _ => [ .JSONList ] </ommerBlockHeaders>
 
     rule load "genesisRLP" : (VAL:String => #rlpDecode(#unparseByteStack(#parseByteStack(VAL))))
  // --------------------------------------------------------------------------------------------
@@ -668,14 +628,6 @@ Here we check the other post-conditions associated with an EVM test.
     rule check "genesisBlockHeader" : { "hash": (HASH:String => #asUnsigned(#parseByteStack(HASH))) }
     rule <k> check "genesisBlockHeader" : { "hash": HASH } => . ... </k>
          <blockhash> ... ListItem(HASH) ListItem(_) </blockhash>
-```
-
-TODO: case with nonzero ommers.
-
-```{.k .uiuck .rvk}
-    rule check TESTID : { "uncleHeaders" : OMMERS } => check "ommerHeaders" : OMMERS ~> failure TESTID
- // --------------------------------------------------------------------------------------------------
-    rule <k> check "ommerHeaders" : [ .JSONList ] => . ... </k> <ommerBlockHeaders> [ .JSONList ] </ommerBlockHeaders>
 endmodule
 ```
 
