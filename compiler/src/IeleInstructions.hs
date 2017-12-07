@@ -123,8 +123,8 @@ data IeleOpcode0G funId lblId =
 
  | LOG Word8
 
- | RETURN (Rets Word16)
- | REVERT (Rets Word16)
+ | RETURN (Args Word16)
+ | REVERT (Args Word16)
 
  | INVALID
  | SELFDESTRUCT

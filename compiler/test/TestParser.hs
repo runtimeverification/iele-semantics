@@ -281,20 +281,16 @@ instructionTests =
         "call@c at %acct(%10,%11)send %amt, gaslimit %gas")
   , testIeleInst
       "Return"
-      (VoidOp (RETURN (mkRets 2)) ["%10","%11"])
+      (VoidOp (RETURN (mkArgs 2)) ["%10","%11"])
       "ret %10, %11"
   , testIeleInst
       "empty Return"
-      (VoidOp (RETURN (mkRets 0)) [])
+      (VoidOp (RETURN (mkArgs 0)) [])
       "ret void"
   , testIeleInst
       "Revert"
-      (VoidOp (REVERT (mkRets 2)) ["%10","%11"])
-      "revert %10, %11"
-  , testIeleInst
-      "empty Revert"
-      (VoidOp (REVERT (mkRets 0)) [])
-      "revert void"
+      (VoidOp (REVERT (mkArgs 1)) ["%10"])
+      "revert %10"
   , testIeleInst
       "Log 0"
       (VoidOp (LOG 0) ["%idx"])

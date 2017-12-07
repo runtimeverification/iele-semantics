@@ -404,11 +404,10 @@ argumentsOrVoid = nonEmptyLValues <|> [] <$ skipKeyword "void"
 
 returnInst :: Parser IeleOpP
 returnInst = skipKeyword "ret" *>
-  fmap (\args -> VoidOp (RETURN (retsLength args)) args) argumentsOrVoid
+  fmap (\args -> VoidOp (RETURN (argsLength args)) args) argumentsOrVoid
 
 revertInst :: Parser IeleOpP
-revertInst = skipKeyword "revert" *>
-  fmap (\args -> VoidOp (REVERT (retsLength args)) args) argumentsOrVoid
+revertInst = simpleOp0 "revert" 1 (REVERT (mkArgs 1))
 
 selfDestructInst :: Parser IeleOpP
 selfDestructInst = simpleOp0 "selfdestruct" 1 SELFDESTRUCT

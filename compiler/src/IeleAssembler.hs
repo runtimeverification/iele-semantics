@@ -94,8 +94,8 @@ asm_iele_opcode0 op0 = case op0 of
   LOG n | n <= 4 -> putWord8 (0xa0 + n)
         | otherwise -> error "LOG only takes up to 4 values"
 
-  RETURN nreturn -> putWord8 0xf6 >> putWord16be (retsCount nreturn)
-  REVERT nreturn -> putWord8 0xf7 >> putWord16be (retsCount nreturn)
+  RETURN nargs -> putWord8 0xf6 >> putArgs16 nargs
+  REVERT nargs -> putWord8 0xf7 >> putArgs16 nargs
 
   INVALID -> putWord8 0xfe
 
