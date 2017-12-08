@@ -40,14 +40,15 @@ IELE is a register-based bytecode language, unlike EVM, which is a stack-based b
 
 ## Program Structure
 
-An IELE program consists of a list of contracts, where contracts later in the list can create accounts with dployed contracts found earlier in the list. Unlike EVM, in which a contract is a sequence of instructions, a IELE contract consists of a header giving the contract a name, followed by one or more function definitions and optionally one or more external contract declarations.
+A IELE program consists of a list of contracts, where contracts later in the list can create accounts with deployed contracts found earlier in the list. Unlike EVM, in which a contract is a sequence of instructions, a IELE contract consists of a header giving the contract a name, followed by one or more function definitions and optionally one or more external contract declarations.
 
 * An external contract declaration simply declares the name of another contract. The contract under definition can only create accounts with deployed code being a copy of the contract itself or one of the contracts that have been declared as external (see section on contract creation for details). Each externally declared contract should have been defined in the same file and above the contract that externally declares it.
 * A function definition includes the function signature, the function body and whether or not the function is public. A function signature includes a function name (which is prefixed by the `@` symbol) and names of formal arguments (which are represented as local registers, as they are only visible within the function body).
 * A public function can be called by other accounts, while a non-public one can only be called by other functions within the same contract.
 * A special public function named `@init` should be defined for any contract and will be called when an account is created with this contract. If this function is not defined the contract is malformed.
 * An account to which code has never been deployed contains an implicit public function `@deposit` which takes no arguments, returns no values, and does nothing. This function exists to allow accounts to receive payment even if they do not have a contract deployed to them. Note that a contract can forbid payments by refusing to declare the `@deposit` function, and explicitly raising an exception if any of its entry points are invoked with a balance transfer.
-* The contract is malformed if it contains multiple function definitions with the same name.
+* A global definition defines a global name and its constant value (which is an unbounded signed integer). Globals are accessible from within any function of the contract and their value cannot be modified.
+* The contract is malformed if it contains multiple function and/or global definitions with the same name.
 
 ## Static Jumps
 
@@ -66,9 +67,10 @@ IELE function calls take an arbitrary number of register arguments and return va
 * The `ret` instruction takes an arbitrary number of register operands holding returned values. `ret` will return to the instruction position on the top of the local call stack if one exists, restoring the values of local registers and copying the returned values into the return value operands of the call instruction. If the local call stack is empty, it returns from the contract.
 * The `revert` instruction takes a single register operand. `revert` always returns from the contract, independently of the size of the local stack. It refunds unused gas and returns a value in the first register return value of the call, but does not write to the other return values, and it also rolls back the state changes of the contract.
 * IELE has a `call .. at` and a `staticcall .. at` instruction used for calls to public functions of other contracts. The target account address is a register operand of these instructions, as is the amount of gas to be spent during the call, and the value to send in case of `call .. at`. `call .. at` and `staticcall .. at` also take an arbitrary number of arguments and return values in the form of register operands instead of memory ranges. The arguments are copied into local registers corresponding to the formal arguments of the function being called. When the called contract returns (by means of a `ret` or a `revert`), the returned values are copied into the return value registers of the call instruction.
+* A static account call, done with `staticcall .. at`, similarly to EVM, should not attempt to change any state in the network (e.g. log, account storage, acount creation/deletion) during its execution. If it does, an exception occurs.
 * If the name of the function being called does not correspond to a public function of the contract being called, an exception occurs.
 * In all cases, if a mismatch occurs between the number of arguments or return values of a function and the matching `call` or `ret` instruction, an exception occurs.
-* Because they are no longer needed, we remove the CALLDATA* instructions and the RETURNDATA* instructions.
+* Because they are no longer needed, we remove EVM's CALLDATA* instructions and RETURNDATA* instructions.
 * Because of security concerns, we remove the EVM's CALLCODE and DELEGATECALL instructions.
 
 ## Arbitrary Precision Words
@@ -81,13 +83,25 @@ Unlike EVM, which uses 32-byte unsigned words, IELE has arbitrary-precision sign
 * `sext` (corresponding to EVM's SIGNEXTEND) is changed to convert an N-byte twos-complement representation of a signed number into its signed value, where `N` is passed as an argument to the insruction.
 * Because integers are unbounded, the index operand of `byte` (corresponding to EVM's BYTE) now counts from the least-significant byte instead of the most-significant.
 
+## Local Execution Memory
+
+Unlike EVM, which uses a 2^256-cell array of bytes as local execution memory, IELE's local execution memory is a 2^256-cell array of arbitrary-length byte buffers.
+
+* Unbouned signed integers are stored with their MSB first (at offset 0 within the cell).
+* There are two variations of the `load` and `store` instructions, one that accesses the whole contents of a cell interpreting them as an unbouned signed integer, and one that accesses a subrange of the bytes stored in a cell.
+* Similar to EVM, the local execution memory is cleared when the currently executing contract returns.
+
+## Account Storage
+
+IELE's account storage is an ubounded array of unbouned signed integers, unlike EVM's storage, which is a 2^256 cell array of 256-bit words. Similar to EVM, IELE's account storage (unlike the local execution memory) is persistent over contract calls and returns and is only cleared when the corresponding account is destroyed.
+
 ## Instructions and Precompiled Contracts
 
 Unlike EVM, where each instruction is just an opcode operating on the values found on top of the stack, IELE instructions follow a syntax similar to LLVM: each instruction is an opcode followed by some arguments in the form of registers. If the instruction produces a result, it is formed as an assignment where the LHS contains the register(s) to hold the result(s) and the RHS contains the opcode and the arguments. Other changes with respect to EVM include:
 
 * IELE has one integer comparison instruction, namely `cmp`, that accepts various predicates. In addition to the predicates `lt`, `gt`, and `eq`, which have corresponding EVM instructions, the predicates `le`, `ge`, and `ne` are also supported.
 * Various EVM instructions that query local and/or network state (e.g. GAS, BALANCE, etc.) have been replaced by IELE builtins that can be called using the `call` instruction (e.g. `%balance = call @iele.balance(%bank.account)`). The names of all IELE builtins start with the prefix `@iele.`, following a convention similar to the LLVM intrinsics. All names for global functions starting with this prefix are reserved: A contract is malformed if it contains user-defined registers and/or functions with names starting with `@iele.`.
-* Precompiled contracts in IELE are also invoked using corresponding builtins (e.g. `@iele.ecpairing`).
+* Precompiled contracts in IELE are also invoked using corresponding builtins (e.g. `@iele.ecpairing`), but should be called using the `call .. at` instruction and targeting the account with address `1` (e.g. `%res  = call @iele.sha256 at 1 ( %len, %data ) send %val, gaslimit %gas`).
 
 ## Contract Creation
 
@@ -119,13 +133,9 @@ We decided to relax the LLVM restrictions about basic block structure, where cod
 
 # Partially-Designed Changes
 
-## Memory
-
-Initial plans for memory are to replace it with an arbitrary-width array of arbitrary-length byte buffers, and to create instructions to save memory at either an explicit byte width or as an arbitrary-precision number.
-
 ## Gas calculations
 
 We still need to construct a gas model for IELE.
 
 ## Failure data
-We intend to modify the mechanism by which failure data is returned from CALL, CALLCODE, DELEGATECALL, STATICCALL, CREATE, and COPYCREATE instructions using the REVERT instruction.
+We intend to modify the mechanism by which failure data is returned from `call .. at`, `staticcall .. at`, `create`, and `copycreate` instructions using the `revert` instruction.
