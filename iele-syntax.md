@@ -323,7 +323,7 @@ Function definitions consist of a function signature (function name and names of
 
 ### Blocks
 
-The body of a function is a list blocks, where each block is a list of IELE instructions. Each block except the first one has to be preceded by a label, making the first instruction of the block a valid target of a local jump. The first block can also be optionally labeled.
+The body of a function is a list of blocks, where each block is a list of IELE instructions. Each block except the first one has to be preceded by a label, making the first instruction of the block a valid target of a local jump. The first block can also be optionally labeled.
 
 ```{.k .uiuck .rvk}
   syntax LabeledBlock ::= IeleName ":" Instructions
