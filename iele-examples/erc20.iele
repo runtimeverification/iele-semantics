@@ -1,31 +1,27 @@
 contract ERC20 {
 
-@addressShift = 1461501637330902918203684832716283019655932542976 // 2^160
-@balanceRegion = 1
-@allowanceRegion = 2
-@approvalEvent = 51203953783612407010867880206449430888987723574256155352892809266431502985471
-@transferEvent = 108826829889743193495150187174564778908056497375576552531120215125716493244137
-@logCell = 0
-@supplyKey = 0
-
 // computes a unique index in the account storage for a particular value by partitioning
 // the storage into different regions. %region represents a unique bit prefix on the
 // key that will be ored with the specified address.
 define @mapKey(%region, %address) {
-  %realAddress = twos 20, %address
-  %shifted = mul @addressShift, %region
+  %addressMask = 20
+  %addressShift = 1461501637330902918203684832716283019655932542976 // 2^160
+  %realAddress = twos %addressMask, %address
+  %shifted = mul %addressShift, %region
   %ored = or %shifted, %realAddress
   ret %ored
 }
 
 define @setBalance(%account, %value) {
-  %key = call @mapKey(@balanceRegion, %account)
+  %balanceRegion = 1
+  %key = call @mapKey(%balanceRegion, %account)
   sstore %value, %key
   ret void
 }
 
 define @setAllowance(%owner, %spender, %allowance) {
-  %key1 = call @mapKey(@allowanceRegion, %owner)
+  %allowanceRegion = 2
+  %key1 = call @mapKey(%allowanceRegion, %owner)
   %key2 = call @mapKey(%key1, %spender)
   sstore %allowance, %key2
   ret void
@@ -33,56 +29,68 @@ define @setAllowance(%owner, %spender, %allowance) {
 
 define @log.Approval(%owner, %spender, %allowance) {
   // hash of event name
-  store %allowance, @logCell
-  log @logCell, @approvalEvent, %owner, %spender
+  %approvalEvent = 51203953783612407010867880206449430888987723574256155352892809266431502985471
+  %logCell = 0
+  store %allowance, %logCell
+  log %logCell, %approvalEvent, %owner, %spender
   ret void
 }
 
 define @log.Transfer(%from, %to, %value) {
   // hash of event name
-  store %value, @logCell
-  log @logCell, @transferEvent, %from, %to
+  %transferEvent = 108826829889743193495150187174564778908056497375576552531120215125716493244137
+  %logCell = 0
+  store %value, %logCell
+  log %logCell, %transferEvent, %from, %to
   ret void
 }
 
 define public @totalSupply() {
-  %supply = sload @supplyKey
+  %supplyKey = 0
+  %supply = sload %supplyKey
   ret %supply
 }
 
 define @init(%supply) {
-  sstore %supply, @supplyKey
+  %supplyKey = 0
+  sstore %supply, %supplyKey
   %caller = call @iele.caller()
   call @setBalance(%caller, %supply)
   ret void
 }
 
 define public @balanceOf(%id) {
-  %key = call @mapKey(@balanceRegion, %id)
+  %balanceRegion = 1
+  %key = call @mapKey(%balanceRegion, %id)
   %balance = sload %key
   ret %balance
 }
 
 define public @allowance(%owner, %spender) {
-  %key1 = call @mapKey(@allowanceRegion, %owner)
+  %allowanceRegion = 2
+  %key1 = call @mapKey(%allowanceRegion, %owner)
   %key2 = call @mapKey(%key1, %spender)
   %allowance = sload %key2
   ret %allowance
 }
 
 define public @approve(%spender, %allowance) {
-  %lt = cmp lt %allowance, 0   // this check burns gas :(
+  %zero = 0
+  %retval = 1
+  %lt = cmp lt %allowance, %zero   // this check burns gas :(
   br %lt, throw
   %owner = call @iele.caller()  // written as msg.sender in Viper
   call @setAllowance(%owner, %spender, %allowance)
   call @log.Approval(%owner, %spender, %allowance)
-  ret 1   // should always return true
+  ret %retval   // should always return true
 throw:
   call @iele.invalid() // throwing exception
 }
 
 define public @transfer(%to, %value) {
-  %lt = cmp lt %value, 0   // this check burns gas :(
+  %zero = 0
+  %retval = 1
+  %lt = cmp lt %value, %zero   // this check burns gas :(
   br %lt, throw
   %from = call @iele.caller()
   %balanceFrom = call @balanceOf(%from)
@@ -94,13 +102,15 @@ define public @transfer(%to, %value) {
   %balanceTo = add %balanceTo, %value  // no worries of overflow
   call @setBalance(%to, %balanceTo)
   call @log.Transfer(%from, %to, %value)
-  ret 1  // should either return true or throw
+  ret %retval  // should either return true or throw
 throw:
   call @iele.invalid() // throwing exception
 }
 
 define public @transferFrom(%from, %to, %value) {
-  %lt = cmp lt %value, 0   // this check burns gas :(
+  %zero = 0
+  %retval = 1
+  %lt = cmp lt %value, %zero   // this check burns gas :(
   br %lt, throw
   %caller = call @iele.caller()
   %balanceFrom = call @balanceOf(%from)
@@ -117,7 +127,7 @@ define public @transferFrom(%from, %to, %value) {
   %balanceTo = add %balanceTo, %value  // no worries of overflow
   call @setBalance(%to, %balanceTo)
   call @log.Transfer(%from, %to, %value)
-  ret 1  // should either return true or throw
+  ret %retval  // should either return true or throw
 throw:
   call @iele.invalid() // throwing exception
 }
