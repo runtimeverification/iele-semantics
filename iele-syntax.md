@@ -178,8 +178,8 @@ Instructions to append information to the substate log. These variations append 
 Instructions to create and/or delete a new account with a contract deployed with it. For more details see [here](Design.md#contract-creation).
 
 ```{.k .uiuck .rvk}
-  syntax CreateInst ::= LValue "," LValue "=" "create" /* contract name */ IeleName "(" Operands ")" "send" Operand [hybrid, seqstrict(4,5)]
-  syntax CreateInst ::= LValue "," LValue "=" "copycreate" /* contract address */ Operand "(" Operands ")" "send" Operand [hybrid, seqstrict(3,4,5)]
+  syntax CreateInst ::= /* exit status */ LValue "," /* new account address */ LValue "=" "create"     /* contract name */    IeleName "(" Operands ")" "send" Operand [hybrid, seqstrict(4,5)]
+  syntax CreateInst ::= /* exit status */ LValue "," /* new account address */ LValue "=" "copycreate" /* contract address */ Operand  "(" Operands ")" "send" Operand [hybrid, seqstrict(3,4,5)]
 
   syntax SelfdestructInst ::= "selfdestruct" /* account to send balance */ Operand [hybrid, strict(1)]
 ````

@@ -63,13 +63,24 @@ IELE no longer has dynamic jump instructions. They are replaced with jumps that 
 
 IELE function calls take an arbitrary number of register arguments and return values instead of a memory range.
 
-* IELE has a `call` instruction used for local calls to other functions within the contract. `call` takes a function name, an arbitrary number of register arguments, and an arbitrary number of register return values, and jumps to the start of the function in the current contract with the corresponding name. It pushes the current instruction position, the values of all local registers, and the register operands of the return values onto the local call stack. The arguments of the call are copied into local registers corresponding to the formal arguments of the function being called.
-* The `ret` instruction takes an arbitrary number of register operands holding returned values. `ret` will return to the instruction position on the top of the local call stack if one exists, restoring the values of local registers and copying the returned values into the return value operands of the call instruction. If the local call stack is empty, it returns from the contract.
-* The `revert` instruction takes a single register operand. `revert` always returns from the contract, independently of the size of the local stack. It refunds unused gas and returns a value in the first register return value of the call, but does not write to the other return values, and it also rolls back the state changes of the contract.
-* IELE has a `call .. at` and a `staticcall .. at` instruction used for calls to public functions of other contracts. The target account address is a register operand of these instructions, as is the amount of gas to be spent during the call, and the value to send in case of `call .. at`. `call .. at` and `staticcall .. at` also take an arbitrary number of arguments and return values in the form of register operands instead of memory ranges. The arguments are copied into local registers corresponding to the formal arguments of the function being called. When the called contract returns (by means of a `ret` or a `revert`), the returned values are copied into the return value registers of the call instruction.
-* A static account call, done with `staticcall .. at`, similarly to EVM, should not attempt to change any state in the network (e.g. log, account storage, acount creation/deletion) during its execution. If it does, an exception occurs.
-* If the name of the function being called does not correspond to a public function of the contract being called, an exception occurs.
-* In all cases, if a mismatch occurs between the number of arguments or return values of a function and the matching `call` or `ret` instruction, an exception occurs.
+* IELE has a `call` instruction used for local calls to other functions within the contract. `call` takes a function name, an arbitrary number of arguments, and an arbitrary number of register return values, and jumps to the start of the function in the current contract with the corresponding name. It pushes the current instruction position, the values of all local registers, and the register operands of the return values onto the local call stack. The arguments of the call are copied into local registers corresponding to the formal arguments of the function being called.
+* IELE has a `call .. at` and a `staticcall .. at` instruction used for account calls to public functions of other contracts. The target account address is a register operand of these instructions, as is the amount of gas to be spent during the call, and the value to send in case of `call .. at`. `call .. at` and `staticcall .. at` also take an arbitrary number of arguments and return values in the form of register operands instead of memory ranges. The arguments are copied into local registers corresponding to the formal arguments of the function being called. The first register operand in the list of return values is the status register. This register will hold the exit status code upon returning from the call. This means that the list of return value registers given to a `call .. at` or `staticcall .. at` instruction should be long enough to accept the correct number of values expected to returned by the callee plus the exit status code.
+* The `ret` instruction takes an arbitrary number of register operands holding returned values. `ret` will return to the instruction position on the top of the local call stack if one exists, restoring the values of local registers and copying the returned values into the return value operands of the call instruction. If the local call stack is empty, it returns from the contract to the callsite of the caller account code with an exit status code of `0` in addition to the given returned values.
+* The `revert` instruction takes a single register operand. `revert` always returns from the contract to the callsite of the caller account code, independently of the size of the local stack. It refunds unused gas and returns a value in the first register return value of the call (that is the exit status register), but does not write to the other return values, and it also rolls back the state changes of the contract.
+* A static account call, done with `staticcall .. at`, similarly to EVM, should not attempt to change any state in the network (e.g. log, account storage, account creation/deletion) during its execution. If it does, an exception is thrown.
+* If the name of the function being called does not correspond to a public function of the contract being called, an exception is thrown.
+* In all cases, if a mismatch occurs between the number of arguments or return values of a function and the matching `call` or `ret` instruction, an exception is thrown.
+* When an exception is thrown during the lifetime of an account call, the call is terminated and control returns to the callsite of the caller account code, similarly to a `revert`. Also in similar to `revert` fashion, an exit status code is returned in the first register return value of the call (that is the exit status register), while nothing is written to the other return values, and the state changes of the contract are rolled back. However, unlike `revert`, no unused gas is refunded.
+* Following is a comprehensive list of exit status codes:
+  * 0: success
+  * 1: function does not exist
+  * 2: function has wrong signature
+  * 3: function does not exist on empty account
+  * 4: execution of instructions led to failure
+  * 5: out of gas
+  * 6: deploying to an account that already exists
+  * 7: insufficient balance to transfer
+  * 8: negative balance or gas limit or call depth exceeded
 * Because they are no longer needed, we remove EVM's CALLDATA* instructions and RETURNDATA* instructions.
 * Because of security concerns, we remove the EVM's CALLCODE and DELEGATECALL instructions.
 
@@ -79,21 +90,21 @@ Unlike EVM, which uses 32-byte unsigned words, IELE has arbitrary-precision sign
 
 * Because words are now explicitly signed, the SDIV, SMOD, SLT, and SGT instructions are removed, and DIV, MOD, LT, and GT are replaced with signed versions.
 * An `expmod` instruction is added to perform exponentiation modulo a particular base, and the MODEXP precompiled contract is removed.
-* a `twos` instruction is added to convert a signed integer into an `N`-byte twos-complement representation of the number, where `N` is passed as an argument to the insruction.
-* `sext` (corresponding to EVM's SIGNEXTEND) is changed to convert an N-byte twos-complement representation of a signed number into its signed value, where `N` is passed as an argument to the insruction.
+* a `twos` instruction is added to convert a signed integer into an `N`-byte twos-complement representation of the number, where `N` is passed as an argument to the instruction.
+* `sext` (corresponding to EVM's SIGNEXTEND) is changed to convert an N-byte twos-complement representation of a signed number into its signed value, where `N` is passed as an argument to the instruction.
 * Because integers are unbounded, the index operand of `byte` (corresponding to EVM's BYTE) now counts from the least-significant byte instead of the most-significant.
 
 ## Local Execution Memory
 
 Unlike EVM, which uses a 2^256-cell array of bytes as local execution memory, IELE's local execution memory is a 2^256-cell array of arbitrary-length byte buffers.
 
-* Unbouned signed integers are stored with their MSB first (at offset 0 within the cell).
-* There are two variations of the `load` and `store` instructions, one that accesses the whole contents of a cell interpreting them as an unbouned signed integer, and one that accesses a subrange of the bytes stored in a cell.
+* Unbound signed integers are stored with their MSB first (at offset 0 within the cell).
+* There are two variations of the `load` and `store` instructions, one that accesses the whole contents of a cell interpreting them as an unbound signed integer, and one that accesses a subrange of the bytes stored in a cell.
 * Similar to EVM, the local execution memory is cleared when the currently executing contract returns.
 
 ## Account Storage
 
-IELE's account storage is an ubounded array of unbouned signed integers, unlike EVM's storage, which is a 2^256 cell array of 256-bit words. Similar to EVM, IELE's account storage (unlike the local execution memory) is persistent over contract calls and returns and is only cleared when the corresponding account is destroyed.
+IELE's account storage is an unbound array of unbound signed integers, unlike EVM's storage, which is a 2^256 cell array of 256-bit words. Similar to EVM, IELE's account storage (unlike the local execution memory) is persistent over contract calls and returns and is only cleared when the corresponding account is destroyed.
 
 ## Instructions and Precompiled Contracts
 
@@ -111,7 +122,7 @@ Unlike EVM, both for ease of verification and due to security concerns, we disal
 * Each externally declared contract should have been defined in the same file and above the contract that externally declares it, otherwise the contract is malformed. As a result of this requirement, the exact code that will be deployed by a `create` instruction is statically known and available.
 * The `create` instruction copies the corresponding contract code into the code storage of the account that contains the created contract. The copied code includes the code of the contract to be deployed along with the code of every contract listed above it in the file (in order to allow the new account to create new contracts on its own in the same way). Then the `@init` function is invoked in the context of the created account to initialize the contract. It is passed the values in the registers as arguments in the same fashion as a `call .. at` or `staticcall .. at` instruction. If the `@init` function of a contract returns a value, the contract is malformed.
 * A separate instruction, `copycreate`, is introduced for the case of copying an entire contract, or duplicating your own contract. The `copycreate` instruction behaves like `create`, except that instead of taking a contract name, it takes a register operand containing an account address, and deploys the entire contract deployed to said account to the newly created account.
-* Both instructions, similarly to EVM, return the address of the created contract on success and zero on failure.
+* Both instructions return an exit status code and the address of the created contract on success or zero on failure.
 * Because we no longer actually need to address portions of code by program counter in order to create contracts, we remove the EVM's CODECOPY and EXTCODECOPY instructions. Because these are also the only remaining instructions which require the code to be addressed by a particular byte offset, we also remove the EVM's PC instruction.
 * Transactions that create a contract now explicitly provide the binary data of the contract instead of the binary data of the initialization function. Contracts created in this way are not subject to the restriction that dynamic contract data be inserted, and still invoke the `@init` function to initialize the contract. If the contract is malformed, the transaction fails.
 
