@@ -16,6 +16,8 @@ import Data.Char
 import Text.Parsec (parse)
 import Text.Parsec.String (Parser)
 import System.Environment
+import System.Exit
+import System.IO
 
 import IeleParser (ieleParser)
 import IeleAssembler (assemble)
@@ -94,7 +96,9 @@ main = do
     [file] -> do
       contents <- readFile file
       case parse ieleParser file contents of
-        Left err  -> print err
+        Left err  -> do
+          hPrint stderr err
+          exitWith (ExitFailure 1)
         Right cs  -> do
           {-
           writeFile "test1.iele" (show (prettyContract c))
