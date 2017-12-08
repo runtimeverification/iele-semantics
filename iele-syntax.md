@@ -8,7 +8,7 @@ Names and Literals
 
 ### IELE Names
 
-IELE uses alphanumeric names for idenitifying registers, labels, functions, and contracts.
+IELE uses alphanumeric names for identifying registers, labels, functions, and contracts.
 
 ```{.k .uiuck .rvk}
 module IELE-SYNTAX
