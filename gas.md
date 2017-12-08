@@ -285,11 +285,11 @@ gas/memory) to contain that size.
       | otherwise = l3
       where
         l1 = registerSize wREG1
-            l2 = registerSize wREG2
-            l3 = registerSize wREG3
-            ml1 = min l1 l3
-            ml2 = min l2 l3
-            cc = mulCost ml1 ml2
+        l2 = registerSize wREG2
+        l3 = registerSize wREG3
+        ml1 = min l1 l3
+        ml2 = min l2 l3
+        cc = mulCost ml1 ml2
         mulModConst0 = wordAddSetCost + leftShiftWordCost + limbComparisonCost +
                        2 * registerManagementCost
     ```
@@ -1160,7 +1160,8 @@ dmCost n = dmCost (n/2) + mul (n/2) + add (3*n/2+1) +
            const * n - const
         // let dmConst3 = mulConst2 * 2^(1-constKara) / (1 - 2^(1-constKara))
         // let dmConst2 = 2*mulConst1  +  17 * posAddConst1
-        // let dmConst1 = 17 * posAddConst0 + 2 * mulConst0 + const - dmConst2 - 2*mulConst1 - 17 * posAddConst1
+        // let dmConst1 = 17 * posAddConst0 + 2 * mulConst0 +
+                          const - dmConst2 - 2*mulConst1 - 17 * posAddConst1
         // let dmConst0 = - 2 * mulCost0 - posAddConst0 - const
         // Of course, let us notice that 2^(1-constKara) =
         //      1 / (2^(constKara - 1)) =
