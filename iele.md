@@ -717,6 +717,7 @@ if any of its entry points are invoked with a balance transfer.
     syntax Contract ::= "#emptyCode"
     syntax IeleName ::= "Main" [token]
     syntax FunctionParameters ::= Int /* when desugared to just the number of parameters */
+    syntax ContractDefinition ::= "contract" IeleName "!" /* size in bytes */ Int "{" TopLevelDefinitions "}" /* when desugared to include the code size */
  // ---------------------------------------------------------------------------------------
     rule #emptyCode => contract Main !0 { define public @deposit ( 0 ) { ret .NonEmptyOperands .Instructions .LabeledBlocks } } .Contract [macro]
 ```
