@@ -1,7 +1,7 @@
 IELE Textual Syntax
 ===================
 
-Here we define the textual syntax of IELE assembly code. The syntax represented here has some syntactic sugar which is removed by the assembler. However, a fragment of this textual encoding is used by the semantics to express the rules of the language itself.
+Here we define the textual syntax of IELE assembly code. The syntax represented here has some syntactic sugar which is removed by the assembler. However, a fragment of this textual encoding is used by the semantics to express the rules of the language itself. The [iele-examples](iele-examples) directory contains various sample IELE contracts such as a [simple open auction contract](iele-examples/simpleOpenAuction.iele) and a [forwarding wallet contract](forwardingWallet.iele).
 
 Names and Literals
 ------------------
@@ -346,6 +346,8 @@ The body of a function is a list of blocks, where each block is a list of IELE i
 
   syntax IeleName ::= "init" [token]
 ```
+
+#### Macros
 
 Finally, following are macros for desugaring empty `LValues` and `Operands` lists in calls and returns.
 
