@@ -356,7 +356,7 @@ Some checks if an opcode will throw an exception are relatively quick and done u
 ```{.k .uiuck .rvk}
     syntax InternalOp ::= "#exceptional?" "[" Instruction "]"
  // ---------------------------------------------------------
-    rule <k> #exceptional? [ OP ] => #invalid? [ OP ] ~> #badJumpDest? [ OP ] ~> #static? [ OP ] ... </k>
+    rule <k> #exceptional? [ OP ] => #invalid? [ OP ] ~> #badJumpDest? [ OP ] ~> #static? [ OP ] ~> #negativeCall? [ OP ] ... </k>
 ```
 
 -   `#invalid?` checks if it's the designated invalid opcode.
@@ -406,6 +406,20 @@ Some checks if an opcode will throw an exception are relatively quick and done u
     rule #changesState(_ , _ = copycreate _ (_) send _, _) => true
     rule #changesState(selfdestruct _, _) => true
     rule #changesState(...) => false [owise]
+```
+
+-    `#negativeCall?` throws an exception if we are making a contract call with negative value or gas limit.
+
+```{.k .uiuck .rvk}
+    syntax InternalOp ::= "#negativeCall?" "[" Instruction "]"
+ // ----------------------------------------------------------
+    rule <k> #negativeCall? [ OP ] => . ... </k> requires notBool isAccountCallInst(OP) andBool notBool isCreateInst(OP)
+
+    rule <k> #negativeCall? [ _     = call       _ at _ ( _ ) send % REG1 , gaslimit % REG2 ] => #if {REGS [ REG1 ]}:>Int <Int 0 orBool {REGS [ REG2 ]}:>Int <Int 0 #then #exception 4 #else . #fi ... </k> <regs> REGS </regs>
+
+    rule <k> #negativeCall? [ _     = staticcall _ at _ ( _ ) gaslimit % REG ] => #if {REGS [ REG ]}:>Int <Int 0 #then #exception 4 #else . #fi ... </k> <regs> REGS </regs>
+    rule <k> #negativeCall? [ _ , _ = create     _ ( _ ) send % REG ]          => #if {REGS [ REG ]}:>Int <Int 0 #then #exception 4 #else . #fi ... </k> <regs> REGS </regs>
+    rule <k> #negativeCall? [ _ , _ = copycreate _ ( _ ) send % REG ]          => #if {REGS [ REG ]}:>Int <Int 0 #then #exception 4 #else . #fi ... </k> <regs> REGS </regs>
 ```
 
 ### Execution Step
@@ -1081,7 +1095,7 @@ The various `call*` (and other inter-contract control flow) operations will be d
            <balance> BAL </balance>
            ...
          </account>
-      requires VALUE >Int BAL orBool VALUE <Int 0 orBool GCAP <Int 0 orBool CD >=Int 1024
+      requires VALUE >Int BAL orBool CD >=Int 1024
 
      rule <k> #checkCall ACCT VALUE GCAP => . ... </k>
          <callDepth> CD </callDepth>
@@ -1090,7 +1104,7 @@ The various `call*` (and other inter-contract control flow) operations will be d
            <balance> BAL </balance>
            ...
          </account>
-      requires notBool (VALUE >Int BAL orBool VALUE <Int 0 orBool GCAP <Int 0 orBool CD >=Int 1024)
+      requires notBool (VALUE >Int BAL orBool CD >=Int 1024)
 
     rule <k> #call ACCTFROM ACCTTO FUNC GLIMIT VALUE ARGS STATIC
           => #callWithCode ACCTFROM ACCTTO #precompiled FUNC GLIMIT VALUE ARGS STATIC
