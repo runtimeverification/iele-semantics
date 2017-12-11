@@ -13,7 +13,7 @@
 /.build/rvk/*
 
 !/.build/secp256k1
-!/.build/pandoc-tangle
+!/.build/pyethereum
 
 /tests/proofs
 
