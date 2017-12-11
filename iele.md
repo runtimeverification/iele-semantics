@@ -270,6 +270,23 @@ Simple commands controlling exceptions provide control-flow.
     rule <k> EX:Exception ~> (_:Blocks => .)      ... </k>
     rule <k> EX:Exception ~> (_:InternalOp => .)  ... </k>
 
+    syntax Int ::= "FUNC_NOT_FOUND"
+                 | "FUNC_WRONG_SIG"
+                 | "CONTRACT_NOT_FOUND"
+                 | "USER_ERROR" 
+                 | "OUT_OF_GAS" 
+                 | "ACCT_COLLISION" 
+                 | "OUT_OF_FUNDS" 
+                 | "CALL_STACK_OVERFLOW"
+ // ------------------------------------
+    rule FUNC_NOT_FOUND      => 1 [macro]
+    rule FUNC_WRONG_SIG      => 2 [macro]
+    rule CONTRACT_NOT_FOUND  => 3 [macro]
+    rule USER_ERROR          => 4 [macro]
+    rule OUT_OF_GAS          => 5 [macro]
+    rule ACCT_COLLISION      => 6 [macro]
+    rule OUT_OF_FUNDS        => 7 [macro]
+    rule CALL_STACK_OVERFLOW => 8 [macro]
 ```
 
 Description of registers.
@@ -320,8 +337,8 @@ Instruction Execution Cycle
 ```{.k .uiuck .rvk}
     syntax KItem ::= "#execute"
  // ---------------------------
-    rule <k> #execute => CODE         ... </k> <fid> FUNC </fid> <funcId> FUNC </funcId> <instructions> CODE </instructions>
-    rule <k> #execute => #exception 1 ... </k> <fid> FUNC </fid> <funcIds> FUNCS </funcIds> requires notBool FUNC in FUNCS
+    rule <k> #execute => CODE                      ... </k> <fid> FUNC </fid> <funcId> FUNC </funcId> <instructions> CODE </instructions>
+    rule <k> #execute => #exception FUNC_NOT_FOUND ... </k> <fid> FUNC </fid> <funcIds> FUNCS </funcIds> requires notBool FUNC in FUNCS
 ```
 
 Execution follows a simple cycle where first the state is checked for exceptions, then if no exceptions will be thrown the opcode is run.
@@ -364,7 +381,7 @@ Some checks if an opcode will throw an exception are relatively quick and done u
 ```{.k .uiuck .rvk}
     syntax K ::= "#invalid?" "[" Instruction "]" [function]
  // -------------------------------------------------------
-    rule #invalid? [ _ = call @iele.invalid(.Operands) ] => #exception 4
+    rule #invalid? [ _ = call @iele.invalid(.Operands) ] => #exception USER_ERROR
     rule #invalid? [ OP ] => . [owise]
 ```
 
@@ -377,8 +394,8 @@ Some checks if an opcode will throw an exception are relatively quick and done u
     rule <k> #badJumpDest? [ br LABEL     ] => . ... </k> <fid> FUNC </fid> <function>... <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> </function> requires LABEL in_keys(JUMPS)
     rule <k> #badJumpDest? [ br _ , LABEL ] => . ... </k> <fid> FUNC </fid> <function>... <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> </function> requires LABEL in_keys(JUMPS)
 
-    rule <k> #badJumpDest? [ br LABEL     ] => #exception 4 ... </k> <fid> FUNC </fid> <function>... <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> </function> requires notBool LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ br _ , LABEL ] => #exception 4 ... </k> <fid> FUNC </fid> <function>... <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> </function> requires notBool LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ br LABEL     ] => #exception USER_ERROR ... </k> <fid> FUNC </fid> <function>... <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> </function> requires notBool LABEL in_keys(JUMPS)
+    rule <k> #badJumpDest? [ br _ , LABEL ] => #exception USER_ERROR ... </k> <fid> FUNC </fid> <function>... <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> </function> requires notBool LABEL in_keys(JUMPS)
 
     syntax Bool ::= isJumpOp ( Instruction ) [function]
  // ---------------------------------------------------
@@ -392,9 +409,9 @@ Some checks if an opcode will throw an exception are relatively quick and done u
 ```{.k .uiuck .rvk}
     syntax InternalOp ::= "#static?" "[" Instruction "]"
  // ----------------------------------------------------
-    rule <k> #static? [ OP ] => .            ... </k>                     <static> false </static>
-    rule <k> #static? [ OP ] => .            ... </k> <regs> REGS </regs> <static> true  </static> requires notBool #changesState(OP, REGS)
-    rule <k> #static? [ OP ] => #exception 4 ... </k> <regs> REGS </regs> <static> true  </static> requires         #changesState(OP, REGS)
+    rule <k> #static? [ OP ] => .                     ... </k>                     <static> false </static>
+    rule <k> #static? [ OP ] => .                     ... </k> <regs> REGS </regs> <static> true  </static> requires notBool #changesState(OP, REGS)
+    rule <k> #static? [ OP ] => #exception USER_ERROR ... </k> <regs> REGS </regs> <static> true  </static> requires         #changesState(OP, REGS)
 
     syntax Bool ::= #changesState ( Instruction , Array ) [function]
  // ----------------------------------------------------------------
@@ -415,11 +432,11 @@ Some checks if an opcode will throw an exception are relatively quick and done u
  // ----------------------------------------------------------
     rule <k> #negativeCall? [ OP ] => . ... </k> requires notBool isAccountCallInst(OP) andBool notBool isCreateInst(OP)
 
-    rule <k> #negativeCall? [ _     = call       _ at _ ( _ ) send % REG1 , gaslimit % REG2 ] => #if {REGS [ REG1 ]}:>Int <Int 0 orBool {REGS [ REG2 ]}:>Int <Int 0 #then #exception 4 #else . #fi ... </k> <regs> REGS </regs>
+    rule <k> #negativeCall? [ _     = call       _ at _ ( _ ) send % REG1 , gaslimit % REG2 ] => #if {REGS [ REG1 ]}:>Int <Int 0 orBool {REGS [ REG2 ]}:>Int <Int 0 #then #exception USER_ERROR #else . #fi ... </k> <regs> REGS </regs>
 
-    rule <k> #negativeCall? [ _     = staticcall _ at _ ( _ ) gaslimit % REG ] => #if {REGS [ REG ]}:>Int <Int 0 #then #exception 4 #else . #fi ... </k> <regs> REGS </regs>
-    rule <k> #negativeCall? [ _ , _ = create     _ ( _ ) send % REG ]          => #if {REGS [ REG ]}:>Int <Int 0 #then #exception 4 #else . #fi ... </k> <regs> REGS </regs>
-    rule <k> #negativeCall? [ _ , _ = copycreate _ ( _ ) send % REG ]          => #if {REGS [ REG ]}:>Int <Int 0 #then #exception 4 #else . #fi ... </k> <regs> REGS </regs>
+    rule <k> #negativeCall? [ _     = staticcall _ at _ ( _ ) gaslimit % REG ] => #if {REGS [ REG ]}:>Int <Int 0 #then #exception USER_ERROR #else . #fi ... </k> <regs> REGS </regs>
+    rule <k> #negativeCall? [ _ , _ = create     _ ( _ ) send % REG ]          => #if {REGS [ REG ]}:>Int <Int 0 #then #exception USER_ERROR #else . #fi ... </k> <regs> REGS </regs>
+    rule <k> #negativeCall? [ _ , _ = copycreate _ ( _ ) send % REG ]          => #if {REGS [ REG ]}:>Int <Int 0 #then #exception USER_ERROR #else . #fi ... </k> <regs> REGS </regs>
 ```
 
 ### Execution Step
@@ -463,13 +480,13 @@ Some instructions require an argument to be interpereted as an address (modulo 1
     rule <k> #gas [ OP ] => #gasExec(SCHED, OP) ~> #deductGas ... </k> <gas> GAVAIL </gas> <previousGas> _ => GAVAIL </previousGas> <schedule> SCHED </schedule>
       requires notBool #usesMemory(OP)
 
-    rule <k> MU':Int ~> #deductMemory(_)        => #exception 5 ... </k> requires MU' >=Int pow256
+    rule <k> MU':Int ~> #deductMemory(_)        => #exception OUT_OF_GAS ... </k> requires MU' >=Int pow256
     rule <k> MU':Int ~> #deductMemory(MEMINDEX) => (Cmem(SCHED, MU [ MEMINDEX <- MU' ]) -Int Cmem(SCHED, MU)) ~> #deductGas ... </k>
          <memoryUsed> MU => MU [ MEMINDEX <- MU' ] </memoryUsed> <schedule> SCHED </schedule>
       requires MU' <Int pow256
 
-    rule <k> G:Int ~> #deductGas => #exception 5 ... </k> <gas> GAVAIL                  </gas> requires GAVAIL <Int G
-    rule <k> G:Int ~> #deductGas => .          ... </k> <gas> GAVAIL => GAVAIL -Int G </gas> <previousGas> _ => GAVAIL </previousGas> requires GAVAIL >=Int G
+    rule <k> G:Int ~> #deductGas => #exception OUT_OF_GAS ... </k> <gas> GAVAIL                  </gas> requires GAVAIL <Int G
+    rule <k> G:Int ~> #deductGas => .                     ... </k> <gas> GAVAIL => GAVAIL -Int G </gas> <previousGas> _ => GAVAIL </previousGas> requires GAVAIL >=Int G
 
     syntax Int ::= Cmem ( Schedule , Map ) [function]
                  | Cmem ( Schedule , Int ) [function, memo, klabel(CmemAux)]
@@ -602,7 +619,7 @@ Organization is based roughly on what parts of the execution state are needed to
 ```{.k .uiuck .rvk}
     syntax InternalOp ::= "#newAccount" Int
  // ---------------------------------------
-    rule <k> #newAccount ACCT => #exception 6 ... </k>
+    rule <k> #newAccount ACCT => #exception ACCT_COLLISION ... </k>
          <account>
            <acctID> ACCT  </acctID>
            <code>   CODE  </code>
@@ -658,7 +675,7 @@ Organization is based roughly on what parts of the execution state are needed to
          <activeAccounts> ... ACCTTO |-> (EMPTY => #if VALUE >Int 0 #then false #else EMPTY #fi) ACCTFROM |-> (_ => ORIGFROM ==Int VALUE andBool NONCE ==Int 0 andBool CODE ==K #emptyCode) ... </activeAccounts>
       requires ACCTFROM =/=K ACCTTO andBool VALUE <=Int ORIGFROM
 
-    rule <k> #transferFunds ACCTFROM ACCTTO VALUE => #exception 7 ... </k>
+    rule <k> #transferFunds ACCTFROM ACCTTO VALUE => #exception OUT_OF_FUNDS ... </k>
          <account>
            <acctID> ACCTFROM </acctID>
            <balance> ORIGFROM </balance>
@@ -727,8 +744,8 @@ Some operators don't calculate anything, they just manipulate the state of regis
  // -------------------------------------------
     rule <k> #loads (REG , REGS) (VALUE , VALUES) => #load REG VALUE ~> #loads REGS VALUES ... </k>
     rule <k> #loads .LValues     .Ints            => .K                                    ... </k>
-    rule <k> #loads (REG , REGS) .Ints            => #exception 2                          ... </k>
-    rule <k> #loads .LValues     (VALUE , VALUES) => #exception 2                          ... </k>
+    rule <k> #loads (REG , REGS) .Ints            => #exception FUNC_WRONG_SIG             ... </k>
+    rule <k> #loads .LValues     (VALUE , VALUES) => #exception FUNC_WRONG_SIG             ... </k>
 ```
 
 ### Local Memory
@@ -786,27 +803,27 @@ Expression calculations are simple and don't require anything but the arguments 
     rule <k> #exec REG = iszero W => #load REG 0      ... </k> requires W =/=K 0
     rule <k> #exec REG = not W    => #load REG ~Int W ... </k>
 
-    rule <k> #exec REG = add W0 , W1 => #load REG W0 +Int W1 ... </k>
-    rule <k> #exec REG = mul W0 , W1 => #load REG W0 *Int W1 ... </k>
-    rule <k> #exec REG = sub W0 , W1 => #load REG W0 -Int W1 ... </k>
-    rule <k> #exec REG = div W0 , W1 => #load REG W0 /Int W1 ... </k> requires W1 =/=Int 0
-    rule <k> #exec REG = div W0 ,  0 => #exception 4         ... </k>
-    rule <k> #exec REG = exp W0 , W1 => #load REG W0 ^Int W1 ... </k> requires W1 >=Int 0
-    rule <k> #exec REG = exp W0 , W1 => #exception 4         ... </k> requires W1 <Int 0
-    rule <k> #exec REG = mod W0 , W1 => #load REG W0 %Int W1 ... </k> requires W1 =/=Int 0
-    rule <k> #exec REG = mod W0 ,  0 => #exception 4         ... </k>
+    rule <k> #exec REG = add W0 , W1 => #load REG W0 +Int W1  ... </k>
+    rule <k> #exec REG = mul W0 , W1 => #load REG W0 *Int W1  ... </k>
+    rule <k> #exec REG = sub W0 , W1 => #load REG W0 -Int W1  ... </k>
+    rule <k> #exec REG = div W0 , W1 => #load REG W0 /Int W1  ... </k> requires W1 =/=Int 0
+    rule <k> #exec REG = div W0 ,  0 => #exception USER_ERROR ... </k>
+    rule <k> #exec REG = exp W0 , W1 => #load REG W0 ^Int W1  ... </k> requires W1 >=Int 0
+    rule <k> #exec REG = exp W0 , W1 => #exception USER_ERROR ... </k> requires W1 <Int 0
+    rule <k> #exec REG = mod W0 , W1 => #load REG W0 %Int W1  ... </k> requires W1 =/=Int 0
+    rule <k> #exec REG = mod W0 ,  0 => #exception USER_ERROR ... </k>
 
     rule <k> #exec REG = addmod W0 , W1 , W2 => #load REG (W0 +Int W1) %Int W2 ... </k> requires W2 =/=Int 0
-    rule <k> #exec REG = addmod W0 , W1 ,  0 => #exception 4                   ... </k>
+    rule <k> #exec REG = addmod W0 , W1 ,  0 => #exception USER_ERROR          ... </k>
     rule <k> #exec REG = mulmod W0 , W1 , W2 => #load REG (W0 *Int W1) %Int W2 ... </k> requires W2 =/=Int 0
-    rule <k> #exec REG = mulmod W0 , W1 ,  0 => #exception 4                   ... </k>
+    rule <k> #exec REG = mulmod W0 , W1 ,  0 => #exception USER_ERROR          ... </k>
     rule <k> #exec REG = expmod W0 , W1 , W2 => #load REG powmod(W0,W1,W2)     ... </k> requires W2 =/=Int 0 andBool (W1 >=Int 0 orBool gcdInt(W0, W2) ==Int 1)
-    rule <k> #exec REG = expmod W0 , W1 ,  0 => #exception 4                   ... </k>
-    rule <k> #exec REG = expmod W0 , W1 , W2 => #exception 4                   ... </k> requires W1 <Int 0 andBool gcdInt(W0, W2) =/=Int 1
+    rule <k> #exec REG = expmod W0 , W1 ,  0 => #exception USER_ERROR          ... </k>
+    rule <k> #exec REG = expmod W0 , W1 , W2 => #exception USER_ERROR          ... </k> requires W1 <Int 0 andBool gcdInt(W0, W2) =/=Int 1
 
     rule <k> #exec REG = byte INDEX , W => #load REG byte(chop(INDEX), W)       ... </k>
     rule <k> #exec REG = sext WIDTH , W => #load REG signextend(chop(WIDTH), W) ... </k> requires W >=Int 0
-    rule <k> #exec REG = sext WIDTH , W => #exception 4                         ... </k> requires W <Int 0
+    rule <k> #exec REG = sext WIDTH , W => #exception USER_ERROR                ... </k> requires W <Int 0
     rule <k> #exec REG = twos WIDTH , W => #load REG twos(chop(WIDTH), W)       ... </k>
 
     rule <k> #exec REG = and W0 , W1 => #load REG W0 &Int W1   ... </k>
@@ -1087,7 +1104,7 @@ The various `call*` (and other inter-contract control flow) operations will be d
                         | "#callWithCode" Int Int ProgramCell IeleName Int Int Ints Bool
                         | "#mkCall" Int Int ProgramCell IeleName Int Int Ints Bool
  // ----------------------------------------------------------------------------------
-    rule <k> #checkCall ACCT VALUE GCAP ~> #call _ _ _ GLIMIT _ _ _ => #refund GLIMIT ~> #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception (#if VALUE >Int BAL #then 7 #else 8 #fi) ... </k>
+    rule <k> #checkCall ACCT VALUE GCAP ~> #call _ _ _ GLIMIT _ _ _ => #refund GLIMIT ~> #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception (#if VALUE >Int BAL #then OUT_OF_FUNDS #else CALL_STACK_OVERFLOW #fi) ... </k>
          <callDepth> CD </callDepth>
          <output> _ => .Ints </output>
          <account>
@@ -1164,16 +1181,16 @@ If the function being called is not public, does not exist, or has the wrong num
          <localMem>   _ => .Memory </localMem>
          <localCalls> _ => .List   </localCalls>
 
-    rule <k> #initFun(LABEL, _, false) => #exception 1 ... </k>
+    rule <k> #initFun(LABEL, _, false) => #exception FUNC_NOT_FOUND ... </k>
          <exported> FUNCS </exported>
       requires notBool LABEL in FUNCS
 
-    rule <k> #initFun(LABEL, _, _) => #exception (#if SIZE ==Int 0 #then 3 #else 1 #fi) ... </k>
+    rule <k> #initFun(LABEL, _, _) => #exception (#if SIZE ==Int 0 #then CONTRACT_NOT_FOUND #else FUNC_NOT_FOUND #fi) ... </k>
          <funcIds> LABELS </funcIds>
          <programSize> SIZE </programSize>
       requires notBool LABEL in LABELS
 
-    rule <k> #initFun(LABEL, NARGS, _) => #exception 2 ... </k>
+    rule <k> #initFun(LABEL, NARGS, _) => #exception FUNC_WRONG_SIG ... </k>
          <id> ACCT </id>
          <funcId> LABEL </funcId>
          <nparams> NPARAMS </nparams>
@@ -1247,8 +1264,8 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
          <activeAccounts> ACCTS </activeAccounts>
          <previousGas> GAVAIL </previousGas>
 
-    rule #exec .LValues = call _ at _ ( _ ) send _ , gaslimit _ => #exception 2
-    rule #exec .LValues = staticcall _ at _ ( _ ) gaslimit _ => #exception 2
+    rule #exec .LValues = call _ at _ ( _ ) send _ , gaslimit _ => #exception FUNC_WRONG_SIG
+    rule #exec .LValues = staticcall _ at _ ( _ ) gaslimit _ => #exception FUNC_WRONG_SIG
 ```
 
 ### Account Creation/Deletion
@@ -1262,7 +1279,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
                         | "#mkCreate" Int Int Contract Int Int Ints
                         | "#checkCreate" Int Int
  // --------------------------------------------
-    rule <k> #checkCreate ACCT VALUE ~> #create _ _ GAVAIL _ _ _ _ => #refund GAVAIL ~> #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception (#if VALUE >Int BAL #then 7 #else 8 #fi) ... </k>
+    rule <k> #checkCreate ACCT VALUE ~> #create _ _ GAVAIL _ _ _ _ => #refund GAVAIL ~> #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception (#if VALUE >Int BAL #then OUT_OF_FUNDS #else CALL_STACK_OVERFLOW #fi) ... </k>
          <callDepth> CD </callDepth>
          <output> _ => .Ints </output>
          <account>
@@ -1270,7 +1287,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
            <balance> BAL </balance>
            ...
          </account>
-      requires VALUE >Int BAL orBool VALUE <Int 0 orBool CD >=Int 1024
+      requires VALUE >Int BAL orBool CD >=Int 1024
 
     rule <k> #checkCreate ACCT VALUE => . ... </k>
          <mode> EXECMODE </mode>
@@ -1510,7 +1527,7 @@ Precompiled Contract
          <output> _ => #ecrec(#sender(#unparseByteStack(#padToWidth(32, #asUnsignedBytes(HASH))), V, #unparseByteStack(#padToWidth(32, #asUnsignedBytes(R))), #unparseByteStack(#padToWidth(32, #asUnsignedBytes(S))))) </output>
          requires HASH >=Int 0 andBool V >=Int 0 andBool R >=Int 0 andBool S >=Int 0
 
-    rule <k> #exec ECREC => #exception 4 ... </k>
+    rule <k> #exec ECREC => #exception USER_ERROR ... </k>
          <callData> HASH , V , R , S , .Ints </callData>
          requires notBool (HASH >=Int 0 andBool V >=Int 0 andBool R >=Int 0 andBool S >=Int 0)
 
@@ -1526,7 +1543,7 @@ Precompiled Contract
          <output> _ => #parseHexWord(Sha256(#unparseByteStack(#padToWidth(LEN, #asUnsignedBytes(DATA))))) , .Ints </output>
          requires LEN >=Int 0 andBool DATA >=Int 0
 
-    rule <k> #exec SHA256 => #exception 4 ... </k>
+    rule <k> #exec SHA256 => #exception USER_ERROR ... </k>
          <callData> LEN , DATA , .Ints </callData>
          requires notBool (LEN >=Int 0 andBool DATA >=Int 0)
 
@@ -1537,7 +1554,7 @@ Precompiled Contract
          <output> _ => #parseHexWord(RipEmd160(#unparseByteStack(#padToWidth(LEN, #asUnsignedBytes(DATA))))) , .Ints </output>
          requires LEN >=Int 0 andBool DATA >=Int 0
 
-    rule <k> #exec RIP160 => #exception 4 ... </k>
+    rule <k> #exec RIP160 => #exception USER_ERROR ... </k>
          <callData> LEN , DATA , .Ints </callData>
          requires notBool (LEN >=Int 0 andBool DATA >=Int 0)
 
@@ -1554,7 +1571,7 @@ Precompiled Contract
 
     syntax InternalOp ::= #ecadd(G1Point, G1Point)
  // ----------------------------------------------
-    rule #ecadd(P1, P2) => #exception 4
+    rule #ecadd(P1, P2) => #exception USER_ERROR
       requires notBool isValidPoint(P1) orBool notBool isValidPoint(P2)
     rule <k> #ecadd(P1, P2) => #end ... </k> <output> _ => #point(BN128Add(P1, P2)) </output>
       requires isValidPoint(P1) andBool isValidPoint(P2)
@@ -1566,7 +1583,7 @@ Precompiled Contract
 
     syntax InternalOp ::= #ecmul(G1Point, Int)
  // ------------------------------------------
-    rule #ecmul(P, S) => #exception 4
+    rule #ecmul(P, S) => #exception USER_ERROR
       requires notBool isValidPoint(P)
     rule <k> #ecmul(P, S) => #end ... </k> <output> _ => #point(BN128Mul(P, S)) </output>
       requires isValidPoint(P)
@@ -1580,7 +1597,7 @@ Precompiled Contract
     rule <k> #exec ECPAIRING => #ecpairing(.List, .List, DATA) ... </k>
          <callData> DATA </callData>
       requires #sizeRegs(DATA) %Int 6 ==Int 0
-    rule <k> ECPAIRING => #exception 2 ... </k>
+    rule <k> ECPAIRING => #exception FUNC_WRONG_SIG ... </k>
          <callData> DATA </callData>
       requires #sizeRegs(DATA) %Int 6 =/=Int 0
 
@@ -1594,7 +1611,7 @@ Precompiled Contract
  // -----------------------------------
     rule (#checkPoint => .) ~> #ecpairing(ListItem(AK::G1Point) _, ListItem(BK::G2Point) _, _)
       requires isValidPoint(AK) andBool isValidPoint(BK)
-    rule #checkPoint ~> #ecpairing(ListItem(AK::G1Point) _, ListItem(BK::G2Point) _, _) => #exception 4
+    rule #checkPoint ~> #ecpairing(ListItem(AK::G1Point) _, ListItem(BK::G2Point) _, _) => #exception USER_ERROR
       requires notBool isValidPoint(AK) orBool notBool isValidPoint(BK)
 ```
 
