@@ -20,7 +20,7 @@ Configuration
 -------------
 
 We've broken up the configuration into two components; those parts of the state that mutate during execution of a single transaction and those that are static throughout.
-In the comments next to each cell, we explaikn the purpose of the cell.
+In the comments next to each cell, we explain the purpose of the cell.
 
 ```{.k .uiuck .rvk}
     configuration <k> $PGM:IELESimulation </k>                       // Current computation
