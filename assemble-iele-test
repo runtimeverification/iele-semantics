@@ -32,6 +32,16 @@ def convertToBinaryIele(json):
         res[key] = assembleIele(value)
       else:
         res[key] = convertToBinaryIele(value)
+    if "to" in json.keys() and "secretKey" in json.keys():
+      from ethereum.transactions import Transaction
+      data = res["data"]
+      binary = data.decode("hex")
+      t = Transaction(int(res["nonce"], 16), int(res["gasPrice"], 16), int(res["gasLimit"], 16), res["to"], int(res["value"], 16), binary)
+      t.sign(res["secretKey"])
+      del res["secretKey"]
+      res["v"] = hex(t.v)
+      res["r"] = format(t.r, "#066x")
+      res["s"] = format(t.s, "#066x")
     return res
   elif isinstance(json, list):
     res = []

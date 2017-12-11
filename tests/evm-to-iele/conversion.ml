@@ -298,7 +298,7 @@ let process_precompiled ((graph,regcount) : iele_graph * int) : (iele_graph * in
       let def = find_definition all_ops addr in
       let old_args = set_nth args 1 addr in
       regcount := !regcount + 1;
-      let old_call = 2, LiOp(`LOADPOS, !regcount, Z.zero) :: Op(`MLOADN, arg_idx, [!regcount;arg_idx;arg_width]) :: Op(`TWOS, arg_idx, [arg_width; arg_idx]) :: CallOp(new_op op 0 2 1, [ret;retval], old_args @ [arg_idx; arg_width]) :: Op(`ISZERO, !regcount + 1, [ret]) :: VoidOp(`JUMPI(!lblcount),[!regcount + 1]) :: VoidOp(`MSTOREN, [!regcount;ret_idx;retval;ret_width]) :: VoidOp(`JUMPDEST(!lblcount),[]) :: [] in
+      let old_call = 1, LiOp(`LOADPOS, !regcount, Z.zero) :: Op(`MLOADN, arg_idx, [!regcount;arg_idx;arg_width]) :: Op(`TWOS, arg_idx, [arg_width; arg_idx]) :: CallOp(new_op op 0 2 1, [ret;retval], old_args @ [arg_idx; arg_width]) :: VoidOp(`JUMPI(!lblcount),[ret]) :: VoidOp(`MSTOREN, [!regcount;ret_idx;retval;ret_width]) :: VoidOp(`JUMPDEST(!lblcount),[]) :: Op(`ISZERO, ret, [ret]) :: [] in
       lblcount := !lblcount - 1;
       let new_regs,new_call = 
       (match def with
@@ -312,7 +312,7 @@ let process_precompiled ((graph,regcount) : iele_graph * int) : (iele_graph * in
                                                    :: CallOp(new_op op (-1) 4 1, [ret;retval], args @ [!regcount + 2; !regcount + 3; !regcount + 4; !regcount + 5]) :: VoidOp(`MSTOREN, [!regcount + 1;ret_idx;retval;ret_width]) :: []
           | 4 -> 1, LiOp(`LOADPOS, !regcount, Z.zero) 
                                                    :: Op(`MLOADN, arg_idx, [!regcount;arg_idx;arg_width]) :: Op(`TWOS, arg_idx, [arg_width; arg_idx]) 
-                                                   :: CallOp(new_op op (-2) 1 1, [ret;retval], args @ [arg_idx]) :: VoidOp(`MSTOREN, [!regcount;ret_idx;retval;ret_width]) :: []
+                                                   :: CallOp(new_op op (-2) 1 1, [ret;retval], args @ [arg_idx]) :: VoidOp(`MSTOREN, [!regcount;ret_idx;retval;ret_width]) :: Op(`ISZERO, ret, [ret]) :: []
           | 5 -> 8, LiOp(`LOADPOS, !regcount, _32) :: LiOp(`LOADPOS, !regcount + 1, Z.zero)
                                                    :: Op(`MLOADN, !regcount + 2, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 2, [!regcount; !regcount + 2]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
                                                    :: Op(`MLOADN, !regcount + 3, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 3, [!regcount; !regcount + 3]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
@@ -328,14 +328,14 @@ let process_precompiled ((graph,regcount) : iele_graph * int) : (iele_graph * in
                                                    :: Op(`MLOADN, !regcount + 5, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 5, [!regcount; !regcount + 5]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
                                                    :: CallOp(new_op op (-3) 4 2, [ret;!regcount + 6;!regcount + 7], args @ [!regcount + 2; !regcount + 3; !regcount + 4; !regcount + 5]) 
                                                    :: VoidOp(`MSTOREN, [!regcount + 1;ret_idx;!regcount + 6;!regcount]) :: Op(`ADD, ret_idx, [ret_idx; !regcount])
-                                                   :: VoidOp(`MSTOREN, [!regcount + 1;ret_idx;!regcount + 7;!regcount]) :: Op(`ADD, ret_idx, [ret_idx; !regcount]) :: []
+                                                   :: VoidOp(`MSTOREN, [!regcount + 1;ret_idx;!regcount + 7;!regcount]) :: Op(`ADD, ret_idx, [ret_idx; !regcount]) :: Op(`ISZERO, ret, [ret]) :: []
           | 7 -> 7, LiOp(`LOADPOS, !regcount, _32) :: LiOp(`LOADPOS, !regcount + 1, Z.zero)
                                                    :: Op(`MLOADN, !regcount + 2, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 2, [!regcount; !regcount + 2]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
                                                    :: Op(`MLOADN, !regcount + 3, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 3, [!regcount; !regcount + 3]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
                                                    :: Op(`MLOADN, !regcount + 4, [!regcount + 1; arg_idx; !regcount]) :: Op(`TWOS, !regcount + 4, [!regcount; !regcount + 4]) :: Op(`ADD, arg_idx, [arg_idx; !regcount]) 
                                                    :: CallOp(new_op op (-4) 3 2, [ret;!regcount + 5;!regcount + 6], args @ [!regcount + 2; !regcount + 3; !regcount + 4]) 
                                                    :: VoidOp(`MSTOREN, [!regcount + 1;ret_idx;!regcount + 5;!regcount]) :: Op(`ADD, ret_idx, [ret_idx; !regcount])
-                                                   :: VoidOp(`MSTOREN, [!regcount + 1;ret_idx;!regcount + 6;!regcount]) :: Op(`ADD, ret_idx, [ret_idx; !regcount]) :: []
+                                                   :: VoidOp(`MSTOREN, [!regcount + 1;ret_idx;!regcount + 6;!regcount]) :: Op(`ADD, ret_idx, [ret_idx; !regcount]) :: Op(`ISZERO, ret, [ret]) :: []
           | _ -> old_call
         with Z.Overflow -> old_call)
       | _ -> old_call
@@ -812,6 +812,7 @@ let rec postprocess_iele iele label memcells = match iele with
 | VoidOp(`SSTORE, [r1;r2]) :: tl -> LiOp(`LOADPOS, -1, _32) :: Op(`TWOS, r2, [-1; r2]) :: VoidOp(`SSTORE, [r2;r1]) :: postprocess_iele tl label memcells
 | VoidOp(`MSTORE, [r1;r2]) :: tl -> VoidOp(`MSTORE, [r2;r1]) :: postprocess_iele tl label memcells
 | VoidOp(`MSTOREN, [r1;r2;r3;r4]) :: tl -> VoidOp(`MSTOREN, [r3;r1;r2;r4]) :: postprocess_iele tl label memcells
+| Op(`SIGNEXTEND, reg, [r1;r2]) :: tl -> LiOp(`LOADPOS, -1, _32) :: Op(`TWOS, r2, [-1;r2]) :: Op(`SIGNEXTEND, reg, [r1;r2]) :: postprocess_iele tl label memcells
 | hd :: tl -> hd :: postprocess_iele tl label memcells
 | [] -> []
 

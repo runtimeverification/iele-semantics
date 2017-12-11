@@ -55,7 +55,8 @@ exception InvalidPoint
 let get_pt k = match k with
 | [KApply2(Lbl'LPar'_'Comm'_'RPar'_KRYPTO, [Int x], [Int y])] ->
     if Z.equal x Z.zero && Z.equal y Z.zero then BN128Curve.Infinite else
-    if (Z.lt x BN128Elements.field_modulus && Z.lt y BN128Elements.field_modulus) then 
+    if (Z.lt x BN128Elements.field_modulus && Z.lt y BN128Elements.field_modulus
+        && Z.geq x Z.zero && Z.geq y Z.zero) then 
       let pt = BN128Curve.Finite (BN128Elements.FQ.create x, BN128Elements.FQ.create y) in
       if BN128Curve.G1.is_on_curve pt then pt else raise InvalidPoint
     else raise InvalidPoint
@@ -64,7 +65,8 @@ let get_pt k = match k with
 let get_pt_g2 k = match k with
 | [KApply4(Lbl'LPar'_x_'Comm'_x_'RPar'_KRYPTO, [Int x1], [Int x2], [Int y1], [Int y2])] ->
     if Z.equal x1 Z.zero && Z.equal x2 Z.zero && Z.equal y1 Z.zero && Z.equal y2 Z.zero then BN128Curve.Infinite else
-    if (Z.lt x1 BN128Elements.field_modulus && Z.lt x2 BN128Elements.field_modulus && Z.lt y1 BN128Elements.field_modulus && Z.lt y2 BN128Elements.field_modulus) then
+    if (Z.lt x1 BN128Elements.field_modulus && Z.lt x2 BN128Elements.field_modulus && Z.lt y1 BN128Elements.field_modulus && Z.lt y2 BN128Elements.field_modulus
+        && Z.geq x1 Z.zero && Z.geq x2 Z.zero && Z.geq y1 Z.zero && Z.geq y2 Z.zero) then
       let pt = BN128Curve.Finite (BN128Elements.FQP.create_fq2 [|x1; x2|], BN128Elements.FQP.create_fq2 [|y1; y2|]) in
       if BN128Curve.G2.is_on_curve pt then pt else raise InvalidPoint
     else raise InvalidPoint

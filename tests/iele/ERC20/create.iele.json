@@ -20,32 +20,20 @@
                         "gasLimit": "0x100000", 
                         "value": "0x00", 
                         "to": "",
-                        "s": "0x61d56d79b4ad0a824c7935a6b910be4c180a377df8092e4f666021183bd983e0",
-                        "r": "0x689483a31d3a2eafb5698053c6aa2d1e288e0429a06d6507874a935eb37b5d03",
                         "arguments": [
                           "0x2710"
                         ], 
-                        "v": "0x1c", 
                         "data": "../../../iele-examples/erc20.iele",
-                        "gasPrice": "0x01"
+                        "gasPrice": "0x01",
+                        "secretKey": "45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8"
                     }
                 ], 
                 "blockHeader": {
-                    "nonce": "", 
-                    "receiptTrie": "",
-                    "hash": "",
-                    "uncleHash": "",
-                    "mixHash": "",
-                    "parentHash": "",
-                    "extraData": "", 
                     "gasLimit": "0x174876e800", 
                     "number": "0x01", 
-                    "stateRoot": "",
                     "difficulty": "0x020000", 
                     "timestamp": "0x03e8", 
                     "coinbase": "0x2adc25665018aa1fe0e6bc666dac8fc2697ff9ba", 
-                    "transactionsTrie": "",
-                    "bloom": "",
                     "gasUsed": ""
                 }
             }
