@@ -1,0 +1,84 @@
+contract SimpleOpenAuction {
+
+@beneficiary    = 0
+@auction.start  = 1
+@auction.end    = 2
+@highest.bidder = 3
+@highest.bid    = 4
+@settled        = 5
+
+define public @init(%beneficiary, %bidding.time) {
+  sstore %beneficiary, @beneficiary
+  %auction.start = call @iele.timestamp()
+  sstore %auction.start, @auction.start
+  %auction.end = add %auction_start, %bidding.time
+  sstore %auction.end, @auction.end
+  sstore 0, @highest.bidder
+  sstore 0, @highest.bid
+  sstore 0, @settled
+}
+
+define public @bid() {
+  // check if auction is active
+  %timestamp = call @iele.timestamp()
+  %auction.end = sload @auction.end
+  %auction.closed = cmp ge %timestamp, %auction.end
+  br %auction.closed, exit
+
+  // check if incoming bid is higher than current highest bid
+  %bid.value = call @iele.callvalue()
+  %highest.bid = sload @highest.bid
+  %low.bid = cmp le %bid.value, %highest.bid
+  br %low.bid, exit
+
+  // check if we need to refund current higest bidder
+  %no.refund.needed = iszero %highest.bid
+  br %no.refund.needed, update.bid
+
+refund.bid:
+  // refund current highest bidder
+  %highest.bidder = sload @highest.bidder
+  %gas = call @iele.gas()
+  %status = call @deposit at %highest.bidder() send %highest.bid, gaslimit %gas
+  br %status, throw
+
+update.bid:
+  // store the new highest bidder and bid
+  %new.highest.bidder = call @iele.caller()
+  sstore %new.highest.bidder, @highest.bidder
+  sstore %bid.value, @highest.bid
+
+exit:
+  ret void
+
+throw:
+  call @iele.invalid()
+}
+
+define public @settle.auction() {
+  // check if auction has been closed
+  %timestamp = call @iele.timestamp()
+  %auction.end = sload @auction.end
+  %auction.active = cmp lt %timestamp, %auction.end
+  br %auction.active, exit
+
+  // check if auction has been already settled
+  %already.settled = sload @settled
+  br %already.settled, exit
+
+  // send highest bid to beneficiary and settle the auction
+  %highest.bid = sload @highest.bid
+  %beneficiary = sload @beneficiary
+  %gas = call @iele.gas()
+  %status = call @deposit at %highest.bidder() send %highest.bid, gaslimit %gas
+  br %status, throw
+  sstore 1, @settled
+
+exit:
+  ret void
+
+throw:
+  call @iele.invalid()
+}
+
+}
