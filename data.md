@@ -13,6 +13,7 @@ module IELE-DATA
     imports KRYPTO
     imports STRING-BUFFER
     imports ARRAY
+    imports IELE-COMMON
 
     syntax KResult ::= Int
 ```
@@ -95,8 +96,8 @@ NOTE: Here, we choose to add `I2 -Int 1` to the numerator beforing doing the div
 You could alternatively calculate `I1 %Int I2`, then add one to the normal integer division afterward depending on the result.
 
 ```{.k .uiuck .rvk}
-    syntax Int ::= Int "up/Int" Int [function]
- // ------------------------------------------
+    syntax Int ::= Int "up/Int" Int [function, klabel(ceilDiv)]
+ // -----------------------------------------------------------
     rule I1 up/Int 0  => 0
     rule I1 up/Int 1  => I1
     rule I1 up/Int I2 => (I1 +Int (I2 -Int 1)) /Int I2 requires I2 >Int 1
@@ -119,6 +120,11 @@ You could alternatively calculate `I1 %Int I2`, then add one to the normal integ
     rule intSize(N) => (log2Int(N) +Int 2) up/Int 64 requires N >Int 0
     rule intSize(0) => 1
     rule intSize(N) => intSize(~Int N) requires N <Int 0
+
+    syntax Int ::= intSizes ( Ints ) [function]
+ // -------------------------------------------
+    rule intSizes(.Ints) => 0
+    rule intSizes(I , INTS) => intSize(I) +Int intSizes(INTS)
 ```
 
 Here we provide simple syntactic sugar over our power-modulus operator.

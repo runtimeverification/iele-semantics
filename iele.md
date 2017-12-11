@@ -1,4 +1,4 @@
-IELE Execution
+, 0, 0IELE Execution
 ==============
 
 IELE is a register-based abstract machine over some simple opcodes.
@@ -54,6 +54,7 @@ In the comments next to each cell, we explain the purpose of the cell.
                             <nparams>      0       </nparams>        // The number of parameters of the function
                             <instructions> (.Instructions .LabeledBlocks):Blocks </instructions> // The blocks of the function
                             <jumpTable>    .Map    </jumpTable>      // Map from jump label to blocks, for branch instruction
+                            <nregs>        0       </nregs>          // Number of registers used by this function
                           </function>
                         </functions>
                         <funcIds>     .Set </funcIds>                // Set of all names of functions in <functions> cell
@@ -73,7 +74,7 @@ In the comments next to each cell, we explain the purpose of the cell.
                       // \mu_*
                       <regs>          .Array  </regs>                 // Current values of registers
                       <localMem>      .Memory </localMem>             // Current values of local memory
-                      <peakMemroy>    0       </memoryUsed>           // Maximum memory used so far in call frame
+                      <peakMemory>    0       </peakMemory>           // Maximum memory used so far in call frame
                       <currentMemory> 0       </currentMemory>        // Current memory used in call frame
                       <fid>           deposit </fid>                  // Name of currently executing function
                       <gas>           0       </gas>                  // Current gas remaining
@@ -327,6 +328,14 @@ Description of registers.
     rule #sizeRegs(REGS) => #sizeRegs(REGS, 0)
     rule #sizeRegs(REG , REGS, N) => #sizeRegs(REGS, N +Int 1)
     rule #sizeRegs(.Operands, N) => N
+
+    syntax Int ::= #sizeLVals ( LValues ) [function]
+                 | #sizeLVals ( LValues , Int ) [function, klabel(#sizeLValuesAux)]
+ // -------------------------------------------------------------------------------
+    rule #sizeLVals(REGS) => #sizeLVals(REGS, 0)
+    rule #sizeLVals(REG , REGS, N) => #sizeLVals(REGS, N +Int 1)
+    rule #sizeLVals(.LValues, N) => N
+
 ```
 
 Instruction Execution Cycle
@@ -476,14 +485,16 @@ Some instructions require an argument to be interpereted as an address (modulo 1
 ```{.k .uiuck .rvk}
     syntax InternalOp ::= "#gas" "[" Instruction "]" | "#deductGas"
  // ---------------------------------------------------------------
-    rule <k> #gas [ OP ] => #precompute(OP, SCHED) ~> #deductGas ~> #memory [ OP ] ~> #compute [ OP , SCHED ] ... </k> <schedule> SCHED </schedule>
+    rule <k> #gas [ OP ] => #memory [ OP ] ~> #compute [ OP , SCHED ] ~> #deductGas ... </k> <schedule> SCHED </schedule>
 
     rule <k> G:Int ~> #deductGas => #exception OUT_OF_GAS ... </k> <gas> GAVAIL                  </gas> requires GAVAIL <Int G
     rule <k> G:Int ~> #deductGas => .                     ... </k> <gas> GAVAIL => GAVAIL -Int G </gas> <previousGas> _ => GAVAIL </previousGas> requires GAVAIL >=Int G
 
     syntax Int ::= Cmem ( Schedule , Int ) [function, memo]
- // -------------------------------------------------------
-    rule Cmem(SCHED, N)  => (N *Int Gmemory < SCHED >) +Int ((N *Int N) /Int Gquadcoeff < SCHED >)
+                 | Cfreemem ( Int )        [function]
+ // -------------------------------------------------
+    rule Cmem(SCHED, N)  => (Cfreemem(N) *Int Gmemory < SCHED >) +Int ((Cfreemem(N) *Int Cfreemem(N)) /Int Gquadcoeff < SCHED >)
+    rule Cfreemem(N) => maxInt(0, N -Int 4096)
 ```
 
 ### Substate Log
@@ -724,9 +735,10 @@ Some operators don't calculate anything, they just manipulate the state of regis
     rule <k> #exec REG1 = % REG2 => #load REG1 { REGS [ REG2 ] }:>Int ... </k> <regs> REGS </regs>
 
     syntax InternalOp ::= "#load" LValue Int
- // ----------------------------------------
-    rule <k> #load % REG VALUE => . ... </k>
-         <regs> REGS => REGS [ REG <- VALUE ] </regs>
+                        | "#load" Int Int Int [klabel(#loadAux)]
+ // ------------------------------------------------------------
+    rule <k> #load % REG VALUE => #load REG VALUE {REGS [ REG ]}:>Int ... </k> <regs> REGS </regs>
+    rule <k> #load REG VALUE OLD => . ... </k> <regs> REGS => REGS [ REG <- VALUE ] </regs> <currentMemory> CURR => CURR -Int intSize(OLD) +Int intSize(VALUE) </currentMemory>
 
     syntax InternalOp ::= "#loads" LValues Ints
  // -------------------------------------------
@@ -1058,11 +1070,7 @@ These operations interact with the account storage.
            <storage> ... (INDEX |-> (OLD => VALUE)) ... </storage>
            ...
          </account>
-         <refund> R => #if OLD =/=Int 0 andBool VALUE ==Int 0
-                        #then R +Int Rsstoreclear < SCHED >
-                        #else R
-                       #fi
-         </refund>
+         <refund> R => R +Int Gsstoreset < SCHED > *Int maxInt(0, intSize(VALUE) -Int intSize(OLD)) </refund>
          <schedule> SCHED </schedule>
 
     rule <k> #exec sstore VALUE , INDEX => . ... </k>
@@ -1163,11 +1171,12 @@ If the function being called is not public, does not exist, or has the wrong num
                    | #initFun ( IeleName , Int , Bool )
  // ---------------------------------------------------
     rule <k> #initVM(ARGS) => #loads #regRange(#sizeRegs(ARGS)) ARGS ... </k>
-         <memoryUsed> _ => .Map    </memoryUsed>
-         <output>     _ => .Ints   </output>
-         <regs>       _ => .Array  </regs>
-         <localMem>   _ => .Memory </localMem>
-         <localCalls> _ => .List   </localCalls>
+         <currentMemory> _ => 0       </currentMemory>
+         <peakMemory>    _ => 0       </peakMemory>
+         <output>        _ => .Ints   </output>
+         <regs>          _ => .Array  </regs>
+         <localMem>      _ => .Memory </localMem>
+         <localCalls>    _ => .List   </localCalls>
 
     rule <k> #initFun(LABEL, _, false) => #exception FUNC_NOT_FOUND ... </k>
          <exported> FUNCS </exported>
@@ -1190,6 +1199,9 @@ If the function being called is not public, does not exist, or has the wrong num
          <funcIds> ... SetItem(LABEL) </funcIds>
          <exported> FUNCS </exported>
          <fid> _ => LABEL </fid>
+         <nregs> REGISTERS </nregs>
+         <currentMemory> _ => REGISTERS </currentMemory>
+         <peakMemory> _ => REGISTERS </peakMemory>
          <funcId> LABEL </funcId>
          <nparams> NPARAMS </nparams>
       requires (LABEL in FUNCS orBool ISCREATE) andBool (NPARAMS ==Int NARGS orBool (ACCT ==Int #precompiledAccount andBool LABEL ==K iele.ecpairing))
@@ -1232,7 +1244,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
 ```{.k .uiuck .rvk}
     rule <k> #exec REG , REGS = call @ LABEL at ACCTTO ( ARGS ) send VALUE , gaslimit GCAP
           => #checkCall ACCTFROM VALUE GCAP
-          ~> #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, VALUE) VALUE ARGS false
+          ~> #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, VALUE, #sizeLVals(REGS), intSizes(ARGS)) VALUE ARGS false
           ~> #return REGS REG
          ...
          </k>
@@ -1243,7 +1255,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
 
     rule <k> #exec REG , REGS = staticcall @ LABEL at ACCTTO ( ARGS ) gaslimit GCAP
           => #checkCall ACCTFROM 0 GCAP
-          ~> #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0) 0 ARGS true
+          ~> #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0, #sizeLVals(REGS), intSizes(ARGS)) 0 ARGS true
           ~> #return REGS REG
          ...
          </k>
@@ -1619,8 +1631,8 @@ In the yellowpaper, each opcode is defined to consume zero gas unless specified 
 -   `#memoryUsageUpdate` is the function `M` in appendix H of the yellowpaper which helps track the memory used.
 
 ```{.k .uiuck .rvk}
-    syntax InternalOp ::= #memory [ Instruction ]
- // ---------------------------------------------
+    syntax InternalOp ::= "#memory" "[" Instruction "]"
+ // ---------------------------------------------------
     rule #memory [ REG = not W       ] => #registerDelta(REG, intSize(W))
     rule #memory [ REG = and W0 , W1 ] => #registerDelta(REG, minInt(intSize(W0), intSize(W1)))
     rule #memory [ REG = or  W0 , W1 ] => #registerDelta(REG, maxInt(intSize(W0), intSize(W1)))
@@ -1632,12 +1644,13 @@ In the yellowpaper, each opcode is defined to consume zero gas unless specified 
     rule #memory [ REG = add W0 , W1 ] => #registerDelta(REG, maxInt(intSize(W0), intSize(W1)) +Int 1)
     rule #memory [ REG = sub W0 , W1 ] => #registerDelta(REG, maxInt(intSize(W0), intSize(W1)) +Int 1)
     rule #memory [ REG = mul W0 , W1 ] => #registerDelta(REG, intSize(W0) +Int intSize(W1))
-    rule #memory [ REG = div W0 , W1 ] => #registerDelta(REG, maxInt(0, intSize(W0) -Int intSize(W1) +Int 1))
+    rule #memory [ REG = div W0 , W1 ] => #registerDelta(REG, maxInt(1, intSize(W0) -Int intSize(W1) +Int 1))
     rule #memory [ REG = mod W0 , W1 ] => #registerDelta(REG, minInt(intSize(W0), intSize(W1)))
+    rule #memory [ REG = exp W0 , W1 ] => #registerDelta(REG, intSize(W0) *Int maxInt(1, W1))
 
     rule #memory [ REG = addmod _  , _  , W2 ] => #registerDelta(REG, intSize(W2))
     rule #memory [ REG = mulmod W0 , W1 , W2 ] => #registerDelta(REG, intSize(W2))
-    rule #memory [ REG = expmod _  , _  , W2 ] => #registerDelta(REG, intSize(W2)
+    rule #memory [ REG = expmod _  , _  , W2 ] => #registerDelta(REG, intSize(W2))
 
     rule #memory [ REG = sha3 _ ] => #registerDelta(REG, 4)
 
@@ -1645,28 +1658,40 @@ In the yellowpaper, each opcode is defined to consume zero gas unless specified 
     rule #memory [ REG = sext WIDTH , _ ] => #registerDelta(REG, WIDTH up/Int 8)
     rule #memory [ REG = twos WIDTH , _ ] => #registerDelta(REG, WIDTH up/Int 8)
 
-    rule #memory [ REG = call @iele.gas        ( .Ints ) ] => #registerDelta(REG, 4)
-    rule #memory [ REG = call @iele.gasprice   ( .Ints ) ] => #registerDelta(REG, 4)
-    rule #memory [ REG = call @iele.gaslimit   ( .Ints ) ] => #registerDelta(REG, 4)
-    rule #memory [ REG = call @iele.coinbase   ( .Ints ) ] => #registerDelta(REG, 3)
-    rule #memory [ REG = call @iele.number     ( .Ints ) ] => #registerDelta(REG, 4)
-    rule #memory [ REG = call @iele.msize      ( .Ints ) ] => #registerDelta(REG, 1)
-    rule #memory [ REG = call @iele.codesize   ( .Ints ) ] => #registerDelta(REG, 1)
-    rule #memory [ REG = call @iele.address    ( .Ints ) ] => #registerDelta(REG, 3)
-    rule #memory [ REG = call @iele.origin     ( .Ints ) ] => #registerDelta(REG, 3)
-    rule #memory [ REG = call @iele.caller     ( .Ints ) ] => #registerDelta(REG, 3)
-    rule #memory [ REG = call @iele.timestamp  ( .Ints ) ] => #registerDelta(REG, 4)
-    rule #memory [ REG = call @iele.difficulty ( .Ints ) ] => #registerDelta(REG, 4)
-    rule #memory [ REG = call @iele.callvalue  ( .Ints ) ] => #registerDelta(REG, 4)
-    rule #memory [ REG = call @iele.blockhash  ( _     ) ] => #registerDelta(REG, 4)
-    rule #memory [ REG = call @iele.balance    ( _     ) ] => #registerDelta(REG, 4)
+    rule #memory [ REG = call @iele.gas         ( .Ints ) ] => #registerDelta(REG, 1)
+    rule #memory [ REG = call @iele.gasprice    ( .Ints ) ] => #registerDelta(REG, 1)
+    rule #memory [ REG = call @iele.gaslimit    ( .Ints ) ] => #registerDelta(REG, 1)
+    rule #memory [ REG = call @iele.beneficiary ( .Ints ) ] => #registerDelta(REG, 3)
+    rule #memory [ REG = call @iele.number      ( .Ints ) ] => #registerDelta(REG, 1)
+    rule #memory [ REG = call @iele.msize       ( .Ints ) ] => #registerDelta(REG, 1)
+    rule #memory [ REG = call @iele.codesize    ( .Ints ) ] => #registerDelta(REG, 1)
+    rule #memory [ REG = call @iele.address     ( .Ints ) ] => #registerDelta(REG, 3)
+    rule #memory [ REG = call @iele.origin      ( .Ints ) ] => #registerDelta(REG, 3)
+    rule #memory [ REG = call @iele.caller      ( .Ints ) ] => #registerDelta(REG, 3)
+    rule #memory [ REG = call @iele.timestamp   ( .Ints ) ] => #registerDelta(REG, 4)
+    rule #memory [ REG = call @iele.difficulty  ( .Ints ) ] => #registerDelta(REG, 4)
+    rule #memory [ REG = call @iele.callvalue   ( .Ints ) ] => #registerDelta(REG, 4)
+    rule #memory [ REG = call @iele.extcodesize ( _     ) ] => #registerDelta(REG, 1)
+    rule #memory [ REG = call @iele.blockhash   ( _     ) ] => #registerDelta(REG, 4)
+    rule #memory [ REG = call @iele.balance     ( _     ) ] => #registerDelta(REG, 4)
 
-    rule #memory [ REG = load INDEX1 , INDEX2 , WIDTH ] => #registerDelta(REG, WIDTH up/Int 8) ~> #memoryExpand(INDEX1, (INDEX2 +Int WIDTH) up/Int 8)
-    rule #memory [ store _ ,  INDEX1 , INDEX2 , WIDTH ] => #memoryExpand(INDEX1, (INDEX2 +Int WIDTH) up/Int 8)
+    rule <k> #memory [ REGS = call @ NAME ( ARGS ) ] => #memoryDelta(REGISTERS -Int #sizeRegs(ARGS) +Int intSizes(ARGS) +Int Gcallmemory < SCHED >) ... </k>
+         <schedule> SCHED </schedule>
+         <funcId> NAME </funcId>
+         <nregs> REGISTERS </nregs>
+
+    rule #memory [ REG = load INDEX1 , INDEX2 , WIDTH ] => #registerDelta(REG, chop(WIDTH) up/Int 8) ~> #memoryExpand(INDEX1, (chop(INDEX2) +Int chop(WIDTH)) up/Int 8) requires chop(WIDTH) >Int 0
+    rule #memory [ REG = load INDEX1 , INDEX2 , 0 ] => .K
+    rule #memory [ store _ ,  INDEX1 , INDEX2 , WIDTH ] => #memoryExpand(INDEX1, (chop(INDEX2) +Int chop(WIDTH)) up/Int 8) requires chop(WIDTH) >Int 0
+    rule #memory [ store _ ,  INDEX1 , INDEX2 , 0 ] => .K
 
     rule <k> #memory [ REG = load INDEX ] => #registerDelta(REG, #sizeWordStack({LM [ INDEX]}:>WordStack) up/Int 8) ... </k>
          <localMem> LM </localMem>
     rule #memory [ store VALUE ,  INDEX ] => #memoryDelta(INDEX, intSize(VALUE))
+
+    rule <k> #memory [ DEST = % SRC:Int ] => #registerDelta(DEST, intSize({REGS [ SRC ]}:>Int)) ... </k>
+         <regs> REGS </regs>
+    rule <k> #memory [ DEST = SRC:Int ] => #registerDelta(DEST, intSize(SRC)) ... </k>
 
     rule <k> #memory [ REG = sload INDEX ] => #registerDelta(REG, intSize(VALUE)) ... </k>
          <id> ACCT </id>
@@ -1676,16 +1701,33 @@ In the yellowpaper, each opcode is defined to consume zero gas unless specified 
            ...
          </account>
 
-    rule #memory [ br _         ] => .K
-    rule #memory [ br _ , _     ] => .K
-    rule #memory [ log _        ] => .K
-    rule #memory [ log _ , _    ] => .K
-    rule #memory [ sstore _ , _ ] => .K
+    rule #memory [ br _           ] => .K
+    rule #memory [ br _ , _       ] => .K
+    rule #memory [ ret _          ] => .K
+    rule #memory [ revert _       ] => .K
+    rule #memory [ log _          ] => .K
+    rule #memory [ log _ , _      ] => .K
+    rule #memory [ sstore _ , _   ] => .K
+    rule #memory [ selfdestruct _ ] => .K
+
+    rule #memory [ _ = call _ at _ ( _ ) send _ , gaslimit _ ] => .K
+    rule #memory [ _ = staticcall _ at _ ( _ ) gaslimit _ ] => .K
+    rule #memory [ _ , _ = create _ ( _ ) send _ ] => .K
+    rule #memory [ _ , _ = copycreate _ ( _ ) send _ ] => .K
+
+    rule #memory [ ECREC ] => .K
+    rule #memory [ SHA256 ] => .K
+    rule #memory [ RIP160 ] => .K
+    rule #memory [ ID ] => .K
+    rule #memory [ ECADD ] => .K
+    rule #memory [ ECMUL ] => .K
+    rule #memory [ ECPAIRING ] => .K
 
     syntax InternalOp ::= #registerDelta ( LValue , Int )
                         | #memoryExpand  ( Int , Int )
                         | #memoryDelta   ( Int , Int )
- // --------------------------------------------------
+                        | #memoryDelta   ( Int ) [klabel(memoryDirectDelta)]
+ // ------------------------------------------------------------------------
     rule <k> #registerDelta(% REG, NEWSIZE) => #deductMemory(PEAK) ... </k>
          <currentMemory> CURR </currentMemory>
          <regs> REGS </regs>
@@ -1693,17 +1735,22 @@ In the yellowpaper, each opcode is defined to consume zero gas unless specified 
 
     rule <k> #memoryExpand(INDEX, NEWSIZE) => #deductMemory(PEAK) ... </k>
          <localMem> LM </localMem>
-         <currentMemory> CURR </currentMemory>
-         <peakMemory> PEAK => maxInt(PEAK, CURR +Int maxInt(0, NEWSIZE -Int (#sizeWordStack({LM [ INDEX ]}:>WordStack)) up/Int 8)) </peakMemory>
+         <currentMemory> CURR => CURR +Int maxInt(0, NEWSIZE -Int ((#sizeWordStack({LM [ INDEX ]}:>WordStack)) up/Int 8)) </currentMemory>
+         <peakMemory> PEAK => maxInt(PEAK, CURR +Int maxInt(0, NEWSIZE -Int ((#sizeWordStack({LM [ INDEX ]}:>WordStack)) up/Int 8))) </peakMemory>
 
-    rule <k> #memoryDelta(INDEX, NEWSIZE) => #deudctMemory(PEAK) ... </k>
+    rule <k> #memoryDelta(INDEX, NEWSIZE) => #deductMemory(PEAK) ... </k>
          <localMem> LM </localMem>
-         <currentMemory> CURR </currentMemory>
-         <peakMemory> PEAK => maxInt(PEAK, CURR +Int NEWSIZE -Int (#sizeWordStack({LM [ INDEX ]}:>WordStack)) up/Int 8) </peakMemory>
+         <currentMemory> CURR => CURR +Int NEWSIZE -Int ((#sizeWordStack({LM [ INDEX ]}:>WordStack)) up/Int 8) </currentMemory>
+         <peakMemory> PEAK => maxInt(PEAK, CURR +Int NEWSIZE -Int ((#sizeWordStack({LM [ INDEX ]}:>WordStack)) up/Int 8)) </peakMemory>
+
+    rule <k> #memoryDelta(DELTA) => #deductMemory(PEAK) ... </k>
+         <currentMemory> CURR => CURR +Int DELTA </currentMemory>
+         <peakMemory> PEAK => maxInt(PEAK, CURR +Int DELTA) </peakMemory>
 
     syntax InternalOp ::= #deductMemory ( Int )
  // -------------------------------------------
     rule <k> #deductMemory(OLDPEAK) => Cmem(SCHED, NEWPEAK) -Int Cmem(SCHED, OLDPEAK) ~> #deductGas ... </k>
+         <schedule> SCHED </schedule>
          <peakMemory> NEWPEAK </peakMemory>
 ```
 
@@ -1715,34 +1762,94 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
 -   `#gasExec` loads all the relevant surronding state and uses that to compute the intrinsic execution gas of each opcode.
 
 ```{.k .uiuck .rvk}
-    syntax InternalOp ::= #precompute ( Instruction , Schedule ) [function]
- // -----------------------------------------------------------------------
-    rule #precompute(_:LoadInst) => Gloadword < SCHED >
-    rule #precompute(_:StoreInst) => Gloadword < SCHED >
-    rule #precompute(_:SLoadInst) => Gsloadword < SCHED >
-    rule #precompute(...) => 0 [owise]
+    syntax InternalOp ::= "#compute" "[" Instruction "," Schedule "]"
+ // -----------------------------------------------------------------
+    rule #compute [ _ = not W,       SCHED ] => Gnot < SCHED > +Int intSize(W) *Int Gnotword < SCHED >
+    rule #compute [ _ = and W0 , W1, SCHED ] => Gbitwise < SCHED > +Int minInt(intSize(W0), intSize(W1)) *Int Gbitwiseword < SCHED >
+    rule #compute [ _ = or  W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gbitwiseword < SCHED >
+    rule #compute [ _ = xor W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gbitwiseword < SCHED >
 
-    syntax InternalOp ::= #compute "[" Instruction "," Schedule "]"
- // --------------------------------------------------
-    rule #compute [ _ = not W,       SCHED ] => intSize(W) *Int Gverylow < SCHED >
-    rule #compute [ _ = and W0 , W1, SCHED ] => minInt(intSize(W0), intSize(W1)) *Int Gverylow < SCHED >
-    rule #compute [ _ = or  W0 , W1, SCHED ] => maxInt(intSize(W0), intSize(W1)) *Int Gverylow < SCHED >
-    rule #compute [ _ = xor W0 , W1, SCHED ] => maxInt(intSize(W0), intSize(W1)) *Int Gverylow < SCHED >
+    rule #compute [ _ = iszero W,      SCHED ] => Giszero < SCHED >
+    rule #compute [ _ = cmp _ W0 , W1, SCHED ] => Gcmp < SCHED > +Int minInt(intSize(W0), intSize(W1)) *Int Gcmpword < SCHED >
 
-    rule #compute [ _ = iszero W,      SCHED ] => Gverylow < SCHED >
-    rule #compute [ _ = cmp _ W0 , W1, SCHED ] => Gverylow < SCHED > *Int minInt(intSize(W0), intSize(W1))
+    rule #compute [ _ = add W0 , W1, SCHED ] => Gadd < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gaddword < SCHED >
+    rule #compute [ _ = sub W0 , W1, SCHED ] => Gadd < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gaddword < SCHED >
+    rule #compute [ _ = mul W0 , W1, SCHED ] => Gmul < SCHED > +Int Cmul(SCHED, intSize(W0), intSize(W1))
+    rule #compute [ _ = div W0 , W1, SCHED ] => Gdiv < SCHED > +Int Cdiv(SCHED, intSize(W0), intSize(W1))
+    rule #compute [ _ = mod W0 , W1, SCHED ] => Gdiv < SCHED > +Int Cdiv(SCHED, intSize(W0), intSize(W1))
+    rule #compute [ _ = exp W0 , W1, SCHED ] => Cexp(SCHED, intSize(W0), W1)
 
-    rule #compute [ _ = add W0 , W1, SCHED ] => maxInt(intSize(W0), intSize(W1)) *Int Gverylow < SCHED >
-    rule #compute [ _ = sub W0 , W1, SCHED ] => maxInt(intSize(W0), intSize(W1)) *Int Gverylow < SCHED >
-    rule #compute [ _ = sub W0 , W1, SCHED ] => maxInt(intSize(W0), intSize(W1)) *Int Gverylow < SCHED >
-    rule #compute [ _ = mul W0 , W1, SCHED ] => Cmul(SCHED, intSize(W0), intSize(W1))
-    rule #compute [ _ = div W0 , W1, SCHED ] => Cdiv(SCHED ,intSize(W0), intSize(W1))
-    rule #compute [ _ = mod W0 , W1, SCHED ] => Cdiv(SCHED, intSize(W0), intSize(W1))
+    rule #compute [ _ = addmod W0 , W1 , W2, SCHED ] => Gadd < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gaddword < SCHED > +Int Cdiv(SCHED, maxInt(intSize(W0), intSize(W1)) +Int 1, intSize(W2))
+    rule #compute [ _ = mulmod W0 , W1 , W2, SCHED ] => Cdiv(SCHED, intSize(W0), intSize(W2)) +Int Cdiv(SCHED, intSize(W1), intSize(W2)) +Int Cmul(SCHED, minInt(intSize(W0), intSize(W2)), minInt(intSize(W1), intSize(W2))) +Int Cdiv(SCHED, intSize(W2) *Int 2, intSize(W2)) +Int Gmulmod < SCHED >
+    rule #compute [ _ = expmod W0 , W1 , W2, SCHED ] => Cexpmod(SCHED, intSize(W0), intSize(W1), intSize(W2))
 
-    rule #compute [ _ = addmod 
+    rule <k> #compute [ _ = sha3 W0, SCHED ] => Gsha3 < SCHED > +Int (#sizeWordStack({LM [ W0 ]}:>WordStack) up/Int 8) *Int Gsha3word < SCHED > ... </k>
+         <localMem> LM </localMem>
 
+    rule #compute [ _ = byte _ , _, SCHED ] => Gbyte < SCHED >
+    rule #compute [ _ = twos WIDTH, _, SCHED ] => Gsign < SCHED > +Int (maxInt(1, WIDTH) up/Int 8) *Int Gsignword < SCHED >
+    rule #compute [ _ = sext WIDTH, _, SCHED ] => Gsign < SCHED > +Int (maxInt(1, WIDTH) up/Int 8) *Int Gsignword < SCHED >
 
-    rule <k> #gasExec(SCHED, sstore VALUE , INDEX) => Csstore(SCHED, VALUE, #lookup(STORAGE, INDEX)) ... </k>
+    rule #compute [ _ = call @iele.gas         ( _ ), SCHED ] => Greadstate < SCHED >
+    rule #compute [ _ = call @iele.gasprice    ( _ ), SCHED ] => Greadstate < SCHED >
+    rule #compute [ _ = call @iele.gaslimit    ( _ ), SCHED ] => Greadstate < SCHED >
+    rule #compute [ _ = call @iele.number      ( _ ), SCHED ] => Greadstate < SCHED >
+    rule #compute [ _ = call @iele.msize       ( _ ), SCHED ] => Greadstate < SCHED >
+    rule #compute [ _ = call @iele.codesize    ( _ ), SCHED ] => Greadstate < SCHED >
+    rule #compute [ _ = call @iele.beneficiary ( _ ), SCHED ] => Greadstate < SCHED >
+    rule #compute [ _ = call @iele.address     ( _ ), SCHED ] => Greadstate < SCHED >
+    rule #compute [ _ = call @iele.origin      ( _ ), SCHED ] => Greadstate < SCHED >
+    rule #compute [ _ = call @iele.caller      ( _ ), SCHED ] => Greadstate < SCHED >
+    rule #compute [ _ = call @iele.timestamp   ( _ ), SCHED ] => Greadstate < SCHED >
+    rule #compute [ _ = call @iele.difficulty  ( _ ), SCHED ] => Greadstate < SCHED >
+    rule #compute [ _ = call @iele.callvalue   ( _ ), SCHED ] => Greadstate < SCHED >
+    rule #compute [ _ = call @iele.blockhash   ( _ ), SCHED ] => Gblockhash < SCHED >
+
+    rule #compute [ br _, SCHED ] => Gbr < SCHED >
+    rule #compute [ br _ , _, SCHED ] => Gbrcond < SCHED >
+
+    rule <k> #compute [ _ = call @ NAME ( ARGS ), SCHED ] => Gcallreg < SCHED > *Int REGISTERS +Int intSizes(ARGS) *Int Gcopy < SCHED > +Int Glocalcall < SCHED > ... </k>
+         <funcId> NAME </funcId>
+         <nregs> REGISTERS </nregs>
+
+    rule <k> #compute [ ret ARGS, SCHED ] => Gmove < SCHED > *Int #sizeRegs(ARGS) +Int Gret < SCHED > ... </k>
+         <localCalls> ListItem(_) ... </localCalls>
+    rule <k> #compute [ ret _, SCHED ] => 0 ... </k>
+         <localCalls> .List </localCalls>
+
+    rule #compute [ revert _, SCHED ] => 0
+
+    rule <k> #compute [ _, RETS::LValues = call _ at ACCTTO ( ARGS ) send VALUE , gaslimit GCAP, SCHED ] => Ccall(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, VALUE, #sizeLVals(RETS), intSizes(ARGS)) ... </k>
+         <gas> GAVAIL </gas>
+         <activeAccounts> ACCTS </activeAccounts>
+
+    rule <k> #compute [ _, RETS::LValues = staticcall _ at ACCTTO ( ARGS ) gaslimit GCAP, SCHED ] => Ccall(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0, #sizeLVals(RETS), intSizes(ARGS)) ... </k>
+         <gas> GAVAIL </gas>
+         <activeAccounts> ACCTS </activeAccounts>
+
+    rule <k> #compute [ log IDX, SCHED ]                                 => (Glog < SCHED > +Int (Glogdata < SCHED > *Int #sizeWordStack({LM [ IDX ]}:>WordStack)) +Int (0 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
+    rule <k> #compute [ log IDX , _:Int, SCHED ]                         => (Glog < SCHED > +Int (Glogdata < SCHED > *Int #sizeWordStack({LM [ IDX ]}:>WordStack)) +Int (1 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
+    rule <k> #compute [ log IDX , _:Int , _:Int, SCHED ]                 => (Glog < SCHED > +Int (Glogdata < SCHED > *Int #sizeWordStack({LM [ IDX ]}:>WordStack)) +Int (2 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
+    rule <k> #compute [ log IDX , _:Int , _:Int , _:Int, SCHED ]         => (Glog < SCHED > +Int (Glogdata < SCHED > *Int #sizeWordStack({LM [ IDX ]}:>WordStack)) +Int (3 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
+    rule <k> #compute [ log IDX , _:Int , _:Int , _:Int,  _:Int, SCHED ] => (Glog < SCHED > +Int (Glogdata < SCHED > *Int #sizeWordStack({LM [ IDX ]}:>WordStack)) +Int (3 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
+
+    rule <k> #compute [ _ = load INDEX, SCHED ] => Gloadcell < SCHED > +Int #sizeWordStack({LM [ INDEX ]}:>WordStack) *Int Gloadword < SCHED > ... </k>
+         <localMem> LM </localMem>
+
+    rule #compute [ _ = load INDEX , OFFSET , WIDTH, SCHED ] => Gload < SCHED > +Int WIDTH *Int Gloadword < SCHED >
+
+    rule #compute [ store VALUE , INDEX, SCHED ] => Gstorecell < SCHED > +Int intSize(VALUE) *Int Gstoreword < SCHED >
+    rule #compute [ store VALUE , INDEX , OFFSET , WIDTH, SCHED ] => Gstore < SCHED > +Int WIDTH *Int Gstoreword < SCHED >
+
+    rule <k> #compute [ DEST = % SRC:Int, SCHED ] => Gcopy < SCHED > *Int intSize({REGS [ SRC ]}:>Int) ... </k>
+         <regs> REGS </regs>
+
+    rule #compute [ DEST = SRC:Int, SCHED ] => Gcopy < SCHED > *Int intSize(SRC)
+
+    rule #compute [ _ = call @iele.balance     ( _ ), SCHED ] => Gbalance     < SCHED >
+    rule #compute [ _ = call @iele.extcodesize ( _ ), SCHED ] => Gextcodesize < SCHED >
+
+    rule <k> #compute [ _ = sload INDEX, SCHED ] => Gsload < SCHED > +Int Gsloadkey < SCHED > *Int intSize(INDEX) +Int Gsloadword < SCHED > *Int intSize(#lookup(STORAGE, INDEX)) ... </k>
          <id> ACCT </id>
          <account>
            <acctID> ACCT </acctID>
@@ -1750,25 +1857,18 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
            ...
          </account>
 
-    rule <k> #gasExec(SCHED, _ = exp W0 , 0)  => Gexp < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = exp W0 , W1) => Gexp < SCHED > +Int (Gexpbyte < SCHED > *Int (1 +Int (log256Int(W1)))) ... </k> requires W1 =/=K 0
+    rule <k> #compute [ sstore VALUE , INDEX, SCHED ] => Csstore(SCHED, INDEX, VALUE, #lookup(STORAGE, INDEX)) ... </k>
+         <id> ACCT </id>
+         <account>
+           <acctID> ACCT </acctID>
+           <storage> STORAGE </storage>
+           ...
+         </account>
 
+    rule #compute [ _ , _ = create _ ( ARGS ) send _, SCHED ] => Gcreate < SCHED > +Int Gcopy < SCHED > *Int intSizes(ARGS)
+    rule #compute [ _ , _ = copycreate _ ( ARGS ) send _, SCHED ] => Gcopycreate < SCHED > +Int Gcopy < SCHED > *Int intSizes(ARGS)
 
-    rule <k> #gasExec(SCHED, log IDX)                                 => (Glog < SCHED > +Int (Glogdata < SCHED > *Int #sizeWordStack({LM [ IDX ]}:>WordStack)) +Int (0 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
-    rule <k> #gasExec(SCHED, log IDX , _:Int)                         => (Glog < SCHED > +Int (Glogdata < SCHED > *Int #sizeWordStack({LM [ IDX ]}:>WordStack)) +Int (1 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
-    rule <k> #gasExec(SCHED, log IDX , _:Int , _:Int)                 => (Glog < SCHED > +Int (Glogdata < SCHED > *Int #sizeWordStack({LM [ IDX ]}:>WordStack)) +Int (2 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
-    rule <k> #gasExec(SCHED, log IDX , _:Int , _:Int , _:Int)         => (Glog < SCHED > +Int (Glogdata < SCHED > *Int #sizeWordStack({LM [ IDX ]}:>WordStack)) +Int (3 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
-    rule <k> #gasExec(SCHED, log IDX , _:Int , _:Int , _:Int,  _:Int) => (Glog < SCHED > +Int (Glogdata < SCHED > *Int #sizeWordStack({LM [ IDX ]}:>WordStack)) +Int (4 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
-
-    rule <k> #gasExec(SCHED, _ = call _ at ACCTTO ( _ ) send VALUE , gaslimit GCAP) => Ccall(SCHED, ACCTTO,   ACCTS, GCAP, GAVAIL, VALUE) ... </k>
-         <activeAccounts> ACCTS </activeAccounts>
-         <gas> GAVAIL </gas>
-
-    rule <k> #gasExec(SCHED, _ = staticcall _ at ACCTTO ( _ ) gaslimit GCAP) => Ccall(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0) ... </k>
-         <activeAccounts> ACCTS </activeAccounts>
-         <gas> GAVAIL </gas>
-
-    rule <k> #gasExec(SCHED, selfdestruct ACCTTO) => Cselfdestruct(SCHED, ACCTTO, ACCTS, BAL) ... </k>
+    rule <k> #compute [ selfdestruct ACCTTO, SCHED ] => Cselfdestruct(SCHED, ACCTTO, ACCTS, BAL) ... </k>
          <activeAccounts> ACCTS </activeAccounts>
          <id> ACCTFROM </id>
          <account>
@@ -1777,75 +1877,15 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
            ...
          </account>
 
-    rule <k> #gasExec(SCHED, _:CreateInst) => Gcreate < SCHED > ... </k>
-
-    rule <k> #gasExec(SCHED, _ = sha3 IDX) => Gsha3   < SCHED > +Int (Gsha3word < SCHED > *Int (#sizeWordStack({LM [ IDX ]}:>WordStack) up/Int 32)) ... </k> <localMem> LM </localMem>
-
-    rule <k> #gasExec(SCHED, _:SLoadInst)  => Gsload  < SCHED > ... </k>
-
-    // Wzero
-    rule <k> #gasExec(SCHED, _:RevertInst)  => Gzero < SCHED > ... </k>
-
-    // Wbase
-    rule <k> #gasExec(SCHED, _ = call @iele.address ( .Ints ))     => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.origin ( .Ints ))      => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.caller ( .Ints ))      => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.callvalue ( .Ints ))   => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.codesize ( .Ints ))    => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.gasprice ( .Ints ))    => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.beneficiary ( .Ints )) => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.timestamp ( .Ints ))   => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.number ( .Ints ))      => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.difficulty ( .Ints ))  => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.gaslimit ( .Ints ))    => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.msize ( .Ints ))       => Gbase < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.gas ( .Ints ))         => Gbase < SCHED > ... </k>
-
-    // Wverylow
-    rule <k> #gasExec(SCHED, _:AddInst)    => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:SubInst)    => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:NotInst)    => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:CmpInst)    => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:IsZeroInst) => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:AndInst)    => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:OrInst)     => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:XorInst)    => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:ByteInst)   => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:LoadInst)   => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:StoreInst)  => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:AssignInst) => Gverylow < SCHED > ... </k>
-
-    // Wlow
-    rule <k> #gasExec(SCHED, _:MulInst)  => Glow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:DivInst)  => Glow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:ModInst)  => Glow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:SExtInst) => Glow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:TwosInst) => Glow < SCHED > ... </k>
-
-    // Wmid
-    rule <k> #gasExec(SCHED, _:AddModInst)    => Gmid < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:MulModInst)    => Gmid < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:ExpModInst)    => Gmid < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:JumpInst)      => Gmid < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:ReturnInst)    => Gmid < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @ NAME ( _ )) => Gmid < SCHED > ... </k> requires notBool isIeleBuiltin(NAME)
-
-    // Whigh
-    rule <k> #gasExec(SCHED, _:CondJumpInst) => Ghigh < SCHED > ... </k>
-
-    rule <k> #gasExec(SCHED, _ = call @iele.extcodesize ( _ )) => Gextcodesize < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.balance ( _ ))     => Gbalance     < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _ = call @iele.blockhash ( _ ))   => Gblockhash   < SCHED > ... </k>
-
     // Precompiled
-    rule <k> #gasExec(_, ECREC)  => 3000 ... </k>
-    rule <k> #gasExec(_, SHA256) =>  60 +Int  12 *Int (LEN up/Int 32) ... </k> <callData> LEN , DATA , .Ints </callData>
-    rule <k> #gasExec(_, RIP160) => 600 +Int 120 *Int (LEN up/Int 32) ... </k> <callData> LEN , DATA , .Ints </callData>
-    rule <k> #gasExec(_, ID)     =>  15 +Int   3 *Int #sizeRegs(DATA) ... </k> <callData> DATA </callData>
+    rule <k> #compute [ ECREC, SCHED ]  => 3000 ... </k>
+    rule <k> #compute [ SHA256, SCHED ] =>  60 +Int  12 *Int (maxInt(LEN, intSize(DATA)) up/Int 32) ... </k> <callData> LEN , DATA , .Ints </callData>
+    rule <k> #compute [ RIP160, SCHED ] => 600 +Int 120 *Int (maxInt(LEN, intSize(DATA)) up/Int 32) ... </k> <callData> LEN , DATA , .Ints </callData>
+    rule <k> #compute [ ID, SCHED ]     =>  0 ... </k>
 
-    rule #gasExec(_, ECADD) => 500
-    rule #gasExec(_, ECMUL) => 40000
-    rule <k> #gasExec(_, ECPAIRING) => 100000 +Int (#sizeRegs(DATA) /Int 6) *Int 80000 ... </k> <callData> DATA </callData>
+    rule #compute [ ECADD, SCHED ] => 500
+    rule #compute [ ECMUL, SCHED ] => 40000
+    rule <k> #compute [ ECPAIRING, SCHED ] => 100000 +Int (#sizeRegs(DATA) /Int 6) *Int 80000 ... </k> <callData> DATA </callData>
 ```
 
 There are several helpers for calculating gas (most of them also specified in the yellowpaper).
@@ -1853,26 +1893,31 @@ There are several helpers for calculating gas (most of them also specified in th
 Note: These are all functions as the operator `#gasExec` has already loaded all the relevant state.
 
 ```{.k .uiuck .rvk}
-    syntax Int ::= Csstore ( Schedule , Int , Int ) [function]
+    syntax Int ::= Csstore ( Schedule , Int , Int , Int ) [function]
  // ----------------------------------------------------------
-    rule Csstore(SCHED, VALUE, OLD) => #if VALUE =/=Int 0 andBool OLD ==Int 0 #then Gsstoreset < SCHED > #else Gsstorereset < SCHED > #fi
+    rule Csstore(SCHED, INDEX, VALUE, OLDVALUE) => Gsstore < SCHED > +Int Gsstorekey < SCHED > *Int intSize(INDEX) +Int Gsstoreword < SCHED > *Int intSize(VALUE) +Int #if VALUE =/=Int 0 andBool OLDVALUE ==Int 0 #then Gsstoresetkey < SCHED > *Int intSize(INDEX) +Int Gsstoreset < SCHED > *Int intSize(VALUE) #else maxInt(0, Gsstoreset < SCHED > *Int (intSize(VALUE) -Int intSize(OLDVALUE))) #fi
 
-    syntax Int ::= Ccall    ( Schedule , Int , Map , Int , Int , Int ) [function]
-                 | Ccallgas ( Schedule , Int , Map , Int , Int , Int ) [function]
-                 | Cgascap  ( Schedule , Int , Int , Int )             [function]
-                 | Cextra   ( Schedule , Int , Map , Int )             [function]
-                 | Cxfer    ( Schedule , Int )                         [function]
-                 | Cnew     ( Schedule , Int , Map , Int )             [function]
- // -----------------------------------------------------------------------------
-    rule Ccall(SCHED, ACCT, ACCTS, GCAP, GAVAIL, VALUE) => Cextra(SCHED, ACCT, ACCTS, VALUE) +Int Cgascap(SCHED, GCAP, GAVAIL, Cextra(SCHED, ACCT, ACCTS, VALUE))
+    syntax Int ::= Ccall    ( Schedule , Int , Map , Int , Int , Int , Int , Int ) [function]
+                 | Ccallgas ( Schedule , Int , Map , Int , Int , Int , Int , Int ) [function]
+                 | Cgascap  ( Schedule , Int , Int , Int )                         [function]
+                 | Cextra   ( Schedule , Int , Map , Int , Int , Int )             [function]
+                 | Cxfer    ( Schedule , Int )                                     [function]
+                 | Cnew     ( Schedule , Int , Map , Int )                         [function]
+                 | Ccallmem ( Schedule , Int , Int )                               [function]
+                 | Cdiv     ( Schedule , Int , Int )                               [function]
+                 | Cmul     ( Schedule , Int , Int )                               [function]
+                 | Cexp     ( Schedule , Int , Int )                               [function]
+                 | Cexpmod  ( Schedule , Int , Int , Int )                         [function]
+ // -----------------------------------------------------------------------------------------
+    rule Ccall(SCHED, ACCT, ACCTS, GCAP, GAVAIL, VALUE, RETS, ARGS) => Cextra(SCHED, ACCT, ACCTS, VALUE, RETS, ARGS) +Int Cgascap(SCHED, GCAP, GAVAIL, Cextra(SCHED, ACCT, ACCTS, VALUE, RETS, ARGS))
 
-    rule Ccallgas(SCHED, ACCT, ACCTS, GCAP, GAVAIL, 0)     => Cgascap(SCHED, GCAP, GAVAIL, Cextra(SCHED, ACCT, ACCTS,     0))
-    rule Ccallgas(SCHED, ACCT, ACCTS, GCAP, GAVAIL, VALUE) => Cgascap(SCHED, GCAP, GAVAIL, Cextra(SCHED, ACCT, ACCTS, VALUE)) +Int Gcallstipend < SCHED > requires VALUE =/=K 0
+    rule Ccallgas(SCHED, ACCT, ACCTS, GCAP, GAVAIL, 0, RETS, ARGS)     => Cgascap(SCHED, GCAP, GAVAIL, Cextra(SCHED, ACCT, ACCTS,     0, RETS, ARGS))
+    rule Ccallgas(SCHED, ACCT, ACCTS, GCAP, GAVAIL, VALUE, RETS, ARGS) => Cgascap(SCHED, GCAP, GAVAIL, Cextra(SCHED, ACCT, ACCTS, VALUE, RETS, ARGS)) +Int Gcallstipend < SCHED > requires VALUE =/=K 0
 
     rule Cgascap(SCHED, GCAP, GAVAIL, GEXTRA) => minInt(#allBut64th(GAVAIL -Int GEXTRA), GCAP) requires GAVAIL >=Int GEXTRA andBool notBool Gstaticcalldepth << SCHED >>
     rule Cgascap(SCHED, GCAP, GAVAIL, GEXTRA) => GCAP                                          requires GAVAIL <Int  GEXTRA orBool Gstaticcalldepth << SCHED >>
 
-    rule Cextra(SCHED, ACCT, ACCTS, VALUE) => Gcall < SCHED > +Int Cnew(SCHED, ACCT, ACCTS, VALUE) +Int Cxfer(SCHED, VALUE)
+    rule Cextra(SCHED, ACCT, ACCTS, VALUE, RETS, ARGS) => Gcall < SCHED > +Int Cnew(SCHED, ACCT, ACCTS, VALUE) +Int Cxfer(SCHED, VALUE) +Int Ccallmem(SCHED, RETS, ARGS)
 
     rule Cxfer(SCHED, 0) => 0
     rule Cxfer(SCHED, N) => Gcallvalue < SCHED > requires N =/=K 0
@@ -1881,6 +1926,8 @@ Note: These are all functions as the operator `#gasExec` has already loaded all 
       requires         #accountNonexistent(SCHED, ACCT, ACCTS) andBool VALUE =/=Int 0
     rule Cnew(SCHED, ACCT, ACCTS, VALUE) => 0
       requires notBool #accountNonexistent(SCHED, ACCT, ACCTS) orBool  VALUE  ==Int 0
+
+    rule Ccallmem(SCHED, RETS, ARGS) => Gmove < SCHED > *Int RETS +Int Gcopy < SCHED > *Int ARGS
 
     syntax Int ::= Cselfdestruct ( Schedule , Int , Map , Int ) [function]
  // ----------------------------------------------------------------------
@@ -1941,13 +1988,17 @@ A `ScheduleConst` is a constant determined by the fee schedule; applying a `Sche
     syntax Int ::= ScheduleConst "<" Schedule ">" [function]
  // --------------------------------------------------------
 
-    syntax ScheduleConst ::= "Gzero"        | "Gbase"          | "Gverylow"      | "Glow"          | "Gmid"        | "Ghigh"
-                           | "Gextcodesize" | "Gextcodecopy"   | "Gbalance"      | "Gsload"        | "Gjumpdest"   | "Gsstoreset"
-                           | "Gsstorereset" | "Rsstoreclear"   | "Rselfdestruct" | "Gselfdestruct" | "Gcreate"     | "Gcodedeposit"  | "Gcall"
-                           | "Gcallvalue"   | "Gcallstipend"   | "Gnewaccount"   | "Gexp"          | "Gexpbyte"    | "Gmemory"       | "Gtxcreate"
-                           | "Gtxdatazero"  | "Gtxdatanonzero" | "Gtransaction"  | "Glog"          | "Glogdata"    | "Glogtopic"     | "Gsha3"
-                           | "Gsha3word"    | "Gcopy"          | "Gblockhash"    | "Gquadcoeff"    | "maxCodeSize" | "Rb"            | "Gquaddivisor"
- // -------------------------------------------------------------------------------------------------------------------------------------------------
+    syntax ScheduleConst ::= "Gextcodesize"  | "Gbalance"       | "Gsload"        | "Gadd"         | "Gaddword"    | "Gbitwise"      | "Gbitwiseword"
+                           | "Rselfdestruct" | "Gselfdestruct"  | "Gcreate"       | "Gcodedeposit" | "Gcall"       | "Gbr"           | "Gbrcond"
+                           | "Gcallvalue"    | "Gcallstipend"   | "Gnewaccount"   | "Gexp"         | "Gmemory"     | "Gtxcreate"
+                           | "Gtxdatazero"   | "Gtxdatanonzero" | "Gtransaction"  | "Glog"         | "Glogdata"    | "Glogtopic"     | "Gsha3"
+                           | "Gsha3word"     | "Gcopy"          | "Gmove"         | "Gblockhash"   | "Gquadcoeff"  | "Rb"            | "Gdiv"
+                           | "Gstoreword"    | "Gstorecell"     | "Gstore"        | "Gsloadword"   | "Gsloadkey"   | "Gsignword"     | "Gsign"
+                           | "Gret"          | "Greadstate"     | "Gnot"          | "Gnotword"     | "Gmul"        | "Gmulmod"
+                           | "Glocalcall"    | "Gloadword"      | "Gload"         | "Gloadcell"    | "Giszero"     | "Gcmp"          | "Gcmpword"
+                           | "Gcallreg"      | "Gcallmemory"   | "Gbyte"        | "Gcopycreate" | "Gsstore"       | "Gsstorekey"
+                           | "Gsstoreset"    | "Gsstoresetkey"  | "Gsstoreword"
+ // ---------------------------------------------------------------------------------------------------------------------------------
 ```
 
 ### Default Schedule
@@ -1955,55 +2006,60 @@ A `ScheduleConst` is a constant determined by the fee schedule; applying a `Sche
 ```{.k .uiuck .rvk}
     syntax Schedule ::= "DEFAULT"
  // -----------------------------
-    rule Gzero    < DEFAULT > => 0
-    rule Gbase    < DEFAULT > => 2
-    rule Gverylow < DEFAULT > => 3
-    rule Glow     < DEFAULT > => 5
-    rule Gmid     < DEFAULT > => 8
-    rule Ghigh    < DEFAULT > => 10
-
-    rule Gexp      < DEFAULT > => 10
-    rule Gexpbyte  < DEFAULT > => 50
-    rule Gsha3     < DEFAULT > => 30
-    rule Gsha3word < DEFAULT > => 6
-
-    rule Gsload       < DEFAULT > => 200
-    rule Gsstoreset   < DEFAULT > => 20000
-    rule Gsstorereset < DEFAULT > => 5000
-    rule Rsstoreclear < DEFAULT > => 15000
-
-    rule Glog      < DEFAULT > => 375
-    rule Glogdata  < DEFAULT > => 8
-    rule Glogtopic < DEFAULT > => 375
-
-    rule Gcall        < DEFAULT > => 40
-    rule Gcallstipend < DEFAULT > => 2300
-    rule Gcallvalue   < DEFAULT > => 9000
-    rule Gnewaccount  < DEFAULT > => 25000
-
-    rule Gcreate       < DEFAULT > => 32000
-    rule Gcodedeposit  < DEFAULT > => 200
-    rule Gselfdestruct < DEFAULT > => 0
-    rule Rselfdestruct < DEFAULT > => 24000
-
-    rule Gmemory      < DEFAULT > => 3
-    rule Gquadcoeff   < DEFAULT > => 512
-    rule Gcopy        < DEFAULT > => 3
-    rule Gquaddivisor < DEFAULT > => 20
-
+    rule Gcopy          < DEFAULT > => 3
+    rule Gmove          < DEFAULT > => 3
+    rule Greadstate     < DEFAULT > => 2
+    rule Gadd           < DEFAULT > => 0
+    rule Gaddword       < DEFAULT > => 3
+    rule Gnot           < DEFAULT > => 0
+    rule Gnotword       < DEFAULT > => 3
+    rule Gbitwise       < DEFAULT > => 0
+    rule Gbitwiseword   < DEFAULT > => 3
+    rule Gbyte          < DEFAULT > => 3
+    rule Gsign          < DEFAULT > => 0
+    rule Gsignword      < DEFAULT > => 5
+    rule Giszero        < DEFAULT > => 3
+    rule Gcmp           < DEFAULT > => 0
+    rule Gcmpword       < DEFAULT > => 3
+    rule Gbr            < DEFAULT > => 8
+    rule Gbrcond        < DEFAULT > => 10
+    rule Gblockhash     < DEFAULT > => 20
+    rule Gsha3          < DEFAULT > => 30
+    rule Gsha3word      < DEFAULT > => 6
+    rule Gloadcell      < DEFAULT > => 3
+    rule Gload          < DEFAULT > => 0
+    rule Gloadword      < DEFAULT > => 3
+    rule Gstorecell     < DEFAULT > => 3
+    rule Gstore         < DEFAULT > => 0
+    rule Gstoreword     < DEFAULT > => 3
+    rule Gsstore        < DEFAULT > => 1000
+    rule Gsstoreword    < DEFAULT > => 500
+    rule Gsstorekey     < DEFAULT > => 500
+    rule Gsstoreset     < DEFAULT > => 1875
+    rule Gsstoresetkey  < DEFAULT > => 1875
+    rule Gsload         < DEFAULT > => 50
+    rule Gsloadkey      < DEFAULT > => 100
+    rule Gsloadword     < DEFAULT > => 50
+    rule Gselfdestruct  < DEFAULT > => 0
+    rule Gcallmemory    < DEFAULT > => 2
+    rule Gcallreg       < DEFAULT > => 3
+    rule Glocalcall     < DEFAULT > => 11
+    rule Gret           < DEFAULT > => 8
+    rule Gcall          < DEFAULT > => 40
+    rule Gcallstipend   < DEFAULT > => 2300
+    rule Gcallvalue     < DEFAULT > => 9000
+    rule Gnewaccount    < DEFAULT > => 25000
+    rule Gcreate        < DEFAULT > => 32000
+    rule Gcopycreate    < DEFAULT > => 33000
+    rule Gcodedeposit   < DEFAULT > => 200
+    rule Gmemory        < DEFAULT > => 1
+    rule Gquadcoeff     < DEFAULT > => 8192
     rule Gtransaction   < DEFAULT > => 21000
     rule Gtxcreate      < DEFAULT > => 53000
     rule Gtxdatazero    < DEFAULT > => 4
     rule Gtxdatanonzero < DEFAULT > => 68
-
-    rule Gjumpdest    < DEFAULT > => 1
-    rule Gbalance     < DEFAULT > => 400
-    rule Gblockhash   < DEFAULT > => 20
-    rule Gextcodesize < DEFAULT > => 700
-    rule Gextcodecopy < DEFAULT > => 700
-
-    rule maxCodeSize < DEFAULT > => 2 ^Int 16
-    rule Rb          < DEFAULT > => 3 *Int (10 ^Int 18)
+    rule Rselfdestruct  < DEFAULT > => 24000
+    rule Rb             < DEFAULT > => 3 *Int (10 ^Int 18)
 
     rule Gselfdestructnewaccount << DEFAULT >> => false
     rule Gstaticcalldepth        << DEFAULT >> => true
@@ -2059,8 +2115,8 @@ The following code processes a `Contract` and loads it into the `<program>` cell
       => #loadDeclarations(FUNCS, <program> PROG </program>)
     rule #loadDeclarations(.TopLevelDefinitions, <program> PROG </program>) => <program> PROG </program>
 
-    rule #loadFunction(FUNCS, BLOCKS, <program> PROG <functions> REST </functions> <funcIds> NAMES </funcIds> </program>, NAME, <function> FUNC <instructions> _ </instructions> <jumpTable> _ </jumpTable> </function>)
-      => #loadDeclarations(FUNCS, <program> PROG <funcIds> NAMES SetItem(NAME) </funcIds> <functions> REST <function> FUNC <instructions> BLOCKS </instructions> <jumpTable> #computeJumpTable(BLOCKS) </jumpTable> </function> </functions> </program>)
+    rule #loadFunction(FUNCS, BLOCKS, <program> PROG <functions> REST </functions> <funcIds> NAMES </funcIds> </program>, NAME, <function> FUNC <instructions> _ </instructions> <jumpTable> _ </jumpTable> <nregs> _ </nregs> </function>)
+      => #loadDeclarations(FUNCS, <program> PROG <funcIds> NAMES SetItem(NAME) </funcIds> <functions> REST <function> FUNC <instructions> BLOCKS </instructions> <jumpTable> #computeJumpTable(BLOCKS) </jumpTable> <nregs> #computeNRegs(BLOCKS) </nregs> </function> </functions> </program>)
    
     syntax IeleName ::= #mainContract ( Contract ) [function]
     syntax Int ::= #contractSize ( Contract , IeleName ) [function]
@@ -2081,6 +2137,65 @@ The following code processes a `Contract` and loads it into the `<program>` cell
     rule #computeJumpTable(LABEL : INSTRS BLOCKS, JUMPS, LABELS) => #computeJumpTable(BLOCKS, JUMPS [ LABEL <- INSTRS BLOCKS ], LABELS SetItem(LABEL)) requires notBool LABEL in LABELS
     rule #computeJumpTable(_::LabeledBlock BLOCKS, JUMPS, LABELS) => #computeJumpTable(BLOCKS, JUMPS, LABELS) [owise]
     rule #computeJumpTable(_::UnlabeledBlock BLOCKS, JUMPS, LABELS) => #computeJumpTable(BLOCKS, JUMPS, LABELS) [owise]
+
+    syntax Set ::= #registers ( Instruction ) [function]
+                 | #registers ( LValues ) [function, klabel(registersLValues)]
+                 | #registers ( Operands ) [function, klabel(registersOperands)]
+    syntax Int ::= #computeNRegs ( Blocks )       [function]
+                 | #computeNRegs ( Blocks , Set ) [function, klabel(#computeNRegsAux)]
+ // ----------------------------------------------------------------------------------
+    rule #computeNRegs(BLOCKS) => #computeNRegs(BLOCKS, .Set)
+
+    rule #computeNRegs(.LabeledBlocks, REGS) => size(REGS)
+    rule #computeNRegs(LABEL : INSTRS BLOCKS, REGS) => #computeNRegs(INSTRS BLOCKS, REGS)
+    rule #computeNRegs(INSTR INSTRS::Instructions BLOCKS::LabeledBlocks, REGS) => #computeNRegs(INSTRS BLOCKS, REGS #registers(INSTR))
+    rule #computeNRegs(.Instructions BLOCKS, REGS) => #computeNRegs(BLOCKS, REGS)
+
+    rule #registers(R1 = _:Int) => SetItem(R1)
+    rule #registers(R1 = R2:LValue) => SetItem(R1) SetItem(R2)
+    rule #registers(R1 = load R2) => SetItem(R1) SetItem(R2)
+    rule #registers(R1 = load R2, R3, R4) => SetItem(R1) SetItem(R2) SetItem(R3) SetItem(R4)
+    rule #registers(store R1, R2) => SetItem(R1) SetItem(R2)
+    rule #registers(store R1, R2, R3, R4) => SetItem(R1) SetItem(R2) SetItem(R3) SetItem(R4)
+    rule #registers(R1 = sload R2) => SetItem(R1) SetItem(R2)
+    rule #registers(sstore R1, R2) => SetItem(R1) SetItem(R2)
+    rule #registers(R1 = iszero R2) => SetItem(R1) SetItem(R2)
+    rule #registers(R1 = not R2) => SetItem(R1) SetItem(R2)
+    rule #registers(R1 = add R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
+    rule #registers(R1 = mul R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
+    rule #registers(R1 = sub R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
+    rule #registers(R1 = div R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
+    rule #registers(R1 = exp R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
+    rule #registers(R1 = mod R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
+    rule #registers(R1 = addmod R2, R3, R4) => SetItem(R1) SetItem(R2) SetItem(R3) SetItem(R4)
+    rule #registers(R1 = mulmod R2, R3, R4) => SetItem(R1) SetItem(R2) SetItem(R3) SetItem(R4)
+    rule #registers(R1 = expmod R2, R3, R4) => SetItem(R1) SetItem(R2) SetItem(R3) SetItem(R4)
+    rule #registers(R1 = byte R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
+    rule #registers(R1 = sext R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
+    rule #registers(R1 = twos R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
+    rule #registers(R1 = and R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
+    rule #registers(R1 = or R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
+    rule #registers(R1 = xor R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
+    rule #registers(R1 = cmp _ R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
+    rule #registers(R1 = sha3 R2) => SetItem(R1) SetItem(R2)
+    rule #registers(br _) => .Set
+    rule #registers(br R1, _) => SetItem(R1)
+    rule #registers(R1 = call _ ( R2 )) => #registers(R1) #registers(R2)
+    rule #registers(R1 = call _ at R2 ( R3 ) send R4, gaslimit R5) => #registers(R1) SetItem(R2) #registers(R3) SetItem(R4) SetItem(R5)
+    rule #registers(R1 = staticcall _ at R2 ( R3 ) gaslimit R4) => #registers(R1) SetItem(R2) #registers(R3) SetItem(R4)
+    rule #registers(ret R1) => #registers(R1)
+    rule #registers(revert R1) => SetItem(R1)
+    rule #registers(log R1) => SetItem(R1)
+    rule #registers(log R1, R2) => SetItem(R1) #registers(R2)
+    rule #registers(R1, R2 = create _ ( R3 ) send R4) => SetItem(R1) SetItem(R2) #registers(R3) SetItem(R4)
+    rule #registers(R1, R2 = copycreate R3 ( R4 ) send R5) => SetItem(R1) SetItem(R2) SetItem(R3) #registers(R4) SetItem(R5)
+    rule #registers(selfdestruct R1) => SetItem(R1)
+    
+    rule #registers(REG, REGS::LValues) => SetItem(REG) #registers(REGS)
+    rule #registers(REG, REGS::Operands) => SetItem(REG) #registers(REGS)
+    rule #registers(.LValues) => .Set
+    rule #registers(.Operands) => .Set
+
 endmodule
 ```
 
