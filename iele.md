@@ -1732,26 +1732,255 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     rule <k> #gasExec(SCHED, _ = call @iele.msize ( .Ints ))       => Gbase < SCHED > ... </k>
     rule <k> #gasExec(SCHED, _ = call @iele.gas ( .Ints ))         => Gbase < SCHED > ... </k>
 
-    // Wverylow
-    rule <k> #gasExec(SCHED, _:AddInst)    => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:SubInst)    => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:NotInst)    => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:CmpInst)    => Gverylow < SCHED > ... </k>
+    // Unary boolean
+    rule <k>
+      #gasExec(SCHED, _ = not ARG)  =>
+        GNotConstant < SCHED > +Int
+        (GNotVariable < SCHED > *Int registerSize(ARG))
+      ... </k>
+
+    // Binary boolean
+    rule <k>
+      #gasExec(SCHED, _ = and ARG1, ARG2) =>
+        GAndConstant < SCHED > +Int
+        (GAndVariable < SCHED > *Int
+          minInt(registerSize(ARG1), registerSize(ARG2)))
+      ... </k>
+    rule <k>
+      #gasExec(SCHED, _ = or ARG1, ARG2) =>
+        GOrConstant < SCHED > +Int
+        (GOrVariable < SCHED > *Int
+          maxInt(registerSize(ARG1), registerSize(ARG2)))
+      ... </k>
+    rule <k>
+      #gasExec(SCHED, _ = xor ARG1, ARG2) =>
+        GXorConstant < SCHED > +Int
+        (GXorVariable < SCHED > *Int
+          maxInt(registerSize(ARG1), registerSize(ARG2)))
+      ... </k>
+
+    rule <k>
+      #gasExec(SCHED, _ = iszero ARG) => GIsZeroConstant < SCHED > ... </k>
+
+    rule <k>
+      #gasExec(SCHED, _ = cmp _ ARG1, ARG2) =>
+        GCmpConstant < SCHED > +Int
+        // TODO: This has branches in the .md file.
+        (GCmpVariable < SCHED > *Int
+          maxInt(registerSize(ARG1), registerSize(ARG2)))
+      ... </k>
+
     rule <k> #gasExec(SCHED, _:IsZeroInst) => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:AndInst)    => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:OrInst)     => Gverylow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:XorInst)    => Gverylow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, _:CmpInst)    => Gverylow < SCHED > ... </k>
+
+    rule <k> #gasExec(SCHED, _ = add ARG1 , ARG2)  =>
+        (GAddConst1 < SCHED > *Int
+          maxInt(registerSize(ARG1), registerSize(ARG2))) +Int
+        GAddConst0 < SCHED >
+      ... </k>
+    rule <k> #gasExec(SCHED, _ = sub ARG1 , ARG2)  =>
+        (GAddConst1 < SCHED > *Int
+          maxInt(registerSize(ARG1), registerSize(ARG2))) +Int
+        GAddConst0 < SCHED >
+      ... </k>
+
+    rule <k> #gasExec(SCHED, _ = mul ARG1 , ARG2)  =>
+        GMulCost(SCHED, registerSize(ARG1), registerSize(ARG2))
+      ... </k>
+
+    rule <k> #gasExec(SCHED, _ = div ARG1 , ARG2)  =>
+        GDivModCost(SCHED, registerSize(ARG1), registerSize(ARG2))
+      ... </k>
+
+    rule <k> #gasExec(SCHED, _:DivInst)  => Glow < SCHED > ... </k>
+
+    syntax Int ::= "GAndConstant"                   "<" Schedule ">"  [function]
+                 | "GAndVariable"                   "<" Schedule ">"  [function]
+                 | "GCmpConstant"                   "<" Schedule ">"  [function]
+                 | "GCmpVariable"                   "<" Schedule ">"  [function]
+                 | "GIsZeroConstant"                "<" Schedule ">"  [function]
+                 | "GNotConstant"                   "<" Schedule ">"  [function]
+                 | "GNotVariable"                   "<" Schedule ">"  [function]
+                 | "GOrConstant"                    "<" Schedule ">"  [function]
+                 | "GOrVariable"                    "<" Schedule ">"  [function]
+                 | "GXorConstant"                   "<" Schedule ">"  [function]
+                 | "GXorVariable"                   "<" Schedule ">"  [function]
+                 ///////////////////////////////////
+                 | GMulCost(Schedule, Int, Int)                       [function]
+                 | GDivModCost(Schedule, Int, Int)                    [function]
+                 | GDivModSameSize(Schedule, Int)                     [function]
+                 ///////////////////////////////////
+                 | "GAddConst0"                     "<" Schedule ">"  [function]
+                 | "GAddConst1"                     "<" Schedule ">"  [function]
+                 | "GBaseAddSub"                    "<" Schedule ">"  [function]
+                 | "GBaseBoolBinaryOp"              "<" Schedule ">"  [function]
+                 | "GBaseNot"                       "<" Schedule ">"  [function]
+                 | "GBoolBinaryOpVariable"          "<" Schedule ">"  [function]
+                 | "GBoolOpConstant"                "<" Schedule ">"  [function]
+                 | "GDivideAnConquerDivCost"        "<" Schedule ">"  [function]
+                 | "GDivModSameSizeCommonConst"     "<" Schedule ">"  [function]
+                 | "GDivModSameSizeConst0"          "<" Schedule ">"  [function]
+                 | "GDivModSameSizeConst1"          "<" Schedule ">"  [function]
+                 | "GDivModSameSizeConst2"          "<" Schedule ">"  [function]
+                 | "GDivModSameSizeConst3"          "<" Schedule ">"  [function]
+                 | "GForIteration"                  "<" Schedule ">"  [function]
+                 | "GForStart"                      "<" Schedule ">"  [function]
+                 | "GIncrement"                     "<" Schedule ">"  [function]
+                 | "GMulConst0"                     "<" Schedule ">"  [function]
+                 | "GMulConst1x"                    "<" Schedule ">"  [function]
+                 | "GMulConst1xy"                   "<" Schedule ">"  [function]
+                 | "GMulConst2"                     "<" Schedule ">"  [function]
+                 | "GMulSameSizeCommonConst"        "<" Schedule ">"  [function]
+                 | "GMulSameSizeConst0"             "<" Schedule ">"  [function]
+                 | "GMulSameSizeConst1"             "<" Schedule ">"  [function]
+                 | "GMulSameSizeConst2"             "<" Schedule ">"  [function]
+                 | "GPositiveAddConst0"             "<" Schedule ">"  [function]
+                 | "GPositiveAddConst1"             "<" Schedule ">"  [function]
+                 | "GRegisterMaintenanceCost"       "<" Schedule ">"  [function]
+                 | "GSetWordCost"                   "<" Schedule ">"  [function]
+                 | "GTestAndBranch"                 "<" Schedule ">"  [function]
+
+    rule GAddConst0 < SCHED > =>
+      GPositiveAddConst0 < SCHED > +Int
+      (2 *Int GTestAndBranch <SCHED>)
+    rule GAddConst1   < SCHED > => GPositiveAddConst1 < SCHED >
+    rule GAndConstant < SCHED > => GBoolOpConstant < SCHED >
+    rule GAndVariable < SCHED > => GBoolBinaryOpVariable < SCHED >
+    rule GCmpConstant < SCHED > =>  // TODO: This is different fom the .md file.
+      GSetWordCost < SCHED > +Int
+      GRegisterMaintenanceCost <SCHED> +Int
+      GForStart < SCHED >
+    rule GCmpVariable < SCHED > =>
+      GTestAndBranch < SCHED > +Int GForIteration < SCHED >
+    rule GIsZeroConstant < SCHED > =>
+      GTestAndBranch < SCHED > +Int GSetWordCost < SCHED > +Int
+      GRegisterMaintenanceCost < SCHED >
+    rule GNotConstant < SCHED > => GBoolOpConstant < SCHED >
+    rule GNotVariable < SCHED > =>
+      GBaseNot < SCHED > +Int GForIteration < SCHED >
+    rule GOrConstant < SCHED > => GBoolOpConstant < SCHED >
+    rule GOrVariable < SCHED > => GBoolBinaryOpVariable < SCHED >
+    rule GXorConstant < SCHED > => GBoolOpConstant < SCHED >
+    rule GXorVariable < SCHED > => GBoolBinaryOpVariable < SCHED >
+
+    ///////////////////////////////
+
+    rule GMulSameSize(SCHED, L) =>
+      (GMulSameSizeConst2 < SCHED > *Int kara(L)) +Int
+      (GMulSameSizeConst1 < SCHED > *Int L) +Int
+      GMulSameSizeConst0 < SCHED >
+
+    rule GMulCost(SCHED, L1, L2) =>
+        GMulConst2 < SCHED > *Int L1 *Int karaMinus1(L2 /Int 2) +Int
+        GMulConst1xy < SCHED > *Int (L1 /Int L2)  +Int
+        GMulConst1x < SCHED > *Int L1 +Int
+        GMulConst0 < SCHED >
+      requires L1 >=Int L2
+    rule GMulCost(SCHED, L1, L2) => GMulCost(SCHED, L2, L1)
+      requires L1 <Int L2
+
+    rule GDivModSameSize(SCHED, L) =>
+      (GDivModSameSizeConst3 < SCHED > *Int kara(L)) +Int
+      (GDivModSameSizeConst2 < SCHED > *Int L *Int log2Int(L)) +Int
+      (GDivModSameSizeConst1 < SCHED > *Int L) +Int
+      GDivModSameSizeConst0 < SCHED >
+
+    rule GDivModCost(SCHED, L1, L2) => GDivModSameSize(SCHED, L1)
+        //TODO copy actual costs from the gas model
+      requires L1 >=Int L2
+    rule GDivModCost(SCHED, L1, L2) => GDivModCost(SCHED, L2, L1)
+      requires L1 <Int L2
+
+    ///////////////////////////////
+
+    rule GMulSameSizeConst2 < SCHED > =>
+      21 +Int (3 *Int GMulSameSizeCommonConst < SCHED >) /Int 2
+    rule GMulSameSizeConst1 < SCHED > => -14 *Int GPositiveAddConst1 < SCHED >
+    rule GMulSameSizeConst0 < SCHED > =>
+      (-7 *Int GPositiveAddConst1 < SCHED >) -Int
+      GMulSameSizeCommonConst < SCHED >
+    rule GMulSameSizeCommonConst < SCHED > =>
+      (11 *Int GPositiveAddConst1 < SCHED >) +Int
+      (6 *Int GPositiveAddConst0 < SCHED >) +Int
+      GRegisterMaintenanceCost <SCHED>
+
+    rule GMulConst1 < SCHED > => GMulSameSizeConst2 < SCHED >
+    rule GMulConst1xy < SCHED > =>
+      GMulSameSizeConst0 < SCHED > +Int GPositiveAddConst1 < SCHED >
+    rule GMulConst1x < SCHED > =>
+      GMulSameSizeConst1 < SCHED > +Int
+      2 *Int GPositiveAddConst1 < SCHED >
+    rule GMulConst0 < SCHED > =>
+      GTestAndBranch < SCHED > +Int
+      GRegisterMaintenanceCost < SCHED > +Int
+      GForStart < SCHED >
+
+    rule GDivModSameSizeConst3 < SCHED > =>
+      2 *Int GMulSameSizeConst2 < SCHED >
+    rule GDivModSameSizeConst2 < SCHED > =>
+      (2 *Int GMulSameSizeConst1 < SCHED >) +Int
+      (17 *Int GPositiveAddConst1 < SCHED >)
+    rule GDivModSameSizeConst1 < SCHED > =>
+      (17 *Int GPositiveAddConst0 < SCHED >) +Int
+      2 *Int GMulSameSizeConst0 < SCHED > +Int
+      GDivModSameSizeCommonConst < SCHED > -Int
+      GDivModSameSizeConst2 < SCHED > -Int
+      (2 *Int GMulSameSizeConst1 < SCHED >) -Int
+      (17 *Int GPositiveAddConst1 < SCHED >)
+    rule GDivModSameSizeConst0 < SCHED > =>
+      -2 *Int GMulSameSizeConst0 < SCHED > -Int
+      GPositiveAddConst0 < SCHED > -Int
+      GDivModSameSizeCommonConst < SCHED >
+    rule GDivModSameSizeCommonConst < SCHED > =>
+      (3 *Int GAddConst1 < SCHED >) -Int
+      (8 *Int GAddConst0 < SCHED >) +Int
+      GDivideAnConquerDivCost < SCHED >
+
+    rule GPositiveAddConst0 < SCHED > =>
+      GTestAndBranch <SCHED> +Int
+      GSetWordCost < SCHED > +Int
+      GRegisterMaintenanceCost < SCHED > +Int
+      GForStart < SCHED >
+    rule GPositiveAddConst1 < SCHED > =>
+      GBaseAddSub< SCHED > +Int GForIteration < SCHED >
+
+    rule GBoolOpConstant < SCHED > =>
+      GRegisterMaintenanceCost < SCHED > +Int GForStart < SCHED >
+    rule BinaryBoolOpVariable < SCHED > =>
+       GBaseBoolBinaryOp< SCHED > +Int GForIteration < SCHED >
+
+    rule GForIteration < SCHED > =>
+      GIncrement < SCHED > +Int GTestAndBranch<SCHED>
+
+    rule GBaseAddSub              < _ > => 1
+    rule GBaseNot                 < _ > => 2
+    rule GForStart                < _ > => 2
+    rule GRegisterMaintenanceCost < _ > => 6
+    rule GIncrement               < _ > => 1
+    rule GSetWordCost             < _ > => 1
+    rule GTestAndBranch           < _ > => 2
+    rule GDivideAnConquerDivCost  < _ > => 3  // TODO: Decompose in basic costs.
+
+    syntax Int ::= registerSize(Int) [function]
+                 | "numberBase"      [function]
+                 | kara(Int)         [function]
+                 | karaMinus1(Int)   [function]
+    rule registerSize(R) =>
+      #if R ==Int 0 #then 0 #else 1 +Int registerSize(R /Int numberBase) #fi
+    rule numberBase => 2 ^Int 64
+    rule kara(L) => L *Int L  // TODO: Use a better approximation.
+    rule karaMinus1(L) => kara(L) /Int L
+
+    // Wverylow
     rule <k> #gasExec(SCHED, _:ByteInst)   => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, _:LoadInst)   => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, _:StoreInst)  => Gverylow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, _:AssignInst) => Gverylow < SCHED > ... </k>
 
     // Wlow
-    rule <k> #gasExec(SCHED, _:MulInst)  => Glow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:DivInst)  => Glow < SCHED > ... </k>
-    rule <k> #gasExec(SCHED, _:ModInst)  => Glow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, _:SExtInst) => Glow < SCHED > ... </k>
     rule <k> #gasExec(SCHED, _:TwosInst) => Glow < SCHED > ... </k>
+    rule <k> #gasExec(SCHED, _:ModInst)  => Glow < SCHED > ... </k>
 
     // Wmid
     rule <k> #gasExec(SCHED, _:AddModInst)    => Gmid < SCHED > ... </k>

@@ -141,7 +141,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule C Cs ++Contract Cs' => C (Cs ++Contract Cs')
     rule .TopLevelDefinitions ++TopLevelDefinitions Ds => Ds
     rule D Ds ++TopLevelDefinitions Ds' => D (Ds ++TopLevelDefinitions Ds')
-    rule N +.+IeleName M => #parseToken("IeleName", IeleName2String(N) +String "." +String IeleName2String(M)) 
+    rule N +.+IeleName M => #parseToken("IeleName", IeleName2String(N) +String "." +String IeleName2String(M))
 
     syntax TopLevelDefinitions ::= #dasmFunctions ( WordStack , Int , Map , IeleName ) [function]
     syntax TopLevelDefinitions ::= #dasmFunction ( Bool , IeleName , IeleName , Int , WordStack , Int , Map , Instructions , K ) [function]
