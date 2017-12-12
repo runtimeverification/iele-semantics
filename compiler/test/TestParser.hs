@@ -81,7 +81,7 @@ localNameExamples =
 
 localNameCounterexamples :: [String]
 localNameCounterexamples =
-  ["%", "a", "%%bcd", "%%", "@a"]
+  ["%", "a", "%%bcd", "%%", "@a", "%iele.localName"]
 
 lValueExamples :: [(LValue, String)]
 lValueExamples =
@@ -114,16 +114,24 @@ lvaluesCounterexamples :: [String]
 lvaluesCounterexamples =
   ["%", "@", "@a"]
 
+operandExamples :: [(Operand,String)]
+operandExamples =
+  [ (RegOperand "%b", "%b")
+  , (GlobalOperand "@1", "@1")
+  , (ImmOperand (IntToken 1), "true")
+  , (ImmOperand (IntToken 0), "false")
+  , (ImmOperand (IntToken 10), "10")
+  , (ImmOperand (IntToken (-10)), "-10")
+  ]
 
-nonEmptyOperandsCounterexamples :: [String]
-nonEmptyOperandsCounterexamples =
-    ["%", "@", "", "@a"]
+operandCounterexamples =
+  ["abc","%iele.reserved","%a %a","@iele.reserved"]
 
-functionParametersExamples :: [([LocalName], String)]
+functionParametersExamples :: [([LValue], String)]
 functionParametersExamples =
-  [ ([LocalName (IeleNameText "a")], "(%a)")
-  , ([LocalName (IeleNameText "a"), LocalName (IeleNameText "b")], "( %a,%b)")
-  , ([LocalName (IeleNameText "a"), LocalName (IeleNameText "b")], "(%a, %b )")
+  [ (["%a"], "(%a)")
+  , (["%a", "%b"], "( %a,%b)")
+  , (["%a", "%b"], "(%a, %b )")
   , ([], "()")
   ]
 
@@ -155,6 +163,7 @@ tokenTests =
     , testToken "LValue" lValueExamples lValue lValueCounterexamples ConcatenationAndIgnoresSpaces
     , testToken "LValues" lvaluesExamples lValues lvaluesCounterexamples NoConcatenationOrSpaces
     , testToken "NonEmptyLValues" nonEmptyLValuesExamples nonEmptyLValues nonEmptyLValuesCounterexamples ConcatenationAndIgnoresSpaces
+    , testToken "Operand" operandExamples operand operandCounterexamples ConcatenationAndIgnoresSpaces
     ]
 
 instructionTests :: [TestTree]
@@ -330,7 +339,7 @@ instructionTests =
 
 otherTests :: [TestTree]
 otherTests =
-  let dummy = IeleInst (LiOp LOADPOS "%0" 0) in
+  let dummy = LiOp LOADPOS "%0" 0 in
   [ testCase
       "empty LabelledBlock"
       (parseSuccess
@@ -466,22 +475,22 @@ testBinaryOperation :: String -> IeleOpcode1 ->  TestTree
 testBinaryOperation name op =
   testIeleInst
     name
-    (Op op "%a" ["%10","%b"])
-    ("%a=" ++ name ++ " %10,%b")
+    (Op op "%a" [RegOperand "%10",GlobalOperand "@b"])
+    ("%a=" ++ name ++ " %10,@b")
 
 testPredicateOperation :: String -> IeleOpcode1 ->  TestTree
 testPredicateOperation name op =
   testIeleInst
     name
-    (Op op "%a" ["%10","%11"])
-    ("%a=cmp " ++ name ++ " %10,%11")
+    (Op op "%a" [ImmOperand (IntToken 10),RegOperand "%11"])
+    ("%a=cmp " ++ name ++ " 10,%11")
 
 testTernaryOperation :: String -> IeleOpcode1 ->  TestTree
 testTernaryOperation name op =
   testIeleInst
     name
-    (Op op "%a" ["%10","%11","%12"])
-    ("%a=" ++ name ++ " %10,%11, %12")
+    (Op op "%a" [RegOperand "%ab1",ImmOperand (IntToken 15),GlobalOperand "@12"])
+    ("%a=" ++ name ++ " %ab1,15, @12")
 
 testInstruction :: String -> Instruction -> String -> TestTree
 testInstruction name expected input =
@@ -499,7 +508,7 @@ testInstruction name expected input =
       ]
 
 testIeleInst :: String -> IeleOpP -> String -> TestTree
-testIeleInst name expected input = testInstruction name (IeleInst expected) input
+testIeleInst name expected input = testInstruction name expected input
 
 ------------------------------------
 -- Token test utilities

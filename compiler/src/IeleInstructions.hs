@@ -9,13 +9,26 @@ module IeleInstructions
   ,IeleOpcodeQuery(..)
   ,IeleOpcode0
   ,IeleOpcode0G(..)
+  ,retypeOpcode0
   ,IeleOpcodeLi(..)
   ,IeleOpcodeCall(..)
+  ,retypeOpcodeCall
   ,IeleOp
   ,IeleOpG(..)
+  ,retypeIeleOp
+  ,ieleOpContract
+  ,ieleOpFunId
+  ,ieleOpJumpDest
+  ,ieleOpReg
+  ,ieleOpArg
+  ,ieleOpRegs'
+  ,loadImm
   )
 where
 import Data.Data
+import Control.Applicative
+import Control.Lens
+import Data.Functor.Identity
 
 import qualified Data.ByteString as B
 import Data.Word
@@ -130,31 +143,35 @@ data IeleOpcode0G funId lblId =
  | SELFDESTRUCT
   deriving (Show, Eq, Data)
 
-instance Bifunctor IeleOpcode0G where
-  bimap fun lbl i = case i of
-   MSTOREN -> MSTOREN
-   MSTORE -> MSTORE
-   SSTORE -> SSTORE
+retypeOpcode0 :: (Applicative f)
+              => (fun -> f fun')
+              -> (lbl -> f lbl')
+              -> IeleOpcode0G fun lbl
+              -> f (IeleOpcode0G fun' lbl')
+retypeOpcode0 fun lbl i = case i of
+   MSTOREN -> pure MSTOREN
+   MSTORE -> pure MSTORE
+   SSTORE -> pure SSTORE
 
-   REGISTERS r -> REGISTERS r
+   REGISTERS r -> pure (REGISTERS r)
 
-   JUMP l -> JUMP (lbl l)
-   JUMPI l -> JUMPI (lbl l)
-   JUMPDEST l -> JUMPDEST (lbl l)
+   JUMP l -> JUMP <$> lbl l
+   JUMPI l -> JUMPI <$> lbl l
+   JUMPDEST l -> JUMPDEST <$> lbl l
 
-   CALLDEST f arity -> CALLDEST (fun f) arity
-   EXTCALLDEST f arity -> EXTCALLDEST (fun f) arity
+   CALLDEST f arity -> CALLDEST <$> fun f <*> pure arity
+   EXTCALLDEST f arity -> EXTCALLDEST <$> fun f <*> pure arity
 
-   FUNCTION f -> FUNCTION f
-   CONTRACT c -> CONTRACT c
+   FUNCTION f -> pure (FUNCTION f)
+   CONTRACT c -> pure (CONTRACT c)
 
-   LOG arity -> LOG arity
+   LOG arity -> pure (LOG arity)
 
-   RETURN arity -> RETURN arity
-   REVERT arity -> REVERT arity
+   RETURN arity -> pure (RETURN arity)
+   REVERT arity -> pure (REVERT arity)
 
-   INVALID -> INVALID
-   SELFDESTRUCT -> SELFDESTRUCT
+   INVALID -> pure (INVALID)
+   SELFDESTRUCT -> pure (SELFDESTRUCT)
 
 data IeleOpcodeLi =
    LOADPOS
@@ -168,20 +185,83 @@ data IeleOpcodeCall contractId funId =
 
  | CREATE contractId (Args Word16) -- contract Id
  | COPYCREATE (Args Word16)
-  deriving (Show, Eq, Data, Functor, Foldable, Traversable)
-instance Bifunctor IeleOpcodeCall where
-  bimap contract fun i = case i of
-    CALL f nargs nrets -> CALL (fun f) nargs nrets
-    STATICCALL f nargs nrets -> STATICCALL (fun f) nargs nrets
-    LOCALCALL f nargs nrets -> LOCALCALL (fun f) nargs nrets
-    CREATE c nargs -> CREATE (contract c) nargs
-    COPYCREATE nargs -> COPYCREATE nargs
+  deriving (Show, Eq, Data)
 
-type IeleOp = IeleOpG Word16 Word16 Word16 Int
-data IeleOpG contractId funId lblId regId =
+retypeOpcodeCall :: (Applicative f)
+                 => (contractId -> f contractId')
+                 -> (funId -> f funId')
+                 -> IeleOpcodeCall contractId funId
+                 -> f (IeleOpcodeCall contractId' funId')
+retypeOpcodeCall contract fun i = case i of
+    CALL f nargs nrets -> (\f -> CALL f nargs nrets) <$> fun f
+    STATICCALL f nargs nrets -> (\f -> STATICCALL f nargs nrets) <$> fun f
+    LOCALCALL f nargs nrets -> (\f -> LOCALCALL f nargs nrets) <$> fun f
+    CREATE c nargs -> (\c -> CREATE c nargs) <$> contract c
+    COPYCREATE nargs -> pure (COPYCREATE nargs)
+
+type IeleOp = IeleOpG Word16 Word16 Word16 Int Int
+data IeleOpG contractId funId lblId regId argId =
    Nop
- | Op IeleOpcode1 regId [regId]
- | VoidOp (IeleOpcode0G funId lblId) [regId]
- | CallOp (IeleOpcodeCall contractId funId) [regId] [regId]
+ | Op IeleOpcode1 regId [argId]
+ | VoidOp (IeleOpcode0G funId lblId) [argId]
+ | CallOp (IeleOpcodeCall contractId funId) [regId] [argId]
  | LiOp IeleOpcodeLi regId Integer
-  deriving (Show, Eq, Data, Functor, Foldable, Traversable)
+  deriving (Show, Eq, Data)
+
+{-# INLINE retypeIeleOp #-}
+retypeIeleOp :: (Applicative f)
+             => (con -> f con')
+             -> (fun -> f fun')
+             -> (lbl -> f lbl')
+             -> (reg -> f reg')
+             -> (arg -> f arg')
+             -> IeleOpG con fun lbl reg arg
+             -> f (IeleOpG con' fun' lbl' reg' arg')
+retypeIeleOp con fun lbl reg arg inst = case inst of
+  Nop -> pure Nop
+  Op op1 ret args -> Op op1 <$> reg ret <*> traverse arg args
+  VoidOp op0 args -> VoidOp <$> retypeOpcode0 fun lbl op0 <*> traverse arg args
+  CallOp opCall rets args -> CallOp <$> retypeOpcodeCall con fun opCall
+                                    <*> traverse reg rets <*> traverse arg args
+  LiOp opLi ret imm -> (\r -> LiOp opLi r imm) <$> reg ret
+
+ieleOpContract :: Traversal
+  (IeleOpG con fun lbl reg arg)
+  (IeleOpG con' fun lbl reg arg)
+  con con'
+ieleOpContract con inst = retypeIeleOp con pure pure pure pure inst
+
+ieleOpFunId :: Traversal
+  (IeleOpG con fun lbl reg arg)
+  (IeleOpG con fun' lbl reg arg)
+  fun fun'
+ieleOpFunId fun inst = retypeIeleOp pure fun pure pure pure inst
+
+ieleOpJumpDest :: Traversal
+  (IeleOpG con fun lbl reg arg)
+  (IeleOpG con fun lbl' reg arg)
+  lbl lbl'
+ieleOpJumpDest lbl inst = retypeIeleOp pure pure lbl pure pure inst
+
+ieleOpReg :: Traversal
+  (IeleOpG con fun lbl reg arg)
+  (IeleOpG con fun lbl reg' arg)
+  reg reg'
+ieleOpReg reg inst = retypeIeleOp pure pure pure reg pure inst
+
+ieleOpArg :: Traversal
+  (IeleOpG con fun lbl reg arg)
+  (IeleOpG con fun lbl reg arg')
+  arg arg'
+ieleOpArg arg inst = retypeIeleOp pure pure pure pure arg inst
+
+ieleOpRegs' :: Traversal
+  (IeleOpG con fun lbl reg reg)
+  (IeleOpG con fun lbl reg' reg')
+  reg reg'
+ieleOpRegs' reg inst = retypeIeleOp pure pure pure reg reg inst
+
+loadImm :: reg -> Integer -> IeleOpG a b c reg d
+loadImm reg imm
+ | imm >= 0 = LiOp LOADPOS reg imm
+ | otherwise = LiOp LOADNEG reg (-imm)
