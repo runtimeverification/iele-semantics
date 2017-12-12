@@ -100,7 +100,7 @@ Since the result is boolean, the result size for all comparison operations is 1.
     rule #memory [ REG = mul W0 , W1 ] => #registerDelta(REG, intSize(W0) +Int intSize(W1))
     rule #memory [ REG = div W0 , W1 ] => #registerDelta(REG, maxInt(1, intSize(W0) -Int intSize(W1) +Int 1))
     rule #memory [ REG = mod W0 , W1 ] => #registerDelta(REG, minInt(intSize(W0), intSize(W1)))
-    rule #memory [ REG = exp W0 , W1 ] => #registerDelta(REG, intSize(W0) *Int maxInt(1, W1))
+    rule #memory [ REG = exp W0 , W1 ] => #registerDelta(REG, maxInt(1, intSize(W0) *Int W1))
 ```
 
 #### Modular arithmetic
@@ -119,7 +119,7 @@ of the modulo operand (W2).
 Result size of SHA3 is 256 bits, i.e., 4 words.
 
 ```{.k .uiuck .rvk}
-    rule #memory [ REG = sha3 _ ] => #registerDelta(REG, 4)
+    rule #memory [ REG = sha3 _ ] => #registerDelta(REG, bitsInWords(256))
 ```
 
 #### Byte access
@@ -129,9 +129,9 @@ Result size of SHA3 is 256 bits, i.e., 4 words.
     the result size is WIDTH bytes, i.e., WIDTH / 8 words.
 
 ```{.k .uiuck .rvk}
-    rule #memory [ REG = byte INDEX , _ ] => #registerDelta(REG, 1)
-    rule #memory [ REG = sext WIDTH , _ ] => #registerDelta(REG, WIDTH up/Int 8)
-    rule #memory [ REG = twos WIDTH , _ ] => #registerDelta(REG, WIDTH up/Int 8)
+    rule #memory [ REG = byte INDEX , _ ] => #registerDelta(REG, bytesInWords(1))
+    rule #memory [ REG = sext WIDTH , _ ] => #registerDelta(REG, bytesInWords(WIDTH))
+    rule #memory [ REG = twos WIDTH , _ ] => #registerDelta(REG, bytesInWords(WIDTH))
 ```
 
 #### Local state operations
@@ -151,20 +151,20 @@ Operations whose result should fit into a word.
 Operations whose result is an address:
 
 ```{.k .uiuck .rvk}
-    rule #memory [ REG = call @iele.beneficiary ( .Ints ) ] => #registerDelta(REG, 3)
-    rule #memory [ REG = call @iele.address     ( .Ints ) ] => #registerDelta(REG, 3)
-    rule #memory [ REG = call @iele.origin      ( .Ints ) ] => #registerDelta(REG, 3)
-    rule #memory [ REG = call @iele.caller      ( .Ints ) ] => #registerDelta(REG, 3)
+    rule #memory [ REG = call @iele.beneficiary ( .Ints ) ] => #registerDelta(REG, bytesInWords(20))
+    rule #memory [ REG = call @iele.address     ( .Ints ) ] => #registerDelta(REG, bytesInWords(20))
+    rule #memory [ REG = call @iele.origin      ( .Ints ) ] => #registerDelta(REG, bytesInWords(20))
+    rule #memory [ REG = call @iele.caller      ( .Ints ) ] => #registerDelta(REG, bytesInWords(20))
 ```
 
 Operations whose result should fit into 256 bits.
 
 ```{.k .uiuck .rvk}
-    rule #memory [ REG = call @iele.timestamp   ( .Ints ) ] => #registerDelta(REG, 4)
-    rule #memory [ REG = call @iele.difficulty  ( .Ints ) ] => #registerDelta(REG, 4)
-    rule #memory [ REG = call @iele.callvalue   ( .Ints ) ] => #registerDelta(REG, 4)
-    rule #memory [ REG = call @iele.blockhash   ( _     ) ] => #registerDelta(REG, 4)
-    rule #memory [ REG = call @iele.balance     ( _     ) ] => #registerDelta(REG, 4)
+    rule #memory [ REG = call @iele.timestamp   ( .Ints ) ] => #registerDelta(REG, bitsInWords(256))
+    rule #memory [ REG = call @iele.difficulty  ( .Ints ) ] => #registerDelta(REG, bitsInWords(256))
+    rule #memory [ REG = call @iele.callvalue   ( .Ints ) ] => #registerDelta(REG, bitsInWords(256))
+    rule #memory [ REG = call @iele.blockhash   ( _     ) ] => #registerDelta(REG, bitsInWords(256))
+    rule #memory [ REG = call @iele.balance     ( _     ) ] => #registerDelta(REG, bitsInWords(256))
 ```
 
 ```{.k .uiuck .rvk}
@@ -190,10 +190,10 @@ Operations whose result should fit into 256 bits.
   the memory cell at INDEX needs to be resized to store VALUE
 
 ```{.k .uiuck .rvk}
-    rule #memory [ REG = load INDEX1 , INDEX2 , WIDTH ] => #registerDelta(REG, chop(WIDTH) up/Int 8) ~> #memoryExpand(INDEX1, (chop(INDEX2) +Int chop(WIDTH)) up/Int 8) requires chop(WIDTH) >Int 0
-    rule #memory [ REG = load INDEX1 , INDEX2 , 0 ] => .K
-    rule #memory [ store _ ,  INDEX1 , INDEX2 , WIDTH ] => #memoryExpand(INDEX1, (chop(INDEX2) +Int chop(WIDTH)) up/Int 8) requires chop(WIDTH) >Int 0
-    rule #memory [ store _ ,  INDEX1 , INDEX2 , 0 ] => .K
+    rule #memory [ REG = load INDEX1 , INDEX2 , WIDTH ] => #registerDelta(REG, bytesInWords(chop(WIDTH))) ~> #memoryExpand(INDEX1, bytesInWords(chop(INDEX2) +Int chop(WIDTH))) requires chop(WIDTH) >Int 0
+    rule #memory [ REG = load INDEX1 , INDEX2 , WIDTH ] => .K requires chop(WIDTH) ==Int 0
+    rule #memory [ store _ ,  INDEX1 , INDEX2 , WIDTH ] => #memoryExpand(INDEX1, bytesInWords(chop(INDEX2) +Int chop(WIDTH))) requires chop(WIDTH) >Int 0
+    rule #memory [ store _ ,  INDEX1 , INDEX2 , WIDTH ] => .K requires chop(WIDTH) ==Int 0
 
     rule <k> #memory [ REG = load INDEX ] => #registerDelta(REG, #sizeWordStack({LM [ INDEX]}:>WordStack) up/Int 8) ... </k>
          <localMem> LM </localMem>
@@ -256,7 +256,7 @@ size `NEWSIZE`, the current memory level decreases by the current size of
 
 ```{.k .uiuck .rvk}
     syntax InternalOp ::= #registerDelta ( LValue , Int )
-                        | #registerDelta ( LValues , Ints )
+                        | #registerDeltas ( LValues , Ints )
                         | #memoryExpand  ( Int , Int )
                         | #memoryDelta   ( Int , Int )
                         | #memoryDelta   ( Int ) [klabel(memoryDirectDelta)]
@@ -266,9 +266,9 @@ size `NEWSIZE`, the current memory level decreases by the current size of
          <regs> REGS </regs>
          <peakMemory> PEAK => maxInt(PEAK, CURR +Int NEWSIZE -Int intSize({REGS [ REG ]}:>Int)) </peakMemory>
 
-    rule #registerDelta(REG, REGS, INT, INTS) => #registerDelta(REG, intSize(INT)) ~> #registerDelta(REGS, INTS)
-    rule #registerDelta(.LValues, _) => .K
-    rule #registerDelta(_, .Ints) => .K
+    rule #registerDeltas(REG, REGS, INT, INTS) => #registerDelta(REG, intSize(INT)) ~> #registerDeltas(REGS, INTS)
+    rule #registerDeltas(.LValues, _) => .K
+    rule #registerDeltas(_, .Ints) => .K
 
     rule <k> #memoryExpand(INDEX, NEWSIZE) => #deductMemory(PEAK) ... </k>
          <localMem> LM </localMem>

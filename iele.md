@@ -1209,7 +1209,7 @@ If the function being called is not public, does not exist, or has the wrong num
           ~> #if EXECMODE ==K VMTESTS #then #popWorldState #else #dropWorldState #fi
           ~> #dropSubstate
           ~> #registerDelta(REG, 1)
-          ~> #registerDelta(REGS, OUT)
+          ~> #registerDeltas(REGS, OUT)
           ~> #load REG 0 ~> #refund GAVAIL ~> #if EXECMODE ==K VMTESTS #then .K #else #loads REGS OUT #fi
          ...
          </k>

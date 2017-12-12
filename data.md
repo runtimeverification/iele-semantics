@@ -136,6 +136,13 @@ You could alternatively calculate `I1 %Int I2`, then add one to the normal integ
  // -------------------------------------------
     rule log256Int(N) => log2Int(N) /Int 8
 
+```
+
+-   `intSize` returns the size in words of an integer.
+-   `bitsInWords` converts a number of bits to a number of words.
+-   `bytesInWords` ocnverts a number of bytes to a number of words.
+
+```{.k .uiuck .rvk}
     syntax Int ::= intSize ( Int ) [function]
  // -----------------------------------------
     rule intSize(N) => (log2Int(N) +Int 2) up/Int 64 requires N >Int 0
@@ -146,6 +153,14 @@ You could alternatively calculate `I1 %Int I2`, then add one to the normal integ
  // -------------------------------------------
     rule intSizes(.Ints) => 0
     rule intSizes(I , INTS) => intSize(I) +Int intSizes(INTS)
+
+    syntax Int ::= bitsInWords ( Int ) [function]
+ // ---------------------------------------------
+    rule bitsInWords(I) => I up/Int 256
+
+    syntax Int ::= bytesInWords ( Int ) [function]
+ // ----------------------------------------------
+    rule bytesInWords(I) => I up/Int 8
 ```
 
 Here we provide simple syntactic sugar over our power-modulus operator.
