@@ -949,7 +949,7 @@ When execution of the callee reaches a `ret` instruction, control returns to the
          <output> _ => VALUES </output>
          <localCalls> .List </localCalls>
 
-    rule <k> #exec ret VALUES ~> _:Blocks => #loads RETURNS VALUES ~> OPS ... </k>
+    rule <k> #exec ret VALUES ~> _:Blocks => #registerDeltas(RETURNS, VALUES) ~> #loads RETURNS VALUES ~> OPS ... </k>
          <fid> _ => FUNC </fid>
          <regs> _ => REGS </regs>
          <localCalls> ListItem({ OPS | FUNC | RETURNS | REGS }) => .List ... </localCalls>
@@ -1667,64 +1667,64 @@ module IELE-PROGRAM-LOADING
     rule #computeJumpTable(_::LabeledBlock BLOCKS, JUMPS, LABELS) => #computeJumpTable(BLOCKS, JUMPS, LABELS) [owise]
     rule #computeJumpTable(_::UnlabeledBlock BLOCKS, JUMPS, LABELS) => #computeJumpTable(BLOCKS, JUMPS, LABELS) [owise]
 
-    syntax Set ::= #registers ( Instruction ) [function]
+    syntax Int ::= #registers ( Instruction ) [function]
                  | #registers ( LValues ) [function, klabel(registersLValues)]
                  | #registers ( Operands ) [function, klabel(registersOperands)]
                  | #registers ( NonEmptyOperands ) [function, klabel(registersOperands)]
     syntax Int ::= #computeNRegs ( Blocks )       [function]
-                 | #computeNRegs ( Blocks , Set ) [function, klabel(#computeNRegsAux)]
+                 | #computeNRegs ( Blocks , Int ) [function, klabel(#computeNRegsAux)]
  // ----------------------------------------------------------------------------------
-    rule #computeNRegs(BLOCKS) => #computeNRegs(BLOCKS, .Set)
+    rule #computeNRegs(BLOCKS) => #computeNRegs(BLOCKS, 0)
 
-    rule #computeNRegs(.LabeledBlocks, REGS) => size(REGS)
+    rule #computeNRegs(.LabeledBlocks, NREGS) => NREGS
     rule #computeNRegs(LABEL : INSTRS BLOCKS, REGS) => #computeNRegs(INSTRS BLOCKS, REGS)
-    rule #computeNRegs(INSTR INSTRS::Instructions BLOCKS::LabeledBlocks, REGS) => #computeNRegs(INSTRS BLOCKS, REGS #registers(INSTR))
+    rule #computeNRegs(INSTR INSTRS::Instructions BLOCKS::LabeledBlocks, NREGS) => #computeNRegs(INSTRS BLOCKS, maxInt(#registers(INSTR) +Int 1, NREGS))
     rule #computeNRegs(.Instructions BLOCKS, REGS) => #computeNRegs(BLOCKS, REGS)
 
-    rule #registers(R1 = _:Int) => SetItem(R1)
-    rule #registers(R1 = R2:LValue) => SetItem(R1) SetItem(R2)
-    rule #registers(R1 = load R2) => SetItem(R1) SetItem(R2)
-    rule #registers(R1 = load R2, R3, R4) => SetItem(R1) SetItem(R2) SetItem(R3) SetItem(R4)
-    rule #registers(store R1, R2) => SetItem(R1) SetItem(R2)
-    rule #registers(store R1, R2, R3, R4) => SetItem(R1) SetItem(R2) SetItem(R3) SetItem(R4)
-    rule #registers(R1 = sload R2) => SetItem(R1) SetItem(R2)
-    rule #registers(sstore R1, R2) => SetItem(R1) SetItem(R2)
-    rule #registers(R1 = iszero R2) => SetItem(R1) SetItem(R2)
-    rule #registers(R1 = not R2) => SetItem(R1) SetItem(R2)
-    rule #registers(R1 = add R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
-    rule #registers(R1 = mul R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
-    rule #registers(R1 = sub R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
-    rule #registers(R1 = div R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
-    rule #registers(R1 = exp R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
-    rule #registers(R1 = mod R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
-    rule #registers(R1 = addmod R2, R3, R4) => SetItem(R1) SetItem(R2) SetItem(R3) SetItem(R4)
-    rule #registers(R1 = mulmod R2, R3, R4) => SetItem(R1) SetItem(R2) SetItem(R3) SetItem(R4)
-    rule #registers(R1 = expmod R2, R3, R4) => SetItem(R1) SetItem(R2) SetItem(R3) SetItem(R4)
-    rule #registers(R1 = byte R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
-    rule #registers(R1 = sext R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
-    rule #registers(R1 = twos R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
-    rule #registers(R1 = and R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
-    rule #registers(R1 = or R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
-    rule #registers(R1 = xor R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
-    rule #registers(R1 = cmp _ R2, R3) => SetItem(R1) SetItem(R2) SetItem(R3)
-    rule #registers(R1 = sha3 R2) => SetItem(R1) SetItem(R2)
-    rule #registers(br _) => .Set
-    rule #registers(br R1, _) => SetItem(R1)
-    rule #registers(R1 = call _ ( R2 )) => #registers(R1) #registers(R2)
-    rule #registers(R1 = call _ at R2 ( R3 ) send R4, gaslimit R5) => #registers(R1) SetItem(R2) #registers(R3) SetItem(R4) SetItem(R5)
-    rule #registers(R1 = staticcall _ at R2 ( R3 ) gaslimit R4) => #registers(R1) SetItem(R2) #registers(R3) SetItem(R4)
+    rule #registers(% R1 = _:Int) => R1
+    rule #registers(% R1 = % R2) => maxInt(R1, R2)
+    rule #registers(% R1 = load % R2) => maxInt(R1, R2)
+    rule #registers(% R1 = load % R2, % R3, % R4) => maxInt(R1, maxInt(R2, maxInt(R3, R4)))
+    rule #registers(store % R1, % R2) => maxInt(R1, R2)
+    rule #registers(store % R1, % R2, % R3, % R4) => maxInt(R1, maxInt(R2, maxInt(R3, R4)))
+    rule #registers(% R1 = sload % R2) => maxInt(R1, R2)
+    rule #registers(sstore % R1, % R2) => maxInt(R1, R2)
+    rule #registers(% R1 = iszero % R2) => maxInt(R1, R2)
+    rule #registers(% R1 = not % R2) => maxInt(R1, R2)
+    rule #registers(% R1 = add % R2, % R3) => maxInt(R1, maxInt(R2, R3))
+    rule #registers(% R1 = mul % R2, % R3) => maxInt(R1, maxInt(R2, R3))
+    rule #registers(% R1 = sub % R2, % R3) => maxInt(R1, maxInt(R2, R3))
+    rule #registers(% R1 = div % R2, % R3) => maxInt(R1, maxInt(R2, R3))
+    rule #registers(% R1 = exp % R2, % R3) => maxInt(R1, maxInt(R2, R3))
+    rule #registers(% R1 = mod % R2, % R3) => maxInt(R1, maxInt(R2, R3))
+    rule #registers(% R1 = addmod % R2, % R3, % R4) => maxInt(R1, maxInt(R2, maxInt(R3, R4)))
+    rule #registers(% R1 = mulmod % R2, % R3, % R4) => maxInt(R1, maxInt(R2, maxInt(R3, R4)))
+    rule #registers(% R1 = expmod % R2, % R3, % R4) => maxInt(R1, maxInt(R2, maxInt(R3, R4)))
+    rule #registers(% R1 = byte % R2, % R3) => maxInt(R1, maxInt(R2, R3))
+    rule #registers(% R1 = sext % R2, % R3) => maxInt(R1, maxInt(R2, R3))
+    rule #registers(% R1 = twos % R2, % R3) => maxInt(R1, maxInt(R2, R3))
+    rule #registers(% R1 = and % R2, % R3) => maxInt(R1, maxInt(R2, R3))
+    rule #registers(% R1 = or % R2, % R3) => maxInt(R1, maxInt(R2, R3))
+    rule #registers(% R1 = xor % R2, % R3) => maxInt(R1, maxInt(R2, R3))
+    rule #registers(% R1 = cmp _ % R2, % R3) => maxInt(R1, maxInt(R2, R3))
+    rule #registers(% R1 = sha3 % R2) => maxInt(R1, R2)
+    rule #registers(br _) => -1
+    rule #registers(br % R1, _) => R1
+    rule #registers(R1 = call _ ( R2 )) => maxInt(#registers(R1), #registers(R2))
+    rule #registers(R1 = call _ at % R2 ( R3 ) send % R4, gaslimit % R5) => maxInt(#registers(R1), maxInt(R2, maxInt(#registers(R3), maxInt(R4, R5))))
+    rule #registers(R1 = staticcall _ at % R2 ( R3 ) gaslimit % R4) => maxInt(#registers(R1), maxInt(R2, maxInt(#registers(R3), R4)))
     rule #registers(ret R1::NonEmptyOperands) => #registers(R1)
-    rule #registers(revert R1) => SetItem(R1)
-    rule #registers(log R1) => SetItem(R1)
-    rule #registers(log R1, R2) => SetItem(R1) #registers(R2)
-    rule #registers(R1, R2 = create _ ( R3 ) send R4) => SetItem(R1) SetItem(R2) #registers(R3) SetItem(R4)
-    rule #registers(R1, R2 = copycreate R3 ( R4 ) send R5) => SetItem(R1) SetItem(R2) SetItem(R3) #registers(R4) SetItem(R5)
-    rule #registers(selfdestruct R1) => SetItem(R1)
+    rule #registers(revert % R1) => R1
+    rule #registers(log % R1) => R1
+    rule #registers(log % R1, R2) => maxInt(R1, #registers(R2))
+    rule #registers(% R1, % R2 = create _ ( R3 ) send % R4) => maxInt(R1, maxInt(R2, maxInt(#registers(R3), R4)))
+    rule #registers(% R1, % R2 = copycreate % R3 ( R4 ) send % R5) => maxInt(R1, maxInt(R2, maxInt(R3, maxInt(#registers(R4), R5))))
+    rule #registers(selfdestruct % R1) => R1
 
-    rule #registers(REG, REGS::LValues) => SetItem(REG) #registers(REGS)
-    rule #registers(REG, REGS::Operands) => SetItem(REG) #registers(REGS)
-    rule #registers(.LValues) => .Set
-    rule #registers(.Operands) => .Set
+    rule #registers(% REG, REGS::LValues) => maxInt(REG, #registers(REGS))
+    rule #registers(% REG, REGS::Operands) => maxInt(REG, #registers(REGS))
+    rule #registers(.LValues) => -1
+    rule #registers(.Operands) => -1
 
 endmodule
 ```

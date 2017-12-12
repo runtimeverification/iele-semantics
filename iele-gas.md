@@ -172,6 +172,12 @@ Operations whose result should fit into 256 bits.
          <schedule> SCHED </schedule>
          <funcId> NAME </funcId>
          <nregs> REGISTERS </nregs>
+
+    rule <k> #memory [ ret ARGS ] => #memoryDelta(0 -Int intSizes(REGS, NREGS) -Int Gcallmemory < SCHED >) ... </k>
+         <schedule> SCHED </schedule>
+         <fid> NAME </fid>
+         <regs> REGS </regs>
+         <nregs> NREGS </nregs>
 ```
 
 #### Memory operations
@@ -190,12 +196,11 @@ Operations whose result should fit into 256 bits.
   the memory cell at INDEX needs to be resized to store VALUE
 
 ```{.k .uiuck .rvk}
-    rule #memory [ REG = load INDEX1 , INDEX2 , WIDTH ] => #registerDelta(REG, bytesInWords(chop(WIDTH))) ~> #memoryExpand(INDEX1, bytesInWords(chop(INDEX2) +Int chop(WIDTH))) requires chop(WIDTH) >Int 0
-    rule #memory [ REG = load INDEX1 , INDEX2 , WIDTH ] => .K requires chop(WIDTH) ==Int 0
+    rule #memory [ REG = load INDEX1 , INDEX2 , WIDTH ] => #registerDelta(REG, bytesInWords(chop(WIDTH)))
     rule #memory [ store _ ,  INDEX1 , INDEX2 , WIDTH ] => #memoryExpand(INDEX1, bytesInWords(chop(INDEX2) +Int chop(WIDTH))) requires chop(WIDTH) >Int 0
     rule #memory [ store _ ,  INDEX1 , INDEX2 , WIDTH ] => .K requires chop(WIDTH) ==Int 0
 
-    rule <k> #memory [ REG = load INDEX ] => #registerDelta(REG, #sizeWordStack({LM [ INDEX]}:>WordStack) up/Int 8) ... </k>
+    rule <k> #memory [ REG = load INDEX ] => #registerDelta(REG, bytesInWords(#sizeWordStack({LM [ INDEX]}:>WordStack))) ... </k>
          <localMem> LM </localMem>
     rule #memory [ store VALUE ,  INDEX ] => #memoryDelta(INDEX, intSize(VALUE))
 ```
@@ -272,13 +277,13 @@ size `NEWSIZE`, the current memory level decreases by the current size of
 
     rule <k> #memoryExpand(INDEX, NEWSIZE) => #deductMemory(PEAK) ... </k>
          <localMem> LM </localMem>
-         <currentMemory> CURR => CURR +Int maxInt(0, NEWSIZE -Int ((#sizeWordStack({LM [ INDEX ]}:>WordStack)) up/Int 8)) </currentMemory>
-         <peakMemory> PEAK => maxInt(PEAK, CURR +Int maxInt(0, NEWSIZE -Int ((#sizeWordStack({LM [ INDEX ]}:>WordStack)) up/Int 8))) </peakMemory>
+         <currentMemory> CURR => CURR +Int maxInt(0, NEWSIZE -Int bytesInWords((#sizeWordStack({LM [ INDEX ]}:>WordStack)))) </currentMemory>
+         <peakMemory> PEAK => maxInt(PEAK, CURR +Int maxInt(0, NEWSIZE -Int bytesInWords((#sizeWordStack({LM [ INDEX ]}:>WordStack))))) </peakMemory>
 
     rule <k> #memoryDelta(INDEX, NEWSIZE) => #deductMemory(PEAK) ... </k>
          <localMem> LM </localMem>
-         <currentMemory> CURR => CURR +Int NEWSIZE -Int ((#sizeWordStack({LM [ INDEX ]}:>WordStack)) up/Int 8) </currentMemory>
-         <peakMemory> PEAK => maxInt(PEAK, CURR +Int NEWSIZE -Int ((#sizeWordStack({LM [ INDEX ]}:>WordStack)) up/Int 8)) </peakMemory>
+         <currentMemory> CURR => CURR +Int NEWSIZE -Int bytesInWords((#sizeWordStack({LM [ INDEX ]}:>WordStack))) </currentMemory>
+         <peakMemory> PEAK => maxInt(PEAK, CURR +Int NEWSIZE -Int bytesInWords((#sizeWordStack({LM [ INDEX ]}:>WordStack)))) </peakMemory>
 
     rule <k> #memoryDelta(DELTA) => #deductMemory(PEAK) ... </k>
          <currentMemory> CURR => CURR +Int DELTA </currentMemory>
@@ -328,12 +333,12 @@ Note that, unlike EVM, operations need to take into account the size of the oper
     rule #compute [ _ = mulmod W0 , W1 , W2, SCHED ] => Cdiv(SCHED, intSize(W0), intSize(W2)) +Int Cdiv(SCHED, intSize(W1), intSize(W2)) +Int Cmul(SCHED, minInt(intSize(W0), intSize(W2)), minInt(intSize(W1), intSize(W2))) +Int Cdiv(SCHED, intSize(W2) *Int 2, intSize(W2)) +Int Gmulmod < SCHED >
     rule #compute [ _ = expmod W0 , W1 , W2, SCHED ] => Cexpmod(SCHED, intSize(W0), intSize(W1), intSize(W2))
 
-    rule <k> #compute [ _ = sha3 W0, SCHED ] => Gsha3 < SCHED > +Int (#sizeWordStack({LM [ W0 ]}:>WordStack) up/Int 8) *Int Gsha3word < SCHED > ... </k>
+    rule <k> #compute [ _ = sha3 W0, SCHED ] => Gsha3 < SCHED > +Int bytesInWords(#sizeWordStack({LM [ W0 ]}:>WordStack)) *Int Gsha3word < SCHED > ... </k>
          <localMem> LM </localMem>
 
     rule #compute [ _ = byte _ , _, SCHED ] => Gbyte < SCHED >
-    rule #compute [ _ = twos WIDTH, _, SCHED ] => Gsign < SCHED > +Int (maxInt(1, WIDTH) up/Int 8) *Int Gsignword < SCHED >
-    rule #compute [ _ = sext WIDTH, _, SCHED ] => Gsign < SCHED > +Int (maxInt(1, WIDTH) up/Int 8) *Int Gsignword < SCHED >
+    rule #compute [ _ = twos WIDTH, _, SCHED ] => Gsign < SCHED > +Int maxInt(1, bytesInWords(WIDTH)) *Int Gsignword < SCHED >
+    rule #compute [ _ = sext WIDTH, _, SCHED ] => Gsign < SCHED > +Int maxInt(1, bytesInWords(WIDTH)) *Int Gsignword < SCHED >
 
     rule #compute [ _ = call @iele.gas         ( _ ), SCHED ] => Greadstate < SCHED >
     rule #compute [ _ = call @iele.gasprice    ( _ ), SCHED ] => Greadstate < SCHED >
@@ -372,19 +377,19 @@ Note that, unlike EVM, operations need to take into account the size of the oper
          <gas> GAVAIL </gas>
          <activeAccounts> ACCTS </activeAccounts>
 
-    rule <k> #compute [ log IDX, SCHED ]                                 => (Glog < SCHED > +Int (Glogdata < SCHED > *Int #sizeWordStack({LM [ IDX ]}:>WordStack)) +Int (0 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
-    rule <k> #compute [ log IDX , _:Int, SCHED ]                         => (Glog < SCHED > +Int (Glogdata < SCHED > *Int #sizeWordStack({LM [ IDX ]}:>WordStack)) +Int (1 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
-    rule <k> #compute [ log IDX , _:Int , _:Int, SCHED ]                 => (Glog < SCHED > +Int (Glogdata < SCHED > *Int #sizeWordStack({LM [ IDX ]}:>WordStack)) +Int (2 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
-    rule <k> #compute [ log IDX , _:Int , _:Int , _:Int, SCHED ]         => (Glog < SCHED > +Int (Glogdata < SCHED > *Int #sizeWordStack({LM [ IDX ]}:>WordStack)) +Int (3 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
-    rule <k> #compute [ log IDX , _:Int , _:Int , _:Int,  _:Int, SCHED ] => (Glog < SCHED > +Int (Glogdata < SCHED > *Int #sizeWordStack({LM [ IDX ]}:>WordStack)) +Int (3 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
+    rule <k> #compute [ log IDX, SCHED ]                                 => (Glog < SCHED > +Int (Glogdata < SCHED > *Int bytesInWords(#sizeWordStack({LM [ IDX ]}:>WordStack))) +Int (0 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
+    rule <k> #compute [ log IDX , _:Int, SCHED ]                         => (Glog < SCHED > +Int (Glogdata < SCHED > *Int bytesInWords(#sizeWordStack({LM [ IDX ]}:>WordStack))) +Int (1 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
+    rule <k> #compute [ log IDX , _:Int , _:Int, SCHED ]                 => (Glog < SCHED > +Int (Glogdata < SCHED > *Int bytesInWords(#sizeWordStack({LM [ IDX ]}:>WordStack))) +Int (2 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
+    rule <k> #compute [ log IDX , _:Int , _:Int , _:Int, SCHED ]         => (Glog < SCHED > +Int (Glogdata < SCHED > *Int bytesInWords(#sizeWordStack({LM [ IDX ]}:>WordStack))) +Int (3 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
+    rule <k> #compute [ log IDX , _:Int , _:Int , _:Int,  _:Int, SCHED ] => (Glog < SCHED > +Int (Glogdata < SCHED > *Int bytesInWords(#sizeWordStack({LM [ IDX ]}:>WordStack))) +Int (4 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
 
-    rule <k> #compute [ _ = load INDEX, SCHED ] => Gloadcell < SCHED > +Int #sizeWordStack({LM [ INDEX ]}:>WordStack) *Int Gloadword < SCHED > ... </k>
+    rule <k> #compute [ _ = load INDEX, SCHED ] => Gloadcell < SCHED > +Int bytesInWords(#sizeWordStack({LM [ INDEX ]}:>WordStack)) *Int Gloadword < SCHED > ... </k>
          <localMem> LM </localMem>
 
-    rule #compute [ _ = load INDEX , OFFSET , WIDTH, SCHED ] => Gload < SCHED > +Int WIDTH *Int Gloadword < SCHED >
+    rule #compute [ _ = load INDEX , OFFSET , WIDTH, SCHED ] => Gload < SCHED > +Int bytesInWords(WIDTH) *Int Gloadword < SCHED >
 
     rule #compute [ store VALUE , INDEX, SCHED ] => Gstorecell < SCHED > +Int intSize(VALUE) *Int Gstoreword < SCHED >
-    rule #compute [ store VALUE , INDEX , OFFSET , WIDTH, SCHED ] => Gstore < SCHED > +Int WIDTH *Int Gstoreword < SCHED >
+    rule #compute [ store VALUE , INDEX , OFFSET , WIDTH, SCHED ] => Gstore < SCHED > +Int bytesInWords(WIDTH) *Int Gstoreword < SCHED >
 
     rule <k> #compute [ DEST = % SRC:Int, SCHED ] => Gcopy < SCHED > *Int intSize({REGS [ SRC ]}:>Int) ... </k>
          <regs> REGS </regs>
@@ -424,8 +429,8 @@ Note that, unlike EVM, operations need to take into account the size of the oper
 
     // Precompiled
     rule <k> #compute [ ECREC, SCHED ]  => 3000 ... </k>
-    rule <k> #compute [ SHA256, SCHED ] =>  60 +Int  12 *Int (maxInt(LEN, intSize(DATA)) up/Int 32) ... </k> <callData> LEN , DATA , .Ints </callData>
-    rule <k> #compute [ RIP160, SCHED ] => 600 +Int 120 *Int (maxInt(LEN, intSize(DATA)) up/Int 32) ... </k> <callData> LEN , DATA , .Ints </callData>
+    rule <k> #compute [ SHA256, SCHED ] =>  60 +Int  3 *Int bytesInWords(maxInt(LEN, intSize(DATA))) ... </k> <callData> LEN , DATA , .Ints </callData>
+    rule <k> #compute [ RIP160, SCHED ] => 600 +Int 30 *Int bytesInWords(maxInt(LEN, intSize(DATA))) ... </k> <callData> LEN , DATA , .Ints </callData>
     rule <k> #compute [ ID, SCHED ]     =>  0 ... </k>
 
     rule #compute [ ECADD, SCHED ] => 500

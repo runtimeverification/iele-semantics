@@ -154,6 +154,13 @@ You could alternatively calculate `I1 %Int I2`, then add one to the normal integ
     rule intSizes(.Ints) => 0
     rule intSizes(I , INTS) => intSize(I) +Int intSizes(INTS)
 
+    syntax Int ::= intSizes ( Array , Int ) [function, klabel(intSizesArr)]
+                 | intSizes ( Array , Int , Int ) [function, klabel(intSizesAux)]
+ // -----------------------------------------------------------------------------
+    rule intSizes(ARR::Array, I) => intSizes(ARR, I, 0)
+    rule intSizes(ARR::Array, I, I) => 0
+    rule intSizes(ARR, I, J) => {ARR [ J ]}:>Int +Int intSizes(ARR, I, J +Int 1) [owise]
+
     syntax Int ::= bitsInWords ( Int ) [function]
  // ---------------------------------------------
     rule bitsInWords(I) => I up/Int 256
