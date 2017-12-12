@@ -1188,7 +1188,7 @@ If the function being called is not public, does not exist, or has the wrong num
     syntax KItem ::= "#return" LValues LValue
  // -----------------------------------------
     rule <k> #exception STATUS ~> #return _ REG
-          => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG STATUS
+          => #popCallStack ~> #popWorldState ~> #popSubstate ~> #registerDelta(REG, 1) ~> #load REG STATUS
          ...
          </k>
          <output> _ => .Ints </output>
@@ -1197,6 +1197,7 @@ If the function being called is not public, does not exist, or has the wrong num
            => #popCallStack
            ~> #popWorldState
            ~> #popSubstate
+           ~> #registerDelta(REG, intSize(OUT))
            ~> #load REG OUT ~> #refund GAVAIL
           ...
          </k>
@@ -1207,6 +1208,8 @@ If the function being called is not public, does not exist, or has the wrong num
           => #popCallStack
           ~> #if EXECMODE ==K VMTESTS #then #popWorldState #else #dropWorldState #fi
           ~> #dropSubstate
+          ~> #registerDelta(REG, 1)
+          ~> #registerDelta(REGS, OUT)
           ~> #load REG 0 ~> #refund GAVAIL ~> #if EXECMODE ==K VMTESTS #then .K #else #loads REGS OUT #fi
          ...
          </k>
@@ -1315,8 +1318,8 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
                    | "#mkCodeDeposit" Int Int Contract LValue LValue Bool
                    | "#finishCodeDeposit" Int Contract LValue LValue
  // ----------------------------------------------------------------
-    rule <k> #exception STATUS ~> #codeDeposit _ _ _ REG _ _ => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG STATUS ... </k> <output> _ => .Ints </output>
-    rule <k> #revert OUT ~> #codeDeposit _ _ _ REG _ _ => #popCallStack ~> #popWorldState ~> #popSubstate ~> #refund GAVAIL ~> #load REG OUT ... </k>
+    rule <k> #exception STATUS ~> #codeDeposit _ _ _ REG _ _ => #popCallStack ~> #popWorldState ~> #popSubstate ~> #registerDelta(REG, 1) ~> #load REG STATUS ... </k> <output> _ => .Ints </output>
+    rule <k> #revert OUT ~> #codeDeposit _ _ _ REG _ _ => #popCallStack ~> #popWorldState ~> #popSubstate ~> #registerDelta(REG, intSize(OUT)) ~> #refund GAVAIL ~> #load REG OUT ... </k>
          <gas> GAVAIL </gas>
 
     rule <mode> EXECMODE </mode>
@@ -1333,7 +1336,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
 
     rule <k> #finishCodeDeposit ACCT CODE STATUS ACCTOUT
           => #popCallStack ~> #if EXECMODE ==K VMTESTS #then #popWorldState #else #dropWorldState #fi ~> #dropSubstate
-          ~> #refund GAVAIL ~> #load STATUS 0 ~> #load ACCTOUT ACCT
+          ~> #registerDelta(STATUS, 1) ~> #registerDelta(ACCTOUT, 3) ~> #refund GAVAIL ~> #load STATUS 0 ~> #load ACCTOUT ACCT
          ...
          </k>
          <mode> EXECMODE </mode>
@@ -1345,7 +1348,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
          </account>
          <activeAccounts> ... ACCT |-> (EMPTY => #if CODE =/=K #emptyCode #then false #else EMPTY #fi) ... </activeAccounts>
 
-    rule <k> #exception STATUS ~> #finishCodeDeposit _ _ REG _ => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load REG STATUS ... </k>
+    rule <k> #exception STATUS ~> #finishCodeDeposit _ _ REG _ => #popCallStack ~> #popWorldState ~> #popSubstate ~> #registerDelta(REG, 1) ~> #load REG STATUS ... </k>
 ```
 
 -   `create` will attempt to `#create` the named contract using the initialization code and cleans up the result with `#codeDeposit`.
