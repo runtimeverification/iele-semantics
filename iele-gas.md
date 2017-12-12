@@ -4,6 +4,33 @@ IELE Gas Calculation
 The gas calculation is designed to mirror the style of the yellowpaper.
 Gas is consumed either by increasing the amount of memory being used, or by executing opcodes.
 
+```{.k .uiuck .rvk}
+module IELE-GAS
+    imports IELE-DATA
+    imports IELE-CONFIGURATION
+    imports IELE-COMMON
+    imports IELE-INFRASTRUCTURE
+    imports IELE-PRECOMPILED
+```
+
+Overall Gas Calculation
+-----------------------
+
+The gas cost of an instruction is the cost incurred from the memory used by the instruction plus the
+computational cost of executing the instruction.
+
+-   `#gas` calculates how much gas this operation costs, and takes into account the memory consumed.
+-   `#deductGas` deducts a specific integer amount of gas, raising an out of gas exception if insufficient gas remains.
+
+```{.k .uiuck .rvk}
+    syntax InternalOp ::= "#deductGas"
+ // ----------------------------------
+    rule <k> #gas [ OP ] => #memory [ OP ] ~> #compute [ OP , SCHED ] ~> #deductGas ... </k> <schedule> SCHED </schedule>
+
+    rule <k> G:Int ~> #deductGas => #exception OUT_OF_GAS ... </k> <gas> GAVAIL                  </gas> requires GAVAIL <Int G
+    rule <k> G:Int ~> #deductGas => .                     ... </k> <gas> GAVAIL => GAVAIL -Int G </gas> <previousGas> _ => GAVAIL </previousGas> requires GAVAIL >=Int G
+```
+
 Memory Consumption
 ------------------
 
@@ -30,25 +57,8 @@ IELE can decrease when memory cells are deallocated or resized.
 
 Note that the values returned by the above functions could be negative.
 
-```{.k .uiuck .rvk}
-module IELE-GAS
-    imports IELE-DATA
-    imports IELE-CONFIGURATION
-    imports IELE-COMMON
-    imports IELE-INFRASTRUCTURE
-    imports IELE-PRECOMPILED
-```
-
--   `#gas` calculates how much gas this operation costs, and takes into account the memory consumed.
 
 ```{.k .uiuck .rvk}
-    syntax InternalOp ::= "#deductGas"
- // ----------------------------------
-    rule <k> #gas [ OP ] => #memory [ OP ] ~> #compute [ OP , SCHED ] ~> #deductGas ... </k> <schedule> SCHED </schedule>
-
-    rule <k> G:Int ~> #deductGas => #exception OUT_OF_GAS ... </k> <gas> GAVAIL                  </gas> requires GAVAIL <Int G
-    rule <k> G:Int ~> #deductGas => .                     ... </k> <gas> GAVAIL => GAVAIL -Int G </gas> <previousGas> _ => GAVAIL </previousGas> requires GAVAIL >=Int G
-
     syntax InternalOp ::= "#memory" "[" Instruction "]"
  // ---------------------------------------------------
 ```
@@ -93,6 +103,8 @@ Since the result is boolean, the result size for all comparison operations is 1.
     difference between the sizes of W0 and W1.
 -   `REG = mod W0, W1` size of the result is at most the minimum of the sizes
     of W0 and W1.
+-   `REG = exp W0, W1` the size of the result is equal to the size of the base multiplied
+    by the exponent.
 
 ```{.k .uiuck .rvk}
     rule #memory [ REG = add W0 , W1 ] => #registerDelta(REG, maxInt(intSize(W0), intSize(W1)) +Int 1)
@@ -130,8 +142,8 @@ Result size of SHA3 is 256 bits, i.e., 4 words.
 
 ```{.k .uiuck .rvk}
     rule #memory [ REG = byte INDEX , _ ] => #registerDelta(REG, bytesInWords(1))
-    rule #memory [ REG = sext WIDTH , _ ] => #registerDelta(REG, bytesInWords(WIDTH))
-    rule #memory [ REG = twos WIDTH , _ ] => #registerDelta(REG, bytesInWords(WIDTH))
+    rule #memory [ REG = sext WIDTH , _ ] => #registerDelta(REG, bytesInWords(chop(WIDTH)))
+    rule #memory [ REG = twos WIDTH , _ ] => #registerDelta(REG, bytesInWords(chop(WIDTH)))
 ```
 
 #### Local state operations
@@ -167,12 +179,36 @@ Operations whose result should fit into 256 bits.
     rule #memory [ REG = call @iele.balance     ( _     ) ] => #registerDelta(REG, bitsInWords(256))
 ```
 
+#### Assignment operations
+
+The memory cost of assigning a register or immediate to a register is the cost associated with
+resizing the register to equal the value being assigned.
+
+```{.k .uiuck .rvk}
+    rule <k> #memory [ DEST = % SRC:Int ] => #registerDelta(DEST, intSize({REGS [ SRC ]}:>Int)) ... </k>
+         <regs> REGS </regs>
+    rule <k> #memory [ DEST = SRC:Int ] => #registerDelta(DEST, intSize(SRC)) ... </k>
+```
+
+### Function Call/Return
+
+The memory cost of a function call is the cost of initializing a new set of registers plus the cost of
+saving the return address and other information on the function stack. The latter is a constant.
+For the former, each register used by the function call consumes one word by default, except for the parameters
+to the function, which consume as much as the size of their arguments.
+
 ```{.k .uiuck .rvk}
     rule <k> #memory [ REGS = call @ NAME ( ARGS ) ] => #memoryDelta(REGISTERS -Int #sizeRegs(ARGS) +Int intSizes(ARGS) +Int Gcallmemory < SCHED >) ... </k>
          <schedule> SCHED </schedule>
          <funcId> NAME </funcId>
          <nregs> REGISTERS </nregs>
+```
 
+The memory cost of returning to a function is negative. Instead of charing a gas cost, memory is reclaimed according to the
+memory freed by returning from the function. In other words, we free the call frame on the stack, as well as each of the registers
+in the callee.
+
+```{.k .uiuck .rvk}
     rule <k> #memory [ ret ARGS ] => #memoryDelta(0 -Int intSizes(REGS, NREGS) -Int Gcallmemory < SCHED >) ... </k>
          <schedule> SCHED </schedule>
          <fid> NAME </fid>
@@ -180,15 +216,13 @@ Operations whose result should fit into 256 bits.
          <nregs> NREGS </nregs>
 ```
 
-#### Memory operations
+### Memory operations
 
 - `REG = load INDEX1 , INDEX2 , WIDTH`
-  In addition to resizing the return register to fit the loaded data,
-  the memory needs to potentially be extended to include the entire segment
-  being loaded.
+  We resize the return register to fit the loaded data
 - `REG = store INDEX1 , INDEX2 , WIDTH`
   the memory needs to potentially be extended to include the entire segment
-  being loaded.
+  being stored.
 - `REG = load INDEX`
   the size of the register needs to be resized to fit the size of the value
   at the INDEX in memory
@@ -205,11 +239,10 @@ Operations whose result should fit into 256 bits.
     rule #memory [ store VALUE ,  INDEX ] => #memoryDelta(INDEX, intSize(VALUE))
 ```
 
-```{.k .uiuck .rvk}
-    rule <k> #memory [ DEST = % SRC:Int ] => #registerDelta(DEST, intSize({REGS [ SRC ]}:>Int)) ... </k>
-         <regs> REGS </regs>
-    rule <k> #memory [ DEST = SRC:Int ] => #registerDelta(DEST, intSize(SRC)) ... </k>
-```
+### Storage
+
+Storage contains arbitrary-precision values, therefore the memory cost of loading a value from storage
+is the cost associated with resizing the register to equal the value contained in storage.
 
 ```{.k .uiuck .rvk}
     rule <k> #memory [ REG = sload INDEX ] => #registerDelta(REG, intSize(#lookup(STORAGE, INDEX))) ... </k>
@@ -221,26 +254,35 @@ Operations whose result should fit into 256 bits.
          </account>
 ```
 
+Storing to storage incurs no memory cost (its disk cost is included in its computational cost).
+
+```{.k .uiuck .rvk}
+    rule #memory [ sstore _ , _   ] => .
+```
+
+### Miscellaneous
+
+The following instructions do not incur any memory costs as they either do not return a value and do not write to memory,
+or else their memory cost is paid after the instruction executes.
+
+For example, `revert`, `ret`, `call`, `staticcall`, `create`, and `copycreate` each invoke `#registerDelta` directly
+as part of the process of returning from a contract. For information on how these are used, refer to the usages in `iele.md`.
+
 ```{.k .uiuck .rvk}
     rule #memory [ br _           ] => .
     rule #memory [ br _ , _       ] => .
     rule #memory [ revert _       ] => .
     rule #memory [ log _          ] => .
     rule #memory [ log _ , _      ] => .
-    rule #memory [ sstore _ , _   ] => .
     rule #memory [ selfdestruct _ ] => .
 
     rule <k> #memory [ ret _          ] => . ... </k> <localCalls> .List </localCalls>
-```
 
-```{.k .uiuck .rvk}
     rule #memory [ _ = call _ at _ ( _ ) send _ , gaslimit _ ] => .
     rule #memory [ _ = staticcall _ at _ ( _ ) gaslimit _ ] => .
     rule #memory [ _ , _ = create _ ( _ ) send _ ] => .
     rule #memory [ _ , _ = copycreate _ ( _ ) send _ ] => .
-```
 
-```{.k .uiuck .rvk}
     rule #memory [ ECREC ] => .
     rule #memory [ SHA256 ] => .
     rule #memory [ RIP160 ] => .
@@ -255,26 +297,43 @@ memory costs are computed w.r.t. the peak level of allocated memory.
 Therefore, the configuration also contains a cell for the peak memory level,
 which is maintained by the next rules.
 
-For `#registerDelta`, when trying to store in a register `REG` a value of
-size `NEWSIZE`, the current memory level decreases by the current size of
-`REG` and increases by `NEWSIZE`.
+-   `#registerDelta` computes the new peak memory usage based on an estimation of the size of the result of the instruction, and incurs gas cost
+    if the new peak is greater than the old peak. It does not update `<currentMemory`, which is updated when registers are actually written by
+    `#load` in `iele.md`. The delta is the estimated size after the instruction minus the current size before the instruction.
 
 ```{.k .uiuck .rvk}
     syntax InternalOp ::= #registerDelta ( LValue , Int )
-                        | #registerDeltas ( LValues , Ints )
-                        | #memoryExpand  ( Int , Int )
-                        | #memoryDelta   ( Int , Int )
-                        | #memoryDelta   ( Int ) [klabel(memoryDirectDelta)]
- // ------------------------------------------------------------------------
+ // -----------------------------------------------------
     rule <k> #registerDelta(% REG, NEWSIZE) => #deductMemory(PEAK) ... </k>
          <currentMemory> CURR </currentMemory>
          <regs> REGS </regs>
          <peakMemory> PEAK => maxInt(PEAK, CURR +Int NEWSIZE -Int intSize({REGS [ REG ]}:>Int)) </peakMemory>
+```
 
+-   `#registerDeltas` invokes `#registerDelta` on a sequence of registers and values, using their exact size. This form is invoked when
+    a contract returns and the return registers of an inter-contract call instruction are written.
+
+```{.k .uiuck .rvk}
+    syntax InternalOp ::= #registerDeltas ( LValues , Ints )
+ // --------------------------------------------------------
     rule #registerDeltas(REG, REGS, INT, INTS) => #registerDelta(REG, intSize(INT)) ~> #registerDeltas(REGS, INTS)
     rule #registerDeltas(.LValues, _) => .K
     rule #registerDeltas(_, .Ints) => .K
+```
 
+-   `#memoryExpand` updates `<currentMemory>` and `<peakMemory>` and incurs the gas cost if peak memory increases.
+    It accepts a memory cell and its new size and computes the delta based on the difference in sizes before and after the instruction.
+    However, it does not ever decrease the current memory usage, only expanding it up to the new size if it is less than that size currently.
+-   `#memoryDelta` does the same as `#memoryExpand` except that it can also decrease the current memory if the new size is less than the old size.
+-   `#memoryDelta` also takes a one argument form which takes an exact delta. This is used by function call/return and in other places where
+    a memory delta occurs despite no write to local memory.
+-   `#deductMemory` computes the actual gas cost from the old and new peak memory.
+
+```{.k .uiuck .rvk}
+    syntax InternalOp ::= #memoryExpand  ( Int , Int )
+                        | #memoryDelta   ( Int , Int )
+                        | #memoryDelta   ( Int ) [klabel(memoryDirectDelta)]
+ // ------------------------------------------------------------------------
     rule <k> #memoryExpand(INDEX, NEWSIZE) => #deductMemory(PEAK) ... </k>
          <localMem> LM </localMem>
          <currentMemory> CURR => CURR +Int maxInt(0, NEWSIZE -Int bytesInWords((#sizeWordStack({LM [ INDEX ]}:>WordStack)))) </currentMemory>
@@ -294,7 +353,14 @@ size `NEWSIZE`, the current memory level decreases by the current size of
     rule <k> #deductMemory(OLDPEAK) => Cmem(SCHED, NEWPEAK) -Int Cmem(SCHED, OLDPEAK) ~> #deductGas ... </k>
          <schedule> SCHED </schedule>
          <peakMemory> NEWPEAK </peakMemory>
+```
 
+-   `Cmem` computes the absolute cost of using N bytes of memory. It scales linearly up to a certain amount and quadratically afterwards.
+    A certain amount of memory is also free, as computed by `Cpricedmem`.
+-   `Cpricedmem` is the memory that is actually charged, which is the actual memory usage minus the memory allowance, which is an amount of memory
+    free in each contract call frame.
+
+```{.k .uiuck .rvk}
     syntax Int ::= Cmem ( Schedule , Int )       [function, memo]
                  | Cpricedmem ( Schedule, Int )  [function]
  // -------------------------------------------------------
@@ -314,32 +380,78 @@ Note that, unlike EVM, operations need to take into account the size of the oper
 ```{.k .uiuck .rvk}
     syntax InternalOp ::= "#compute" "[" Instruction "," Schedule "]"
  // -----------------------------------------------------------------
+```
+
+### Expressions
+
+#### Bitwise arithmetic
+
+The bitwise expressions have a constant cost plus a linear factor in the number of words manipulated.
+
+```{.k .uiuck .rvk}
     rule #compute [ _ = not W,       SCHED ] => Gnot < SCHED > +Int intSize(W) *Int Gnotword < SCHED >
     rule #compute [ _ = and W0 , W1, SCHED ] => Gbitwise < SCHED > +Int minInt(intSize(W0), intSize(W1)) *Int Gbitwiseword < SCHED >
     rule #compute [ _ = or  W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gbitwiseword < SCHED >
     rule #compute [ _ = xor W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gbitwiseword < SCHED >
+```
 
+#### Comparison operators
+
+`iszero` has a constant cost, whereas `cmp` has a constant cost and a linear factor in the smaller of the two sizes.
+
+```{.k .uiuck .rvk}
     rule #compute [ _ = iszero W,      SCHED ] => Giszero < SCHED >
     rule #compute [ _ = cmp _ W0 , W1, SCHED ] => Gcmp < SCHED > +Int minInt(intSize(W0), intSize(W1)) *Int Gcmpword < SCHED >
+```
 
+#### Regular arithmetic
+
+-   `add` and `sub` have a linear cost in the larger of the two sizes.
+
+```{.k .uiuck .rvk}
     rule #compute [ _ = add W0 , W1, SCHED ] => Gadd < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gaddword < SCHED >
     rule #compute [ _ = sub W0 , W1, SCHED ] => Gadd < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gaddword < SCHED >
     rule #compute [ _ = mul W0 , W1, SCHED ] => Gmul < SCHED > +Int Cmul(SCHED, intSize(W0), intSize(W1))
     rule #compute [ _ = div W0 , W1, SCHED ] => Gdiv < SCHED > +Int Cdiv(SCHED, intSize(W0), intSize(W1))
     rule #compute [ _ = mod W0 , W1, SCHED ] => Gdiv < SCHED > +Int Cdiv(SCHED, intSize(W0), intSize(W1))
     rule #compute [ _ = exp W0 , W1, SCHED ] => Cexp(SCHED, intSize(W0), W1)
+```
 
+#### Modular arithmetic
+
+-   `addmod` is the cost of an addition plus the cost of the modulus.
+
+```{.k .uiuck .rvk}
     rule #compute [ _ = addmod W0 , W1 , W2, SCHED ] => Gadd < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gaddword < SCHED > +Int Cdiv(SCHED, maxInt(intSize(W0), intSize(W1)) +Int 1, intSize(W2))
     rule #compute [ _ = mulmod W0 , W1 , W2, SCHED ] => Cdiv(SCHED, intSize(W0), intSize(W2)) +Int Cdiv(SCHED, intSize(W1), intSize(W2)) +Int Cmul(SCHED, minInt(intSize(W0), intSize(W2)), minInt(intSize(W1), intSize(W2))) +Int Cdiv(SCHED, intSize(W2) *Int 2, intSize(W2)) +Int Gmulmod < SCHED >
     rule #compute [ _ = expmod W0 , W1 , W2, SCHED ] => Cexpmod(SCHED, intSize(W0), intSize(W1), intSize(W2))
+```
 
+#### SHA3
+
+The cost of hashing a memory cell is equal to a constant plus the size of the cell in words.
+
+```{.k .uiuck .rvk}
     rule <k> #compute [ _ = sha3 W0, SCHED ] => Gsha3 < SCHED > +Int bytesInWords(#sizeWordStack({LM [ W0 ]}:>WordStack)) *Int Gsha3word < SCHED > ... </k>
          <localMem> LM </localMem>
+```
 
+#### Byte access
+
+-   `byte` has a constant cost.
+-   `twos` and `sign` have a constant cost plus a linear factor in the `WIDTH` parameter.
+
+```{.k .uiuck .rvk}
     rule #compute [ _ = byte _ , _, SCHED ] => Gbyte < SCHED >
-    rule #compute [ _ = twos WIDTH, _, SCHED ] => Gsign < SCHED > +Int maxInt(1, bytesInWords(WIDTH)) *Int Gsignword < SCHED >
-    rule #compute [ _ = sext WIDTH, _, SCHED ] => Gsign < SCHED > +Int maxInt(1, bytesInWords(WIDTH)) *Int Gsignword < SCHED >
+    rule #compute [ _ = twos WIDTH, _, SCHED ] => Gsign < SCHED > +Int maxInt(1, bytesInWords(chop(WIDTH))) *Int Gsignword < SCHED >
+    rule #compute [ _ = sext WIDTH, _, SCHED ] => Gsign < SCHED > +Int maxInt(1, bytesInWords(chop(WIDTH))) *Int Gsignword < SCHED >
+```
 
+#### Local state operations
+
+Each of these operations merely reads a constant value from the execution context.
+
+```{.k .uiuck .rvk}
     rule #compute [ _ = call @iele.gas         ( _ ), SCHED ] => Greadstate < SCHED >
     rule #compute [ _ = call @iele.gasprice    ( _ ), SCHED ] => Greadstate < SCHED >
     rule #compute [ _ = call @iele.gaslimit    ( _ ), SCHED ] => Greadstate < SCHED >
@@ -353,22 +465,80 @@ Note that, unlike EVM, operations need to take into account the size of the oper
     rule #compute [ _ = call @iele.timestamp   ( _ ), SCHED ] => Greadstate < SCHED >
     rule #compute [ _ = call @iele.difficulty  ( _ ), SCHED ] => Greadstate < SCHED >
     rule #compute [ _ = call @iele.callvalue   ( _ ), SCHED ] => Greadstate < SCHED >
-    rule #compute [ _ = call @iele.blockhash   ( _ ), SCHED ] => Gblockhash < SCHED >
+```
 
+The blockhash function looks up state in the blockchain, and is therefore more expensive than the other builtin functions.
+
+```{.k .uiuck .rvk}
+    rule #compute [ _ = call @iele.blockhash   ( _ ), SCHED ] => Gblockhash < SCHED >
+```
+
+#### Network state operations
+
+Each of these operations pays a constant cost to look up information about an account on the network.
+
+```{.k .uiuck .rvk}
+    rule #compute [ _ = call @iele.balance     ( _ ), SCHED ] => Gbalance     < SCHED >
+    rule #compute [ _ = call @iele.extcodesize ( _ ), SCHED ] => Gextcodesize < SCHED >
+```
+
+#### Assignment operations
+
+The cost to load a value into a register is simply the cost to copy its value.
+
+```{.k .uiuck .rvk}
+    rule <k> #compute [ DEST = % SRC:Int, SCHED ] => Gcopy < SCHED > *Int intSize({REGS [ SRC ]}:>Int) ... </k>
+         <regs> REGS </regs>
+
+    rule #compute [ DEST = SRC:Int, SCHED ] => Gcopy < SCHED > *Int intSize(SRC)
+```
+
+### Jump statements
+
+The cost of jumping to a label, both conditionally and unconditionally, is a constant,
+but the cost of a conditional jump is slightly higher since it must test the register against zero.
+
+```{.k .uiuck .rvk}
     rule #compute [ br _, SCHED ] => Gbr < SCHED >
     rule #compute [ br _ , _, SCHED ] => Gbrcond < SCHED >
+```
 
+### Function Call/Return
+
+The cost of an intra-contract call is the cost to initialize the new set of registers, the cost to copy the arguments to the call frame, and the
+constant cost to perform the jump and store the return address.
+
+```{.k .uiuck .rvk}
     rule <k> #compute [ _ = call @ NAME ( ARGS ), SCHED ] => Gcallreg < SCHED > *Int REGISTERS +Int intSizes(ARGS) *Int Gcopy < SCHED > +Int Glocalcall < SCHED > ... </k>
          <funcId> NAME </funcId>
          <nregs> REGISTERS </nregs>
+```
 
-    rule <k> #compute [ ret ARGS, SCHED ] => Gmove < SCHED > *Int #sizeRegs(ARGS) +Int Gret < SCHED > ... </k>
+The cost to return from an intra-contract call is the cost to move the return values into the result registers plus the cost to
+jump to the retgurn address. 
+
+```{.k .uiuck .rvk}
+    rule <k> #compute [ ret ARGS::Ints, SCHED ] => Gmove < SCHED > *Int #sizeRegs(ARGS) +Int Gret < SCHED > ... </k>
          <localCalls> ListItem(_) ... </localCalls>
-    rule <k> #compute [ ret _, SCHED ] => 0 ... </k>
+```
+
+The cost to return from a contract call is zero; this cost is paid by the calling frame as part of the call instruction.
+
+```{.k .uiuck .rvk}
+    rule <k> #compute [ ret _::Ints, SCHED ] => 0 ... </k>
          <localCalls> .List </localCalls>
-
     rule #compute [ revert _, SCHED ] => 0
+```
 
+The cost to call another contract is very similar to the cost in EVM:
+
+-   A constant cost for the call itself
+-   A constant cost if a value is transferred along with the call
+-   A constant cost if the call creates a new empty account
+-   The cost of initializing the memory of the called frame with the arguments to the function.
+-   The gas stipend paid to the callee to execute its code.
+
+```{.k .uiuck .rvk}
     rule <k> #compute [ _, RETS::LValues = call _ at ACCTTO ( ARGS ) send VALUE , gaslimit GCAP, SCHED ] => Ccall(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, VALUE, #sizeLVals(RETS), intSizes(ARGS)) ... </k>
          <gas> GAVAIL </gas>
          <activeAccounts> ACCTS </activeAccounts>
@@ -376,13 +546,26 @@ Note that, unlike EVM, operations need to take into account the size of the oper
     rule <k> #compute [ _, RETS::LValues = staticcall _ at ACCTTO ( ARGS ) gaslimit GCAP, SCHED ] => Ccall(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0, #sizeLVals(RETS), intSizes(ARGS)) ... </k>
          <gas> GAVAIL </gas>
          <activeAccounts> ACCTS </activeAccounts>
+```
 
+### Logging
+
+The cost of logging is similar to the cost in EVM: a constant ccost plus a cost per byte of unindexed data plus a cost per indexed log topic.
+
+```{.k .uiuck .rvk}
     rule <k> #compute [ log IDX, SCHED ]                                 => (Glog < SCHED > +Int (Glogdata < SCHED > *Int bytesInWords(#sizeWordStack({LM [ IDX ]}:>WordStack))) +Int (0 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
     rule <k> #compute [ log IDX , _:Int, SCHED ]                         => (Glog < SCHED > +Int (Glogdata < SCHED > *Int bytesInWords(#sizeWordStack({LM [ IDX ]}:>WordStack))) +Int (1 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
     rule <k> #compute [ log IDX , _:Int , _:Int, SCHED ]                 => (Glog < SCHED > +Int (Glogdata < SCHED > *Int bytesInWords(#sizeWordStack({LM [ IDX ]}:>WordStack))) +Int (2 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
     rule <k> #compute [ log IDX , _:Int , _:Int , _:Int, SCHED ]         => (Glog < SCHED > +Int (Glogdata < SCHED > *Int bytesInWords(#sizeWordStack({LM [ IDX ]}:>WordStack))) +Int (3 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
     rule <k> #compute [ log IDX , _:Int , _:Int , _:Int,  _:Int, SCHED ] => (Glog < SCHED > +Int (Glogdata < SCHED > *Int bytesInWords(#sizeWordStack({LM [ IDX ]}:>WordStack))) +Int (4 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
+```
 
+### Local Memory
+
+-   `load` pays a constant cost plus a cost per word loaded. The constant cost is higher if we must compute the width to be loaded dynamically.
+-  `store` pays a constant cost plus a cost per word stored. The constant cost is higher if we must compute the width to be stored dynamically.
+
+```{.k .uiuck .rvk}
     rule <k> #compute [ _ = load INDEX, SCHED ] => Gloadcell < SCHED > +Int bytesInWords(#sizeWordStack({LM [ INDEX ]}:>WordStack)) *Int Gloadword < SCHED > ... </k>
          <localMem> LM </localMem>
 
@@ -390,23 +573,25 @@ Note that, unlike EVM, operations need to take into account the size of the oper
 
     rule #compute [ store VALUE , INDEX, SCHED ] => Gstorecell < SCHED > +Int intSize(VALUE) *Int Gstoreword < SCHED >
     rule #compute [ store VALUE , INDEX , OFFSET , WIDTH, SCHED ] => Gstore < SCHED > +Int bytesInWords(WIDTH) *Int Gstoreword < SCHED >
+```
 
-    rule <k> #compute [ DEST = % SRC:Int, SCHED ] => Gcopy < SCHED > *Int intSize({REGS [ SRC ]}:>Int) ... </k>
-         <regs> REGS </regs>
+### Storage
 
-    rule #compute [ DEST = SRC:Int, SCHED ] => Gcopy < SCHED > *Int intSize(SRC)
+-   `sload` pays a constant cost plus a cost per word in the key, plus a cost per word loaded.
 
-    rule #compute [ _ = call @iele.balance     ( _ ), SCHED ] => Gbalance     < SCHED >
-    rule #compute [ _ = call @iele.extcodesize ( _ ), SCHED ] => Gextcodesize < SCHED >
-
-    rule <k> #compute [ _ = sload INDEX, SCHED ] => Gsload < SCHED > +Int Gsloadkey < SCHED > *Int intSize(INDEX) +Int Gsloadword < SCHED > *Int intSize(#lookup(STORAGE, INDEX)) ... </k>
+```{.k .uiuck .rvk}
+        rule <k> #compute [ _ = sload INDEX, SCHED ] => Gsload < SCHED > +Int Gsloadkey < SCHED > *Int intSize(INDEX) +Int Gsloadword < SCHED > *Int intSize(#lookup(STORAGE, INDEX)) ... </k>
          <id> ACCT </id>
          <account>
            <acctID> ACCT </acctID>
            <storage> STORAGE </storage>
            ...
          </account>
+```
 
+-   `sstore` pays a constant cost plus a cost per word in the key and in the value, plus a larger cost for increasing the size of the storage of the account that is partially refunded when the storage is released.
+
+```{.k .uiuck .rvk}
     rule <k> #compute [ sstore VALUE , INDEX, SCHED ] => Csstore(SCHED, INDEX, VALUE, #lookup(STORAGE, INDEX)) ... </k>
          <id> ACCT </id>
          <account>
@@ -414,10 +599,21 @@ Note that, unlike EVM, operations need to take into account the size of the oper
            <storage> STORAGE </storage>
            ...
          </account>
+```
 
+### Contract creation and destruction
+
+-   `create` pays a constant cost to initialize the account, a cost to copy the arguments of the constructor, plus a stipend to the constructor of 63/64ths of the current gas.
+-   `copycreate` pays a very similar cost to `create` but with a slightly higher constant because the account code must be looked up on the blockchain.
+
+```{.k .uiuck .rvk}
     rule #compute [ _ , _ = create _ ( ARGS ) send _, SCHED ] => Gcreate < SCHED > +Int Gcopy < SCHED > *Int intSizes(ARGS)
     rule #compute [ _ , _ = copycreate _ ( ARGS ) send _, SCHED ] => Gcopycreate < SCHED > +Int Gcopy < SCHED > *Int intSizes(ARGS)
+```
 
+-   `selfdestruct` costs a fixed amount plus a cost if the account the funds are transferred to must be created.
+
+```{.k .uiuck .rvk}
     rule <k> #compute [ selfdestruct ACCTTO, SCHED ] => Cselfdestruct(SCHED, ACCTTO, ACCTS, BAL) ... </k>
          <activeAccounts> ACCTS </activeAccounts>
          <id> ACCTFROM </id>
@@ -426,8 +622,13 @@ Note that, unlike EVM, operations need to take into account the size of the oper
            <balance> BAL </balance>
            ...
          </account>
+```
 
-    // Precompiled
+### Precompiled Contracts
+
+Each of the precompiled contracts pays a fixed cost per word of data passed to the contract plus a constant.
+
+```{.k .uiuck .rvk}
     rule <k> #compute [ ECREC, SCHED ]  => 3000 ... </k>
     rule <k> #compute [ SHA256, SCHED ] =>  60 +Int  3 *Int bytesInWords(maxInt(LEN, intSize(DATA))) ... </k> <callData> LEN , DATA , .Ints </callData>
     rule <k> #compute [ RIP160, SCHED ] => 600 +Int 30 *Int bytesInWords(maxInt(LEN, intSize(DATA))) ... </k> <callData> LEN , DATA , .Ints </callData>
@@ -454,10 +655,6 @@ Note: These are all functions as the operator `#compute` has already loaded all 
                  | Cxfer    ( Schedule , Int )                                     [function]
                  | Cnew     ( Schedule , Int , Map , Int )                         [function]
                  | Ccallmem ( Schedule , Int , Int )                               [function]
-                 | Cdiv     ( Schedule , Int , Int )                               [function]
-                 | Cmul     ( Schedule , Int , Int )                               [function]
-                 | Cexp     ( Schedule , Int , Int )                               [function]
-                 | Cexpmod  ( Schedule , Int , Int , Int )                         [function]
  // -----------------------------------------------------------------------------------------
     rule Ccall(SCHED, ACCT, ACCTS, GCAP, GAVAIL, VALUE, RETS, ARGS) => Cextra(SCHED, ACCT, ACCTS, VALUE, RETS, ARGS) +Int Cgascap(SCHED, GCAP, GAVAIL, Cextra(SCHED, ACCT, ACCTS, VALUE, RETS, ARGS))
 
@@ -511,6 +708,14 @@ Note: These are all functions as the operator `#compute` has already loaded all 
     syntax Int ::= "G*" "(" Int "," Int "," Int ")" [function]
  // ----------------------------------------------------------
     rule G*(GAVAIL, GLIMIT, REFUND) => GAVAIL +Int minInt((GLIMIT -Int GAVAIL)/Int 2, REFUND)
+
+    syntax Int ::= Cdiv     ( Schedule , Int , Int )       [function]
+                 | Cmul     ( Schedule , Int , Int )       [function]
+                 | Cexp     ( Schedule , Int , Int )       [function]
+                 | Cexpmod  ( Schedule , Int , Int , Int ) [function]
+ // -----------------------------------------------------------------
+    rule Cmul(SCHED, L1, L2) => Gmulword < SCHED > *Int L1 *Int L2 +Int Gmul < SCHED >
+      requires Gmulthreshold < SCHED > >Int L1 orBool Gmulthreshold < SCHED > >Int L2
 ```
 
 Gas Model Parameters
@@ -540,11 +745,11 @@ A `ScheduleConst` is a constant determined by the fee schedule; applying a `Sche
 
     syntax ScheduleConst ::= "Gextcodesize"  | "Gbalance"       | "Gsload"        | "Gadd"         | "Gaddword"    | "Gbitwise"      | "Gbitwiseword"
                            | "Rselfdestruct" | "Gselfdestruct"  | "Gcreate"       | "Gcodedeposit" | "Gcall"       | "Gbr"           | "Gbrcond"
-                           | "Gcallvalue"    | "Gcallstipend"   | "Gnewaccount"   | "Gexp"         | "Gmemory"     | "Gtxcreate"
+                           | "Gcallvalue"    | "Gcallstipend"   | "Gnewaccount"   | "Gexp"         | "Gmemory"     | "Gtxcreate"     | "Gmulthreshold"
                            | "Gtxdatazero"   | "Gtxdatanonzero" | "Gtransaction"  | "Glog"         | "Glogdata"    | "Glogtopic"     | "Gsha3"
                            | "Gsha3word"     | "Gcopy"          | "Gmove"         | "Gblockhash"   | "Gquadcoeff"  | "Rb"            | "Gdiv"
                            | "Gstoreword"    | "Gstorecell"     | "Gstore"        | "Gsloadword"   | "Gsloadkey"   | "Gsignword"     | "Gsign"
-                           | "Gret"          | "Greadstate"     | "Gnot"          | "Gnotword"     | "Gmul"        | "Gmulmod"
+                           | "Gret"          | "Greadstate"     | "Gnot"          | "Gnotword"     | "Gmul"        | "Gmulmod"       | "Gmulword"
                            | "Glocalcall"    | "Gloadword"      | "Gload"         | "Gloadcell"    | "Giszero"     | "Gcmp"          | "Gcmpword"
                            | "Gcallreg"      | "Gcallmemory"    | "Gbyte"         | "Gcopycreate"  | "Gsstore"     | "Gsstorekey"
                            | "Gsstoreset"    | "Gsstoresetkey"  | "Gsstoreword"
@@ -554,6 +759,8 @@ A `ScheduleConst` is a constant determined by the fee schedule; applying a `Sche
 
 ### Default Schedule
 
+This schedule is used to execute the EVM VM tests, and contains minor variations from the actual schedule used for execution.
+
 ```{.k .uiuck .rvk}
     syntax Schedule ::= "DEFAULT"
  // -----------------------------
@@ -562,6 +769,9 @@ A `ScheduleConst` is a constant determined by the fee schedule; applying a `Sche
     rule Greadstate     < DEFAULT > => 2
     rule Gadd           < DEFAULT > => 0
     rule Gaddword       < DEFAULT > => 3
+    rule Gmul           < DEFAULT > => 0
+    rule Gmulword       < DEFAULT > => 5
+    rule Gmulthreshold  < DEFAULT > => bitsInWords(1000)
     rule Gnot           < DEFAULT > => 0
     rule Gnotword       < DEFAULT > => 3
     rule Gbitwise       < DEFAULT > => 0
@@ -624,6 +834,8 @@ A `ScheduleConst` is a constant determined by the fee schedule; applying a `Sche
 ```
 
 ### Albe Schedule
+
+This is the initial schedule of IELE.
 
 ```{.k .uiuck .rvk}
     syntax Schedule ::= "ALBE"
