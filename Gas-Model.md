@@ -4,7 +4,7 @@ This document describes a proposal for the gas model of IELE.
 
 ## General considerations
 
-The gas model needs to ensure that
+The gas model needs to ensure that:
 
 * Miners are rewarded for their work (and thus have an incentive for doing it).
   * Note that if miners are rewarded for all their work, as far as they are
@@ -83,10 +83,17 @@ For now, we assume similar costs for storage as EVM does.
 
 ## Differences from EVM
 
+### Values are arbitrarily large
+
 One change from EVM to IELE is that integers are no longer limited to 256 bits,
 being allowed to grow arbitrarily large.
 Therefore, the memory required for their storage might become non-negligible;
 for example, numbers could effectively be used to encode sequential memory.
+
+Another change brought upon by arbitrary length integers is that operations
+manipulating these values need to take into account the size of the operands.
+
+### Registers and memory/storage cells need to hold arbitrarily large values
 
 Moreover, IELE allows registers and memory cells to refer to these arbitrarily
 large numbers.  To address that, we will assume registers and memory cells
@@ -106,6 +113,8 @@ for larger numbers.
 To align with the above, the storage representation of a number will consist of
 the metadata information followed by the number representation.
 
+### Register and memory/storage cells must resize to fit data
+
 Another difference from EVM is that the amount of memory/storage required for
 representing the value of a register or memory/storage cell, instead of being
 fixed at 256 bits, now varies during its usage.  This was previously only
@@ -116,17 +125,16 @@ To address this variance, we track the current amount of allocated memory
 throughout the execution of the contract.  Note that, unlike EVM, this includes
 decreasing memory usage when memory cells are deallocated or resized.
 
-Another change brought upon by arbitrary length integers is that operations
-manipulating these values need to take into account the size of the operands.
+### Registers vs Stack
 
-### Operations with return register
+IELE is register-based with an unbounded number of registers stored in memory
+instead of stack-based with a bounded stack separated from memory.
 
-The memory variation introduced by updating the register *r* with value *v*
-```
-  registerLoadDelta(r, v) = limbLength(v) - registerSize(r)
-```
+Since registers are stored in memory, their allocation adds up to the memory
+costs.  To address the fact that the usage of stack in EVM did not incur any
+gas costs, a memory allowance is given to each contract call.
 
-### High level view of the gas model
+## High level view of the gas model
 
 For each operation there are two costs (for computation and memory),
 similarly to the EVM gas model.
@@ -140,14 +148,20 @@ required store the registers in use.
   these might need to be reallocated, increasing or reducing the
   total amount of memory required for registers.
 
-The current amount of memory required by the register stack is maintained by
-the semantics and updated using the *registerLoadDelta* function above.
+The memory variation introduced by updating the register *r* with value *v*
+```
+  registerDelta(r, v) = limbLength(v) - registerSize(r)
+```
 
-The peak register stack memory is also maintained and increased whenever the
-current register stack level passes the peak level.
+The current amount of memory is maintained by the semantics and updated using
+functions like the *registerDelta* function above.
 
-If the peak level reaches the register memory allowance, each time it increases
-the increment is considered as memory cost and gas is computed accordingly.
+The peak memory level is also maintained and increased to match the
+current memory level whenever needed.
+
+If the peak level passes the memory allowance for the current contract call,
+the difference between the two is considered as memory cost and gas is
+computed for it, accordingly.
 
 ### Expressions
 
@@ -155,21 +169,16 @@ For an arithmetic operation we distinguish two variations:
 * the gas cost reflecting the complexity of the computation; and
 * the variation of memory due to updating the result register.
 
-To make sure that the user has enough allowance for storing the result of the
+To make sure that the user has enough gas for storing the result of the
 operation, we estimate the result size (*estimatedResultSize*) and, prior to
-executing, we require that there are enough resources (registry allowance,
-gas/memory) to contain that size.
+executing, we require that there are enough resources to contain that size.
 
 #### Bitwise arithmetic
-* `NOT rREG wREG`
+* `REG = not W`
   - Computation requires all words of `wREG` to be processed, so
     ```hs
     computationCost(NOT rREG wREG) =
       (constNot1) * registerSize(wREG) + constNot2
-    ```
-  - Size is the same as that of the input
-    ```hs
-    estimatedResultSize(NOT rREG wREG) = registerSize(wREG)
     ```
 * `AND RREG wREG1 wREG2`
   - Computation requires pairwise AND of the registers' words so:
@@ -177,21 +186,11 @@ gas/memory) to contain that size.
     computationCost(AND rREG wREG1 wREG2) =
       (constBit1) * m + constBit2
     ```
-  - Size of result is the minimum of the two (as and-ing with 0 yields 0)
-    ```hs
-    estimatedResultSize(AND rREG wREG1 wREG2) = m
-      where m = min (registerSize wREG1) (registerSize wREG2)
-    ```
 * `OR RREG wREG1 wREG2`
   - Computation requires pairwise OR of the registers' words so:
     ```hs
     computationCost(OR rREG wREG1 wREG2) =
       (constBit1) * m constBit2
-    ```
-  - Size of result is the maximum of the two
-    ```hs
-    estimatedResultSize(OR rREG wREG1 wREG2) = m
-      where m = max (registerSize wREG1) (registerSize wREG2)
     ```
 * `XOR RREG wREG1 wREG2`
   - Computation requires pairwise XOR of the registers' words so:
@@ -199,12 +198,6 @@ gas/memory) to contain that size.
     computationCost(XOR rREG wREG1 wREG2) =
       (constBit1) * m constBit2
     ```
-  - Size of result is the maximum of the two
-    ```hs
-    estimatedResultSize(XOR rREG wREG1 wREG2) = m
-      where m = max (registerSize wREG1) (registerSize wREG2)
-    ```
-
 #### Comparison operators
 * `ISZERO rREG wREG`
   - Computation requires inspecting just one bit of `wREG`:
@@ -212,10 +205,6 @@ gas/memory) to contain that size.
     computationCost(ISZERO rREG wREG) =
       constIsZero
     ````
-  - Result size is 1
-    ```hs
-    estimatedResultSize(ISZERO rREG wREG) = 1
-    ```
 * `CMP RREG wREG1 wREG2` where `CMP` in `[LT, GT, EQ]`
   - Computation requires pairwise comparison of the registers' words so:
     ```hs
@@ -223,23 +212,14 @@ gas/memory) to contain that size.
       constCmp1 * m + constCmp2
       where m = min (registerSize wREG1) (registerSize wREG2)
     ```
-  - Result size is 1
-    ```hs
-    estimatedResultSize(CMP rREG wREG1 wREG2) = 1
-    ```
 
 #### Regular arithmetic
 * `ADD RREG wREG1 wREG2`
-  - Computation requires pairwise addition of the registers' words so:
+  - Computation requires pairwise addition of the registers' words, so:
     ```hs
     computationCost(ADD rREG wREG1 wREG2) =
       addCost1 * m + addCost2
 
-    ```
-  - Size of result is about the maximum of the two
-    ```hs
-    estimatedResultSize(ADD RREG wREG1 wREG2) = m + 1
-      where m = max (registerSize wREG1) (registerSize wREG2)
     ```
 * `SUB rREG wREG1 wREG2`
   - Subtraction has the same complexity as addition
@@ -247,23 +227,12 @@ gas/memory) to contain that size.
     computationCost(SUB rREG wREG1 wREG2) =
       computationCost(ADD rREG wREG1 wREG2)
     ```
-  - Size of result is about the maximum of the two
-    ```hs
-    estimatedResultSize(SUB rREG wREG1 wREG2) = m + 1
-      where m = max (registerSize wREG1) (registerSize wREG2)
-    ```
 * `MUL rREG wREG1 wREG2`
   -  Multiplication complexity depends on the algorithm used.
     ```hs
     computationCost(MUL rREG wREG1 wREG2)
       | isZero wREG1 || isZero wREG2    = 2 * limbTestCost + registerMaintenanceCost1
       | otherWise                       = 2 * limbTestCost + mulCost l1 l2
-    ```
-  - Size of result is the sum of sizes of the operands, except when one of them is 0
-    ```hs
-    estimatedResultSize(MUL rREG wREG1 wREG2)
-      | isZero wREG1 || isZero wREG2 = 0
-      | otherwise = l1 + l2
       where l1 = registerSize wREG1
             l2 = registerSize wREG2
     ```
@@ -276,14 +245,6 @@ gas/memory) to contain that size.
       | isZero wREG2 = limbTestCost + registerMaintenanceCost1 -- TODO: this might change
       | l2 > l1      = limbTestCost + limbComparisonTest + registerMaintenanceCost1
       | otherwise    = limbTestCost + limbComparisonTest + registerMaintenanceCost + divModCost l1 l2
-    ```
-  - if the result is 0 its size is 1, otherwise it's about the difference
-    between sizes
-    ```hs
-    estimatedResultSize(DIV rREG wREG1 wREG2)
-      | isZero wREG2 = 1
-      | l2 > l1      = 1
-      | otherwise    = l1 - l2 + 1
       where l1 = registerSize wREG1
             l2 = registerSize wREG2
     ```
@@ -292,12 +253,6 @@ gas/memory) to contain that size.
     ```hs
     computationCost(MOD rREG wREG1 wREG2) =
       computationCost(DIV rREG wREG1 wREG2)
-    ```
-  - if the result is 0 its size is 1, otherwise it's the minimum of the
-    operands sizes
-    ```hs
-    estimatedResultSize(MOD rREG wREG1 wREG2)
-      = min l1 l2
       where l1 = registerSize wREG1
             l2 = registerSize wREG2
     ```
@@ -313,13 +268,6 @@ gas/memory) to contain that size.
       where lb = registerSize wBASE
             e = value wEXPONENT
     ```
-  - Size of the result is the product between the exponent and the size of the base
-    ```hs
-    estimatedResultSize(EXP rREG wBASE wEXPONENT)
-      = lb * e
-      where l = registerSize wBASE
-            e = value wEXPONENT
-    ```
 
 #### Modular arithmetic
 
@@ -329,12 +277,6 @@ gas/memory) to contain that size.
     computationCost(ADDMOD rREG wREG1 wREG2 wREG3) =
       registerMaintenanceCost +
       computationCost(ADD rREG wREG1 wREG2) + divModCost (m + 1) l3
-    ```
-  - Size of result is that of the module
-    ```hs
-    estimatedResultSize(ADDMOD RREG wREG1 wREG2) = l3
-      where m = max (registerSize wREG1) (registerSize wREG2)
-            l3 = registerSize wREG3
     ```
 * `MULMOD rREG wREG1 wREG2 wREG3`
   -  Multiplication can be done by first modulo-ing the arguments;
@@ -347,21 +289,6 @@ gas/memory) to contain that size.
       | otherwise      =
         divModCost l1 l3 + divModCost l2 l3 +
         mulCost ml1 ml2 + dmCost l3 + mulModConst0
-    ```
-  - Size of result is that of the modulo
-    ```hs
-    estimatedResultSize(MULMOD rREG wREG1 wREG2 wREG3)
-      | isZero wREG1 || isZero wREG2 = 0
-      | otherwise = l3
-      where
-        l1 = registerSize wREG1
-        l2 = registerSize wREG2
-        l3 = registerSize wREG3
-        ml1 = min l1 l3
-        ml2 = min l2 l3
-        cc = mulCost ml1 ml2
-        mulModConst0 = wordAddSetCost + leftShiftWordCost + limbComparisonCost +
-                       2 * registerManagementCost
     ```
 * `EXPMOD rREG wREG1 wREG2 wREG3`
   - Exponentiation is done by repeatedly squaring `WREG1` and multiplying those
@@ -384,13 +311,6 @@ gas/memory) to contain that size.
             constInnerLoop =
               forIterationManagement + 2 * registerMaintenanceCost
     ```
-  - Size of the result is capped by the size of the modulo
-    ```hs
-    estimatedResultSize(EXPMOD rREG wBASE wEXP wMOD)
-      | isZero wEXP = 1
-      | otherwise    = lMOD
-      where lMOD = registerSize wMOD
-    ```
 
 #### SHA3
 * `SHA3 rREG wMEMINDEX`
@@ -411,31 +331,17 @@ gas/memory) to contain that size.
     ```hs
     computationCost(BYTE rREG wINDEX w) = constByte
     ```
-  - The size of a byte is 1
-    ```hs
-    estimatedResultSize(BYTE rREG wINDEX w) = 1
-    ```
 * `TWOS rREG wN wREG`
   - Both operation process a maximum of `2^wN` bits
     ```hs
     computationCost(TWOS rREG wN wREG) =
       constSign1 * l2N + constSign2
     ```
-  - the new size is `2^wN` bits
-    ```hs
-    estimatedResultSize(TWOS rREG wN wREG) = l2N
-      where l2N  = value wN `div` limbSize
-    ```
 * `SEXT rREG wN wREG`
   - Both operation process a maximum of `2^wN` bits
     ```hs
     computationCost(SEXT rREG wN wREG) =
     computationCost(TWOS rREG wN wREG)
-    ```
-  - the new size is `2^wN` bits
-    ```hs
-    estimatedResultSize(TWOS rREG wN wREG) = l2N
-      where l2N  = value wN `div` limbSize
     ```
 
 #### Local State
@@ -445,38 +351,32 @@ We assume that all operations interrogating the local state have complexity
 * `LOCALOP rREG`, where `LOCALOP` in `[PC, GAS, GASPRICE, GASLIMIT, NUMBER, MSIZE, CODESIZE]`
     ```hs
     computationCost(LOCALOP rREG) = constWordRead
-    estimatedResultSize(LOCALOP rREG) = 1
     ```
 * `LOCALADDROP rREG`, where `LOCALOP` in `[COINBASE, ADDRESS, ORIGIN, CALLER]`
     ```hs
     computationCost(LOCALADDROP rREG) =
       constAddressRead
-    estimatedResultSize(LOCALADDROP rREG) = addressSize
     ```
 * `TIMESTAMP rREG`
     ```hs
     computationCost(TIMESTAMP rREG) =
       constQuadWordRead
-    estimatedResultSize(TIMESTAMP rREG) = timeStampSize
     ```
 * `DIFFICULTY rREG`
     ```hs
     computationCost(DIFFICULTY rREG) =
       constQuadWordRead
-    estimatedResultSize(DIFFICULTY rREG) = difficultySize()
     ```
 * `CALLVALUE rREG`
     ```hs
     computationCost(CALLVALUE rREG) =
       constQuadWordRead
-    estimatedResultSize(CALLVALUE rREG) = callValueSize()
     ```
 * `BLOCKHASH rREG wN`
   - Computation cost is a constant; result size is *blockHashSize*
     ```hs
     computationCost(BLOCKHASH rREG) =
       constBlockhash
-    estimatedResultSize(BLOCKHASH rREG) = blockHashSize
     ```
 
 #### JUMPs
@@ -723,8 +623,10 @@ of the logged registers.
     logCost + size(localMem[rMEMINDEX]) * logDataCost + 3 * logTopicWordCost
   computationCost(LOG4 rMEMINDEX rw0 rW1 rW2 rW3) =
     logCost + size(localMem[rMEMINDEX]) * logDataCost + 4 * logTopicWordCost
+  ```
 
 #### Memory operations
+
 * `MLOAD` In order to load the data from the memory, we first need to inspect
   the metadata to make sure we have enough gas to load it.  Hence, we will need
   to check the amount of gas in two steps, first doing work that can be paid for
@@ -732,7 +634,6 @@ of the logged registers.
   check that we have enough remaining gas after taking into account the memory cell size.
   ```hs
   computationCost(MLOAD rREG wINDEX) = mLoadCost + mloadWordCost * memoryCellSize(value wIndex)
-  estimatedResultSize(MLOAD rREG wINDEX) = memoryCellSize(value wIndex)
   ```
 * `MLOADN`
   This extends the size of the memory cell to include the entire segment read,
@@ -740,9 +641,6 @@ of the logged registers.
   ```hs
   computationCost(MLOADN rREG, wINDEX1, wINDEX2, wWIDTH) =
     mLoadNCost + mLoadWordCost * wWIDTH
-  memoryDelta(MLOADN rREG, wINDEX1, wINDEX2, wWIDTH) =
-    max(0, wINDEX2 + wWIDTH - memoryCellWidth(wINDEX1)) +
-    wWIDTH - registerSize rREG
   ```
 * `MSTORE` when we store a new value over an old one, we compute the difference
   in size between the two values.  Similar to changes to registers, this difference is used to update the
@@ -752,16 +650,12 @@ of the logged registers.
   ```hs
   computationCost(MSTORE wVALUE wINDEX) =
     mStoreCost + mStoreWordCost * registerSize wVALUE
-  memoryCost(MSTORE wVALUE wINDEX) =
-    (registerSize wVALUE - storeCellSize(value wIndex))
   ```
 * `MSTOREN`
   ```hs
   computationCost(MSTOREN wVALUE wINDEX1 wINDEX2 wWIDTH) =
     mStoreNCost +
     mStoreWordCost * wWIDTH
-  memoryDelta(MSTOREN wINDEX1 wINDEX2 wVALUE wWIDTH) =
-    max(0, wINDEX2 + wWIDTH - storeCellSize(value wIINDEX1))
   ```
 
 #### Register manipulations

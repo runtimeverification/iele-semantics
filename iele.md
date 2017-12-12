@@ -1650,53 +1650,145 @@ Note that the values returned by the above functions could be negative.
 ```{.k .uiuck .rvk}
     syntax InternalOp ::= "#memory" "[" Instruction "]"
  // ---------------------------------------------------
+```
+### Expressions
+
+The size of the result register `REG` for an arithmetic operation is estimated
+as follows:
+
+#### Bitwise arithmetic
+
+-   `REG = not W` size of bitwise negation of W is the same as that of W.
+-   `REG = and W0, W1` Size of result is the minimum of the sizes of W0 and W1,
+    because bitwise and-ing with 0 yields 0
+-   `REG = or W0, W1` and `REG = xor W0, W1`
+    size of the result is the maximum of the sizes of W0 and W1
+
+```{.k .uiuck .rvk}
     rule #memory [ REG = not W       ] => #registerDelta(REG, intSize(W))
     rule #memory [ REG = and W0 , W1 ] => #registerDelta(REG, minInt(intSize(W0), intSize(W1)))
     rule #memory [ REG = or  W0 , W1 ] => #registerDelta(REG, maxInt(intSize(W0), intSize(W1)))
     rule #memory [ REG = xor W0 , W1 ] => #registerDelta(REG, maxInt(intSize(W0), intSize(W1)))
+```
 
+#### Comparison operators
+
+Since the result is boolean, the result size for all comparison operations is 1.
+
+```{.k .uiuck .rvk}
     rule #memory [ REG = iszero _     ] => #registerDelta(REG, 1)
     rule #memory [ REG = cmp _  _ , _ ] => #registerDelta(REG, 1)
+```
 
+#### Regular arithmetic
+
+-   `REG = add W0, W1` and `REG = sub W0, W1`
+    the result can require at most one more memory word than the maximum of the
+    sizes of W0 and W1.
+-   `REG = mul W0, W1` the size of the result of multiplication can be at most
+    the sum of the sizes of W0 and W1.
+-   `REG = div W0, W1` the result of division can require 1 word more than the
+    difference between the sizes of W0 and W1.
+-   `REG = mod W0, W1` size of the result is at most the minimum of the sizes
+    of W0 and W1.
+
+```{.k .uiuck .rvk}
     rule #memory [ REG = add W0 , W1 ] => #registerDelta(REG, maxInt(intSize(W0), intSize(W1)) +Int 1)
     rule #memory [ REG = sub W0 , W1 ] => #registerDelta(REG, maxInt(intSize(W0), intSize(W1)) +Int 1)
     rule #memory [ REG = mul W0 , W1 ] => #registerDelta(REG, intSize(W0) +Int intSize(W1))
     rule #memory [ REG = div W0 , W1 ] => #registerDelta(REG, maxInt(1, intSize(W0) -Int intSize(W1) +Int 1))
     rule #memory [ REG = mod W0 , W1 ] => #registerDelta(REG, minInt(intSize(W0), intSize(W1)))
     rule #memory [ REG = exp W0 , W1 ] => #registerDelta(REG, intSize(W0) *Int maxInt(1, W1))
+```
 
+#### Modular arithmetic
+
+For all modular arithmetic operations, the size of the result is at most that
+of the modulo operand (W2).
+
+```{.k .uiuck .rvk}
     rule #memory [ REG = addmod _  , _  , W2 ] => #registerDelta(REG, intSize(W2))
     rule #memory [ REG = mulmod W0 , W1 , W2 ] => #registerDelta(REG, intSize(W2))
     rule #memory [ REG = expmod _  , _  , W2 ] => #registerDelta(REG, intSize(W2))
+```
 
+#### SHA3
+
+Result size of SHA3 is 256 bits, i.e., 4 words.
+
+```{.k .uiuck .rvk}
     rule #memory [ REG = sha3 _ ] => #registerDelta(REG, 4)
+```
 
+#### Byte access
+
+-   `REG = byte INDEX, W`  the result size is one byte, fitting in one word
+-   `REG = sext WIDTH , W` and `REG = twos WIDTH , W`
+    the result size is WIDTH bits.
+
+
+```{.k .uiuck .rvk}
     rule #memory [ REG = byte INDEX , _ ] => #registerDelta(REG, 1)
     rule #memory [ REG = sext WIDTH , _ ] => #registerDelta(REG, WIDTH up/Int 8)
     rule #memory [ REG = twos WIDTH , _ ] => #registerDelta(REG, WIDTH up/Int 8)
+```
 
+#### Local state operations
+
+Operations whose result should fit into a word
+
+```{.k .uiuck .rvk}
     rule #memory [ REG = call @iele.gas         ( .Ints ) ] => #registerDelta(REG, 1)
     rule #memory [ REG = call @iele.gasprice    ( .Ints ) ] => #registerDelta(REG, 1)
     rule #memory [ REG = call @iele.gaslimit    ( .Ints ) ] => #registerDelta(REG, 1)
-    rule #memory [ REG = call @iele.beneficiary ( .Ints ) ] => #registerDelta(REG, 3)
     rule #memory [ REG = call @iele.number      ( .Ints ) ] => #registerDelta(REG, 1)
     rule #memory [ REG = call @iele.msize       ( .Ints ) ] => #registerDelta(REG, 1)
     rule #memory [ REG = call @iele.codesize    ( .Ints ) ] => #registerDelta(REG, 1)
+    rule #memory [ REG = call @iele.extcodesize ( _     ) ] => #registerDelta(REG, 1)
+```
+
+Operations whose result is an address:
+
+```{.k .uiuck .rvk}
+    rule #memory [ REG = call @iele.beneficiary ( .Ints ) ] => #registerDelta(REG, 3)
     rule #memory [ REG = call @iele.address     ( .Ints ) ] => #registerDelta(REG, 3)
     rule #memory [ REG = call @iele.origin      ( .Ints ) ] => #registerDelta(REG, 3)
     rule #memory [ REG = call @iele.caller      ( .Ints ) ] => #registerDelta(REG, 3)
+```
+
+Operations whose result should fit into 256 bits.
+
+```{.k .uiuck .rvk}
     rule #memory [ REG = call @iele.timestamp   ( .Ints ) ] => #registerDelta(REG, 4)
     rule #memory [ REG = call @iele.difficulty  ( .Ints ) ] => #registerDelta(REG, 4)
     rule #memory [ REG = call @iele.callvalue   ( .Ints ) ] => #registerDelta(REG, 4)
-    rule #memory [ REG = call @iele.extcodesize ( _     ) ] => #registerDelta(REG, 1)
     rule #memory [ REG = call @iele.blockhash   ( _     ) ] => #registerDelta(REG, 4)
     rule #memory [ REG = call @iele.balance     ( _     ) ] => #registerDelta(REG, 4)
+```
 
+```{.k .uiuck .rvk}
     rule <k> #memory [ REGS = call @ NAME ( ARGS ) ] => #memoryDelta(REGISTERS -Int #sizeRegs(ARGS) +Int intSizes(ARGS) +Int Gcallmemory < SCHED >) ... </k>
          <schedule> SCHED </schedule>
          <funcId> NAME </funcId>
          <nregs> REGISTERS </nregs>
+```
 
+#### Memory operations
+
+- `REG = load INDEX1 , INDEX2 , WIDTH`
+  In addition to resizing the return register to fit the loaded data,
+  the memory needs to potentially be extended to include the entire segment
+  being loaded.
+- `REG = store INDEX1 , INDEX2 , WIDTH`
+  the memory needs to potentially be extended to include the entire segment
+  being loaded.
+- `REG = load INDEX`
+  the size of the register needs to be resized to fit the size of the value
+  at the INDEX in memory
+- `REG = store VALUE, INDEX`
+  the memory cell at INDEX needs to be resized to store VALUE
+
+```{.k .uiuck .rvk}
     rule #memory [ REG = load INDEX1 , INDEX2 , WIDTH ] => #registerDelta(REG, chop(WIDTH) up/Int 8) ~> #memoryExpand(INDEX1, (chop(INDEX2) +Int chop(WIDTH)) up/Int 8) requires chop(WIDTH) >Int 0
     rule #memory [ REG = load INDEX1 , INDEX2 , 0 ] => .K
     rule #memory [ store _ ,  INDEX1 , INDEX2 , WIDTH ] => #memoryExpand(INDEX1, (chop(INDEX2) +Int chop(WIDTH)) up/Int 8) requires chop(WIDTH) >Int 0
@@ -1705,11 +1797,15 @@ Note that the values returned by the above functions could be negative.
     rule <k> #memory [ REG = load INDEX ] => #registerDelta(REG, #sizeWordStack({LM [ INDEX]}:>WordStack) up/Int 8) ... </k>
          <localMem> LM </localMem>
     rule #memory [ store VALUE ,  INDEX ] => #memoryDelta(INDEX, intSize(VALUE))
+```
 
+```{.k .uiuck .rvk}
     rule <k> #memory [ DEST = % SRC:Int ] => #registerDelta(DEST, intSize({REGS [ SRC ]}:>Int)) ... </k>
          <regs> REGS </regs>
     rule <k> #memory [ DEST = SRC:Int ] => #registerDelta(DEST, intSize(SRC)) ... </k>
+```
 
+```{.k .uiuck .rvk}
     rule <k> #memory [ REG = sload INDEX ] => #registerDelta(REG, intSize(VALUE)) ... </k>
          <id> ACCT </id>
          <account>
@@ -1717,7 +1813,9 @@ Note that the values returned by the above functions could be negative.
            <storage> ... INDEX |-> VALUE </storage>
            ...
          </account>
+```
 
+```{.k .uiuck .rvk}
     rule #memory [ br _           ] => .K
     rule #memory [ br _ , _       ] => .K
     rule #memory [ ret _          ] => .K
@@ -1726,12 +1824,16 @@ Note that the values returned by the above functions could be negative.
     rule #memory [ log _ , _      ] => .K
     rule #memory [ sstore _ , _   ] => .K
     rule #memory [ selfdestruct _ ] => .K
+```
 
+```{.k .uiuck .rvk}
     rule #memory [ _ = call _ at _ ( _ ) send _ , gaslimit _ ] => .K
     rule #memory [ _ = staticcall _ at _ ( _ ) gaslimit _ ] => .K
     rule #memory [ _ , _ = create _ ( _ ) send _ ] => .K
     rule #memory [ _ , _ = copycreate _ ( _ ) send _ ] => .K
+```
 
+```{.k .uiuck .rvk}
     rule #memory [ ECREC ] => .K
     rule #memory [ SHA256 ] => .K
     rule #memory [ RIP160 ] => .K
