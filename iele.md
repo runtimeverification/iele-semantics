@@ -1,4 +1,4 @@
-, 0, 0IELE Execution
+IELE Execution
 ==============
 
 IELE is a register-based abstract machine over some simple opcodes.
@@ -24,7 +24,7 @@ In the comments next to each cell, we explain the purpose of the cell.
 
 ```{.k .uiuck .rvk}
     configuration <k> $PGM:IELESimulation </k>                       // Current computation
-                  <exit-code exit=""> 1 </exit-code>                 // Exit code of interpreter procses
+                  <exit-code exit=""> 1 </exit-code>                 // Exit code of interpreter process
                   <mode> $MODE:Mode </mode>                          // Execution mode: VMTESTS or NORMAL
                   <schedule> $SCHEDULE:Schedule </schedule>          // Gas Schedule: DEFAULT or ALBE
                   <checkGas> true </checkGas>                        // Enables/disables gas check in test driver
@@ -63,7 +63,7 @@ In the comments next to each cell, we explain the purpose of the cell.
                         <contractCode> .Contract </contractCode>     // Disassembled entire contract
                       </program>
                       <callDepth>    0          </callDepth>         // Inter-contract call stack depth
-                      <localCalls>   .List      </localCalls>        // Intra-contract call stack 
+                      <localCalls>   .List      </localCalls>        // Intra-contract call stack
 
                       // I_*
                       <id>        0     </id>                         // Currently executing contract
@@ -94,7 +94,7 @@ In the comments next to each cell, we explain the purpose of the cell.
                     // -------------------------------------
 
                     <gasPrice> 0 </gasPrice>                          // Price of gas for this transaction
-                    <origin>   0 </origin>                            // Sender of current transactiont 
+                    <origin>   0 </origin>                            // Sender of current transaction
 
                     // I_H* (block information)
                     <beneficiary>      0          </beneficiary>      // Miner of current block
@@ -137,13 +137,13 @@ In the comments next to each cell, we explain the purpose of the cell.
                       <message multiplicity="*" type="Map">
                         <msgID>      0          </msgID>              // Unique ID of transaction
                         <txNonce>    0          </txNonce>            // Nonce of transaction (not checked)
-                        <txGasPrice> 0          </txGasPrice>         // Gas price of trasaction
+                        <txGasPrice> 0          </txGasPrice>         // Gas price of transaction
                         <txGasLimit> 0          </txGasLimit>         // Gas limit of transaction
                         <sendto>     .Account   </sendto>             // Destination of transaction (.Account for account creation)
                         <func>       deposit    </func>               // Function to call by transaction
                         <value>      0          </value>              // Value in funds to transfer by transaction
                         <v>          0          </v>                  // Transaction signature (v)
-                        <r>          .WordStack </r>                  // Transaction siganture (r)
+                        <r>          .WordStack </r>                  // Transaction signature (r)
                         <s>          .WordStack </s>                  // Transaction signature (s)
                         <data>       .WordStack </data>               // Arguments to function called by transaction
                         <args>       .Ints      </args>
@@ -275,10 +275,10 @@ Simple commands controlling exceptions provide control-flow.
     syntax Int ::= "FUNC_NOT_FOUND"
                  | "FUNC_WRONG_SIG"
                  | "CONTRACT_NOT_FOUND"
-                 | "USER_ERROR" 
-                 | "OUT_OF_GAS" 
-                 | "ACCT_COLLISION" 
-                 | "OUT_OF_FUNDS" 
+                 | "USER_ERROR"
+                 | "OUT_OF_GAS"
+                 | "ACCT_COLLISION"
+                 | "OUT_OF_FUNDS"
                  | "CALL_STACK_OVERFLOW"
  // ------------------------------------
     rule FUNC_NOT_FOUND      => 1 [macro]
@@ -296,7 +296,7 @@ Description of registers.
 -   Registers begin with `%`
 -   Registers are evaluated using heating to the values they contain.
 -   `#regRange(N)` generates the registers 0 to N-1.
--   `#sizeRegs(R)` returns the number of regsiters in a list of registers.
+-   `#sizeRegs(R)` returns the number of registers in a list of registers.
 
 ```{.k .uiuck .rvk}
 
@@ -466,7 +466,7 @@ The following types of instructions do not require any register heating.
     syntax KResult ::= JumpInst
 ```
 
-Some instructions require an argument to be interpereted as an address (modulo 160 bits), so the `#addr?` function performs that check.
+Some instructions require an argument to be interpreted as an address (modulo 160 bits), so the `#addr?` function performs that check.
 
 ```{.k .uiuck .rvk}
     syntax Instruction ::= "#addr?" "(" Instruction ")" [function]
@@ -730,7 +730,7 @@ Some operators don't calculate anything, they just manipulate the state of regis
 -  `#loads` loads a list of integers into a list of registers. It is an exception if the number of values do not match.
 
 ```{.k .uiuck .rvk}
-    rule <k> #exec REG = W:Int => #load REG W ... </k> 
+    rule <k> #exec REG = W:Int => #load REG W ... </k>
 
     rule <k> #exec REG1 = % REG2 => #load REG1 { REGS [ REG2 ] }:>Int ... </k> <regs> REGS </regs>
 
@@ -871,7 +871,7 @@ These operators make queries about the current execution state.
 -   `REG = call @iele.caller()` returns the caller of the current contract call.
 -   `REG = call @iele.callvalue()` returns the value transfer of the current contract call.
 -   `REG = call @iele.msize()` returns the current peak memory usage of the current contract call.
--   `REG = call @iele.codesize()` returns the size in bytes of the currently executing contract. 
+-   `REG = call @iele.codesize()` returns the size in bytes of the currently executing contract.
 -   `REG = call @iele.blockhash(N)` returns the hash of the block header of the Nth previous block.
 
 ```{.k .uiuck .rvk}
@@ -2117,7 +2117,7 @@ The following code processes a `Contract` and loads it into the `<program>` cell
 
     rule #loadFunction(FUNCS, BLOCKS, <program> PROG <functions> REST </functions> <funcIds> NAMES </funcIds> </program>, NAME, <function> FUNC <instructions> _ </instructions> <jumpTable> _ </jumpTable> <nregs> _ </nregs> </function>)
       => #loadDeclarations(FUNCS, <program> PROG <funcIds> NAMES SetItem(NAME) </funcIds> <functions> REST <function> FUNC <instructions> BLOCKS </instructions> <jumpTable> #computeJumpTable(BLOCKS) </jumpTable> <nregs> #computeNRegs(BLOCKS) </nregs> </function> </functions> </program>)
-   
+
     syntax IeleName ::= #mainContract ( Contract ) [function]
     syntax Int ::= #contractSize ( Contract , IeleName ) [function]
  // ---------------------------------------------------------------
@@ -2190,7 +2190,7 @@ The following code processes a `Contract` and loads it into the `<program>` cell
     rule #registers(R1, R2 = create _ ( R3 ) send R4) => SetItem(R1) SetItem(R2) #registers(R3) SetItem(R4)
     rule #registers(R1, R2 = copycreate R3 ( R4 ) send R5) => SetItem(R1) SetItem(R2) SetItem(R3) #registers(R4) SetItem(R5)
     rule #registers(selfdestruct R1) => SetItem(R1)
-    
+
     rule #registers(REG, REGS::LValues) => SetItem(REG) #registers(REGS)
     rule #registers(REG, REGS::Operands) => SetItem(REG) #registers(REGS)
     rule #registers(.LValues) => .Set
