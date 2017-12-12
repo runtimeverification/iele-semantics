@@ -490,11 +490,11 @@ Some instructions require an argument to be interpreted as an address (modulo 16
     rule <k> G:Int ~> #deductGas => #exception OUT_OF_GAS ... </k> <gas> GAVAIL                  </gas> requires GAVAIL <Int G
     rule <k> G:Int ~> #deductGas => .                     ... </k> <gas> GAVAIL => GAVAIL -Int G </gas> <previousGas> _ => GAVAIL </previousGas> requires GAVAIL >=Int G
 
-    syntax Int ::= Cmem ( Schedule , Int ) [function, memo]
-                 | Cfreemem ( Int )        [function]
+    syntax Int ::= Cmem ( Schedule , Int )       [function, memo]
+                 | Cpricedmem ( Schedule, Int )  [function]
  // -------------------------------------------------
-    rule Cmem(SCHED, N)  => (Cfreemem(N) *Int Gmemory < SCHED >) +Int ((Cfreemem(N) *Int Cfreemem(N)) /Int Gquadcoeff < SCHED >)
-    rule Cfreemem(N) => maxInt(0, N -Int 4096)
+    rule Cmem(SCHED, N)  => (Cpricedmem(SCHED, N) *Int Gmemory < SCHED >) +Int ((Cpricedmem(SCHED, N) *Int Cpricedmem(SCHED, N)) /Int Gquadcoeff < SCHED >)
+    rule Cpricedmem(SCHED, N) => maxInt(0, N -Int Smemallowance < SCHED > )
 ```
 
 ### Substate Log
@@ -2028,6 +2028,7 @@ A `ScheduleConst` is a constant determined by the fee schedule; applying a `Sche
                            | "Glocalcall"    | "Gloadword"      | "Gload"         | "Gloadcell"    | "Giszero"     | "Gcmp"          | "Gcmpword"
                            | "Gcallreg"      | "Gcallmemory"   | "Gbyte"        | "Gcopycreate" | "Gsstore"       | "Gsstorekey"
                            | "Gsstoreset"    | "Gsstoresetkey"  | "Gsstoreword"
+                           | "Smemallowance"
  // ---------------------------------------------------------------------------------------------------------------------------------
 ```
 
@@ -2093,6 +2094,8 @@ A `ScheduleConst` is a constant determined by the fee schedule; applying a `Sche
 
     rule Gselfdestructnewaccount << DEFAULT >> => false
     rule Gstaticcalldepth        << DEFAULT >> => true
+
+    rule Smemallowance  < DEFAULT > => 4096
 ```
 
 ### Albe Schedule
