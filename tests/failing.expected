@@ -249,3 +249,5 @@ tests/ethereum-tests/VMTests/vmRandomTest/201503102300PYTHON.json
 tests/ethereum-tests/VMTests/vmRandomTest/201503102037PYTHON.json
 tests/ethereum-tests/VMTests/vmSystemOperations/callcodeToNameRegistrator0.json
 tests/ethereum-tests/VMTests/vmIOandFlowOperations/deadCode_1.json
+tests/ethereum-tests/VMTests/vmIOandFlowOperations/sstore_load_2.json
+tests/ethereum-tests/VMTests/vmIOandFlowOperations/jumpTo1InstructionafterJump.json

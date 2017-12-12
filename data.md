@@ -87,6 +87,27 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to IELE'
     syntax Account ::= ".Account" | Int
 ```
 
+### Register Operations
+
+-   `#sizeRegs(R)` returns the number of registers in a list of Operands.
+-   `#sizeLVals(R)` returns the number of registers in a list of LValues.
+
+```{.k .uiuck .rvk}
+    syntax Int ::= #sizeRegs ( Operands ) [function]
+                 | #sizeRegs ( Operands , Int ) [function, klabel(#sizeRegsAux)]
+ // ----------------------------------------------------------------------------
+    rule #sizeRegs(REGS) => #sizeRegs(REGS, 0)
+    rule #sizeRegs(REG , REGS, N) => #sizeRegs(REGS, N +Int 1)
+    rule #sizeRegs(.Operands, N) => N
+
+    syntax Int ::= #sizeLVals ( LValues ) [function]
+                 | #sizeLVals ( LValues , Int ) [function, klabel(#sizeLValuesAux)]
+ // -------------------------------------------------------------------------------
+    rule #sizeLVals(REGS) => #sizeLVals(REGS, 0)
+    rule #sizeLVals(REG , REGS, N) => #sizeLVals(REGS, N +Int 1)
+    rule #sizeLVals(.LValues, N) => N
+```
+
 Arithmetic
 ----------
 
