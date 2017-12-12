@@ -1624,11 +1624,28 @@ Gas is consumed either by increasing the amount of memory being used, or by exec
 Memory Consumption
 ------------------
 
-Memory consumed is tracked to determine the appropriate amount of gas to charge for each operation.
-In the yellowpaper, each opcode is defined to consume zero gas unless specified otherwise next to the semantics of the opcode (appendix H).
+The current choices in IELE are similar to those for EVM:
 
--   `#memory` computes the new memory size given the old size and next operator (with its arguments).
--   `#memoryUsageUpdate` is the function `M` in appendix H of the yellowpaper which helps track the memory used.
+* each contract has a default amount of memory within which to execute;
+* memory over the limit incurs a quadratic allocation cost
+* memory is charged only at allocation time
+
+However, IELE allows registers and memory cells to refer to these arbitrarily
+large numbers.  Moreover, the amount of memory/storage required for
+representing the value of a register or memory/storage cell, instead of being
+fixed at 256 bits, now varies during its usage.  This was previously only
+considered for permanent storage (resetting a stored value to 0 would generate
+a refund).
+
+Memory consumed is tracked to determine the appropriate amount of gas to charge
+for each operation.  As noted above, unlike EVM, the amount of used memory in
+IELE can decrease when memory cells are deallocated or resized.
+
+-   `#memory` computes the memory variation given the next operator (with its arguments).
+-   `#registerDelta` computes the memory variation introduced by resizing the return
+    register to fit the value computed by the next operator.
+
+Note that the values returned by the above functions could be negative.
 
 ```{.k .uiuck .rvk}
     syntax InternalOp ::= "#memory" "[" Instruction "]"
@@ -1722,7 +1739,18 @@ In the yellowpaper, each opcode is defined to consume zero gas unless specified 
     rule #memory [ ECADD ] => .K
     rule #memory [ ECMUL ] => .K
     rule #memory [ ECPAIRING ] => .K
+```
 
+As the current amount of allocated memory can also decrease in IELE,
+memory costs are computed w.r.t. the peak level of allocated memory.
+Therefore, the configuration also contains a cell for the peak memory level,
+which is maintained by the next rules.
+
+For `#registerDelta`, when trying to store in a register `REG` a value of
+size `NEWSIZE`, the current memory level decreases by the current size of
+`REG` and increases by `NEWSIZE`.
+
+```{.k .uiuck .rvk}
     syntax InternalOp ::= #registerDelta ( LValue , Int )
                         | #memoryExpand  ( Int , Int )
                         | #memoryDelta   ( Int , Int )
@@ -1757,9 +1785,11 @@ In the yellowpaper, each opcode is defined to consume zero gas unless specified 
 Execution Gas
 -------------
 
-Each opcode has an intrinsic gas cost of execution as well (appendix H of the yellowpaper).
+Each opcode has an intrinsic gas cost of execution as well.
 
--   `#gasExec` loads all the relevant surronding state and uses that to compute the intrinsic execution gas of each opcode.
+-   `#compute` loads all the relevant surronding state and uses that to compute the intrinsic execution gas of each opcode.
+
+Note that, unlike EVM, operations need to take into account the size of the operands.
 
 ```{.k .uiuck .rvk}
     syntax InternalOp ::= "#compute" "[" Instruction "," Schedule "]"
@@ -1888,9 +1918,9 @@ Each opcode has an intrinsic gas cost of execution as well (appendix H of the ye
     rule <k> #compute [ ECPAIRING, SCHED ] => 100000 +Int (#sizeRegs(DATA) /Int 6) *Int 80000 ... </k> <callData> DATA </callData>
 ```
 
-There are several helpers for calculating gas (most of them also specified in the yellowpaper).
+There are several helpers for calculating gas.
 
-Note: These are all functions as the operator `#gasExec` has already loaded all the relevant state.
+Note: These are all functions as the operator `#compute` has already loaded all the relevant state.
 
 ```{.k .uiuck .rvk}
     syntax Int ::= Csstore ( Schedule , Int , Int , Int ) [function]
@@ -1966,7 +1996,7 @@ Note: These are all functions as the operator `#gasExec` has already loaded all 
 Gas Model Parameters
 --------------------
 
-The IELE semantics is designed to be extensible in future hard forks while still maintainin an accurate semantics of the language prior
+The IELE semantics is designed to be extensible in future hard forks while still maintaining an accurate semantics of the language prior
 to the fork. As such, we introduce a number of parameters to the gas model which are dependent on the gas schedule used.
 Here we introduce only two gas schedules, the "DEFAULT" schedule, provided solely for backwards-compatibility with the EVM VMTests test suite,
 and the "ALBE" schedule, representing the initial release of IELE. The name Albe is chosen due to its significance as the name for one of the Romanian Iele.
