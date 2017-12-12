@@ -1,10 +1,101 @@
 # Gas Model
 
+This document describes a proposal for the gas model of IELE.
+
 ## General considerations
 
+The gas model needs to ensure that
+
+* Miners are rewarded for their work (and thus have an incentive for doing it).
+  * Note that if miners are rewarded for all their work, as far as they are
+    concerned, there are no DOS attacks.
+
+* Clients are reasonably charged for the resources used by their contracts
+  and so they have an incentive to use IELE.
+
+* Costs are simple enough that clients (and, potentially, miners) can perform
+  accurate cost estimates prior to execution.
+
+Although not a part of the Gas costs, the constraints above require that all
+programs execution paths are fully defined and there are no external exceptions,
+such as the miner running out of memory.
+
+To satisfy the above constraints, the following costs must be considered:
+
+1. CPU usage
+1. Memory usage over time
+   * Note that memory maintenance can be part of the CPU usage
+1. Permanent storage usage over time
+1. Permanent storage access
+
+One important design decision which fundamentally impacts the Gas model is the
+fact that IELE integers are arbitrarily large, which has implication to both
+the CPU usage / operation and memory/storage costs.
+
+### CPU usage
+
+A good (over)approximation of the actual CPU costs must be computed for each
+instruction.
+
+Generally, we would like the cost associated to an operation to be a polynomial
+(preferably linear) in the size of the input operands.
+
+Notable exceptions to the above include multiplication, division, modulo, and
+exponentiation.
+
+### Memory
+
+We would like to prevent clients from allocating more than the available memory
+of a miner.  To achieve that, a miner needs to impose either a soft or a hard
+limit.  The limit can be either a lump amount, or user specified:
+
+1. The EVM way: each contract has a default amount of memory within which to
+   execute.
+1. Each contract must declare the amount of memory required for its execution.
+
+The limits can be enforced in several ways:
+
+1. Hard limit approach:  going over the limit triggers an exception
+1. The EVM approach: memory over the limit incurs a quadratic/cubic/exponential
+   allocation cost.
+
+Charging for memory usage:
+
+1. Require payment only at allocation time
+   * There is a risk of having unprofitable long executions
+1. Pay for the total time the memory is allocated
+1. Memory costs are included in CPU cost through the gas model
+   * works well for a model with a default memory limit
+1. Free market approach: memory costs are included in CPU cost by the miner.
+   * For a gas model with declared limits
+   * no memory charges up to the limit
+   * miners, especially those with low gas costs can reject contracts they deem
+   unprofitable.
+
+Our recommendation is to use the free market approach combined with an
+allocation penalty and a usage fee (over usage time) for the exceeding memory.
+
+Since the cost for allocating and using memory up the limit amount is already
+implicitly included in the gas price, the penalty and usage fees should be
+functions of the peak memory divided by the declared limit:
+
+* a supra-linear gas penalty at allocation time
+* a linear gas amount per unit of time (i.e.,CPU gas cost)
+
+The above proposal for over-the-limit costs has the role of protecting the
+miner; contracts should be conceived such as to respect memory limits.
+
+### Storage
+
+For now, we assume similar costs for storage as EVM does.
+
+TODO: Give a rationale for this decision, or come up with a better proposal.
+
+## Differences from EVM
+
 One change from EVM to IELE is that integers are no longer limited to 256 bits,
-being allowd to grow arbitrarily large.
-Therefore, the memory required for their storage might become non-neglectable;
+being allowed to grow arbitrarily large.
+Therefore, the memory required for their storage might become non-negligible;
 for example, numbers could effectively be used to encode sequential memory.
 
 Moreover, IELE allows registers and memory cells to refer to these arbitrarily
@@ -14,6 +105,7 @@ length in *limbs*, zeroness, and a reference to the memory representation.
 At the cost of one extra level of indirection, this would allow for better
 memory representation (using allocation pools) and better computation and
 resources accounting.
+
 If another value needs to be stored into a register/memory cell, a
 memory region large enough to hold the value can be reserved, the memory region
 holding the current value can be marked as free, and the metadata structure
@@ -28,13 +120,15 @@ the metadata information followed by the number representation.
 Another difference from EVM is that the amount of memory/storage required for
 representing the value of a register or memory/storage cell, instead of being
 fixed at 256 bits, now varies during its usage.  This was previously only
-considered for storage (resetting a stored value to 0 would generate a refund).
+considered for permanent storage (resetting a stored value to 0 would generate
+a refund).
 
-To address this variance, we charge memory accesses as EVM, but only charge
-memory allocation w.r.t. the peak memory usage.
+To address this variance, we track the current amount of allocated memory
+throughout the execution of the contract.  Note that, unlike EVM, this includes
+decreasing memory usage when memory cells are deallocated or resized.
 
-Another change brought upon by arbitrary length integers is that arithmetic
-operations need to take into account the size of the operands.
+Another change brought upon by arbitrary length integers is that operations
+manipulating these values need to take into account the size of the operands.
 
 ### Operations with return register
 
@@ -1285,6 +1379,17 @@ divModCost lx ly
 * Bill each use of #newAccount as using account storage space.
 * Account for #finalizeTx costs somehow.
 
+Comments on ADDMOD/MULMOD/EXPMOD
+--------------------------------
+It seems like addmod and mulmod exist mostly to avoid taking up extra space for an intermediate result, and shouldn't be expected to reduce computation costs by much. mulmod of numbers around the size of the modulus should have about the same asymptotic cost (as a function of size of the modulus) and a mul and a mod, just with independent constants so it can be a bit cheaper if appropriate (maybe better memory locality than a plain mul, or some other constant factor savings).
+
+Modular exponentiation has a pretty simple form with a bit of setup costs and then doing mostly a bunch of squaring and multiplication modulo, with the number of those operations just linear in the length of the exponent
+
+exponentiation requires enough work for nontrivial exponents that it's worth precalculating constants to make the mulmods cost about as little as a plain multiplication
+
+Most applications in cryptography don't actually need mulmod, addmod, or expmod to operate on numbers larger than the modulus (rather than assuming inputs are pre-reduced), so we probably don't need to come up with expecially clever asymptotic costs for when the inputs are much larger than the modulus, just asymptotically charge as much as one or two separate mod operations preparing the inputs
+But, we can capture the cost of reducing inputs with a formula that goes continuously to zero when the inputs are not larger than the modulus without losing safety, because the mulmod itself has a constant component to the cost.
+
 
 ### TODOS: Instructions to consider if they should be added
 
@@ -1306,7 +1411,7 @@ divModCost lx ly
 * EXTCODECOPY
 
 
-#  Chestii, Socoteli ...
+#  Appendix:  Cost details
 
 forIterationManagement = wordIncrementCost + limbComparisonCost
 
