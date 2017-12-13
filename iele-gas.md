@@ -112,7 +112,7 @@ Since the result is boolean, the result size for all comparison operations is 1.
     rule #memory [ REG = mul W0 , W1 ] => #registerDelta(REG, intSize(W0) +Int intSize(W1))
     rule #memory [ REG = div W0 , W1 ] => #registerDelta(REG, maxInt(1, intSize(W0) -Int intSize(W1) +Int 1))
     rule #memory [ REG = mod W0 , W1 ] => #registerDelta(REG, minInt(intSize(W0), intSize(W1)))
-    rule #memory [ REG = exp W0 , W1 ] => #registerDelta(REG, maxInt(1, intSize(W0) *Int W1))
+    rule #memory [ REG = exp W0 , W1 ] => #registerDelta(REG, #adjustedBitLength(intSize(W0), W0) *Int W1 /Int 64)
 ```
 
 #### Modular arithmetic
@@ -422,7 +422,7 @@ The bitwise expressions have a constant cost plus a linear factor in the number 
     rule #compute [ _ = mul W0 , W1, SCHED ] => Cmul(SCHED, intSize(W0), intSize(W1))
     rule #compute [ _ = div W0 , W1, SCHED ] => Cdiv(SCHED, intSize(W0), intSize(W1))
     rule #compute [ _ = mod W0 , W1, SCHED ] => Cdiv(SCHED, intSize(W0), intSize(W1))
-    rule #compute [ _ = exp W0 , W1, SCHED ] => Cexp(SCHED, intSize(W0), W1)
+    rule #compute [ _ = exp W0 , W1, SCHED ] => Cexp(SCHED, intSize(W0), W0, W1)
 ```
 
 #### Modular arithmetic
@@ -435,7 +435,7 @@ The bitwise expressions have a constant cost plus a linear factor in the number 
 ```{.k .uiuck .rvk}
     rule #compute [ _ = addmod W0 , W1 , W2, SCHED ] => Gadd < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gaddword < SCHED > +Int Cdiv(SCHED, maxInt(intSize(W0), intSize(W1)) +Int 1, intSize(W2))
     rule #compute [ _ = mulmod W0 , W1 , W2, SCHED ] => Cmul(SCHED, intSize(W0), intSize(W1)) +Int Cdiv(SCHED, intSize(W0) +Int intSize(W1), intSize(W2)) +Int Gmulmod < SCHED >
-    rule #compute [ _ = expmod W0 , W1 , W2, SCHED ] => Cexpmod(SCHED, intSize(W0), intSize(W1), intSize(W2))
+    rule #compute [ _ = expmod W0 , W1 , W2, SCHED ] => Cexpmod(SCHED, intSize(W0), intSize(W1), intSize(W2), W2)
 ```
 
 #### SHA3
@@ -574,7 +574,7 @@ The cost of logging is similar to the cost in EVM: a constant ccost plus a cost 
 ### Local Memory
 
 -   `load` pays a constant cost plus a cost per word loaded. The constant cost is higher if we must compute the width to be loaded dynamically.
--  `store` pays a constant cost plus a cost per word stored. The constant cost is higher if we must compute the width to be stored dynamically.
+-   `store` pays a constant cost plus a cost per word stored. The constant cost is higher if we must compute the width to be stored dynamically.
 
 ```{.k .uiuck .rvk}
     rule <k> #compute [ _ = load INDEX, SCHED ] => Gloadcell < SCHED > +Int bytesInWords(#sizeWordStack({LM [ INDEX ]}:>WordStack)) *Int Gloadword < SCHED > ... </k>
@@ -720,47 +720,57 @@ Note: These are all functions as the operator `#compute` has already loaded all 
  // ----------------------------------------------------------
     rule G*(GAVAIL, GLIMIT, REFUND) => GAVAIL +Int minInt((GLIMIT -Int GAVAIL)/Int 2, REFUND)
 
-    syntax Int ::= Cdiv     ( Schedule , Int , Int )       [function]
-                 | Cmul     ( Schedule , Int , Int )       [function]
-                 | Cexp     ( Schedule , Int , Int )       [function]
-                 | Cexpmod  ( Schedule , Int , Int , Int ) [function]
- // -----------------------------------------------------------------
+    syntax Int ::= Cmul     ( Schedule , Int , Int )             [function]
+                 | Ckara    ( Int , Int )                        [function]
+                 | Cdiv     ( Schedule , Int , Int )             [function]
+                 | Cexp     ( Schedule , Int , Int , Int )       [function]
+                 | Cexpmod  ( Schedule , Int , Int , Int , Int ) [function]
+ // -----------------------------------------------------------------------
     rule Cmul(SCHED, L1, L2) => Cmul(SCHED, L2, L1)
       requires L2 >Int L1
+
     rule Cmul(SCHED, L1, L2) =>
-        Gmulkara < SCHED > *Int L1 *Int #overApproxKara(L2) /Int L2 +Int
-        Gmulword < SCHED > *Int L1 +Int
+        Gmulkara < SCHED > *Int Ckara(L1, L2) +Int
+        Gmulword < SCHED > *Int (L1 +Int L2) +Int
         Gmul < SCHED >
-      requires L1 >Int L2
+      [owise]
       // Note that if L2 is low enough (< 32) then #overApproxKara(L2) = L2 * L2
 
-    rule Cexp(SCHED, L1, W2) =>
-        Gexpkara < SCHED > *Int #overApproxKara(L1 *Int W2) +Int
+    rule Ckara(L1, L2) => L1 *Int #overApproxKara(L2) /Int L2
+      requires L1 >=Int L2
+
+    rule Ckara(L1, L2) => L2 *Int #overApproxKara(L1) /Int L1
+
+    rule Cdiv(SCHED, L1, L2) =>
+        Gdivkara < SCHED > *Int Ckara(L1 -Int L2 +Int 1, L2) +Int
+        Gdivword < SCHED > *Int L1 +Int
+        Gdiv < SCHED >
+      requires L1 >=Int L2
+    
+    rule Cdiv(SCHED, L1, L2) =>
+        Gdivword < SCHED > *Int L1 +Int
+        Gdiv < SCHED >
+      [owise]
+
+    rule Cexp(SCHED, L1, W1, W2) =>
+        Gexpkara < SCHED > *Int #overApproxKara(#adjustedBitLength(L1, W1) *Int W2 /Int 64) +Int
         Gexpword < SCHED > *Int L1 +Int
         Gexp < SCHED >
 
-    rule Cexpmod(SCHED, LB, LEX, LM) =>
-        Cdiv(SCHED, LB, LM) +Int
-        Gexpmodmul < SCHED > *Int LEX *Int Cmul(SCHED, LM, LM) +Int
-        Cdiv(SCHED, 2 *Int LM, LM) +Int
-        Gexpmodwordm < SCHED > *Int LM +Int
-        Gexpmodworde < SCHED > *Int LEX +Int
+    rule Cexpmod(SCHED, LB, LEX, LM, EX) =>
+        Gexpmodkara < SCHED > *Int #overApproxKara(LM) *Int #adjustedBitLength(LEX, EX) +Int
         Gexpmod < SCHED >
+      requires LB <=Int LM
 
-    rule Cdiv(SCHED, L1, L2) =>
-        Gdivkara < SCHED > *Int L1 *Int #overApproxKara(L2) /Int L2 +Int
-        Gdivlog  < SCHED > *Int L1 *Int log2Int(L2) +Int
-        Gdivword < SCHED > *Int L1 +Int
-   //   Gdivdiv  < SCHED > *Int L1 /Int L2
-        Gdiv < SCHED >
-      requires L2 >Int Gdivthreshold < SCHED > andBool
-               L1 >Int L2 +Int Gstddivthreshold < SCHED >
+    rule Cexpmod(SCHED, LB, LEX, LM, EX) =>
+        Gexpmodkara < SCHED > *Int #overApproxKara(LM) *Int #adjustedBitLength(LEX, EX) +Int
+        Cdiv(SCHED, LB, LM) +Int
+        Gexpmod < SCHED >
+      [owise]
 
 ```
 
-
 #### Approximating `x^log_2 3`
-
 
 Say we want to approximate `x^log_2 3` with a family of quadratic functions, say of the form `a2*x^2+a1*x+a0`.
 
@@ -780,6 +790,29 @@ Say we want to approximate `x^log_2 3` with a family of quadratic functions, say
                          #else #if N <=Int 1024 #then N *Int N /Int  4 +Int  48 *Int N -Int    768
                          #else                        N *Int N /Int 16 +Int 432 *Int N -Int 197376
                          #fi #fi
+```
+
+#### Approximating exponentiation
+
+Exponentiation algorithms work by sucessively performing at most two multiplication operations per bit in the exponent.
+
+Because exponents could be very large, we approximate this length by counting the number of words in the exponent and multiplying by 64,
+the number of bits in a word. However, in order to create more precision on smaller inputs, if the number is less than 2^64,
+we compute down to the very last bit, by examining the individual bits of the low order word.
+
+This same function can be used to approximate the bit size of an exponentiation base for non-modular exponentiation,
+which is used to compute a more accurate approximation of the length of the result than a measurement in words.
+
+```{.k .uiuck .rvk}
+    syntax Int ::= #adjustedBitLength(Int, Int) [function]
+                 | #adjustedBitLength(Int) [function, klabel(#adjustedBitLengthAux)]
+ // --------------------------------------------------------------------------------
+    rule #adjustedBitLength(LEX, EX) => maxInt(1, #if LEX <=Int 1 #then 0 #else 64 *Int (LEX -Int 1) #fi +Int #adjustedBitLength(twos(8, EX)))
+
+    rule #adjustedBitLength(0) => 0
+    rule #adjustedBitLength(1) => 0
+    rule #adjustedBitLength(N) => 1 +Int #adjustedBitLength(N /Int 2) requires N >Int 1
+
 ```
 
 Gas Model Parameters
@@ -809,16 +842,16 @@ A `ScheduleConst` is a constant determined by the fee schedule; applying a `Sche
 
     syntax ScheduleConst ::= "Gextcodesize"  | "Gbalance"       | "Gsload"        | "Gadd"         | "Gaddword"    | "Gbitwise"      | "Gbitwiseword"
                            | "Rselfdestruct" | "Gselfdestruct"  | "Gcreate"       | "Gcodedeposit" | "Gcall"       | "Gbr"           | "Gbrcond"
-                           | "Gcallvalue"    | "Gcallstipend"   | "Gnewaccount"   | "Gexp"         | "Gmemory"     | "Gtxcreate"     | "Gmulthreshold"
+                           | "Gcallvalue"    | "Gcallstipend"   | "Gnewaccount"   | "Gexp"         | "Gmemory"     | "Gtxcreate"
                            | "Gtxdatazero"   | "Gtxdatanonzero" | "Gtransaction"  | "Glog"         | "Glogdata"    | "Glogtopic"     | "Gsha3"
                            | "Gsha3word"     | "Gcopy"          | "Gmove"         | "Gblockhash"   | "Gquadcoeff"  | "Rb"            | "Gdiv"
-                           | "Gdivkara"      | "Gdivlog"        | "Gdivthreshold" | "Gdivword"     | "Gexpkara"    | "Gexplog"       | "Gexpmod"
-                           | "Gexpmodmul"    | "Gexpmodworde"   | "Gexpmodwordm"  | "Gexpmul"      | "Gexpword"    | "Gmulkara"      | "Gstddivthreshold"
+                           | "Gdivkara"      | "Gdivlog"        | "Gdivword"      | "Gexpkara"     | "Gexplog"     | "Gexpmod"
+                           | "Gexpmodmul"    | "Gexpmodworde"   | "Gexpmodwordm"  | "Gexpmul"      | "Gexpword"    | "Gmulkara"
                            | "Gstoreword"    | "Gstorecell"     | "Gstore"        | "Gsloadword"   | "Gsloadkey"   | "Gsignword"     | "Gsign"
                            | "Gret"          | "Greadstate"     | "Gnot"          | "Gnotword"     | "Gmul"        | "Gmulmod"       | "Gmulword"
                            | "Glocalcall"    | "Gloadword"      | "Gload"         | "Gloadcell"    | "Giszero"     | "Gcmp"          | "Gcmpword"
                            | "Gcallreg"      | "Gcallmemory"    | "Gbyte"         | "Gcopycreate"  | "Gsstore"     | "Gsstorekey"
-                           | "Gsstoreset"    | "Gsstoresetkey"  | "Gsstoreword"
+                           | "Gsstoreset"    | "Gsstoresetkey"  | "Gsstoreword"   | "Gexpmodkara"
                            | "Smemallowance"
  // ---------------------------------------------------------------------------------------------------------------------------------
 ```
@@ -836,8 +869,17 @@ This schedule is used to execute the EVM VM tests, and contains minor variations
     rule Gadd           < DEFAULT > => 0
     rule Gaddword       < DEFAULT > => 3
     rule Gmul           < DEFAULT > => 0
-    rule Gmulword       < DEFAULT > => 5
-    rule Gmulthreshold  < DEFAULT > => bitsInWords(1000)
+    rule Gmulword       < DEFAULT > => 2
+    rule Gmulkara       < DEFAULT > => 3
+    rule Gdiv           < DEFAULT > => 0
+    rule Gdivword       < DEFAULT > => 2
+    rule Gdivkara       < DEFAULT > => 3
+    rule Gexpkara       < DEFAULT > => 50
+    rule Gexpword       < DEFAULT > => 10
+    rule Gexp           < DEFAULT > => 0
+    rule Gmulmod        < DEFAULT > => 0
+    rule Gexpmodkara    < DEFAULT > => 4
+    rule Gexpmod        < DEFAULT > => 0
     rule Gnot           < DEFAULT > => 0
     rule Gnotword       < DEFAULT > => 3
     rule Gbitwise       < DEFAULT > => 0

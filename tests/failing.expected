@@ -263,3 +263,5 @@ tests/ethereum-tests/VMTests/vmLogTest/log1_logMemStartTooHigh.json
 tests/ethereum-tests/VMTests/vmLogTest/log2_logMemStartTooHigh.json
 tests/ethereum-tests/VMTests/vmLogTest/log3_logMemStartTooHigh.json
 tests/ethereum-tests/VMTests/vmLogTest/log4_logMemStartTooHigh.json
+tests/ethereum-tests/VMTests/vmEnvironmentalInfo/calldatacopy1_return.json
+tests/ethereum-tests/VMTests/vmEnvironmentalInfo/calldatacopy0_return.json
