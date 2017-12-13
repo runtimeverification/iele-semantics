@@ -1093,27 +1093,16 @@ divModCost lx ly
   That is, we want a polynomial a * x ^ 2 + b * x + c
   To choose the approximation points we use the fact that
   `(2^k)^(log 3 / log 2) = 3^k`, so we choose them as successive powers of 2.
-  Note that a polynomial is fully determined by 3 approximation points:
-  ```
-   2^1  2^2  2^3   : a = 1/4, b = 3/2, c = -1
-   2^3  2^4  2^5   : a = 9/64, b = 27/8, c = -9
-   2^5  2^6  2^7   : a = 81/1024, b = 243/32, c = -81
-   2^7  2^8  2^9   : a = 729/16384, b = 2187/128, c = -729
-   2^9  2^10 2^11  : a = 6561/262144, b = 19683/512, c = -6561
-   2^11 2^12 2^13  : a = 59049/4194304, b = 177147/2048, c = -59049
-   ```
-   Past 2^13 (sizes larger than 2^13 limbs), we will use the same polynomial
-   although we know it quickly diverges, to discourage usage.
-   ```hs
-     approxKara x
-       | 8 <= x < 32 = 9/64*x^2 + 28/8*x - 9                        -- 16%
-       | x <= 128     = 81/1024*x^2 + 247/32*x - 81                 -- 20%
-       | x <= 512     = 729/16384*x^2 + 2215/128*x - 729            -- 40%
-       | x <= 2048    = 6561/262144*x^2 + 19934/512*x - 6561        -- 90%
-       | otherwise   = 59049/4194304*x^2 + 177147/2048 * x -59049   -- > 200%
-   ```
-   Note: I've increased b for all cases to ensure the estimation is always
-   larger than the actual value  -  percent on right shows how much larger.
+
+* Say we want to approximate `x^log_2 3` with a family of quadratic functions, say of the form `a2*x^2+a1*x+a0`,
+* then, for `x = 2^k`, it means we want to approximate `3^k` with `a2*4^k(+...)`, whence `a2 ~= 1/(4/3)^k`.
+* looking for powers of 2 (to make `a2*x^2` a shift) which are smaller, but close to `(4/3)^k`, we see that `(4/3)^5 ~= 4.21` and` (4/3)^10 ~=17.75`
+* we then can take candidates `x^2 for x <=32`; `x^2/4 + a1* x + a0 for 32 <= x <=1024`, and  `x^2/16 + b1 * x + b0 for x >= 1024 `
+* now, if we want the approximation to be differentiable, its derivative, `2* x for x <=32; x/2 + a1 for 32 <= x <=1024, x/8 + b1 for x >= 1024`,  must be continuous, so
+* `a1 = 2 * 32 - 32/2 = 48`, and `b1 = 1024/2 + a1 - 1024 / 8 = 432`
+* next, the approximation must also be continuous, so
+* `a0 = 32^2 - 32^2/4 - 48*32 = -768`, and `b0 = 1024^2/4+ 48*1024 -768 - 1024^2/16 - 432*1024 = - 197376`
+
 
 * Division / modulo cost function *divCost*
   ```hs
@@ -1130,7 +1119,7 @@ divModCost lx ly
 * Bill each use of #newAccount as using account storage space.
 * Account for #finalizeTx costs somehow.
 
-Comments on ADDMOD/MULMOD/EXPMOD
+Comments on ADGdiv < SCHED > +Int DMOD/MULMOD/EXPMOD
 --------------------------------
 It seems like addmod and mulmod exist mostly to avoid taking up extra space for an intermediate result, and shouldn't be expected to reduce computation costs by much. mulmod of numbers around the size of the modulus should have about the same asymptotic cost (as a function of size of the modulus) and a mul and a mod, just with independent constants so it can be a bit cheaper if appropriate (maybe better memory locality than a plain mul, or some other constant factor savings).
 

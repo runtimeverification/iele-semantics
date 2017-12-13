@@ -411,9 +411,9 @@ The bitwise expressions have a constant cost plus a linear factor in the number 
 ```{.k .uiuck .rvk}
     rule #compute [ _ = add W0 , W1, SCHED ] => Gadd < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gaddword < SCHED >
     rule #compute [ _ = sub W0 , W1, SCHED ] => Gadd < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gaddword < SCHED >
-    rule #compute [ _ = mul W0 , W1, SCHED ] => Gmul < SCHED > +Int Cmul(SCHED, intSize(W0), intSize(W1))
-    rule #compute [ _ = div W0 , W1, SCHED ] => Gdiv < SCHED > +Int Cdiv(SCHED, intSize(W0), intSize(W1))
-    rule #compute [ _ = mod W0 , W1, SCHED ] => Gdiv < SCHED > +Int Cdiv(SCHED, intSize(W0), intSize(W1))
+    rule #compute [ _ = mul W0 , W1, SCHED ] => Cmul(SCHED, intSize(W0), intSize(W1))
+    rule #compute [ _ = div W0 , W1, SCHED ] => Cdiv(SCHED, intSize(W0), intSize(W1))
+    rule #compute [ _ = mod W0 , W1, SCHED ] => Cdiv(SCHED, intSize(W0), intSize(W1))
     rule #compute [ _ = exp W0 , W1, SCHED ] => Cexp(SCHED, intSize(W0), W1)
 ```
 
@@ -714,8 +714,65 @@ Note: These are all functions as the operator `#compute` has already loaded all 
                  | Cexp     ( Schedule , Int , Int )       [function]
                  | Cexpmod  ( Schedule , Int , Int , Int ) [function]
  // -----------------------------------------------------------------
-    rule Cmul(SCHED, L1, L2) => Gmulword < SCHED > *Int L1 *Int L2 +Int Gmul < SCHED >
-      requires Gmulthreshold < SCHED > >Int L1 orBool Gmulthreshold < SCHED > >Int L2
+    rule Cmul(SCHED, L1, L2) => Cmul(SCHED, L2, L1)
+      requires L2 > L1
+    rule Cmul(SCHED, L1, L2) =>
+        Gmulkara < SCHED > *Int L1 *Int #overApproxKara(L2) /Int L2 +Int
+        Gmulword < SCHED > *Int L1 +Int
+        Gmul < SCHED >
+      requires L1 > L2
+      // Note that if L2 is low enough (< 32) then #overApproxKara(L2) = L2 * L2
+
+    rule Cexp(SCHED, L1, W2) =>
+        Gexpkara < SCHED > * #overApproxKara(L1 * W2) +Int
+        Gexpmul  < SCHED > * L2 * W2 +Int
+        Gexpword < SCHED > * L2 +Int
+        Gexplog  < SCHED > * log2Int(W2) +Int
+        Gexp < SCHED >
+      requires log2Int(L1) + log2Int(W2) < 32 // otherwise out of gas for storage
+      // This condition can be removed assuming the gas for memory is checked first.
+
+    rule Cexpmod(SCHED, LB, LE, LM) =>
+        Cdiv(SCHED, LB, LM) +Int
+        Gexpmodmul < SCHED > *Int LE *Int Cmul(SCHED, LM, LM) +Int
+        Cdiv(SCHED, 2 *Int LM, LM) +Int
+        Gexpmodwordm < SCHED > *Int LM +Int
+        Gexpmodworde < SCHED > *Int LE +Int
+        Gexpmod < SCHED >
+
+    rule Cdiv(SCHED, L1, L2) =>
+        Gdivkara < SCHED > *Int L1 *Int #overApproxKara(L2) /Int L2 +Int
+        Gdivlog  < SCHED > *Int L1 *Int log2Int(L2) +Int
+        Gdivword < SCHED > *Int L1 +Int
+   //   Gdivdiv  < SCHED > *Int L1 /Int L2
+        Gdiv < SCHED >
+      requires L2 > Gdivthreshold < SCHED > andBool
+               L1 > L2 + Gstddivthreshold < SCHED >
+
+```
+
+
+#### Approximating `x^log_2 3`
+
+
+Say we want to approximate `x^log_2 3` with a family of quadratic functions, say of the form `a2*x^2+a1*x+a0`.
+
+* we use the fact that `(2^k)^(log 3 / log 2) = 3^k`
+* then, for `x = 2^k`, it means we want to approximate `3^k` with `a2*4^k(+...)`, whence `a2 ~= 1/(4/3)^k`.
+* looking for powers of 2 (to make `a2*x^2` a shift) which are smaller, but close to `(4/3)^k`, we see that `(4/3)^5 ~= 4.21` and` (4/3)^10 ~=17.75`
+* we then can take candidates `x^2 for x <=32`; `x^2/4 + a1* x + a0 for 32 <= x <=1024`, and  `x^2/16 + b1 * x + b0 for x >= 1024 `
+* now, if we want the approximation to be differentiable, its derivative, `2* x for x <=32; x/2 + a1 for 32 <= x <=1024, x/8 + b1 for x >= 1024`,  must be continuous, so
+* `a1 = 2 * 32 - 32/2 = 48`, and `b1 = 1024/2 + a1 - 1024 / 8 = 432`
+* next, the approximation must also be continuous, so
+* `a0 = 32^2 - 32^2/4 - 48*32 = -768`, and `b0 = 1024^2/4+ 48*1024 -768 - 1024^2/16 - 432*1024 = - 197376`
+
+```{.k .uiuck .rvk}
+    syntax Int ::= #overApproxKara ( Int )                 [function]
+ // -----------------------------------------------------------------
+    rule #overApproxKara(N) => #if N <=Int   32 #then N *Int N
+                         #else #if N <=Int 1024 #then N *Int N /Int  4 +Int  48 *Int N -Int    768
+                         #else                        N *Int N /Int 16 +Int 432 *Int N -Int 197376
+                         #fi #fi
 ```
 
 Gas Model Parameters
