@@ -434,7 +434,7 @@ The bitwise expressions have a constant cost plus a linear factor in the number 
 
 ```{.k .uiuck .rvk}
     rule #compute [ _ = addmod W0 , W1 , W2, SCHED ] => Gadd < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gaddword < SCHED > +Int Cdiv(SCHED, maxInt(intSize(W0), intSize(W1)) +Int 1, intSize(W2))
-    rule #compute [ _ = mulmod W0 , W1 , W2, SCHED ] => Cdiv(SCHED, intSize(W0), intSize(W2)) +Int Cdiv(SCHED, intSize(W1), intSize(W2)) +Int Cmul(SCHED, minInt(intSize(W0), intSize(W2)), minInt(intSize(W1), intSize(W2))) +Int Cdiv(SCHED, intSize(W2) *Int 2, intSize(W2)) +Int Gmulmod < SCHED >
+    rule #compute [ _ = mulmod W0 , W1 , W2, SCHED ] => Cmul(SCHED, intSize(W0), intSize(W1)) +Int Cdiv(SCHED, intSize(W0) +Int intSize(W1), intSize(W2)) +Int Gmulmod < SCHED >
     rule #compute [ _ = expmod W0 , W1 , W2, SCHED ] => Cexpmod(SCHED, intSize(W0), intSize(W1), intSize(W2))
 ```
 
@@ -736,12 +736,8 @@ Note: These are all functions as the operator `#compute` has already loaded all 
 
     rule Cexp(SCHED, L1, W2) =>
         Gexpkara < SCHED > *Int #overApproxKara(L1 *Int W2) +Int
-        Gexpmul  < SCHED > *Int L1 *Int W2 +Int
         Gexpword < SCHED > *Int L1 +Int
-        Gexplog  < SCHED > *Int log2Int(W2) +Int
         Gexp < SCHED >
-      requires log2Int(L1) +Int log2Int(W2) <Int 32 // otherwise out of gas for storage
-      // This condition can be removed assuming the gas for memory is checked first.
 
     rule Cexpmod(SCHED, LB, LEX, LM) =>
         Cdiv(SCHED, LB, LM) +Int
