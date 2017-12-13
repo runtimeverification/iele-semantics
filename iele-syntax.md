@@ -1,7 +1,11 @@
 IELE Textual Syntax
 ===================
 
-Here we define the textual syntax of IELE assembly code. The syntax represented here has some syntactic sugar which is removed by the assembler. However, a fragment of this textual encoding is used by the semantics to express the rules of the language itself. The [iele-examples](iele-examples) directory contains various sample IELE contracts such as a [simple open auction contract](iele-examples/simpleOpenAuction.iele), an [ERC20 token](iele-examples/erc20.iele) and a [forwarding wallet contract](iele-examples/forwardingWallet.iele).
+Here we define the textual syntax of IELE assembly code. The syntax represented here has some syntactic sugar which is removed by the assembler. However, a fragment of this textual encoding is used by the semantics to express the rules of the language itself. The [iele-examples](iele-examples) directory contains various sample IELE contracts, such as:
+* a [simple open auction contract](iele-examples/simpleOpenAuction.iele);
+* an [ERC20 token](iele-examples/erc20.iele);  and
+* a [forwarding wallet contract](iele-examples/forwardingWallet.iele).
+The best way to understand the meaning of the IELE syntactic constructs is to read their actual formal semantics in [iele.md](iele.md).
 
 Names and Literals
 ------------------
