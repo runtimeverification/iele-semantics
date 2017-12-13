@@ -14,24 +14,24 @@ def escape(data):
 
 def print_kast(data):
   if isinstance(data, list):
-    sys.stdout.write('`[_]_EVM-DATA`(')
+    sys.stdout.write('`[_]_IELE-DATA`(')
     for elem in data:
-      sys.stdout.write('`_,__EVM-DATA`(')
+      sys.stdout.write('`_,__IELE-DATA`(')
       print_kast(elem)
       sys.stdout.write(',')
-    sys.stdout.write('`.List{"_,__EVM-DATA"}`(.KList)')
+    sys.stdout.write('`.List{"_,__IELE-DATA"}`(.KList)')
     for elem in data:
       sys.stdout.write(')')
     sys.stdout.write(')')
   elif isinstance(data, OrderedDict):
-    sys.stdout.write('`{_}_EVM-DATA`(')
+    sys.stdout.write('`{_}_IELE-DATA`(')
     for key, value in data.iteritems():
-      sys.stdout.write('`_,__EVM-DATA`(`_:__EVM-DATA`(')
+      sys.stdout.write('`_,__IELE-DATA`(`_:__IELE-DATA`(')
       print_kast(key)
       sys.stdout.write(',')
       print_kast(value)
       sys.stdout.write('),')
-    sys.stdout.write('`.List{"_,__EVM-DATA"}`(.KList)')
+    sys.stdout.write('`.List{"_,__IELE-DATA"}`(.KList)')
     for key in data:
       sys.stdout.write(')')
     sys.stdout.write(')')
@@ -39,6 +39,10 @@ def print_kast(data):
     sys.stdout.write('#token('),
     sys.stdout.write(json.dumps(json.dumps(data)))
     sys.stdout.write(',"String")')
+  elif isinstance(data, bool):
+    sys.stdout.write('#token("'),
+    sys.stdout.write("true" if data else "false")
+    sys.stdout.write('","Bool")')
   elif isinstance(data, long) or isinstance(data, int):
     sys.stdout.write('#token("'),
     sys.stdout.write(str(data))

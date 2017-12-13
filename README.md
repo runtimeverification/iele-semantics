@@ -1,33 +1,16 @@
-KEVM: Semantics of EVM in K
-===========================
+IELE: Semantics of New Cryptocurrency VM in K
+==============================================
 
-In this repository we provide a model of the EVM in K.
-
-### Technical Report
-
-See [our technical report on KEVM 1.0](http://hdl.handle.net/2142/97207) for more expository explanation of KEVM.
-The paper is a good starting point for people wishing to dive into reading the semantics/other tools here (especially sections 3 and 5).
+In this repository we provide a model of IELE in K.
 
 ### Structure
 
-The file [data.md](data.md) explains the basic data of EVM (including the 256 bit words and some datastructures over them).
+The file [data.md](data.md) explains the basic data of IELE (including words and some datastructures over them).
 This data is defined functionally.
 
-[evm.md](evm.md) is the file containing the semantics of KEVM.
-This file contains the **configuration** (a map of the state), and a simple imperative execution machine which the EVM lives on top of.
+[iele.md](iele.md) is the file containing the semantics of IELE.
+This file contains the **configuration** (a map of the state), and a simple imperative execution machine which IELE lives on top of.
 It deals with the semantics of opcodes, the gas cost of execution, and parsing/unparsing/assembling/disassembling.
-
-### Gas Analysis
-
-We have defined one analysis tool so far; a *very very* simple gas analysis tool.
-This gas analysis tool should *be improved* before being used for anything significant.
-We will collect developed analysis tools in [analysis.md](analysis.md).
-
-### Proofs
-
-Any proofs we perform will be documented in [proofs/README.md](proofs/README.md).
-These proofs are also run as tests of UIUC-K, though they take quite a while.
-The file [verification.md](verification.md) contains some helper-macros for writing down reachability claims.
 
 ### Testing
 
@@ -35,99 +18,36 @@ The file [verification.md](verification.md) contains some helper-macros for writ
 If the output is correct, the entire configuration is cleared.
 If any check fails, the configuration retains the failed check at the top of the `<k>` cell.
 
+[ethereum.md](ethereum.md) is also capable of executing tests of arbitrary IELE transactions (subject to the fact that this first release of IELE is still
+built on top of an ethereum-like network layer). There are several differences in the syntax of the JSON test suite compared to the EVM test suite:
+
+* Users can specify the function called and the arguments to the function in blockchain tests. These fields are not currently part of the signed portion of the transaction,
+  for ease of compatibility with EVM tests. Transaction security will come in a future release.
+* Users can ask for gas checks in the test to be disabled by adding a `"checkGas": false` entry to the top-level JSON object.
+* VM tests call the function named `deposit`.
+* Users can specify a filename instead of a hexadecimal string when specifying the code of a contract, and the code will be pulled by assembling the file, which contains
+  IELE assembly. Filenames are relative to the directory containing the JSON file.
+* Blockchain tests have only one possible schedule, `Albe`.
+* Many fields that are checked by the Ethereum tests can be omitted or given arbitrary values, including:
+    * `blockHeader` does not check any values aside from those which are input to the VM, and the remaining can be given arbitrary values.
+    * `data` in a transaction can be an arbitrary value, but it still must match the signature of the transaction.
+    * `genesisBlockHeader` and `rlp` can be omitted.
+
+For example pure-IELE tests, see `tests/iele`.
+
 Using the Definition
 --------------------
 
-There are two versions of K available, [RV-K](https://github.com/runtimeverification/k) and [UIUC-K](https://github.com/kframework/k).
-This repository contains the build-products for both versions of K (there are slight differences) in `.build/$K_VERSION/`.
-Use RV-K for fast concrete execution, and UIUC-K for any symbolic reasoning.
-Make sure that you have set the `K_VERSION` environment variable in your shell (add `export K_VERSION=uiuck` or `export K_VERSION=rvk` to your `.bashrc` or equivalent).
+### Installing
 
-The script `Build` supplied in this repository will build and run the definition (see `./Build help` to see more detailed usage information).
-Running any proofs or symbolic reasoning requires UIUC-K.
+See [INSTALL.md](INSTALL.md).
 
-To run in a different mode (eg. in `GASANALYZE` mode), do `export cMODE=<OTHER_MODE>` before calling `./Build`.
-To run with a different fee schedule (eg. `HOMESTEAD` instead of `DEFAULT`), do `export cSCHEDULE=<OTHER_SCHEDULE>` before calling `./Build`.
+### Testing
 
-### Dependencies
+To execute a VM test, run `./vmtest $file` where `$file` is a JSON file containing the specification of the test.
+To execute a Blockchain test, run `./blockchaintest $file` where `$file` is a JSON file containing the specification of the test.
 
-For using the `./Build` command and tests, we depend on `xmllint` (on Ubuntu via the package `libxml2-utils`).
-For developing, we depend on [`pandoc-tangle`](https://github.com/ehildenb/pandoc-tangle).
-
-### Interesting Branches
-
-These branches (off of `master`) are various interesting/useful changes to the semantics.
-
--   `perf` and `performance` are changes which improve performance of concrete execution but cannot do symbolic reasoning.
--   `tutorial` removes parts of the semantics and places `TODO` markers for a user to fill in.
-
-### Example Runs
-
-Run the file `tests/VMTests/vmArithmeticTest/add0.json`:
-
-```sh
-$ ./Build run tests/VMTests/vmArithmeticTest/add0.json
-
-# Which actually calls:
-$ krun --directory .build/uiuck/ -cSCHEDULE=DEFAULT -cMODE=VMTESTS tests/VMTests/vmArithmeticTest/add0.json
-```
-
-Run the same file as a test:
-
-```sh
-$ ./Build test tests/VMTests/vmArithmeticTest/add0.json
-```
-
-To run proofs, you can similarly use `./Build`.
-For example, to prove the specification `tests/proofs/hkg/transfer-else-spec.k`:
-
-```sh
-$ ./Build prove tests/proofs/hkg/transfer-else-spec.k
-
-# Which actually calls:
-$ krun --directory .build/uiuck/ -cSCHEDULE=DEFAULT -cMODE=NORMAL \
-         --z3-executable tests/templates/dummy-proof-input.json --prove tests/proofs/hkg/transferFrom-else-spec.k \
-         </dev/null
-```
-
-Finally, if you want to debug a given program (by stepping through its execution), you can use the `debug` option:
-
-```sh
-$ ./Build debug tests/VMTests/vmArithmeticTest/add0.json
-...
-KDebug> s
-1 Step(s) Taken.
-KDebug> p
-... Big Configuration Here ...
-KDebug>
-```
-
-### Helper Script `with-k`
-
-Not everyone wants to go through the process of installing K, so the script `./tests/ci/with-k` can be used to avoid that.
-The following will call the same `./Build` commands as above, but only after downloading, building, and setting up a fresh copy of RV-K or UIUC-K (as specified).
-
-```sh
-$ ./tests/ci/with-k rvk   ./Build run tests/VMTests/vmArithmeticTest/add0.json
-$ ./tests/ci/with-k uiuck ./Build prove tests/proofs/hkg/transfer-else-spec.k
-$ ./tests/ci/with-k rvk   ./Build test tests/VMTests/vmArithmeticTest/add0.json
-$ ./tests/ci/with-k uiuck ./Build prove tests/proofs/hkg/transfer-else-spec.k
-$ ./tests/ci/with-k uiuck ./Build debug tests/VMTests/vmArithmeticTest/add0.json
-```
-
-Note that running `./tests/ci/with-k` takes quite some time, which can be a pain when actively developing.
-To only download and setup K once for each session, you can do the following:
-
-```sh
-# Downloads and installs RV-K
-$ ./tests/ci/with-k rvk `which bash`
-
-# Now can just run `./Build` directly
-$ ./Build run tests/VMTests/vmArithmeticTest/add0.json
-$ ./Build test tests/VMTests/vmArithmeticTest/add0.json
-```
-
-The script `with-k` sets up the development environment with the fresh copy of K built and prefixed to `PATH` for the remaining commands.
+To execute all currently passing tests, run `make test`.
 
 Contributing
 ------------
@@ -213,40 +133,3 @@ These are soft requirements (review **may** start without these being met), and 
           requires A > 3
            andBool isPrime(A)
     ```
-
-Unfinished
-----------
-
-### Network vs. EVM
-
-Ethereum state consists of two parts, the network state and the EVM execution state.
-Right now the semantics declares the configuration for both of these components together, and many rules reach between these two subconfigurations.
-Separating the two subconfigurations and declaring an API for the network dynamics would provide a better understanding of the "necessary ingredients" for a consensus-driven distributed store.
-This would also allow us to experiment with alternative programming languages to EVM for future blockchain systems.
-
-### Full Transaction Execution
-
-Right now we are passing the VMTests, but haven't run tests on entire transactions.
-To have confidence in our semantics, we need to run the tests involving entire transactions (not just chunks of VM code).
-We are working on running the GeneralStateTests now as well.
-
-### TODOs
-
-More local problems are defined with a small *TODO* next to them in the semantics.
-
-Resources
-=========
-
--   [EVM Yellowpaper](https://github.com/ethereum/yellowpaper): Original specification of EVM.
--   [LEM Semantics of EVM](https://github.com/pirapira/eth-isabelle)
--   [Ethereum Test Set](https://github.com/ethereum/tests)
-
-For more information about [The K Framework](http://kframework.org), refer to these sources:
-
--   [The K Tutorial](https://github.com/kframework/k/tree/master/k-distribution/tutorial)
--   [Semantics-Based Program Verifiers for All Languages](http://fsl.cs.illinois.edu/index.php/Semantics-Based_Program_Verifiers_for_All_Languages)
--   [Reachability Logic Resources](http://fsl.cs.illinois.edu/index.php/Reachability_Logic_in_K)
--   [Matching Logic Resources](http://fsl.cs.illinois.edu/index.php/Matching_Logic)
--   [Logical Frameworks](http://dl.acm.org/citation.cfm?id=208700): Discussion of logical frameworks.
-
-We are using [GNU Parallel](https://www.gnu.org/software/parallel/) to assist in testing these semantics in parallel.

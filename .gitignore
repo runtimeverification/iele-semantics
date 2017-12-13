@@ -11,9 +11,11 @@
 
 !/.build/rvk/
 /.build/rvk/*
-!/.build/rvk/*.k
 
 !/.build/secp256k1
+!/.build/pyethereum
+
+/tests/proofs
 
 # This holds the tests that are split into one test per file from
 # the ethereum tests

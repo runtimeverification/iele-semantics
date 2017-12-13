@@ -1,0 +1,41 @@
+contract Wallet {
+  // Only %owner can withdraw or create new forwarders
+  // Forwarder is taken from an existing contract on the blockchain. 
+  define @init(%owner, %forwarder) {
+    %zero = 0
+    %one = 1
+    sstore %owner, %zero
+    sstore %forwarder, %one
+  }
+ 
+  define public @deposit() {}
+
+  define public @withdraw(%to, %value) {
+    %zero = 0
+    %owner = sload %zero
+    %caller = call @iele.caller()
+    %isnotowner = cmp ne %caller, %owner
+    br %isnotowner, throw // throw if not authorized to withdraw from this account
+    %gas = call @iele.gas()
+    %status = call @deposit at %to () send %value , gaslimit %gas // deposit funds in target account
+    br %status, throw // throw if call fails
+    ret void
+  throw:
+    call @iele.invalid()
+  }
+
+  define public @newForwarder() {
+    %zero = 0
+    %owner = sload %zero
+    %caller = call @iele.caller()
+    %isnotowner = cmp ne %caller, %owner
+    br %isnotowner, throw // throw if not authorized to create new forwarder
+    %one = 1
+    %forwarder = sload %one // load address of forwarder contract to copy
+    %status, %addr = copycreate %forwarder () send %zero // copy contract and re-initialize it
+    br %status, throw // throw if call fails
+    ret %addr
+  throw:
+    call @iele.invalid()
+  }
+}
