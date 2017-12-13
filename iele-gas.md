@@ -101,10 +101,10 @@ Since the result is boolean, the result size for all comparison operations is 1.
     the sum of the sizes of W0 and W1.
 -   `REG = div W0, W1` the result of division can require 1 word more than the
     difference between the sizes of W0 and W1.
--   `REG = mod W0, W1` size of the result is at most the minimum of the sizes
-    of W0 and W1.
--   `REG = exp W0, W1` the size of the result is equal to the size of the base multiplied
-    by the exponent.
+-   `REG = mod W0, W1` the size of the result is at most the minimum of the
+    sizes of W0 and W1.
+-   `REG = exp W0, W1` the size of the result is equal to the size of the base
+    multiplied by the exponent.
 
 ```{.k .uiuck .rvk}
     rule #memory [ REG = add W0 , W1 ] => #registerDelta(REG, maxInt(intSize(W0), intSize(W1)) +Int 1)
@@ -204,9 +204,12 @@ to the function, which consume as much as the size of their arguments.
          <nregs> REGISTERS </nregs>
 ```
 
-The memory cost of returning to a function is negative. Instead of charing a gas cost, memory is reclaimed according to the
+The memory cost of returning to a function is negative. Instead of charging a gas cost, memory is reclaimed according to the
 memory freed by returning from the function. In other words, we free the call frame on the stack, as well as each of the registers
 in the callee.
+
+There is also some memory change associated with assigning `ARGS` to the
+caller's registers, but that is handled in `iele.md`.
 
 ```{.k .uiuck .rvk}
     rule <k> #memory [ ret ARGS ] => #memoryDelta(0 -Int intSizes(REGS, NREGS) -Int Gcallmemory < SCHED >) ... </k>
@@ -267,6 +270,9 @@ or else their memory cost is paid after the instruction executes.
 
 For example, `revert`, `ret`, `call`, `staticcall`, `create`, and `copycreate` each invoke `#registerDelta` directly
 as part of the process of returning from a contract. For information on how these are used, refer to the usages in `iele.md`.
+
+For `revert` there is some memory change associated with changing the caller's
+registers, but that is handled in `iele.md`.
 
 ```{.k .uiuck .rvk}
     rule #memory [ br _           ] => .
@@ -407,6 +413,8 @@ The bitwise expressions have a constant cost plus a linear factor in the number 
 #### Regular arithmetic
 
 -   `add` and `sub` have a linear cost in the larger of the two sizes.
+-   `mul`, `div`, `mod` and `exp` have more complicated costs, which are
+    detailed elswhere.
 
 ```{.k .uiuck .rvk}
     rule #compute [ _ = add W0 , W1, SCHED ] => Gadd < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gaddword < SCHED >
@@ -420,6 +428,9 @@ The bitwise expressions have a constant cost plus a linear factor in the number 
 #### Modular arithmetic
 
 -   `addmod` is the cost of an addition plus the cost of the modulus.
+-   `mulmod` is the cost of two moduli, plus a multiplication, plus another
+    modulus.
+-   `expmod` has a more complicated cost and is defined elswhere.
 
 ```{.k .uiuck .rvk}
     rule #compute [ _ = addmod W0 , W1 , W2, SCHED ] => Gadd < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gaddword < SCHED > +Int Cdiv(SCHED, maxInt(intSize(W0), intSize(W1)) +Int 1, intSize(W2))
@@ -515,7 +526,7 @@ constant cost to perform the jump and store the return address.
 ```
 
 The cost to return from an intra-contract call is the cost to move the return values into the result registers plus the cost to
-jump to the retgurn address. 
+jump to the return address.
 
 ```{.k .uiuck .rvk}
     rule <k> #compute [ ret ARGS::Ints, SCHED ] => Gmove < SCHED > *Int #sizeRegs(ARGS) +Int Gret < SCHED > ... </k>
