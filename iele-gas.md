@@ -715,29 +715,29 @@ Note: These are all functions as the operator `#compute` has already loaded all 
                  | Cexpmod  ( Schedule , Int , Int , Int ) [function]
  // -----------------------------------------------------------------
     rule Cmul(SCHED, L1, L2) => Cmul(SCHED, L2, L1)
-      requires L2 > L1
+      requires L2 >Int L1
     rule Cmul(SCHED, L1, L2) =>
         Gmulkara < SCHED > *Int L1 *Int #overApproxKara(L2) /Int L2 +Int
         Gmulword < SCHED > *Int L1 +Int
         Gmul < SCHED >
-      requires L1 > L2
+      requires L1 >Int L2
       // Note that if L2 is low enough (< 32) then #overApproxKara(L2) = L2 * L2
 
     rule Cexp(SCHED, L1, W2) =>
-        Gexpkara < SCHED > * #overApproxKara(L1 * W2) +Int
-        Gexpmul  < SCHED > * L2 * W2 +Int
-        Gexpword < SCHED > * L2 +Int
-        Gexplog  < SCHED > * log2Int(W2) +Int
+        Gexpkara < SCHED > *Int #overApproxKara(L1 *Int W2) +Int
+        Gexpmul  < SCHED > *Int L1 *Int W2 +Int
+        Gexpword < SCHED > *Int L1 +Int
+        Gexplog  < SCHED > *Int log2Int(W2) +Int
         Gexp < SCHED >
-      requires log2Int(L1) + log2Int(W2) < 32 // otherwise out of gas for storage
+      requires log2Int(L1) +Int log2Int(W2) <Int 32 // otherwise out of gas for storage
       // This condition can be removed assuming the gas for memory is checked first.
 
-    rule Cexpmod(SCHED, LB, LE, LM) =>
+    rule Cexpmod(SCHED, LB, LEX, LM) =>
         Cdiv(SCHED, LB, LM) +Int
-        Gexpmodmul < SCHED > *Int LE *Int Cmul(SCHED, LM, LM) +Int
+        Gexpmodmul < SCHED > *Int LEX *Int Cmul(SCHED, LM, LM) +Int
         Cdiv(SCHED, 2 *Int LM, LM) +Int
         Gexpmodwordm < SCHED > *Int LM +Int
-        Gexpmodworde < SCHED > *Int LE +Int
+        Gexpmodworde < SCHED > *Int LEX +Int
         Gexpmod < SCHED >
 
     rule Cdiv(SCHED, L1, L2) =>
@@ -746,8 +746,8 @@ Note: These are all functions as the operator `#compute` has already loaded all 
         Gdivword < SCHED > *Int L1 +Int
    //   Gdivdiv  < SCHED > *Int L1 /Int L2
         Gdiv < SCHED >
-      requires L2 > Gdivthreshold < SCHED > andBool
-               L1 > L2 + Gstddivthreshold < SCHED >
+      requires L2 >Int Gdivthreshold < SCHED > andBool
+               L1 >Int L2 +Int Gstddivthreshold < SCHED >
 
 ```
 
@@ -805,6 +805,8 @@ A `ScheduleConst` is a constant determined by the fee schedule; applying a `Sche
                            | "Gcallvalue"    | "Gcallstipend"   | "Gnewaccount"   | "Gexp"         | "Gmemory"     | "Gtxcreate"     | "Gmulthreshold"
                            | "Gtxdatazero"   | "Gtxdatanonzero" | "Gtransaction"  | "Glog"         | "Glogdata"    | "Glogtopic"     | "Gsha3"
                            | "Gsha3word"     | "Gcopy"          | "Gmove"         | "Gblockhash"   | "Gquadcoeff"  | "Rb"            | "Gdiv"
+                           | "Gdivkara"      | "Gdivlog"        | "Gdivthreshold" | "Gdivword"     | "Gexpkara"    | "Gexplog"       | "Gexpmod"
+                           | "Gexpmodmul"    | "Gexpmodworde"   | "Gexpmodwordm"  | "Gexpmul"      | "Gexpword"    | "Gmulkara"      | "Gstddivthreshold"
                            | "Gstoreword"    | "Gstorecell"     | "Gstore"        | "Gsloadword"   | "Gsloadkey"   | "Gsignword"     | "Gsign"
                            | "Gret"          | "Greadstate"     | "Gnot"          | "Gnotword"     | "Gmul"        | "Gmulmod"       | "Gmulword"
                            | "Glocalcall"    | "Gloadword"      | "Gload"         | "Gloadcell"    | "Giszero"     | "Gcmp"          | "Gcmpword"
