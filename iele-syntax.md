@@ -5,6 +5,7 @@ Here we define the textual syntax of IELE assembly code. The syntax represented 
 * a [simple open auction contract](iele-examples/simpleOpenAuction.iele);
 * an [ERC20 token](iele-examples/erc20.iele);  and
 * a [forwarding wallet contract](iele-examples/forwardingWallet.iele).
+
 The best way to understand the meaning of the IELE syntactic constructs is to read their actual formal semantics in [iele.md](iele.md).
 
 Names and Literals
