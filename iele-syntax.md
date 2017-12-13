@@ -193,7 +193,7 @@ Instructions to create and/or delete a new account with a contract deployed with
 
 ### Local and Network State Accessors
 
-These accessors are implemented as builtins that can be called using the same syntax as in a local call, e.g. `%pc = call @iele.pc()` or `%balance = call @iele.balance(%bank.account)`. The names of the builtins follow the IELE convention for intrinsics: Their name is a valid global name that starts with the prefix "iele.". This means that no user-defined global name should start with the prefix "iele.".
+These accessors are implemented as builtins that can be called using the same syntax as in a local call, e.g. `%pc = call @iele.pc()` or `%balance = call @iele.balance(%bank.account)`. The names of the builtins follow the IELE convention for intrinsics: Their name is a valid global name that starts with the prefix `iele.`. This means that no user-defined global name can start with the prefix `iele.`.
 
 ```{.k .uiuck .rvk}
   syntax IeleName ::= "iele.invalid"     [token]
