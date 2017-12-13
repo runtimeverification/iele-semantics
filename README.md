@@ -49,6 +49,11 @@ To execute a Blockchain test, run `./blockchaintest $file` where `$file` is a JS
 
 To execute all currently passing tests, run `make test`.
 
+Contacting Us
+-------------
+
+We are available to answer questions on the [public Gitter channel](https://gitter.im/runtimeverification/iele-semantics) associated with this repository.
+
 Contributing
 ------------
 
