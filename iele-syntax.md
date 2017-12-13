@@ -59,7 +59,7 @@ Instructions
 
 IELE instruction operands are used at the left- and right-hand side of IELE instructions.
 
--   One ore more `LValues` can be used at the left-hand side of various IELE instructions
+-   One or more `LValues` can be used at the left-hand side of various IELE instructions
 -   Zero or more `Operands` can be used at the right-hand side of various IELE instructions and as actual argument lists in function calls.
 -   Constants can only be used as right-hand side operands, while registers can be used as both left- and right-hand side operands.
 -   Each right-hand side operand will be heated to an unbounded signed integer value during execution.
