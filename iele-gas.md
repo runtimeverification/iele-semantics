@@ -739,7 +739,7 @@ Note: These are all functions as the operator `#compute` has already loaded all 
     rule Ckara(L1, L2) => L1 *Int #overApproxKara(L2) /Int L2
       requires L1 >=Int L2
 
-    rule Ckara(L1, L2) => L2 *Int #overApproxKara(L1) /Int L1
+    rule Ckara(L1, L2) => L2 *Int #overApproxKara(L1) /Int L1 [owise]
 
     rule Cdiv(SCHED, L1, L2) =>
         Gdivkara < SCHED > *Int Ckara(L1 -Int L2 +Int 1, L2) +Int
