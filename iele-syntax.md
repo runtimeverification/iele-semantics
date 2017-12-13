@@ -316,7 +316,7 @@ Definition of globals and their constant values. Globals are accessible from wit
 
 ### Functions
 
-Function definitions consist of a function signature (function name and names of formal arguments) and a function body (a list of blocks containing the code of the function). Functions can be defined as `public` meaning that they can be called from a contract deployed with another account. Non-`public` functions can only be called locally withiin the contract.
+Function definitions consist of a function signature (function name and names of formal arguments) and a function body (a list of blocks containing the code of the function). Functions can be defined as `public` meaning that they can be called from a contract deployed with another account. Non-`public` functions can only be called locally within the contract.
 
 ```{.k .uiuck .rvk}
   syntax FunctionSignature ::= GlobalName "(" FunctionParameters ")"
