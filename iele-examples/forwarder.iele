@@ -1,7 +1,7 @@
 // Copyright (c) 2017 Runtime Verification, Inc. All Rights Reserved.
 //
 // This contract implements a forwarder that forwards any funds sent to
-// the account it is deployed with to the acoount that created it.
+// the account it is deployed with to the account that created it.
 contract Forwarder {
 
   // initializes a forwarder by storing in the account storage the account
