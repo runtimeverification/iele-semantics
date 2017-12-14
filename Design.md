@@ -139,7 +139,7 @@ Due to the changes above, it is necessary to have a refined gas model of IELE wh
 * Before executing instructions that may produce large results, a memory cost is paid based on an estimate of the result size, if the predicted result would increase the peak memory usage. If actual memory usage after executing the instruction is less than the estimate, the cost for the unused expansion is not refunded (and the additional memory has still been paid for).
 * Each instruction has a formula for its gas cost that is potentially parametric in the sizes of the operands, in keeping with the fact that arbitrary-precision arithmetic can be asymptotically non-constant in the sizes of operands.
 
-# Designed Changes Relative to LLVM
+# Design Changes Relative to LLVM
 
 Here are the IELE design decisions described from the perspective of differences from LLVM.
 
