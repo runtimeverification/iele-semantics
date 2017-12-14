@@ -839,21 +839,17 @@ A `ScheduleConst` is a constant determined by the fee schedule; applying a `Sche
 ```{.k .uiuck .rvk}
     syntax Int ::= ScheduleConst "<" Schedule ">" [function]
  // --------------------------------------------------------
-
-    syntax ScheduleConst ::= "Gextcodesize"  | "Gbalance"       | "Gsload"        | "Gadd"         | "Gaddword"    | "Gbitwise"      | "Gbitwiseword"
-                           | "Rselfdestruct" | "Gselfdestruct"  | "Gcreate"       | "Gcodedeposit" | "Gcall"       | "Gbr"           | "Gbrcond"
-                           | "Gcallvalue"    | "Gcallstipend"   | "Gnewaccount"   | "Gexp"         | "Gmemory"     | "Gtxcreate"
-                           | "Gtxdatazero"   | "Gtxdatanonzero" | "Gtransaction"  | "Glog"         | "Glogdata"    | "Glogtopic"     | "Gsha3"
-                           | "Gsha3word"     | "Gcopy"          | "Gmove"         | "Gblockhash"   | "Gquadcoeff"  | "Rb"            | "Gdiv"
-                           | "Gdivkara"      | "Gdivlog"        | "Gdivword"      | "Gexpkara"     | "Gexplog"     | "Gexpmod"
-                           | "Gexpmodmul"    | "Gexpmodworde"   | "Gexpmodwordm"  | "Gexpmul"      | "Gexpword"    | "Gmulkara"
-                           | "Gstoreword"    | "Gstorecell"     | "Gstore"        | "Gsloadword"   | "Gsloadkey"   | "Gsignword"     | "Gsign"
-                           | "Gret"          | "Greadstate"     | "Gnot"          | "Gnotword"     | "Gmul"        | "Gmulmod"       | "Gmulword"
-                           | "Glocalcall"    | "Gloadword"      | "Gload"         | "Gloadcell"    | "Giszero"     | "Gcmp"          | "Gcmpword"
-                           | "Gcallreg"      | "Gcallmemory"    | "Gbyte"         | "Gcopycreate"  | "Gsstore"     | "Gsstorekey"
-                           | "Gsstoreset"    | "Gsstoresetkey"  | "Gsstoreword"   | "Gexpmodkara"
-                           | "Smemallowance"
- // ---------------------------------------------------------------------------------------------------------------------------------
+ 
+    syntax ScheduleConst ::= "Gcopy"      | "Gmove"        | "Greadstate" | "Gadd"          | "Gaddword"       | "Gmul"          | "Gmulword"     | "Gmulkara"
+                           | "Gdiv"       | "Gdivword"     | "Gdivkara"   | "Gexpkara"      | "Gexpword"       | "Gexp"          | "Gmulmod"      | "Gexpmodkara"
+                           | "Gexpmod"    | "Gnot"         | "Gnotword"   | "Gbitwise"      | "Gbitwiseword"   | "Gbyte"         | "Gsign"        | "Gsignword"
+                           | "Giszero"    | "Gcmp"         | "Gcmpword"   | "Gbr"           | "Gbrcond"        | "Gblockhash"    | "Gsha3"        | "Gsha3word"
+                           | "Gloadcell"  | "Gload"        | "Gloadword"  | "Gstorecell"    | "Gstore"         | "Gstoreword"    | "Gbalance"     | "Gextcodesize" 
+                           | "Glog"       | "Glogdata"     | "Glogtopic"  | "Gsstore"       | "Gsstoreword"    | "Gsstorekey"    | "Gsstoreset"   | "Gsstoresetkey"
+                           | "Gsload"     | "Gsloadkey"    | "Gsloadword" | "Gselfdestruct" | "Gcallmemory"    | "Gcallreg"      | "Glocalcall"   | "Gret"
+                           | "Gcall"      | "Gcallstipend" | "Gcallvalue" | "Gnewaccount"   | "Gcreate"        | "Gcopycreate"   | "Gcodedeposit" | "Gmemory"
+                           | "Gquadcoeff" | "Gtransaction" | "Gtxcreate"  | "Gtxdatazero"   | "Gtxdatanonzero" | "Rselfdestruct" | "Rb"           | "Smemallowance"
+ // ---------------------------------------------------------------------------------------------------------------------------------------------------------------
 ```
 
 ### Default Schedule
@@ -895,17 +891,17 @@ This schedule is used to execute the EVM VM tests, and contains minor variations
     rule Gblockhash     < DEFAULT > => 20
     rule Gsha3          < DEFAULT > => 30
     rule Gsha3word      < DEFAULT > => 6
-    rule Gbalance       < DEFAULT > => 400
-    rule Gextcodesize   < DEFAULT > => 700
-    rule Glog           < DEFAULT > => 375
-    rule Glogdata       < DEFAULT > => 8
-    rule Glogtopic      < DEFAULT > => 375
     rule Gloadcell      < DEFAULT > => 3
     rule Gload          < DEFAULT > => 0
     rule Gloadword      < DEFAULT > => 3
     rule Gstorecell     < DEFAULT > => 3
     rule Gstore         < DEFAULT > => 0
     rule Gstoreword     < DEFAULT > => 3
+    rule Gbalance       < DEFAULT > => 400
+    rule Gextcodesize   < DEFAULT > => 700
+    rule Glog           < DEFAULT > => 375
+    rule Glogdata       < DEFAULT > => 8
+    rule Glogtopic      < DEFAULT > => 375
     rule Gsstore        < DEFAULT > => 1000
     rule Gsstoreword    < DEFAULT > => 500
     rule Gsstorekey     < DEFAULT > => 500
