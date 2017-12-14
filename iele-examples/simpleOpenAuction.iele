@@ -51,20 +51,22 @@ define @init(%beneficiary, %bidding.time) {
 
 // sends a bid with value equal to the value sent with the corresponding
 // account call
+// if the bid becomes the new highest bid returns with exit status 0, else
+// reverts with exit status -1
 define public @bid() {
   // check if auction is active
   %timestamp = call @iele.timestamp()
   %auction.end = sload @auction.end
   %auction.closed = cmp ge %timestamp, %auction.end
-  br %auction.closed, exit
+  br %auction.closed, revert.bid
 
   // check if incoming bid is higher than current highest bid
   %bid.value = call @iele.callvalue()
   %highest.bid = sload @highest.bid
   %low.bid = cmp le %bid.value, %highest.bid
-  br %low.bid, exit
+  br %low.bid, revert.bid
 
-  // check if we need to refund current higest bidder
+  // check if we need to refund current highest bidder
   %no.refund.needed = iszero %highest.bid
   br %no.refund.needed, update.bid
 
@@ -81,21 +83,28 @@ update.bid:
   sstore %new.highest.bidder, @highest.bidder
   sstore %bid.value, @highest.bid
 
-exit:
+  // return with exit status 0
   ret void
+
+revert.bid:
+  // the auction was closed or incoming bid was not high enough, revert so
+  // that the bidder gets their bid back
+  revert -1
 
 throw:
   call @iele.invalid()
 }
 
 // settles the auction by sending the final highest bid value to the
-// beneficiary
+// beneficiary and returns the address of the final highest bidder's
+// account
+// if the auction is still active, reverts with exit status -1
 define public @settle.auction() {
   // check if auction has been closed
   %timestamp = call @iele.timestamp()
   %auction.end = sload @auction.end
   %auction.active = cmp lt %timestamp, %auction.end
-  br %auction.active, exit
+  br %auction.active, auction.active
 
   // check if auction has been already settled
   %already.settled = sload @settled
@@ -110,7 +119,13 @@ define public @settle.auction() {
   sstore 1, @settled
 
 exit:
-  ret void
+  // return the address of the final highest bidder's account
+  %highest.bidder = sload @highest.bidder
+  ret %highest.bidder
+
+auction.active:
+  // auction is still active, revert with exit status -1
+  revert -1
 
 throw:
   call @iele.invalid()
