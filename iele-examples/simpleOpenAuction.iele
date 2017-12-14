@@ -1,23 +1,56 @@
+// Copyright (c) 2017 Runtime Verification, Inc. All Rights Reserved.
+//
+// This contract implements a simple open auction. When this contract is
+// deployed with an account, the account is hosting an auction and can
+// manage incoming bids, as well as close the auction and settle the transfer
+// of funds from the final highest bidder to the auction's beneficiary.
 contract SimpleOpenAuction {
 
-@beneficiary    = 0
-@auction.start  = 1
-@auction.end    = 2
-@highest.bidder = 3
-@highest.bid    = 4
-@settled        = 5
+// variable locations - the following account storage locations hold the
+// described information:
 
-define public @init(%beneficiary, %bidding.time) {
+  // account address of the beneficiary of the auction
+  @beneficiary    = 0
+
+  // timestamp of the start of the auction, bids received before that time
+  // will not be accepted
+  @auction.start  = 1
+
+  // timestamp of the end of the auction, bids received after that time
+  // will not be accepted
+  @auction.end    = 2
+
+  // account address of the current highest bidder
+  @highest.bidder = 3
+
+  // value of the current highest bid
+  @highest.bid    = 4
+
+  // set to 1 after the auction has been settled (the auction end time has passed and
+  // the benficiary has received the final highest bid, set to 0 otherwise
+  @settled        = 5
+
+// initializes an auction with the given beneficiary and bidding time duration
+define @init(%beneficiary, %bidding.time) {
+  // init beneficiary
   sstore %beneficiary, @beneficiary
+
+  // init auction start timestamp
   %auction.start = call @iele.timestamp()
   sstore %auction.start, @auction.start
+
+  // init auction end timestamp
   %auction.end = add %auction_start, %bidding.time
   sstore %auction.end, @auction.end
+
+  // init highest bidder, highest bid, and settled
   sstore 0, @highest.bidder
   sstore 0, @highest.bid
   sstore 0, @settled
 }
 
+// sends a bid with value equal to the value sent with the corresponding
+// account call
 define public @bid() {
   // check if auction is active
   %timestamp = call @iele.timestamp()
@@ -55,6 +88,8 @@ throw:
   call @iele.invalid()
 }
 
+// settles the auction by sending the final highest bid value to the
+// beneficiary
 define public @settle.auction() {
   // check if auction has been closed
   %timestamp = call @iele.timestamp()
@@ -70,7 +105,7 @@ define public @settle.auction() {
   %highest.bid = sload @highest.bid
   %beneficiary = sload @beneficiary
   %gas = call @iele.gas()
-  %status = call @deposit at %highest.bidder() send %highest.bid, gaslimit %gas
+  %status = call @deposit at %beneficiary() send %highest.bid, gaslimit %gas
   br %status, throw
   sstore 1, @settled
 

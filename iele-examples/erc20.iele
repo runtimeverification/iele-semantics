@@ -1,21 +1,30 @@
+// Copyright (c) 2017 Runtime Verification, Inc. All Rights Reserved.
+//
+// This contract implements the ERC-20 token standard.
 contract ERC20 {
-  @addressShift = 1461501637330902918203684832716283019655932542976 // 2^160
 
-// storage layout
-  // variable location
+  // constant equal to 2^160, used for hashing
+  @addressShift = 1461501637330902918203684832716283019655932542976
+
+  // account storage location for the supply variable. This variable holds
+  // the current total supply of the token
   @supplyKey = 0
-  // map prefixes
+
+  // The account storage is divided into two regions:
+  // - the balance region maps each account address to its balance
+  // - the allowance region maps each pair of owner and spender accounts to the
+  //   allownce that the owner approves to be transferred by the spender
+  // Account storage keys that correspond to each of the regions use different
+  // bit prefixes as follows
   @balanceRegion = 1
   @allowanceRegion = 2
 
-  // hash of event name
+  // hashes of event names
   @approvalEvent = 51203953783612407010867880206449430888987723574256155352892809266431502985471
-  // hash of event name
   @transferEvent = 108826829889743193495150187174564778908056497375576552531120215125716493244137
 
-
-// computes a unique index in the account storage for a particular value by partitioning
-// the storage into different regions. %region represents a unique bit prefix on the
+// computes a unique key in the specified account storage region for a
+// particular account address. %region represents a unique bit prefix on the
 // key that will be ored with the specified address.
 define @mapKey(%region, %address) {
   %addressMask = 20
@@ -25,108 +34,206 @@ define @mapKey(%region, %address) {
   ret %ored
 }
 
+// sets the balance of the given account to the given value
 define @setBalance(%account, %value) {
+  // get the key for the account in the balance region
   %key = call @mapKey(@balanceRegion, %account)
+
+  // store the given value as the balance of the account
   sstore %value, %key
   ret void
 }
 
+// sets the approved allowance to be transfered from the given owner by the
+// given spender
 define @setAllowance(%owner, %spender, %allowance) {
+  // get the key for the pair of owner and spender accounts in the allowance
+  // region
   %key1 = call @mapKey(@allowanceRegion, %owner)
   %key2 = call @mapKey(%key1, %spender)
+
+  // store the given value as the approved allowance to be transfered from the
+  // owner by the spender
   sstore %allowance, %key2
   ret void
 }
 
+// logs an approval event
 define @log.Approval(%owner, %spender, %allowance) {
+  // store the allowance value in the local execution memory
   %logCell = 0
   store %allowance, %logCell
+
+  // log an approval event, where the owner approves the allowance value to be
+  // transfered by the spender
   log %logCell, @approvalEvent, %owner, %spender
   ret void
 }
 
+// logs a transfer event
 define @log.Transfer(%from, %to, %value) {
+  // store the transferred value in the local execution memory
   %logCell = 0
   store %value, %logCell
+
+  // log a transfer event between two accounts along with the transferred
+  // value
   log %logCell, @transferEvent, %from, %to
   ret void
 }
 
+// returns the total supply of the token
 define public @totalSupply() {
   %supply = sload @supplyKey
   ret %supply
 }
 
+// initializes an ERC-20 compliant token with the given total supply
 define @init(%supply) {
+  // store the total supply
   sstore %supply, @supplyKey
+
+  // set the balance of the creator to the amount of the total supply
   %caller = call @iele.caller()
   call @setBalance(%caller, %supply)
   ret void
 }
 
+// returns the current balance of an account
 define public @balanceOf(%id) {
+  // get the key for the account in the balance region
   %balanceRegion = 1
   %key = call @mapKey(%balanceRegion, %id)
+
+  // get and return the account's current balance
   %balance = sload %key
   ret %balance
 }
 
+// returns the currently approved allowance to be transferred from the owner
+// by the spender
 define public @allowance(%owner, %spender) {
+  // get the key for the pair of owner and spender accounts in the allowance
+  // region
   %allowanceRegion = 2
   %key1 = call @mapKey(%allowanceRegion, %owner)
   %key2 = call @mapKey(%key1, %spender)
+
+  // get and return the current allowance
   %allowance = sload %key2
   ret %allowance
 }
 
+// approves the given allowance to transferred from the caller by the given
+// spender account
 define public @approve(%spender, %allowance) {
-  %lt = cmp lt %allowance, 0   // this check burns gas :(
+  // ensure that the given allowance is not negative, this is only needed
+  // because IELE doesn't support unsigned integers
+  %lt = cmp lt %allowance, 0
   br %lt, throw
+
+  // get the account address of the caller (the owner)
   %owner = call @iele.caller()  // written as msg.sender in Viper
+
+  // approve the allowance to transferred from the owner by the spender
   call @setAllowance(%owner, %spender, %allowance)
+
+  // log the approval
   call @log.Approval(%owner, %spender, %allowance)
-  ret true   // should always return true
+
+  // should always return true
+  ret true
+
 throw:
-  call @iele.invalid() // throwing exception
+  call @iele.invalid()
 }
 
+// transfers the given value from the caller to the given target account
 define public @transfer(%to, %value) {
-  %lt = cmp lt %value, 0   // this check burns gas :(
+  // ensure that the given value is not negative, this is only needed because
+  // IELE doesn't support unsigned integers
+  %lt = cmp lt %value, 0
   br %lt, throw
+
+  // get the account address of the caller (the source account)
   %from = call @iele.caller()
+
+  // get the current balance of the source and ensure that it can cover the
+  // value to be transferred
   %balanceFrom = call @balanceOf(%from)
   %lt = cmp lt %balanceFrom, %value
   br %lt, throw
+
+  // set the new balance of the source after subtracting the value to be
+  // transferred
   %balanceFrom = sub %balanceFrom, %value
   call @setBalance(%from, %balanceFrom)
+
+  // set the new balance of the target by adding the value to be transferred to
+  // its existing balance
   %balanceTo = call @balanceOf(%to)
   %balanceTo = add %balanceTo, %value  // no worries of overflow
   call @setBalance(%to, %balanceTo)
+
+  // log the transfer
   call @log.Transfer(%from, %to, %value)
-  ret true  // should either return true or throw
+
+  // should either return true or throw in case of insufficient funds in the
+  // source
+  ret true
+
 throw:
-  call @iele.invalid() // throwing exception
+  call @iele.invalid()
 }
 
+// transfers the given value from the given source to the given target account,
+// the approved allowance to be transferred from the source by the caller should
+// cover the value to be transferred
 define public @transferFrom(%from, %to, %value) {
-  %lt = cmp lt %value, 0   // this check burns gas :(
+  // ensure that the given value is not negative, this is only needed because
+  // IELE doesn't support unsigned integers
+  %lt = cmp lt %value, 0
   br %lt, throw
+
+
+  // get the account address of the caller
   %caller = call @iele.caller()
+
+  // get the current balance of the source and ensure that it can cover the
+  // value to be transferred
   %balanceFrom = call @balanceOf(%from)
   %lt = cmp lt %balanceFrom, %value
   br %lt, throw
+
+  // get the current allowance for this caller and ensure that it can cover
+  // the value to be transferred
   %allowance = call @allowance(%from, %caller)
   %lt = cmp lt %allowance, %value
   br %lt, throw
+
+  // set the new balance of the source after subtracting the value to be
+  // transferred
   %balanceFrom = sub %balanceFrom, %value
   call @setBalance(%from, %balanceFrom)
+
+  // set the new allowance for this caller after subtracting the value to be
+  // transferred
   %allowance = sub %allowance, %value
   call @setAllowance(%from, %caller, %allowance)
+
+  // set the new balance of the target by adding the value to be transferred to
+  // its existing balance
   %balanceTo = call @balanceOf(%to)
   %balanceTo = add %balanceTo, %value  // no worries of overflow
   call @setBalance(%to, %balanceTo)
+
+  // log the transfer
   call @log.Transfer(%from, %to, %value)
-  ret true  // should either return true or throw
+
+  // should either return true or throw in case of insufficient funds in the
+  // source or insufficient allowance for this caller
+  ret true
+
 throw:
   call @iele.invalid() // throwing exception
 }
