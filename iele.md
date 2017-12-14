@@ -769,6 +769,7 @@ Expression calculations are simple and don't require anything but the arguments 
 -   `REG = and W0, W1` performs bitwise AND on W0 and W1.
 -   `REG = or W0, W1` performs bitwise inclusive OR on W0 and W1.
 -   `REG = xor W0, W1` performs bitwise exclusive OR on W0 and W1.
+-   `REG = shift W0, W1` performs bitwise shifting of W0 by W1 bits. If W1 is positive, a left shift occurs; if W1 is negative, a right shift occurs.
 
 -   `REG = cmp lt W0, W1` computes if W0 is less than W1.
 -   `REG = cmp le W0, W1` computes if W0 is less than or equal to W1.
@@ -805,9 +806,11 @@ Expression calculations are simple and don't require anything but the arguments 
     rule <k> #exec REG = sext WIDTH , W => #exception USER_ERROR                ... </k> requires W <Int 0
     rule <k> #exec REG = twos WIDTH , W => #load REG twos(chop(WIDTH), W)       ... </k>
 
-    rule <k> #exec REG = and W0 , W1 => #load REG W0 &Int W1   ... </k>
-    rule <k> #exec REG = or  W0 , W1 => #load REG W0 |Int W1   ... </k>
-    rule <k> #exec REG = xor W0 , W1 => #load REG W0 xorInt W1 ... </k>
+    rule <k> #exec REG = and   W0 , W1 => #load REG W0 &Int W1   ... </k>
+    rule <k> #exec REG = or    W0 , W1 => #load REG W0 |Int W1   ... </k>
+    rule <k> #exec REG = xor   W0 , W1 => #load REG W0 xorInt W1 ... </k>
+    rule <k> #exec REG = shift W0 , W1 => #load REG W0 <<Int W1 ... </k> requires W1 >=Int 0
+    rule <k> #exec REG = shift W0 , W1 => #load REG W0 >>Int (0 -Int W1) ... </k> requires W1 <Int 0
 
     rule <k> #exec REG = cmp lt W0 , W1 => #load REG 1 ... </k>  requires W0 <Int   W1
     rule <k> #exec REG = cmp lt W0 , W1 => #load REG 0 ... </k>  requires W0 >=Int  W1
@@ -1706,6 +1709,7 @@ module IELE-PROGRAM-LOADING
     rule #registers(% R1 = and % R2, % R3) => maxInt(R1, maxInt(R2, R3))
     rule #registers(% R1 = or % R2, % R3) => maxInt(R1, maxInt(R2, R3))
     rule #registers(% R1 = xor % R2, % R3) => maxInt(R1, maxInt(R2, R3))
+    rule #registers(% R1 = shift % R2, % R3) => maxInt(R1, maxInt(R2, R3))
     rule #registers(% R1 = cmp _ % R2, % R3) => maxInt(R1, maxInt(R2, R3))
     rule #registers(% R1 = sha3 % R2) => maxInt(R1, R2)
     rule #registers(br _) => -1

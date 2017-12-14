@@ -18,6 +18,7 @@ type iele_opcode = [
 | `AND
 | `OR
 | `XOR
+| `SHIFT
 | `NOT
 | `BYTE
 | `SHA3

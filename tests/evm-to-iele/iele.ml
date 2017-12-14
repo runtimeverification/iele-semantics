@@ -18,6 +18,7 @@ type iele_opcode = [
 | `AND
 | `OR
 | `XOR
+| `SHIFT
 | `NOT
 | `BYTE
 | `SHA3
@@ -105,6 +106,7 @@ let asm_iele_opcode op = match op with
 | `XOR -> "\x18"
 | `NOT -> "\x19"
 | `BYTE -> "\x1a"
+| `SHIFT -> "\x1b"
 | `SHA3 -> "\x20"
 | `ADDRESS -> "\x30"
 | `BALANCE -> "\x31"

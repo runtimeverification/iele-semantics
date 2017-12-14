@@ -75,12 +75,15 @@ as follows:
     because bitwise and-ing with 0 yields 0
 -   `REG = or W0, W1` and `REG = xor W0, W1`
     size of the result is the maximum of the sizes of W0 and W1
+-   `REG = shift W0, W1`
+    size of the result is the size of the variable modified by the shift amount (positive for left shift, negative for right shift)
 
 ```{.k .uiuck .rvk}
-    rule #memory [ REG = not W       ] => #registerDelta(REG, intSize(W))
-    rule #memory [ REG = and W0 , W1 ] => #registerDelta(REG, minInt(intSize(W0), intSize(W1)))
-    rule #memory [ REG = or  W0 , W1 ] => #registerDelta(REG, maxInt(intSize(W0), intSize(W1)))
-    rule #memory [ REG = xor W0 , W1 ] => #registerDelta(REG, maxInt(intSize(W0), intSize(W1)))
+    rule #memory [ REG = not   W       ] => #registerDelta(REG, intSize(W))
+    rule #memory [ REG = and   W0 , W1 ] => #registerDelta(REG, minInt(intSize(W0), intSize(W1)))
+    rule #memory [ REG = or    W0 , W1 ] => #registerDelta(REG, maxInt(intSize(W0), intSize(W1)))
+    rule #memory [ REG = xor   W0 , W1 ] => #registerDelta(REG, maxInt(intSize(W0), intSize(W1)))
+    rule #memory [ REG = shift W0 , W1 ] => #registerDelta(REG, maxInt(1, intSize(W0) +Int bitsInWords(W1)))
 ```
 
 #### Comparison operators
@@ -395,10 +398,11 @@ Note that, unlike EVM, operations need to take into account the size of the oper
 The bitwise expressions have a constant cost plus a linear factor in the number of words manipulated.
 
 ```{.k .uiuck .rvk}
-    rule #compute [ _ = not W,       SCHED ] => Gnot < SCHED > +Int intSize(W) *Int Gnotword < SCHED >
-    rule #compute [ _ = and W0 , W1, SCHED ] => Gbitwise < SCHED > +Int minInt(intSize(W0), intSize(W1)) *Int Gbitwiseword < SCHED >
-    rule #compute [ _ = or  W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gbitwiseword < SCHED >
-    rule #compute [ _ = xor W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gbitwiseword < SCHED >
+    rule #compute [ _ = not   W,       SCHED ] => Gnot < SCHED > +Int intSize(W) *Int Gnotword < SCHED >
+    rule #compute [ _ = and   W0 , W1, SCHED ] => Gbitwise < SCHED > +Int minInt(intSize(W0), intSize(W1)) *Int Gbitwiseword < SCHED >
+    rule #compute [ _ = or    W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gbitwiseword < SCHED >
+    rule #compute [ _ = xor   W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gbitwiseword < SCHED >
+    rule #compute [ _ = shift W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(1, intSize(W0) +Int bitsInWords(W1)) *Int Gbitwiseword < SCHED >
 ```
 
 #### Comparison operators
