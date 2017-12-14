@@ -311,6 +311,7 @@ binaryOperations =
   ,("or", OR)
   ,("xor",XOR)
   ,("byte",BYTE)
+  ,("shift",SHIFT)
   ,("sext",SIGNEXTEND)
   ,("twos",TWOS)
   ]

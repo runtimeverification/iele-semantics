@@ -63,12 +63,14 @@ data IeleName = IeleNameNumber Int | IeleNameText String
 
 instance Read IeleName where
   readsPrec _ name@(c:cs)
-    | all isDigit name = [(IeleNameNumber (read name),"")]
-    | okFirst c, all okRest cs = [(IeleNameText name,"")]
-    | otherwise = []
+    | isDigit c = [(IeleNameNumber (read (c:takeWhile isDigit cs)),
+                                            dropWhile isDigit cs)]
+    | okFirst c = [(IeleNameText (c:takeWhile okRest cs),
+                                    dropWhile okRest cs)]
    where
     okFirst c = isLetter c || c `elem` "._-$"
     okRest c = okFirst c || isDigit c
+  readsPrec _ _ = []
 
 instance IsString IeleName where
   fromString str
@@ -108,6 +110,7 @@ instance IsString Operand where
   fromString str@('@':_) = GlobalOperand (fromString str)
   fromString str
     | [(imm,"")] <- reads str = ImmOperand (IntToken imm)
+  fromString str = error $ "not an operand: "++str
 
 type LabeledBlockP = LabeledBlock IeleName Instruction
 data LabeledBlock lblId instruction = LabeledBlock

@@ -224,6 +224,7 @@ instructionTests =
   , testTernaryOperation "expmod" EXPMOD
 
   , testBinaryOperation "byte" BYTE
+  , testBinaryOperation "shift" SHIFT
   , testBinaryOperation "sext" SIGNEXTEND
   , testBinaryOperation "twos" TWOS
 

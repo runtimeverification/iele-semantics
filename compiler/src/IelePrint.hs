@@ -187,6 +187,7 @@ prettyOp1 op args = case op of
   XOR -> simple "xor"
   NOT -> simple "not"
   BYTE -> simple "byte"
+  SHIFT -> simple "shift"
   SHA3 -> simple "sha3"
   MLOADN -> simple "load"
   MLOAD -> simple "load"

@@ -85,6 +85,7 @@ data IeleOpcode1 =
  | NOT
 
  | BYTE
+ | SHIFT
  | SHA3
 
  | MLOADN
