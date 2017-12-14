@@ -93,6 +93,7 @@ Unlike EVM, which uses 32-byte unsigned words, IELE has arbitrary-precision sign
 * a `twos` instruction is added to convert a signed integer into an `N`-byte twos-complement representation of the number, where `N` is passed as an argument to the instruction.
 * `sext` (corresponding to EVM's SIGNEXTEND) is changed to convert an N-byte twos-complement representation of a signed number into its signed value, where `N` is passed as an argument to the instruction.
 * Because integers are unbounded, the index operand of `byte` (corresponding to EVM's BYTE) now counts from the least-significant byte instead of the most-significant.
+* In order to reduce gas costs for multiplication and division by powers of two, we introduce an explicit bitwise shift operator. It takes two arguments, and the second is positive for left shift and negative for right shift.
 
 ## Local Execution Memory
 
@@ -150,3 +151,7 @@ IELE registers are not in Static Single Assignment (SSA) form, meaning that they
 ## Control flow
 
 We decided to relax the LLVM restrictions about basic block structure, where code is organized as a control-flow graph of maximal basic blocks with explicit and statically defined successors/predecessors. In IELE, we maintain static labels as the only allowed targets of jumps, but we do not enforce any particular structure for the code in a function's body. For example, IELE code may fall through from the instruction before a label to a labeled instruction, whereas in LLVM the first instruction of a basic block can only be reached through a jump. We made this decision in order to minimize the size of the code of IELE programs, since these restrictions in LLVM programs usually result in additional branch instructions.
+
+## Bitwise shift
+
+Because IELE has arbitrary-precision signed integers, bitwise shifts are expressed in terms of a signed shift amount instead of separate shr and shl instructions.
