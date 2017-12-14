@@ -30,7 +30,7 @@ To run individual tests use `./blockchaintest` on the corresponding
 * The file `copycreate.iele.json` in `tests/iele/forwarder` tests
   `forwardingWallet-copycreate.iele` and `forwarder.iele`
 while `create.iele.json` tests `forwardingWallet.iele` and `forwarder.iele`.
-* The files in `tests/iele/auction` all test `auction.iele`.
+* The files in `tests/iele/auction` all test `simpleOpenAuction.iele`.
 
 ## Correctness proofs
 
