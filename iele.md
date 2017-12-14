@@ -161,6 +161,53 @@ In the comments next to each cell, we explain the purpose of the cell.
 endmodule
 ```
 
+The network state is closely based on the EVM blockchain,
+with the state mainly consisting of information on a set of
+accounts, and funds being held by accounts rather than following
+the Bitcoin "UTXO" model.
+
+Accounts are divided into smart contracts, which accept calls
+and disburse funds according only to their code,
+and simple wallets which can receive deposits but
+contain no smart contract code, and are operated by a person
+off-chain system holding a corresponding private key.
+
+There is no clear division in the address space between
+smart contracts and wallets, but it is intended to be
+impossible for a smart contract to exist at an address for
+which anybody knows a corresponding private key, so that
+clients of that contract can be sure that its funds will
+only be used according to the contract code.
+
+When calling a function on an account, the caller may
+include funds to be given to the receiver. In the syntax
+of the `call` instruction this quantity comes after the
+`send` keyword.
+This is also the only way to transfer funds between accounts.
+To allow sending funds to simple wallets, those accounts
+act as if they have a single public function named `deposit`
+which takes no arguments and immediately returns successfully
+when called (thus keeping any funds which were sent).
+
+To allow people to set up a simple wallet without needing
+to send any blockchain transactions, we need to allow `deposit`
+to be called on accounts that have never previously been
+mentioned on the blockchain.
+In this case the account is initialized as an "empty" account,
+which has a balance but no contract code.
+
+A complication is that a call to `deposit` can create such
+an "empty account" at the address where a new smart contract
+will later be created, because it is sometimes feasible
+to predict the addresses of new contracts.
+The prevent this from being a possible denial of service attack,
+we allow the new smart contract to be created anyway in this case,
+setting up its code an persistent storage and inheriting any
+funds which were already held at that address.
+This is a bit unfortunate but it doesn't compromise the
+security guarantee that a smart contract account never exists at
+an address for which anybody knows a private key.
+
 Modal Semantics
 ---------------
 
