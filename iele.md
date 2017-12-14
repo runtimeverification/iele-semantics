@@ -161,6 +161,50 @@ In the comments next to each cell, we explain the purpose of the cell.
 endmodule
 ```
 
+The network state is closely based on the EVM blockchain, with
+the main difference being that there are dedicated transaction
+types for contract creation and calls into smart contracts.
+
+The curent state of the blockchain consists mainly of a set of
+accounts, with value being held by accounts rather than following
+a Bitcoin-style UXTO model.
+
+Accounts are divided into smart contracts, which accept calls
+and disburse funds according only to their code,
+and simple wallets which can receive deposits but
+contain no smart contract code, and are operated by a person
+off-chain system holding a corresponding private key.
+
+There is no clear division in the address space between
+smart contracts and wallets, but it is intended to be
+imipossible for a smart contract to exist at an address for
+which anybody knows a corresponding private key, so that
+clients of that contract can be sure that its funds will
+only be used according to the contract code.
+
+Because the only way to send value is as part of a call, and to
+allow sending funds in the same way whether the destination is
+a smart contract or a simple wallet, a simple wallet account
+exposes a single public function `@deposit` which takes no
+arguments, produces no results, and immediately returns successfully
+when called (thus keeping any value which was sent).
+
+To allow people to prepare to receive funds without needing
+to send (and pay for) any blockchain transactions, a simple wallet
+address can be calculated from a private key, and attempting
+to call `@deposit` on a previously unknown address will
+succeed begin tracking a balance for that account.
+
+A complication is that such an account may eventually become
+a full smart contract, because it is infeasible to test
+whether an address was generated from a private key, and
+sometimes possible to predict the address where a new
+smart contract is created, so we allow smart contract
+creation to succeed even if an empty account is already
+present (and any value is inherited by the new contract).
+This still cannot result in a contract existing at an
+address for which somebody also knows a private key.
+
 Modal Semantics
 ---------------
 
