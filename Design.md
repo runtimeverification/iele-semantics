@@ -46,7 +46,7 @@ A IELE program consists of a list of contracts, where contracts later in the lis
 * A function definition includes the function signature, the function body and whether or not the function is public. A function signature includes a function name (which is prefixed by the `@` symbol) and names of formal arguments (which are represented as local registers, as they are only visible within the function body).
 * A public function can be called by other accounts, while a non-public one can only be called by other functions within the same contract.
 * A special public function named `@init` should be defined for any contract and will be called when an account is created with this contract. If this function is not defined the contract is malformed.
-* An account to which code has never been deployed contains an implicit public function `@deposit` which takes no arguments, returns no values, and does nothing. This function exists to allow accounts to receive payment even if they do not have a contract deployed to them. Note that a contract can forbid payments by refusing to declare the `@deposit` function, and explicitly raising an exception if any of its entry points are invoked with a balance transfer.
+* An account to which code has never been deployed contains an implicit public function `@deposit` which takes no arguments, returns no values, and does nothing. This function exists to allow accounts to receive payment even if they do not have a contract deployed to them, and functions analogously to calling an account with no code in EVM. Note that a contract can forbid payments by refusing to declare the `@deposit` function, and explicitly raising an exception if any of its entry points are invoked with a balance transfer.
 * A global definition defines a global name and its constant value (which is an unbounded signed integer). Globals are accessible from within any function of the contract and their value cannot be modified.
 * The contract is malformed if it contains multiple function and/or global definitions with the same name.
 
@@ -93,6 +93,7 @@ Unlike EVM, which uses 32-byte unsigned words, IELE has arbitrary-precision sign
 * a `twos` instruction is added to convert a signed integer into an `N`-byte twos-complement representation of the number, where `N` is passed as an argument to the instruction.
 * `sext` (corresponding to EVM's SIGNEXTEND) is changed to convert an N-byte twos-complement representation of a signed number into its signed value, where `N` is passed as an argument to the instruction.
 * Because integers are unbounded, the index operand of `byte` (corresponding to EVM's BYTE) now counts from the least-significant byte instead of the most-significant.
+* In order to reduce gas costs for multiplication and division by powers of two, we introduce an explicit bitwise shift operator. It takes two arguments, and the second is positive for left shift and negative for right shift.
 
 ## Local Execution Memory
 
@@ -126,6 +127,15 @@ Unlike EVM, both for ease of verification and due to security concerns, we disal
 * Because we no longer actually need to address portions of code by program counter in order to create contracts, we remove the EVM's CODECOPY and EXTCODECOPY instructions. Because these are also the only remaining instructions which require the code to be addressed by a particular byte offset, we also remove the EVM's PC instruction.
 * Transactions that create a contract now explicitly provide the binary data of the contract instead of the binary data of the initialization function. Contracts created in this way are not subject to the restriction that dynamic contract data be inserted, and still invoke the `@init` function to initialize the contract. If the contract is malformed, the transaction fails.
 
+## Gas Model
+
+Due to the changes above, it is necessary to have a refined gas model of IELE which defines gas for arbitrary-precision arithmetic operations in terms of the sizes of the operands. For an in-depth look at the gas model, refer to [iele-gas.md](iele-gas.md). However, at a high level, the main differences from EVM are:
+
+* Because IELE registers are arbitrary precision, we must perform memory accounting on the sizes of registerse. Like EVM's stack of words used for passing arguments to instructions, some amount of memory (currently 32 KB) is free per call frame. After that point, each successive words costs a linear amount at first, but as memory increases further, costs become quadratic.
+* Each instruction charges memory cost based on the estimated memory usage of the instruction. If the actual memory usage of the instruction is less than the estimate, the total memory used is revised after the instruction executes and the memory paid for is not charged a second time. However, unused memory is not refunded.
+* Each instruction has a formula for its gas cost that is potentially parametric in the sizes of the operands, in keeping with the fact that arbitrary-precision arithmetic can be asymptotically non-constant in the sizes of operands.
+* If memory is freed by decreasing the size of a register or memory cell, that memory can be reused elsewhere up to the same amount that has already been payed for, with no additional cost.
+
 # Designed Changes Relative to LLVM
 
 Here are the IELE design decisions described from the perspective of differences from LLVM.
@@ -142,11 +152,6 @@ IELE registers are not in Static Single Assignment (SSA) form, meaning that they
 
 We decided to relax the LLVM restrictions about basic block structure, where code is organized as a control-flow graph of maximal basic blocks with explicit and statically defined successors/predecessors. In IELE, we maintain static labels as the only allowed targets of jumps, but we do not enforce any particular structure for the code in a function's body. For example, IELE code may fall through from the instruction before a label to a labeled instruction, whereas in LLVM the first instruction of a basic block can only be reached through a jump. We made this decision in order to minimize the size of the code of IELE programs, since these restrictions in LLVM programs usually result in additional branch instructions.
 
-# Partially-Designed Changes
+## Bitwise shift
 
-## Gas calculations
-
-We still need to construct a gas model for IELE.
-
-## Failure data
-We intend to modify the mechanism by which failure data is returned from `call .. at`, `staticcall .. at`, `create`, and `copycreate` instructions using the `revert` instruction.
+Because IELE has arbitrary-precision signed integers, bitwise shifts are expressed in terms of a signed shift amount instead of separate shr and shl instructions.

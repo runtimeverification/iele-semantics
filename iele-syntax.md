@@ -1,7 +1,12 @@
 IELE Textual Syntax
 ===================
 
-Here we define the textual syntax of IELE assembly code. The syntax represented here has some syntactic sugar which is removed by the assembler. However, a fragment of this textual encoding is used by the semantics to express the rules of the language itself. The [iele-examples](iele-examples) directory contains various sample IELE contracts such as a [simple open auction contract](iele-examples/simpleOpenAuction.iele) and a [forwarding wallet contract](iele-examples/forwardingWallet.iele).
+Here we define the textual syntax of IELE assembly code. The syntax represented here has some syntactic sugar which is removed by the assembler. However, a fragment of this textual encoding is used by the semantics to express the rules of the language itself. The [iele-examples](iele-examples) directory contains various sample IELE contracts, such as:
+* a [simple open auction contract](iele-examples/simpleOpenAuction.iele);
+* an [ERC20 token](iele-examples/erc20.iele);  and
+* a [forwarding wallet contract](iele-examples/forwardingWallet.iele).
+
+The best way to understand the meaning of the IELE syntactic constructs is to read their actual formal semantics in [iele.md](iele.md).
 
 Names and Literals
 ------------------
@@ -59,7 +64,7 @@ Instructions
 
 IELE instruction operands are used at the left- and right-hand side of IELE instructions.
 
--   One ore more `LValues` can be used at the left-hand side of various IELE instructions
+-   One or more `LValues` can be used at the left-hand side of various IELE instructions
 -   Zero or more `Operands` can be used at the right-hand side of various IELE instructions and as actual argument lists in function calls.
 -   Constants can only be used as right-hand side operands, while registers can be used as both left- and right-hand side operands.
 -   Each right-hand side operand will be heated to an unbounded signed integer value during execution.
@@ -188,7 +193,7 @@ Instructions to create and/or delete a new account with a contract deployed with
 
 ### Local and Network State Accessors
 
-These accessors are implemented as builtins that can be called using the same syntax as in a local call, e.g. `%pc = call @iele.pc()` or `%balance = call @iele.balance(%bank.account)`. The names of the builtins follow the IELE convention for intrinsics: Their name is a valid global name that starts with the prefix "iele.". This means that no user-defined global name should start with the prefix "iele.".
+These accessors are implemented as builtins that can be called using the same syntax as in a local call, e.g. `%pc = call @iele.pc()` or `%balance = call @iele.balance(%bank.account)`. The names of the builtins follow the IELE convention for intrinsics: Their name is a valid global name that starts with the prefix `iele.`. This means that no user-defined global name can start with the prefix `iele.`.
 
 ```{.k .uiuck .rvk}
   syntax IeleName ::= "iele.invalid"     [token]
@@ -311,7 +316,7 @@ Definition of globals and their constant values. Globals are accessible from wit
 
 ### Functions
 
-Function definitions consist of a function signature (function name and names of formal arguments) and a function body (a list of blocks containing the code of the function). Functions can be defined as `public` meaning that they can be called from a contract deployed with another account. Non-`public` functions can only be called locally withiin the contract.
+Function definitions consist of a function signature (function name and names of formal arguments) and a function body (a list of blocks containing the code of the function). Functions can be defined as `public` meaning that they can be called from a contract deployed with another account. Non-`public` functions can only be called locally within the contract.
 
 ```{.k .uiuck .rvk}
   syntax FunctionSignature ::= GlobalName "(" FunctionParameters ")"

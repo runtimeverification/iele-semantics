@@ -49,6 +49,13 @@ To execute a Blockchain test, run `./blockchaintest $file` where `$file` is a JS
 
 To execute all currently passing tests, run `make test`.
 
+Contacting Us
+-------------
+
+In the spirit of open source, community-driven development, we will be holding all IELE discussions on our channels
+* [#IELE:matrix.org](https://riot.im/app/#/room/#IELE:matrix.org) on [Riot](https://riot.im)
+* [runtimeverification/iele-semantics](https://gitter.im/runtimeverification/iele-semantics) on [Gitter](https://gitter.im)
+
 Contributing
 ------------
 
