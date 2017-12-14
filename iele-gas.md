@@ -3,7 +3,7 @@ IELE Gas Calculation
 
 The following document describes the gas model of IELE. Note that this gas model should
 be considered a first draft and may be subject to changes before deploying IELE on a live blockchain.
-Gas is consumed either by increasing the amount of memory being used, or by executing instructions.
+Gas is consumed either by increasing the amount of memory being used, or by the computational effort to execute instructions.
 
 ```{.k .uiuck .rvk}
 module IELE-GAS
