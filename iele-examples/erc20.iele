@@ -135,7 +135,7 @@ define public @approve(%spender, %allowance) {
   // get the account address of the caller (the owner)
   %owner = call @iele.caller()  // written as msg.sender in Viper
 
-  // approve the allowance to transferred from the owner by the spender
+  // approve the allowance to be transferred from the owner by the spender
   call @setAllowance(%owner, %spender, %allowance)
 
   // log the approval
@@ -194,7 +194,6 @@ define public @transferFrom(%from, %to, %value) {
   // IELE doesn't support unsigned integers
   %lt = cmp lt %value, 0
   br %lt, throw
-
 
   // get the account address of the caller
   %caller = call @iele.caller()

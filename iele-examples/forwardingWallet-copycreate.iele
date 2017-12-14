@@ -1,6 +1,6 @@
 // Copyright (c) 2017 Runtime Verification, Inc. All Rights Reserved.
 //
-// This examples showcases the dynamic contract creation feature of IELE. The
+// This example showcases the dynamic contract creation feature of IELE. The
 // Wallet contract can dynamically create acounts and deploy a full copy of a
 // contract already deployed in an exisiting account. The deployed code is not
 // statically known but it is not dynamically generated either.
