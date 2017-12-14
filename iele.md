@@ -740,6 +740,8 @@ no arguments, returns no values, and does nothing. This function exists to allow
 deployed to them. Note that a contract can forbid payments by refusing to declare the `@deposit` function, and explicitly raising an exception
 if any of its entry points are invoked with a balance transfer.
 
+Note that the syntax used in the following `#emptyCode` macro is desugared IELE syntax, where contracts have a size in bytes metadata attachment (`!0` here) and argument lists are replaced with an integer value representing arity (`0` here).
+
 ```{.k .uiuck .rvk}
     syntax IeleName ::= "Main" [token]
  // ----------------------------------
