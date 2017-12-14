@@ -49,6 +49,35 @@ To execute a Blockchain test, run `./blockchaintest $file` where `$file` is a JS
 
 To execute all currently passing tests, run `make test`.
 
+### Debugging
+
+When executing a test, if a test fails, the intermediate state of the IELE VM is dumped on the command line. This can be used to provide
+information about exactly what went wrong with the test, which can be used for debugging purposes. Generally speaking, each dumped state begins with
+the string `` `<generatedTop>`(`<k>` `` followed by the current list of instructions to be executed by the VM in balanced parentheses. You can usually
+determine what went wrong with the test by examining the first entry in the list (i.e., everything up to the first `~>`).
+
+Some examples of common errors you may encounter are below, with each example followed by a description of the error.
+
+```
+loadTx(#token("966588469268559010541288244128342317224451555083","Int"))
+```
+
+In this example, either a transaction was signed incorrectly, or the sender of the transaction as specified by its signature does not exist.
+
+```
+`check__ETHEREUM-SIMULATION`(`_:__IELE-DATA`(#token("\"account\"","String"),`{_}_IELE-DATA`(`_,__IELE-DATA`(`_:__IELE-DATA`(#token("91343852333181432387730302044767688728495783936","Int"),`{_}_IELE-DATA`(`_,__IELE-DATA`(`_:__IELE-DATA`(#token("\"storage\"","String"),`_Map_`(`_|->_`(#token("0","Int"),#token("10001","Int")),`_|->_`(#token("2428090106599461928744973076844625336880384098059","Int"),#token("10000","Int")))),`.List{"_,__IELE-DATA"}`(.KList)))),`.List{"_,__IELE-DATA"}`(.KList)))))
+```
+
+Here account 91343852333181432387730302044767688728495783936 (in decimal) has different values for storage than expected by the test. Similar errors exist for the nonce, balance, and code of an account. You can refer to the `<storage>` cell in the dumped state for information on their actual values. The correct storage cell is nested within an `<account>` cell whose `<acctID>` is the address of the account in decimal.
+
+```
+`check__ETHEREUM-SIMULATION`(`_:__IELE-DATA`(#token("\"out\"","String"),`[_]_IELE-DATA`(`_,__IELE-DATA`(#token("\"0x01\"","String"),`.List{"_,__IELE-DATA"}`(.KList)))))
+```
+
+Here is a similar error, but the error states that the transaction returned an incorrect list of values. The actual return value can be found in the `<output>` cell.
+
+If other errors occur that are not on this list, feel free to contact us on Gitter or Riot and we will be happy to assist in helping you understand. Future releases of IELE may also have improved debugging information making this easier to interpret.
+
 Contacting Us
 -------------
 
