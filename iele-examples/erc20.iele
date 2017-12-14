@@ -3,8 +3,8 @@
 // This contract implements the ERC-20 token standard.
 contract ERC20 {
 
-  // constant equal to 2^160
-  @addressShift = 1461501637330902918203684832716283019655932542976
+  // constant used for shifts
+  @addressShift = 160
 
   // account storage location for the supply variable. This variable holds
   // the current total supply of the token
@@ -20,8 +20,8 @@ contract ERC20 {
   @allowanceRegion = 2
 
   // hashes of event names
-  @approvalEvent = 51203953783612407010867880206449430888987723574256155352892809266431502985471
-  @transferEvent = 108826829889743193495150187174564778908056497375576552531120215125716493244137
+  @approvalEvent = 0x7134692B230B9E1FFA39098904722134159652B09C5BC41D88D6698779D228FF
+  @transferEvent = 0xF099CD8BDE557814842A3121E8DDFD433A539B8C9F14BF31EBF108D12E6196E9
 
 // computes a unique key in the specified account storage region for a
 // particular account address. %region represents a unique bit prefix on the
@@ -29,7 +29,7 @@ contract ERC20 {
 define @mapKey(%region, %address) {
   %addressMask = 20
   %realAddress = twos %addressMask, %address
-  %shifted = mul @addressShift, %region
+  %shifted = shift %region, @addressShift
   %ored = or %shifted, %realAddress
   ret %ored
 }
