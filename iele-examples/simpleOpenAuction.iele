@@ -40,7 +40,7 @@ define @init(%beneficiary, %bidding.time) {
   sstore %auction.start, @auction.start
 
   // init auction end timestamp
-  %auction.end = add %auction_start, %bidding.time
+  %auction.end = add %auction.start, %bidding.time
   sstore %auction.end, @auction.end
 
   // init highest bidder, highest bid, and settled

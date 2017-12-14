@@ -33,7 +33,13 @@ def convertToBinaryIele(json):
       else:
         res[key] = convertToBinaryIele(value)
     if "to" in json.keys() and "secretKey" in json.keys():
-      from ethereum.transactions import Transaction
+      try:
+        from ethereum.transactions import Transaction
+      except ImportError as e:
+        sys.stderr.write('ImportError: %s\n'
+          'Please install pyethereum as described in INSTALL.md\n'
+          % e)
+        sys.exit(1)
       data = res["data"]
       binary = data.decode("hex")
       t = Transaction(int(res["nonce"], 16), int(res["gasPrice"], 16), int(res["gasLimit"], 16), res["to"], int(res["value"], 16), binary)

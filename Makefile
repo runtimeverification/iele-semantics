@@ -8,7 +8,7 @@ K_VERSION=rvk
 all: build split-vm-tests
 
 clean:
-	rm -rf .build
+	rm -rf .build/rvk
 
 build: tangle .build/${K_VERSION}/ethereum-kompiled/extras/timestamp assembler
 
