@@ -1,11 +1,11 @@
 // Copyright (c) 2017 Runtime Verification, Inc. All Rights Reserved.
 //
 // This examples showcases the dynamic contract creation feature of IELE. The
-// Wallet contract can dynamically create acounts with the Forwarder contract
+// Wallet contract can dynamically create accounts with the Forwarder contract
 // deployed, since the code for the Forwarder contract is statically available.
 
 // This contract implements a forwarder that forwards any funds sent to
-// the account it is deployed with to the acoount that created it.
+// the account it is deployed with to the account that created it.
 contract Forwarder {
 
   // initializes a forwarded by storing in the account storage the account
@@ -16,7 +16,7 @@ contract Forwarder {
     sstore %parent, 0
   }
 
-  // deposit forwards the recieved funds to the creator of this account
+  // deposit forwards the received funds to the creator of this account
   define public @deposit() {
     // get the received funds
     %value = call @iele.callvalue()

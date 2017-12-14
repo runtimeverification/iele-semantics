@@ -13,7 +13,7 @@ contract ERC20 {
   // The account storage is divided into two regions:
   // - the balance region maps each account address to its balance
   // - the allowance region maps each pair of owner and spender accounts to the
-  //   allownce that the owner approves to be transferred by the spender
+  //   allowance that the owner approves to be transferred by the spender
   // Account storage keys that correspond to each of the regions use different
   // bit prefixes as follows
   @balanceRegion = 1
@@ -65,7 +65,7 @@ define @log.Approval(%owner, %spender, %allowance) {
   store %allowance, %logCell
 
   // log an approval event, where the owner approves the allowance value to be
-  // transfered by the spender
+  // transferred by the spender
   log %logCell, @approvalEvent, %owner, %spender
   ret void
 }

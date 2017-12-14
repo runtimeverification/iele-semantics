@@ -27,7 +27,7 @@ contract SimpleOpenAuction {
   @highest.bid    = 4
 
   // set to 1 after the auction has been settled (the auction end time has passed and
-  // the benficiary has received the final highest bid, set to 0 otherwise
+  // the beneficiary has received the final highest bid, set to 0 otherwise
   @settled        = 5
 
 // initializes an auction with the given beneficiary and bidding time duration
