@@ -17,10 +17,8 @@ contract Wallet {
   // %owner as the wallet's owner and the provided account address in %forwarder
   // as the account from where the forwarder contract can be copied.
   define @init(%owner, %forwarder) {
-    %zero = 0
-    %one = 1
-    sstore %owner, %zero
-    sstore %forwarder, %one
+    sstore %owner, 0
+    sstore %forwarder, 1
   }
  
   // deposits the sent value to the wallet account's balance 
@@ -30,8 +28,7 @@ contract Wallet {
   // account address %to
   define public @withdraw(%to, %value) {
     // get the wallet's owner from storage
-    %zero = 0
-    %owner = sload %zero
+    %owner = sload 0
 
     // ensure that the caller (the withdrawer) is the wallet's owner
     %caller = call @iele.caller()
@@ -52,8 +49,7 @@ contract Wallet {
   // wallet and returns the address of the created forwarder account
   define public @newForwarder() {
     // get the wallet's owner from storage
-    %zero = 0
-    %owner = sload %zero
+    %owner = sload 0
 
     // ensure that the caller is the wallet's owner
     %caller = call @iele.caller()
@@ -61,12 +57,11 @@ contract Wallet {
     br %isnotowner, throw
 
     // get the address of the account with the forwarder contract to copy
-    %one = 1
-    %forwarder = sload %one
+    %forwarder = sload 1
 
     // create a new account, deploy the forwarder contract copied from the
     // designated account and return the new account's address
-    %status, %addr = copycreate %forwarder () send %zero
+    %status, %addr = copycreate %forwarder () send 0
     br %status, throw
     ret %addr
 

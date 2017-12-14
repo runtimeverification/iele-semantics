@@ -4,7 +4,7 @@
 // the account it is deployed with to the acoount that created it.
 contract Forwarder {
 
-  // initializes a forwarded by storing in the account storage the account
+  // initializes a forwarder by storing in the account storage the account
   // number of the creator, this is the account to which received funds should
   // be forwarded
   define @init() {

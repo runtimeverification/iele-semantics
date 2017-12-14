@@ -3,7 +3,7 @@
 // This contract implements the ERC-20 token standard.
 contract ERC20 {
 
-  // constant equal to 2^160, used for hashing
+  // constant equal to 2^160
   @addressShift = 1461501637330902918203684832716283019655932542976
 
   // account storage location for the supply variable. This variable holds
@@ -124,7 +124,7 @@ define public @allowance(%owner, %spender) {
   ret %allowance
 }
 
-// approves the given allowance to transferred from the caller by the given
+// approves the given allowance to be transferred from the caller by the given
 // spender account
 define public @approve(%spender, %allowance) {
   // ensure that the given allowance is not negative, this is only needed
