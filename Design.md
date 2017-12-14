@@ -42,7 +42,7 @@ IELE is a register-based bytecode language, unlike EVM, which is a stack-based b
 
 A IELE program consists of a list of contracts, where contracts later in the list can create accounts with deployed contracts found earlier in the list. Unlike EVM, in which a contract is a sequence of instructions, a IELE contract consists of a header giving the contract a name, followed by one or more function definitions and optionally one or more external contract declarations.
 
-* An external contract declaration simply declares the name of another contract. The contract under definition can only create accounts with deployed code being one of the contracts that have been declared as external, or a copy of an existing account's code (see section on contract creation for details). Each externally declared contract should have been defined in the same file and above the contract that externally declares it.
+* An external contract declaration simply declares the name of another contract. The contract being defined will only be able to create accounts with deployed code being a copy of one of the contracts that have been declared as external, or a copy of existing account's code (see section on contract creation for details). Each externally declared contract should have been defined in the same file and above the contract that externally declares it.
 * A function definition includes the function signature, the function body and whether or not the function is public. A function signature includes a function name (which is prefixed by the `@` symbol) and names of formal arguments (which are represented as local registers, as they are only visible within the function body).
 * A public function can be called by other accounts, while a non-public one can only be called by other functions within the same contract.
 * A special private function named `@init` should be defined for any contract and will called when an account is created with this contract. If this function is not defined the contract is malformed.
@@ -134,10 +134,10 @@ Because accounts created by `create` and `copycreate` only use code that already
 
 Due to the changes above, it is necessary to have a refined gas model of IELE which defines gas for arbitrary-precision arithmetic operations in terms of the sizes of the operands. For an in-depth look at the gas model, refer to [iele-gas.md](iele-gas.md). However, at a high level, the main differences from EVM are:
 
-* Because IELE registers are arbitrary precision, we must perform memory accounting on the sizes of registerse. Like EVM's stack of words used for passing arguments to instructions, some amount of memory (currently 32 KB) is free per call frame. After that point, each successive words costs a linear amount at first, but as memory increases further, costs become quadratic.
-* Each instruction charges memory cost based on the estimated memory usage of the instruction. If the actual memory usage of the instruction is less than the estimate, the total memory used is revised after the instruction executes and the memory paid for is not charged a second time. However, unused memory is not refunded.
-* Each instruction has a formula for its gas cost that is potentially parametric in the sizes of the operands, in keeping with the fact that arbitrary-precision arithmetic can be asymptotically non-constant in the sizes of operands.
+* Because IELE registers are arbitrary precision, we must perform memory accounting on the sizes of registers. Like EVM's stack of words used for passing arguments to instructions, some amount of memory (currently 32 KB) is free per inter-contract call frame. After that point there is a cost to increasing peak memory consumption. Each successive word costs a linear amount at first, but as memory increases further, costs become quadratic.
 * If memory is freed by decreasing the size of a register or memory cell, that memory can be reused elsewhere up to the same amount that has already been payed for, with no additional cost.
+* Before executing instructions that may produce large results, a memory cost is paid based on an estimate of the result size, if the predicted result would increase the peak memory usage. If actual memory usage after executing the instruction is less than the estimate, the cost for the unused expansion is not refunded (and the additional memory has still been paid for).
+* Each instruction has a formula for its gas cost that is potentially parametric in the sizes of the operands, in keeping with the fact that arbitrary-precision arithmetic can be asymptotically non-constant in the sizes of operands.
 
 # Designed Changes Relative to LLVM
 
@@ -153,7 +153,7 @@ IELE registers are not in Static Single Assignment (SSA) form, meaning that they
 
 ## Control flow
 
-We decided to relax the LLVM restrictions about basic block structure, where code is organized as a control-flow graph of maximal basic blocks with explicit and statically defined successors/predecessors. In IELE, we maintain static labels as the only allowed targets of jumps, but we do not enforce any particular structure for the code in a function's body. For example, IELE code may fall through from the instruction before a label to a labeled instruction, whereas in LLVM the first instruction of a basic block can only be reached through a jump. We made this decision in order to minimize the size of the code of IELE programs, since these restrictions in LLVM programs usually result in additional branch instructions.
+We decided to relax the LLVM restrictions about basic block structure, where code is organized as a control-flow graph of maximal basic blocks with explicit and statically defined successors/predecessors. In IELE, we maintain static labels as the only allowed targets of jumps, but also allow execution to fall through from one block to the next, whereas in LLVM the first instruction of a basic block can only be reached through a jump, and every LLVM block must end with a control flow instruction. We made this decision in order to minimize the size of the code of IELE programs, since these restrictions in LLVM programs usually result in additional branch instructions.
 
 ## Bitwise shift
 
