@@ -93,7 +93,7 @@ Unlike EVM, which uses 32-byte unsigned words, IELE has arbitrary-precision sign
 * a `twos` instruction is added to convert a signed integer into an `N`-byte twos-complement representation of the number, where `N` is passed as an argument to the instruction.
 * `sext` (corresponding to EVM's SIGNEXTEND) is changed to convert an N-byte twos-complement representation of a signed number into its signed value, where `N` is passed as an argument to the instruction.
 * Because integers are unbounded, the index operand of `byte` (corresponding to EVM's BYTE) now counts from the least-significant byte instead of the most-significant.
-* In order to reduce gas costs for multiplication and division by powers of two, we introduce an explicit bitwise shift operator. It takes two arguments, and the second is positive for left shift and negative for right shift.
+* In order to reduce gas costs for multiplication and division by powers of two, we introduce an explicit bitwise `shift` operator. It takes two arguments, and the second is positive for left shift and negative for right shift.
 
 ## Local Execution Memory
 
