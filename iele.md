@@ -161,13 +161,10 @@ In the comments next to each cell, we explain the purpose of the cell.
 endmodule
 ```
 
-The network state is closely based on the EVM blockchain, with
-the main difference being that there are dedicated transaction
-types for contract creation and calls into smart contracts.
-
-The current state of the blockchain consists mainly of a set of
-accounts, with funds being held by accounts rather than following
-a Bitcoin-style UXTO model.
+The network state is closely based on the EVM blockchain,
+with the state mainly consisting of information on a set of
+accounts, and funds being held by accounts rather than following
+the Bitcoin "UTXO" model.
 
 Accounts are divided into smart contracts, which accept calls
 and disburse funds according only to their code,
@@ -182,28 +179,34 @@ which anybody knows a corresponding private key, so that
 clients of that contract can be sure that its funds will
 only be used according to the contract code.
 
-Because the only way to send funds is as part of a call, and to
-allow sending funds in the same way whether the destination is
-a smart contract or a simple wallet, a simple wallet account
-exposes a single public function `@deposit` which takes no
-arguments, produces no results, and immediately returns successfully
+When calling a function on an account, the caller may
+include funds to be given to the receiver. In the syntax
+of the `call` instruction this quantity comes after the
+`send` keyword.
+This is also the only way to transfer funds between accounts.
+To allow sending funds to simple wallets, those accounts
+act as if they have a single public function named `deposit`
+which takes no arguments and immediately returns successfully
 when called (thus keeping any funds which were sent).
 
-To allow people to prepare to receive funds without needing
-to send (and pay for) any blockchain transactions, a simple wallet
-address can be calculated from a private key, and attempting
-to call `@deposit` on a previously unknown address will
-succeed begin tracking a balance for that account.
+To allow people to set up a simple wallet without needing
+to send any blockchain transactions, we need to allow `deposit`
+to be called on accounts that have never previously been
+mentioned on the blockchain.
+In this case the account is initialized as an "empty" account,
+which has a balance but no contract code.
 
-A complication is that such an account may eventually become
-a full smart contract, because it is infeasible to test
-whether an address was generated from a private key, and
-sometimes possible to predict the address where a new
-smart contract is created, so we allow smart contract
-creation to succeed even if an empty account is already
-present (and any funds are inherited by the new contract).
-This still cannot result in a contract existing at an
-address for which somebody also knows a private key.
+A complication is that a call to `deposit` can create such
+an "empty account" at the address where a new smart contract
+will later be created, because it is sometimes feasible
+to predict the addresses of new contracts.
+The prevent this from being a possible denial of service attack,
+we allow the new smart contract to be created anyway in this case,
+setting up its code an persistent storage and inheriting any
+funds which were already held at that address.
+This is a bit unfortunate but it doesn't compromise the
+security guarantee that a smart contract account never exists at
+an address for which anybody knows a private key.
 
 Modal Semantics
 ---------------
