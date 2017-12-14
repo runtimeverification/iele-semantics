@@ -42,6 +42,8 @@ intTokenExamples =
   , (IntToken 1, "1")
   , (IntToken 123, "123")
   , (IntToken (-123), "-123")
+  , (IntToken 10, "0x00a")
+  , (IntToken (-127), "-0x7f")
   , (IntToken 0, "false")
   , (IntToken 1, "true")
   ]

@@ -56,6 +56,7 @@ module IeleParserImplementation
     , withResult
     ) where
 import Prelude hiding (LT,EQ,GT)
+import Numeric(readHex)
 
 import qualified Data.Map.Strict as Map
 import Data.Map.Strict(Map)
@@ -63,7 +64,7 @@ import Data.Map.Strict(Map)
 import Control.Applicative ((<|>), (<*), many)
 import Control.Monad (void)
 import Text.Parsec (try, (<?>), skipMany, satisfy)
-import Text.Parsec.Char (char, digit, letter, oneOf, string)
+import Text.Parsec.Char (char, digit, hexDigit, letter, oneOf, string)
 import Text.Parsec.Combinator (eof, many1, choice, notFollowedBy, sepBy, sepBy1)
 import Text.Parsec.String (Parser)
 
@@ -153,13 +154,24 @@ ieleNameTokenNumber =
 ieleNameToken :: Parser IeleName
 ieleNameToken = ieleNameTokenNotNumber <|> ieleNameTokenNumber
 
-positiveIntToken :: Parser IntToken
-positiveIntToken = lexeme $ IntToken . read <$>
+positiveDecIntToken :: Parser IntToken
+positiveDecIntToken = lexeme $ IntToken . read <$>
   many1 digit <* notFollowedBy ieleNameNonFirstChar
 
+positiveHexIntToken :: Parser IntToken
+positiveHexIntToken = lexeme $ do
+  try (string "0x")
+  body <- many1 hexDigit <* notFollowedBy ieleNameNonFirstChar
+  case readHex body of
+    [(v,"")] -> return (IntToken v)
+    _ -> fail $ "bad hexadecimal literal 0x"++body
+
+positiveIntToken :: Parser IntToken
+positiveIntToken = positiveHexIntToken <|> positiveDecIntToken
+
 negativeIntToken :: Parser IntToken
-negativeIntToken = lexeme $ IntToken . read <$>
-  ((:) <$> minus <*> many1 digit) <* notFollowedBy ieleNameNonFirstChar
+negativeIntToken = fmap (\(IntToken i) -> IntToken (negate i))
+   (char '-' *> positiveIntToken)
 
 trueToken :: Parser IntToken
 trueToken = IntToken 1 <$ skipKeyword "true"
@@ -168,7 +180,7 @@ falseToken :: Parser IntToken
 falseToken = IntToken 0 <$ skipKeyword "false"
 
 intToken :: Parser IntToken
-intToken = positiveIntToken <|> negativeIntToken <|> trueToken <|> falseToken
+intToken = negativeIntToken <|> positiveIntToken <|> trueToken <|> falseToken
   <?> "literal value"
 
 globalNameInclReserved :: Parser GlobalName
