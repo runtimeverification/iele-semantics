@@ -14,30 +14,23 @@
   its account to the account that created it.
 * **simpleOpenAuction.iele**: Implements a simple open auction.
 
+Tests for these contracts are under `tests/iele/`
+
 ## Running the tests
 
-To run all the tests, one can always do
+To run all the tests for these examples, run
 ```sh
-make test
+make iele-test
 ```
 
-However, to run only the tests involving the examples above, run
+To run individual tests use `./blockchaintest` on the corresponding
+`.iele.json` file(s).
 
-```sh
-make
-
-#  erc20.iele
-for f in `ls tests/iele/ERC20`; do echo $f; ./blockchaintest tests/iele/ERC20/$f || break; done
-
-# forwarder.iele and forwardingWallet-copycreate.iele
-./blockchaintest tests/iele/forwarder/copycreate.iele.json
-
-# forwarder.iele and forwardingWallet.iele
-./blockchaintest tests/iele/forwarder/create.iele.json
-
-# simpleOpenAuction.iele
-for f in `ls tests/iele/auction`; do echo $f; ./blockchaintest tests/iele/auction/$f || break; done
-```
+* The files in `tests/iele/ERC20` all test `erc20.iele`.
+* The file `copycreate.iele.json` in `tests/iele/forwarder` tests
+  `forwardingWallet-copycreate.iele` and `forwarder.iele`
+while `create.iele.json` tests `forwardingWallet.iele` and `forwarder.iele`.
+* The files in `tests/iele/auction` all test `auction.iele`.
 
 ## Correctness proofs
 
