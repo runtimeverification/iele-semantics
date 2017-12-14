@@ -76,6 +76,8 @@ IELE instruction operands are used at the left- and right-hand side of IELE inst
   syntax NonEmptyOperands ::= NeList{Operand, ","} [klabel(operandList)]
 
   syntax Ints ::= List{Int, ","} [klabel(operandList)]
+
+  syntax Operands ::= Ints
 ```
 ### Assignment
 

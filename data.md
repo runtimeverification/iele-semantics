@@ -13,6 +13,7 @@ module IELE-DATA
     imports KRYPTO
     imports STRING-BUFFER
     imports ARRAY
+    imports IELE-COMMON
 
     syntax KResult ::= Int
 ```
@@ -86,6 +87,27 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to IELE'
     syntax Account ::= ".Account" | Int
 ```
 
+### Register Operations
+
+-   `#sizeRegs(R)` returns the number of registers in a list of Operands.
+-   `#sizeLVals(R)` returns the number of registers in a list of LValues.
+
+```{.k .uiuck .rvk}
+    syntax Int ::= #sizeRegs ( Operands ) [function]
+                 | #sizeRegs ( Operands , Int ) [function, klabel(#sizeRegsAux)]
+ // ----------------------------------------------------------------------------
+    rule #sizeRegs(REGS) => #sizeRegs(REGS, 0)
+    rule #sizeRegs(REG , REGS, N) => #sizeRegs(REGS, N +Int 1)
+    rule #sizeRegs(.Operands, N) => N
+
+    syntax Int ::= #sizeLVals ( LValues ) [function]
+                 | #sizeLVals ( LValues , Int ) [function, klabel(#sizeLValuesAux)]
+ // -------------------------------------------------------------------------------
+    rule #sizeLVals(REGS) => #sizeLVals(REGS, 0)
+    rule #sizeLVals(REG , REGS, N) => #sizeLVals(REGS, N +Int 1)
+    rule #sizeLVals(.LValues, N) => N
+```
+
 Arithmetic
 ----------
 
@@ -95,8 +117,8 @@ NOTE: Here, we choose to add `I2 -Int 1` to the numerator beforing doing the div
 You could alternatively calculate `I1 %Int I2`, then add one to the normal integer division afterward depending on the result.
 
 ```{.k .uiuck .rvk}
-    syntax Int ::= Int "up/Int" Int [function]
- // ------------------------------------------
+    syntax Int ::= Int "up/Int" Int [function, klabel(ceilDiv)]
+ // -----------------------------------------------------------
     rule I1 up/Int 0  => 0
     rule I1 up/Int 1  => I1
     rule I1 up/Int I2 => (I1 +Int (I2 -Int 1)) /Int I2 requires I2 >Int 1
@@ -113,6 +135,39 @@ You could alternatively calculate `I1 %Int I2`, then add one to the normal integ
     syntax Int ::= log256Int ( Int ) [function]
  // -------------------------------------------
     rule log256Int(N) => log2Int(N) /Int 8
+
+```
+
+-   `intSize` returns the size in words of an integer.
+-   `bitsInWords` converts a number of bits to a number of words.
+-   `bytesInWords` ocnverts a number of bytes to a number of words.
+
+```{.k .uiuck .rvk}
+    syntax Int ::= intSize ( Int ) [function]
+ // -----------------------------------------
+    rule intSize(N) => (log2Int(N) +Int 2) up/Int 64 requires N >Int 0
+    rule intSize(0) => 1
+    rule intSize(N) => intSize(~Int N) requires N <Int 0
+
+    syntax Int ::= intSizes ( Ints ) [function]
+ // -------------------------------------------
+    rule intSizes(.Ints) => 0
+    rule intSizes(I , INTS) => intSize(I) +Int intSizes(INTS)
+
+    syntax Int ::= intSizes ( Array , Int ) [function, klabel(intSizesArr)]
+                 | intSizes ( Array , Int , Int ) [function, klabel(intSizesAux)]
+ // -----------------------------------------------------------------------------
+    rule intSizes(ARR::Array, I) => intSizes(ARR, I, 0)
+    rule intSizes(ARR::Array, I, I) => 0
+    rule intSizes(ARR, I, J) => {ARR [ J ]}:>Int +Int intSizes(ARR, I, J +Int 1) [owise]
+
+    syntax Int ::= bitsInWords ( Int ) [function]
+ // ---------------------------------------------
+    rule bitsInWords(I) => I up/Int 256
+
+    syntax Int ::= bytesInWords ( Int ) [function]
+ // ----------------------------------------------
+    rule bytesInWords(I) => I up/Int 8
 ```
 
 Here we provide simple syntactic sugar over our power-modulus operator.
