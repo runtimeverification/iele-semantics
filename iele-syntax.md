@@ -135,9 +135,10 @@ Various expressions over unbounded signed integers. For more details see [here](
   syntax SExtInst ::= LValue "=" "sext" /* width in bytes */              Operand "," Operand [hybrid, seqstrict(2,3)]
   syntax TwosInst ::= LValue "=" "twos" /* width in bytes */              Operand "," Operand [hybrid, seqstrict(2,3)]
 
-  syntax AndInst ::= LValue "=" "and" Operand "," Operand [hybrid, seqstrict(2,3)]
-  syntax OrInst  ::= LValue "=" "or"  Operand "," Operand [hybrid, seqstrict(2,3)]
-  syntax XorInst ::= LValue "=" "xor" Operand "," Operand [hybrid, seqstrict(2,3)]
+  syntax AndInst   ::= LValue "=" "and"   Operand "," Operand [hybrid, seqstrict(2,3)]
+  syntax OrInst    ::= LValue "=" "or"    Operand "," Operand [hybrid, seqstrict(2,3)]
+  syntax XorInst   ::= LValue "=" "xor"   Operand "," Operand [hybrid, seqstrict(2,3)]
+  syntax ShiftInst ::= LValue "=" "shift" Operand "," /* shift amount */ Operand [hybrid, seqstrict(2,3)]
 
   syntax Predicate ::= "lt" | "le" | "gt" | "ge" | "eq" | "ne"
   syntax CmpInst ::= LValue "=" "cmp" Predicate Operand "," Operand [hybrid, seqstrict(3,4)]
@@ -256,6 +257,7 @@ Precompiled contracts are also available as IELE builtins but they should be cal
   | AndInst
   | OrInst
   | XorInst
+  | ShiftInst
   | CmpInst
   | SHA3Inst
   | JumpInst

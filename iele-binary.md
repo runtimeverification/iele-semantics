@@ -73,6 +73,7 @@ contains enough information to determine and decode the rest of the operation.
                     | AND ()
                     | OR ()
                     | XOR ()
+                    | SHIFT ()
                     | BYTE ()
                     | LOG2 ()
 
@@ -250,6 +251,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmInstruction ( AND (),        R, W, M, _, _ ) => %(R, W, M, 0) = and    %(R, W, M, 1) , %(R, W, M, 2)
     rule #dasmInstruction ( OR (),         R, W, M, _, _ ) => %(R, W, M, 0) = or     %(R, W, M, 1) , %(R, W, M, 2)
     rule #dasmInstruction ( XOR (),        R, W, M, _, _ ) => %(R, W, M, 0) = xor    %(R, W, M, 1) , %(R, W, M, 2)
+    rule #dasmInstruction ( SHIFT (),      R, W, M, _, _ ) => %(R, W, M, 0) = shift  %(R, W, M, 1) , %(R, W, M, 2)
     rule #dasmInstruction ( BYTE (),       R, W, M, _, _ ) => %(R, W, M, 0) = byte   %(R, W, M, 1) , %(R, W, M, 2)
     rule #dasmInstruction ( LT (),         R, W, M, _, _ ) => %(R, W, M, 0) = cmp lt %(R, W, M, 1) , %(R, W, M, 2)
     rule #dasmInstruction ( LE (),         R, W, M, _, _ ) => %(R, W, M, 0) = cmp le %(R, W, M, 1) , %(R, W, M, 2)
@@ -355,6 +357,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmOpCode(  24 ) => XOR ()
     rule #dasmOpCode(  25 ) => NOT ()
     rule #dasmOpCode(  26 ) => BYTE ()
+    rule #dasmOpCode(  27 ) => SHIFT ()
     rule #dasmOpCode(  32 ) => SHA3 ()
     rule #dasmOpCode(  48 ) => ADDRESS ()
     rule #dasmOpCode(  49 ) => BALANCE ()

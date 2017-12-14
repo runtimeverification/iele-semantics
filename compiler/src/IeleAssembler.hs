@@ -46,6 +46,7 @@ asm_iele_opcode1 op1 = case op1 of
   NOT -> putWord8 0x19
 
   BYTE -> putWord8 0x1a
+  SHIFT -> putWord8 0x1b
   SHA3 -> putWord8 0x20
 
   MLOADN -> putWord8 0x50
