@@ -109,15 +109,15 @@ deps:
 .build/rvk/ethereum-kompiled/extras/timestamp: .build/rvk/ethereum-kompiled/interpreter
 .build/rvk/ethereum-kompiled/interpreter: $(defn_files) KRYPTO.ml
 	@echo "== kompile: $@"
-	${KOMPILE} --debug --main-module ETHEREUM-SIMULATION \
-					--syntax-module ETHEREUM-SIMULATION $< --directory .build/rvk \
+	${KOMPILE} --debug --main-module ETHEREUM \
+					--syntax-module ETHEREUM $< --directory .build/rvk \
 					--hook-namespaces KRYPTO --gen-ml-only -O3 --non-strict
 	ocamlfind opt -c .build/rvk/ethereum-kompiled/constants.ml -package gmp -package zarith
 	ocamlfind opt -c -I .build/rvk/ethereum-kompiled KRYPTO.ml -package cryptokit -package secp256k1 -package bn128
 	ocamlfind opt -a -o semantics.cmxa KRYPTO.cmx
 	ocamlfind remove iele-semantics-plugin
 	ocamlfind install iele-semantics-plugin META semantics.cmxa semantics.a KRYPTO.cmi KRYPTO.cmx
-	${KOMPILE} --debug --main-module ETHEREUM-SIMULATION \
-					--syntax-module ETHEREUM-SIMULATION $< --directory .build/rvk \
+	${KOMPILE} --debug --main-module ETHEREUM \
+					--syntax-module ETHEREUM $< --directory .build/rvk \
 					--hook-namespaces KRYPTO --packages iele-semantics-plugin -O3 --non-strict
 	cd .build/rvk/ethereum-kompiled && ocamlfind opt -o interpreter constants.cmx prelude.cmx plugin.cmx parser.cmx lexer.cmx run.cmx interpreter.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin -linkpkg -inline 20 -nodynlink -O3 -linkall
