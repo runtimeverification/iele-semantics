@@ -629,17 +629,5 @@ Here we check the other post-conditions associated with an EVM test.
     rule <k> check "genesisBlockHeader" : { "hash": HASH } => . ... </k>
          <blockhash> ... ListItem(HASH) ListItem(_) </blockhash>
 endmodule
-
-module ETHEREUM-PROGRAM-PARSING // module used by K for parsing programs
-  imports PROGRAM-LISTS         // to accept empty lists as in f()
-  imports IELE-SYNTAX           // including lexical syntax for Names
-  imports ETHEREUM-SIMULATION   // including all the rest of the syntax
-endmodule
-
-module ETHEREUM
-  //program parsing module needs to be reachable from main module
-  imports ETHEREUM-PROGRAM-PARSING
-endmodule
-
 ```
 

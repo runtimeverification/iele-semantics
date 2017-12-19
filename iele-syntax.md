@@ -19,7 +19,7 @@ IELE uses alphanumeric names for identifying registers, labels, functions, and c
 module IELE-SYNTAX
   imports IELE-COMMON
 
-  syntax IeleName ::= r"(?<![A-Za-z0-9\\_\\.\\-\\$])[a-zA-Z\\.\\_\\-\\$][0-9a-zA-Z\\.\\_\\-\\$]*" [token]
+  syntax IeleName ::= r"(?<![A-Za-z0-9\\_\\.\\-\\$])[a-zA-Z\\.\\_\\-\\$][0-9a-zA-Z\\.\\_\\-\\$]*" [token, notInRules, prec(3)]
 
   syntax NumericIeleName ::= r"[0-9]+" [token]
 endmodule
