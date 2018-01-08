@@ -4,7 +4,7 @@ IELE Binary Encoding (Work In Progress)
 Here we define an ad-hoc binary encoding for IELE. This encoding is subject to change and should not be viewed as final. The actual semantics of IELE is defined in terms of a fragment of its textual representation.
 You can use the IELE assembler provided with the semantics to convert from the textual encoding into this binary encoding.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
 requires "iele.k"
 requires "iele-syntax.k"
 
@@ -18,7 +18,7 @@ Each operation consists of its OpCode plus zero or more bytes containing the reg
 The first byte represents the operation in question, and contains enough information to determine and decode the rest of the OpCode. The remainder of the OpCode then
 contains enough information to determine and decode the rest of the operation.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
 
     syntax NullOp ::= LOADPOS ( Int , Int )
                     | LOADNEG ( Int , Int )
@@ -121,7 +121,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
 -   `#dasmInstruction` disassembles the registers for a single instruction.
 -   `#dasmOpCode` interperets a `Int` as an `OpCode`.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
 
     syntax Contract ::= #dasmContract ( WordStack , IeleName )       [function]
                       | #dasmContract ( WordStack , Int , Map, IeleName , TopLevelDefinitions, Int , Int ) [function, klabel(#dasmContractAux)]

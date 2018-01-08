@@ -4,7 +4,7 @@ Ethereum Backwards-Compatibility Testing
 Here we test the Ethereum test suite against the new IELE VM.
 Actual execution of IELE is defined in [the IELE file](iele.md).
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
 requires "iele.k"
 requires "iele-binary.k"
 
@@ -17,14 +17,14 @@ module ETHEREUM-SIMULATION
     imports VERIFICATION
 ```
 
-```{.k .rvk}
+```{.k .rvk .standalone .node}
     imports K-REFLECTION
 ```
 
 A IELE simulation is a list of IELE commands.
 Some IELE commands take a specification of IELE state (eg. for an account or transaction).
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax IELESimulation ::= ".IELESimulation"
                                 | IELECommand IELESimulation
  // --------------------------------------------------------
@@ -39,7 +39,7 @@ Some IELE commands take a specification of IELE state (eg. for an account or tra
 For verification purposes, it's much easier to specify a program in terms of its op-codes and not the hex-encoding that the tests use.
 To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a "pretti-fication" to the nicer input form.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax JSON ::= Int | WordStack | Map | SubstateLogEntry | Account
  // ------------------------------------------------------------------
 
@@ -68,7 +68,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
 -   `start` places `#next` on the `<k>` cell so that execution of the loaded state begin.
 -   `flush` places `#finalize` on the `<k>` cell once it sees `#end` in the `<k>` cell, clearing any exceptions it finds.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax IELECommand ::= "start"
  // ------------------------------
     rule <mode> NORMAL     </mode> <k> start => #loads #regRange(#sizeRegs(VALUES)) VALUES ~> #execute    ... </k> <callData> VALUES </callData> <fid> _ => deposit </fid>
@@ -86,7 +86,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
 -   `#adjustGas` fakes the gas usage of the transaction since the EVM-to-IELE conversion does not preserve gas usage.
 -   `finishTx` is a place-holder for performing necessary cleanup after a transaction.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax IELECommand ::= "startTx"
  // --------------------------------
     rule <k> startTx => #finalizeBlock ... </k>
@@ -203,7 +203,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
 -   `#finalizeBlock` is used to signal that block finalization procedures should take place (after transactions have executed).
 -   `#rewardOmmers(_)` pays out the reward to uncle blocks so that blocks are orphaned less often.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax IELECommand ::= "#finalizeBlock"
  // ---------------------------------------
     rule <k> #finalizeBlock => . ... </k>
@@ -225,7 +225,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
 -   `exception` only clears from the `<k>` cell if there is an exception preceding it.
 -   `failure_` holds the name of a test that failed if a test does fail.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax IELECommand ::= "exception" | "failure" String | "success"
  // -----------------------------------------------------------------
     rule <k> #exception _ ~> exception => . ... </k>
@@ -239,7 +239,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
 
 Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax IELECommand ::= "run" JSON
  // ---------------------------------
     rule run { .JSONList } => .
@@ -257,7 +257,7 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
 
 -   `#loadKeys` are all the JSON nodes which should be considered as loads before execution.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax Set ::= "#loadKeys" [function]
  // -------------------------------------
     rule #loadKeys => ( SetItem("env") SetItem("pre") SetItem("blockHeader") SetItem("transactions") SetItem("uncleHeaders") SetItem("network") SetItem("genesisRLP") SetItem("checkGas") )
@@ -270,7 +270,7 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
 
 -   `#execKeys` are all the JSON nodes which should be considered for execution (between loading and checking).
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax Set ::= "#execKeys" [function]
  // -------------------------------------
     rule #execKeys => ( SetItem("exec") SetItem("lastblockhash") )
@@ -284,7 +284,7 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
 -   `#postKeys` are a subset of `#checkKeys` which correspond to post-state account checks.
 -   `#checkKeys` are all the JSON nodes which should be considered as checks after execution.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax Set ::= "#postKeys" [function] | "#allPostKeys" [function] | "#checkKeys" [function]
  // -------------------------------------------------------------------------------------------
     rule #postKeys    => ( SetItem("post") SetItem("postState") )
@@ -299,7 +299,7 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
 
 -   `#discardKeys` are all the JSON nodes in the tests which should just be ignored.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax Set ::= "#discardKeys" [function]
  // ----------------------------------------
     rule #discardKeys => ( SetItem("//") SetItem("_info") SetItem("rlp") )
@@ -314,7 +314,7 @@ State Manipulation
 
 -   `clear` clears all the execution state of the machine.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax IELECommand ::= "clear"
  // ------------------------------
     rule <k> clear => . ... </k>
@@ -327,7 +327,7 @@ State Manipulation
 
 -   `mkAcct_` creates an account with the supplied ID (assuming it's already been chopped to 160 bits).
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax IELECommand ::= "mkAcct" Int
  // -----------------------------------
     rule <k> mkAcct ACCT => #newAccount ACCT ... </k>
@@ -335,7 +335,7 @@ State Manipulation
 
 -   `load` loads an account or transaction into the world state.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax IELECommand ::= "load" JSON
  // ----------------------------------
     rule load DATA : { .JSONList } => .
@@ -348,7 +348,7 @@ State Manipulation
 
 Here we perform pre-proccesing on account data which allows "pretty" specification of input.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     rule load "pre" : { (ACCTID:String) : ACCT } => mkAcct #parseAddr(ACCTID) ~> load "account" : { ACCTID : ACCT }
     rule load "account" : { ACCTID: { KEY : VALUE , REST } } => load "account" : { ACCTID : { KEY : VALUE } } ~> load "account" : { ACCTID : { REST } } requires REST =/=K .JSONList
 
@@ -362,7 +362,7 @@ Here we perform pre-proccesing on account data which allows "pretty" specificati
 
 The individual fields of the accounts are dealt with here.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     rule <k> load "account" : { ACCT : { "balance" : (BAL:Int) } } => . ... </k>
          <account>
            <acctID> ACCT </acctID>
@@ -397,7 +397,7 @@ The individual fields of the accounts are dealt with here.
 
 Here we load the environmental information.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     rule load "env" : { KEY : ((VAL:String) => #parseWord(VAL)) }
       requires KEY in (SetItem("currentTimestamp") SetItem("currentGasLimit") SetItem("currentNumber") SetItem("currentDifficulty"))
     rule load "env" : { KEY : ((VAL:String) => #parseHexWord(VAL)) }
@@ -436,7 +436,7 @@ Here we load the environmental information.
 The `"network"` key allows setting the fee schedule inside the test.
 Since IELE is a new language with no hard forks yet, we only support the latest EVM gas schedule.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     rule <k> load "network" : SCHEDSTRING => . ... </k>
          <schedule> _ => #asScheduleString(SCHEDSTRING) </schedule>
 
@@ -450,7 +450,7 @@ Since IELE is a new language with no hard forks yet, we only support the latest 
 
 The `"blockHeader"` key loads the block information.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     rule load "blockHeader" : { "nonce" : (HN:String) } => .
     rule load "blockHeader" : { "receiptTrie" : (HE:String) } => .
     rule load "blockHeader" : { "hash" : _ } => .
@@ -488,7 +488,7 @@ The `"blockHeader"` key loads the block information.
 
 The `"transactions"` key loads the transactions.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     rule load "transactions" : { TX } => load "transactions" : { #sortJSONList(TX) }
          requires notBool #isSorted(TX)
 
@@ -525,7 +525,7 @@ The `"transactions"` key loads the transactions.
 
 -   `check_` checks if an account/transaction appears in the world-state as stated.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax IELECommand ::= "check" JSON
  // -----------------------------------
     rule #exception CODE ~> check J:JSON => check J ~> #exception CODE
@@ -587,7 +587,7 @@ The `"transactions"` key loads the transactions.
 
 Here we check the other post-conditions associated with an EVM test.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     rule check TESTID : { "out" : OUT } => check "out" : OUT ~> failure TESTID
  // --------------------------------------------------------------------------
     rule check "out" : ((OUT:String) => #parseHexWord(OUT))
