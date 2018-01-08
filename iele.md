@@ -6,7 +6,7 @@ Most of the opcodes are "local" to the execution state of the machine, but some 
 This file only defines the local execution operations. A separate `cardano.md` will eventually be created to describe the remainder
 of the transaction protocol.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
 requires "data.k"
 requires "iele-syntax.k"
 requires "iele-gas.k"
@@ -23,7 +23,7 @@ Configuration
 We've broken up the configuration into two components; those parts of the state that mutate during execution of a single transaction and those that are static throughout.
 In the comments next to each cell, we explain the purpose of the cell.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     configuration <k> $PGM:IELESimulation </k>                       // Current computation
                   <exit-code exit=""> 1 </exit-code>                 // Exit code of interpreter process
                   <mode> $MODE:Mode </mode>                          // Execution mode: VMTESTS or NORMAL
@@ -216,7 +216,7 @@ Our semantics is modal, with the initial mode being set on the command line via 
 -   `NORMAL` executes as a client on the network would.
 -   `VMTESTS` skips `call*` and `create*` operations.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
 module IELE-INFRASTRUCTURE
     imports IELE-CONFIGURATION
 
@@ -225,7 +225,7 @@ module IELE-INFRASTRUCTURE
 
 -   `#setMode_` sets the mode to the supplied one.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax Mode ::= "#setMode" Mode
  // -------------------------------
     rule <k> #setMode EXECMODE => . ... </k> <mode> _ => EXECMODE </mode>
@@ -241,7 +241,7 @@ The `callStack` cell stores a list of previous VM execution states.
 -   `#popCallStack` restores the top element of the `callStack`.
 -   `#dropCallStack` removes the top element of the `callStack`.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax InternalOp ::= "#pushCallStack"
  // --------------------------------------
     rule <k> #pushCallStack => . ... </k>
@@ -265,7 +265,7 @@ The `interimStates` cell stores a list of previous world states.
 -   `#popWorldState` restores the top element of the `interimStates`.
 -   `#dropWorldState` removes the top element of the `interimStates`.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax Accounts ::= "{" AccountsCell "|" Map "}"
  // ------------------------------------------------
 
@@ -294,7 +294,7 @@ The `substateStack` cell stores a list of previous substate logs.
 -   `#popSubstate` restores the top element of the `substateStack`.
 -   `#dropSubstate` removes the top element of the `substateStack`.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax InternalOp ::= "#pushSubstate"
  // -------------------------------------
     rule <k> #pushSubstate => .K ... </k>
@@ -318,7 +318,7 @@ Simple commands controlling exceptions provide control-flow.
 -   `#exception` is used to indicate exceptional states (it consumes any operations to be performed after it).
 -   `#revert` is used to indicate the contract terminated with the revert instruction (exceptional return with error message, refunding gas).
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax KItem ::= Exception
     syntax Exception ::= "#exception" Int | "#end" | "#revert" Int
  // --------------------------------------------------------------
@@ -352,7 +352,7 @@ Description of registers.
 -   Registers are evaluated using heating to the values they contain.
 -   `#regRange(N)` generates the registers 0 to N-1.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
 
     syntax KResult ::= Int
  // ----------------------
@@ -380,7 +380,7 @@ Description of registers.
 
 When an instruction reaches the top of the K cell, we first heat its registers, then compute gas cost, then execute the instruction itself.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax InternalOp ::= "#exec" Instruction
                         | "#gas" "[" Instruction "]" 
  // ------------------------------------------------
@@ -389,14 +389,14 @@ When an instruction reaches the top of the K cell, we first heat its registers, 
 
 The following types of instructions do not require any register heating.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax KResult ::= AssignInst
     syntax KResult ::= JumpInst
 ```
 
 Some instructions require an argument to be interpreted as an address (modulo 160 bits), so the `#addr?` function performs that check.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax Instruction ::= "#addr?" "(" Instruction ")" [function]
  // --------------------------------------------------------------
     rule #addr?(REG = call @iele.balance(W))                                => REG = call @iele.balance(#addr(W))
@@ -415,7 +415,7 @@ Instruction Execution Cycle
 -   `#execute` loads the code of the currently-executing function into the `k` cell, where it executes until the function returns.
     It is an exception if we try to execute a function that does not exist.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
 module IELE
     imports IELE-GAS
     imports IELE-PRECOMPILED
@@ -432,14 +432,14 @@ Execution follows a simple cycle where first the state is checked for exceptions
 
 -   If we reach the end of the function, we execute an implicit `ret void` instruction.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     rule <k> .LabeledBlocks => ret .NonEmptyOperands .Instructions .LabeledBlocks ... </k>
 ```
 
 -   The rule for sequential composition checks if the instruction is exceptional, runs it if not, then executes the next instruction (assuming
     the instruction doesn't execute a transfer of control flow).
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     rule OP::Instruction OPS::Instructions BLOCKS::LabeledBlocks
       => #exceptional? [ OP ] ~> OP
       ~> OPS BLOCKS
@@ -447,7 +447,7 @@ Execution follows a simple cycle where first the state is checked for exceptions
 
 When execution reaches the end of a block, we fall through to the immediately next block.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     rule .Instructions BLOCKS::LabeledBlocks => BLOCKS
 ```
 
@@ -457,7 +457,7 @@ Some checks if an opcode will throw an exception are relatively quick and done u
 
 -   `#exceptional?` checks if the operator is invalid.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax InternalOp ::= "#exceptional?" "[" Instruction "]"
  // ---------------------------------------------------------
     rule <k> #exceptional? [ OP ] => #invalid? [ OP ] ~> #badJumpDest? [ OP ] ~> #static? [ OP ] ~> #negativeCall? [ OP ] ... </k>
@@ -465,7 +465,7 @@ Some checks if an opcode will throw an exception are relatively quick and done u
 
 -   `#invalid?` checks if it's the designated invalid opcode.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax K ::= "#invalid?" "[" Instruction "]" [function]
  // -------------------------------------------------------
     rule #invalid? [ _ = call @iele.invalid(.Operands) ] => #exception USER_ERROR
@@ -474,7 +474,7 @@ Some checks if an opcode will throw an exception are relatively quick and done u
 
 -   `#badJumpDest?` determines if the opcode will result in a bad jump destination.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax InternalOp ::= "#badJumpDest?" "[" Instruction "]"
  // ---------------------------------------------------------
     rule <k> #badJumpDest? [ OP           ] => . ... </k> requires notBool isJumpOp(OP)
@@ -493,7 +493,7 @@ Some checks if an opcode will throw an exception are relatively quick and done u
 
 -   `#static?` determines if the opcode should throw an exception due to the static flag (i.e., an attempt to change state inside a contract called with `staticcall`)
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax InternalOp ::= "#static?" "[" Instruction "]"
  // ----------------------------------------------------
     rule <k> #static? [ OP ] => .                     ... </k>                     <static> false </static>
@@ -514,7 +514,7 @@ Some checks if an opcode will throw an exception are relatively quick and done u
 
 -    `#negativeCall?` throws an exception if we are making a contract call with negative value or gas limit.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax InternalOp ::= "#negativeCall?" "[" Instruction "]"
  // ----------------------------------------------------------
     rule <k> #negativeCall? [ OP ] => . ... </k> requires notBool isAccountCallInst(OP) andBool notBool isCreateInst(OP)
@@ -532,7 +532,7 @@ After executing a transaction, it's necessary to have the effect of the substate
 
 -   `#finalizeTx` makes the substate log actually have an effect on the state.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax InternalOp ::= #finalizeTx ( Bool )
  // ------------------------------------------
     rule <k> #finalizeTx(true) => . ... </k>
@@ -643,7 +643,7 @@ Organization is based roughly on what parts of the execution state are needed to
     If the account already exists with non-zero nonce or non-empty code, an exception is thrown.
     Otherwise, if the account already exists, the storage is cleared.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax InternalOp ::= "#newAccount" Int
  // ---------------------------------------
     rule <k> #newAccount ACCT => #exception ACCT_COLLISION ... </k>
@@ -683,7 +683,7 @@ Organization is based roughly on what parts of the execution state are needed to
 
 -   `#transferFunds` moves money from one account into another, creating the destination account if it doesn't exist.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax InternalOp ::= "#transferFunds" Int Int Int
  // --------------------------------------------------
     rule <k> #transferFunds ACCTFROM ACCTTO VALUE => . ... </k>
@@ -742,7 +742,7 @@ if any of its entry points are invoked with a balance transfer.
 
 Note that the syntax used in the following `#emptyCode` macro is desugared IELE syntax, where contracts have a size in bytes metadata attachment (`!0` here) and argument lists are replaced with an integer value representing arity (`0` here).
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax IeleName ::= "Main" [token]
  // ----------------------------------
     rule #emptyCode => contract Main !0 { define public @deposit ( 0 ) { ret .NonEmptyOperands .Instructions .LabeledBlocks } } .Contract [macro]
@@ -757,7 +757,7 @@ Some operators don't calculate anything, they just manipulate the state of regis
 
 -  `#loads` loads a list of integers into a list of registers. It is an exception if the number of values do not match.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     rule <k> #exec REG = W:Int => #load REG W ... </k>
 
     rule <k> #exec REG1 = % REG2 => #load REG1 { REGS [ REG2 ] }:>Int ... </k> <regs> REGS </regs>
@@ -785,7 +785,7 @@ These operations are getters/setters of the local execution memory.
 -   `REG = store VALUE, CELL, OFFSET, WIDTH` stores VALUE into the specified memory CELL at OFFSET, interpreting it modulo 256^WIDTH.
 -   `REG = store VALUE, CELL` stores VALUE into the specified memory CELL, overwriting the previous value of the entire cell.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     rule <k> #exec REG = load CELL , OFFSET , WIDTH => #load REG #asSigned({LM [ chop(CELL) ]}:>WordStack [ OFFSET .. WIDTH ]) ... </k>
          <localMem> LM </localMem>
 
@@ -827,7 +827,7 @@ Expression calculations are simple and don't require anything but the arguments 
 -   `REG = cmp eq W0, W1` computes if W0 is equal to W1.
 -   `REG = cmp ne W0, W1` computes if W0 is not equal to W1.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     rule <k> #exec REG = iszero 0 => #load REG 1      ... </k>
     rule <k> #exec REG = iszero W => #load REG 0      ... </k> requires W =/=K 0
     rule <k> #exec REG = not W    => #load REG ~Int W ... </k>
@@ -880,7 +880,7 @@ Expression calculations are simple and don't require anything but the arguments 
 
 The sha3 instruction computes the keccak256 hash of an entire memory cell.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
 
     rule <k> #exec REG = sha3 MEMINDEX => #load REG keccak({LM [ chop(MEMINDEX) ]}:>WordStack) ... </k>
          <localMem> LM </localMem>
@@ -905,7 +905,7 @@ These operators make queries about the current execution state.
 -   `REG = call @iele.codesize()` returns the size in bytes of the currently executing contract.
 -   `REG = call @iele.blockhash(N)` returns the hash of the block header of the Nth previous block.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     rule <k> #exec REG = call @iele.gas      ( .Ints )  => #load REG GAVAIL ... </k> <gas> GAVAIL </gas>
     rule <k> #exec REG = call @iele.gasprice ( .Ints )  => #load REG GPRICE ... </k> <gasPrice> GPRICE </gasPrice>
     rule <k> #exec REG = call @iele.gaslimit ( .Ints )  => #load REG GLIMIT ... </k> <gasLimit> GLIMIT </gasLimit>
@@ -943,7 +943,7 @@ The call instruction for local calls (i.e. the form which does not specify an ac
 The called function executes in the same contract call frame (i.e. with the same value, gas limit, and memory), but with a fresh set of local registers.
 When execution of the callee reaches a `ret` instruction, control returns to the instruction following the call, and local registers are restored.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     rule <k> _:IeleName : INSTRS BLOCKS::LabeledBlocks => INSTRS BLOCKS ... </k>
 
     rule <k> #exec br LABEL ~> _:Blocks => CODE ... </k> <fid> FUNC </fid> <function>... <funcId> FUNC </funcId> <jumpTable> ... LABEL |-> CODE </jumpTable> </function>
@@ -996,7 +996,7 @@ When execution of the callee reaches a `ret` instruction, control returns to the
     If we are executing at the top-level local call of a contract call frame, we return to the contract call's caller.
 -   `revert` returns the values contained in the specified list of registers to the contract call's caller, but signifies that the contract has failed, which rolls back state changes and returns an error code to the caller.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     rule <k> #exec ret VALUES => #end ... </k>
          <output> _ => VALUES </output>
          <localCalls> .List </localCalls>
@@ -1016,12 +1016,12 @@ This is a right cons-list of `SubstateLogEntry` (which contains the account ID a
 
 The `log` instruction logs an entire memory cell to the substate log with zero to four log topics.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax SubstateLogEntry ::= "{" Int "|" WordStack "|" WordStack "}"
  // -------------------------------------------------------------------
 ```
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     rule #exec log MEMINDEX                     => #log MEMINDEX .WordStack
     rule #exec log MEMINDEX , W0                => #log MEMINDEX chop(W0) : .WordStack
     rule #exec log MEMINDEX , W0 , W1           => #log MEMINDEX chop(W0) : chop(W1) : .WordStack
@@ -1046,7 +1046,7 @@ Operators that require access to the rest of the IELE network world-state can be
 -   `REG = call @iele.balance(ACCT)` returns the balance of the specified account (zero if the account does not exist).
 -   `REG = call @iele.extcodesize(ACCT)` returns the code si of the specified account (zero if the account does not exist).
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     rule <k> #exec REG = call @iele.balance ( ACCT ) => #load REG BAL ... </k>
          <account>
            <acctID> ACCT </acctID>
@@ -1077,7 +1077,7 @@ These operations interact with the account storage.
 -   `REG = sload INDEX` loads the word at INDEX from the account storage.
 -   `sstore VALUE, INDEX` stores the VALUE at INDEX in the account storage.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     rule <k> #exec REG = sload INDEX => #load REG 0 ... </k>
          <id> ACCT </id>
          <account>
@@ -1118,14 +1118,14 @@ These operations interact with the account storage.
 
 The various `call*` (and other inter-contract control flow) operations will be desugared into these `InternalOp`s.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
 
 -   `#checkCall` checks that the current account has the balance necessary to invoke the contract call, and that the contract call stack depth limit has not been reached.
 -   `#call_____` takes the calling account, the account to execute as, the account whose code should execute, the gas limit, the amount to transfer, the function to call, and the arguments.
 -   `#callWithCode______` takes the calling account, the accout to execute as, the code to execute (as a map), the gas limit, the amount to transfer, the function to call, and the arguments.
 -   `#return__` is a placeholder for the calling program, specifying where to place the returned data in registers.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax InternalOp ::= "#checkCall" Int Int Int
                         | "#call" Int Int IeleName Int Int Ints Bool
                         | "#callWithCode" Int Int ProgramCell IeleName Int Int Ints Bool
@@ -1197,7 +1197,7 @@ The various `call*` (and other inter-contract control flow) operations will be d
 The VM starts out with empty memory, output, registers, and local call stack.
 If the function being called is not public, does not exist, or has the wrong number of arguments, an exception is raised.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax KItem ::= #initVM ( Ints )
                    | #initFun ( IeleName , Int , Bool )
  // ---------------------------------------------------
@@ -1275,7 +1275,7 @@ If the function being called is not public, does not exist, or has the wrong num
 
 For each `call*` operation, we make a corresponding call to `#call` and a state-change to setup the custom parts of the calling environment.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     rule <k> #exec REG , REGS = call @ LABEL at ACCTTO ( ARGS ) send VALUE , gaslimit GCAP
           => #checkCall ACCTFROM VALUE GCAP
           ~> #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, VALUE, #sizeLVals(REGS), intSizes(ARGS)) VALUE ARGS false
@@ -1308,7 +1308,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
 -   `#codeDeposit_` checks the result of initialization code and whether the code deposit can be paid, indicating an error if not.
 -   `#checkCreate` checks that the account has sufficient balance for the balance transfer, that the call depth limit is not reached, and increments the nonce of the creator account.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax InternalOp ::= "#create" Int Int Int Int Contract Ints
                         | "#mkCreate" Int Int Contract Int Int Ints
                         | "#checkCreate" Int Int
@@ -1406,7 +1406,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
 -   `create` will attempt to `#create` the named contract using the initialization code and cleans up the result with `#codeDeposit`.
 -   `copycreate` will attempt to `#create` a copy of the contract at the specified address using the initialization code and cleans up the result with `#codeDeposit`
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     rule <k> #exec STATUS , ACCTOUT = create NAME ( ARGS ) send VALUE
           => #checkCreate ACCT VALUE
           ~> #create ACCT #newAddr(ACCT, NONCE) #if Gstaticcalldepth << SCHED >> #then GAVAIL #else #allBut64th(GAVAIL) #fi VALUE #subcontract(CODE, NAME) ARGS
@@ -1466,7 +1466,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
 `selfdestruct` marks the current account for deletion and transfers funds out of the current account.
 Self destructing to yourself, unlike a regular transfer, destroys the balance in the account, irreparably losing it.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     rule <k> #exec selfdestruct ACCTTO => #transferFunds ACCT ACCTTO BALFROM ~> #end ... </k>
          <schedule> SCHED </schedule>
          <id> ACCT </id>
@@ -1502,7 +1502,7 @@ Precompiled Contract
 
 -   `#precompiled` is a placeholder for the pre-compiled contracts at addresses 1.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
 module IELE-PRECOMPILED
     imports IELE-DATA
     imports IELE-CONFIGURATION
@@ -1555,7 +1555,7 @@ module IELE-PRECOMPILED
 -   `@iele.ecmul` is the BN128 elliptic curve scalar multiplication function.
 -   `@iele.ecpairing` is the BN128 elliptic curve pairing check function.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
     syntax Instruction ::= PrecompiledOp
     syntax KResult ::= PrecompiledOp
 
@@ -1660,7 +1660,7 @@ IELE Program Representations
 
 The following code processes a `Contract` and loads it into the `<program>` cell.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
 module IELE-PROGRAM-LOADING
     imports IELE-COMMON
     imports IELE-CONFIGURATION

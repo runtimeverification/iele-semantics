@@ -27,7 +27,7 @@ defn: $(defn_files)
 .build/${K_VERSION}/%.k: %.md
 	@echo "==  tangle: $@"
 	mkdir -p $(dir $@)
-	pandoc --from markdown --to tangle.lua --metadata=code:"k $(K_VERSION)" $< > $@
+	pandoc --from markdown --to tangle.lua --metadata=code:"k $(K_VERSION) standalone" $< > $@
 
 proof_dir=tests/proofs
 proof_files= 
