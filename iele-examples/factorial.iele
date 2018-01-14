@@ -1,0 +1,32 @@
+contract Factorial {
+  @test_result = 0x0100
+
+  define public @factorial(%n) {
+    // ensure that %n is larger than or equal to 0.
+    %lt = cmp lt %n, 0
+    br %lt, throw
+
+    %result = 1
+
+  condition:
+    %cond = cmp le %n, 0
+    br %cond, after_loop
+
+  loop_body:
+    %result = mul %result, %n
+    %n      = sub %n, 1
+    br condition
+
+  after_loop:
+    ret %result
+
+  throw:
+    call @iele.invalid()
+  }
+
+
+  define public @test_factorial(%n) {
+    %result = call @factorial(%n)
+    sstore %result, @test_result
+  }
+}
