@@ -10,21 +10,19 @@
             "0x1000000000000000000000000000000000000000": {
                 "nonce": "0x00",
                 "balance": "0x0",
-                "storage": {
-                    "0x0100": "0x00"
-                },
+                "storage": {},
                 "code": "../../../iele-examples/factorial.iele"
             }
         },
         "lastblockhash": "0x1c61b4ee6a550aebe8a2f84ab93cd242779111e26b92f0a8d00d77a1e4ac4b8b",
         "blocks": [
             {
-                "out": [],
+                "out": ["0x1b30964ec395dc24069528d54bbda40d16e966ef9a70eb21b5b2943a321cdf10391745570cca9420c6ecb3b72ed2ee8b02ea2735c61a000000000000000000000000"],
                 "uncleHeaders": [],
                 "transactions": [
                     {
                         "nonce": "0x00",
-                        "function": "test_factorial",
+                        "function": "factorial",
                         "gasLimit": "0x100000",
                         "value": "0x00",
                         "to": "0x1000000000000000000000000000000000000000",
@@ -57,9 +55,7 @@
             "0x1000000000000000000000000000000000000000": {
                 "nonce": "0x00",
                 "balance": "0x0",
-                "storage": {
-                    "0x0100": "0x1b30964ec395dc24069528d54bbda40d16e966ef9a70eb21b5b2943a321cdf10391745570cca9420c6ecb3b72ed2ee8b02ea2735c61a000000000000000000000000"
-                },
+                "storage": {},
                 "code": "../../../iele-examples/factorial.iele"
             }
         }

@@ -9,7 +9,6 @@
 
 
 contract Sum {
-  @test_result = 0x0100
 
   define public @sum(%n) {
     // ensure that %n is larger than or equal to 0.
@@ -32,11 +31,5 @@ contract Sum {
 
   throw:
     call @iele.invalid()
-  }
-
-
-  define public @test_sum(%n) {
-    %result = call @sum(%n)
-    sstore %result, @test_result
   }
 }

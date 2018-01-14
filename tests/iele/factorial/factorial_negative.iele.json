@@ -10,9 +10,7 @@
             "0x1000000000000000000000000000000000000000": {
                 "nonce": "0x00",
                 "balance": "0x0",
-                "storage": {
-                    "0x0100": "0x00"
-                },
+                "storage": {},
                 "code": "../../../iele-examples/factorial.iele"
             }
         },
@@ -24,7 +22,7 @@
                 "transactions": [
                     {
                         "nonce": "0x00",
-                        "function": "test_factorial",
+                        "function": "factorial",
                         "gasLimit": "0x100000",
                         "value": "0x00",
                         "to": "0x1000000000000000000000000000000000000000",
@@ -57,9 +55,7 @@
             "0x1000000000000000000000000000000000000000": {
                 "nonce": "0x00",
                 "balance": "0x0",
-                "storage": {
-                    "0x0100": "0x00"
-                },
+                "storage": {},
                 "code": "../../../iele-examples/factorial.iele"
             }
         }
