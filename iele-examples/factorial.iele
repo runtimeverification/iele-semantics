@@ -1,5 +1,4 @@
 contract Factorial {
-  @test_result = 0x0100
 
   define public @factorial(%n) {
     // ensure that %n is larger than or equal to 0.
@@ -22,11 +21,5 @@ contract Factorial {
 
   throw:
     call @iele.invalid()
-  }
-
-
-  define public @test_factorial(%n) {
-    %result = call @factorial(%n)
-    sstore %result, @test_result
   }
 }
