@@ -454,7 +454,7 @@ Some instructions require an argument to be interpreted as an address (modulo 16
       requires notBool ACCT in ACCTS
 ```
 
--   `#lookupStorage` loads the `<storage> cell with the storage value for a particular key in the account.
+-   `#lookupStorage` loads the `<storage>` cell with the storage value for a particular key in the account.
 
 ```{.k .uiuck .rvk .standalone .node}
     syntax InternalOp ::= #lookupStorage ( Int , Int )
@@ -476,6 +476,13 @@ Some instructions require an argument to be interpreted as an address (modulo 16
            ...
          </account>
       requires notBool INDEX in_keys(STORAGE)
+```
+
+-   `#lookupCode` loads the `<code>` cell with the code for a particular account.
+
+```{.k .uiuck .rvk .standalone .node}
+    syntax InternalOp ::= #lookupCode ( Int )
+ // -----------------------------------------
 ```
 
 -   `#transferFunds` moves money from one account into another, creating the destination account if it doesn't exist.
@@ -1086,8 +1093,16 @@ Operators that require access to the rest of the IELE network world-state can be
            <code> CODE </code>
            ...
          </account>
+       requires CODE =/=K .Contract
 
-    rule <k> #exec REG = call @iele.extcodesize ( ACCT ) => #newAccount ACCT ~> #load REG 0 ... </k>
+    rule <k> (.K => #lookupCode(ACCT)) ~> #exec _ = call @iele.extcodesize ( ACCT ) ... </k>
+         <account>
+           <acctID> ACCT </acctID>
+           <code> .Contract </code>
+           ...
+         </account>
+
+    rule <k> (.K => #newAccount ACCT) ~> #exec REG = call @iele.extcodesize ( ACCT ) ... </k>
          <activeAccounts> ACCTS </activeAccounts>
       requires notBool ACCT in ACCTS
 ```
@@ -1159,25 +1174,24 @@ The various `call*` (and other inter-contract control flow) operations will be d
           => #callWithCode ACCTFROM ACCTTO #precompiled FUNC GLIMIT VALUE ARGS STATIC
          ...
          </k>
-         <schedule> SCHED </schedule>
       requires ACCTTO ==Int #precompiledAccount
 
     rule <k> #call ACCTFROM ACCTTO FUNC GLIMIT:Int VALUE ARGS STATIC
           => #callWithCode ACCTFROM ACCTTO #loadCode(CODE) FUNC GLIMIT VALUE ARGS STATIC
          ...
          </k>
-         <schedule> SCHED </schedule>
          <acctID> ACCTTO </acctID>
          <code> CODE </code>
-      requires ACCTTO =/=Int #precompiledAccount
+      requires ACCTTO =/=Int #precompiledAccount andBool CODE =/=K .Contract
 
-    rule <k> #call ACCTFROM ACCTTO FUNC GLIMIT:Int VALUE ARGS STATIC
-          => #callWithCode ACCTFROM ACCTTO #loadCode(#emptyCode) FUNC GLIMIT VALUE ARGS STATIC
-         ...
-         </k>
+    rule <k> (.K => #lookupCode(ACCT)) ~> #call _ ACCT _ _ _ _ _ ... </k>
+         <acctID> ACCT </acctID>
+         <code> .Contract </code>
+      requires ACCT =/=Int #precompiledAccount
+
+    rule <k> (.K => #newAccount ACCT) ~> #call _ ACCT _ _ _ _ _ ... </k>
          <activeAccounts> ACCTS </activeAccounts>
-         <schedule> SCHED </schedule>
-      requires ACCTTO =/=Int #precompiledAccount andBool notBool ACCTTO in ACCTS
+      requires ACCT =/=Int #precompiledAccount andBool notBool ACCT in ACCTS
 
     rule #callWithCode ACCTFROM ACCTTO CODE FUNC GLIMIT VALUE ARGS STATIC
       => #pushCallStack ~> #pushWorldState ~> #pushSubstate
@@ -1289,7 +1303,6 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
          </k>
          <schedule> SCHED </schedule>
          <id> ACCTFROM </id>
-         <activeAccounts> ACCTS </activeAccounts>
          <previousGas> GAVAIL </previousGas>
 
     rule <k> #exec REG , REGS = staticcall @ LABEL at ACCTTO ( ARGS ) gaslimit GCAP
@@ -1300,7 +1313,6 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
          </k>
          <schedule> SCHED </schedule>
          <id> ACCTFROM </id>
-         <activeAccounts> ACCTS </activeAccounts>
          <previousGas> GAVAIL </previousGas>
 
     rule #exec .LValues = call _ at _ ( _ ) send _ , gaslimit _ => #exception FUNC_WRONG_SIG
@@ -1444,7 +1456,14 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
            <code> CODE </code>
            ...
          </account>
-         requires ACCT =/=Int ACCTCODE
+         requires ACCT =/=Int ACCTCODE andBool CODE =/=K .Contract
+
+    rule <k> (.K => #lookupCode(ACCTCODE)) ~> #exec _ , _ = copycreate ACCTCODE ( _ ) send _ ... </k>
+         <account>
+           <acctID> ACCTCODE </acctID>
+           <code> .Contract </code>
+           ...
+         </account>
 
     rule <k> #exec STATUS , ACCTOUT = copycreate ACCT ( ARGS ) send VALUE
           => #checkCreate ACCT VALUE
