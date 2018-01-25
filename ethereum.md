@@ -136,7 +136,6 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            <nonce> NONCE => NONCE +Int 1 </nonce>
            ...
          </account>
-         <activeAccounts> ... ACCTFROM |-> (_ => false) ... </activeAccounts>
 
     rule <k> loadTx(ACCTFROM)
           => #call ACCTFROM ACCTTO FUNC (GLIMIT -Int G0(SCHED, .WordStack, ARGS, false)) VALUE ARGS false
@@ -164,7 +163,6 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            <nonce> NONCE => NONCE +Int 1 </nonce>
            ...
          </account>
-         <activeAccounts> ... ACCTFROM |-> (_ => false) ... </activeAccounts>
       requires ACCTTO =/=K .Account
 
     syntax IELECommand ::= "#adjustGas"
@@ -214,12 +212,11 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            <balance> MINBAL => MINBAL +Int Rb < SCHED > </balance>
            ...
          </account>
-         <activeAccounts> ... MINER |-> (_ => false) ... </activeAccounts>
 
     rule <k> (.K => #newAccount MINER) ~> #finalizeBlock ... </k>
          <beneficiary> MINER </beneficiary>
          <activeAccounts> ACCTS </activeAccounts>
-      requires notBool MINER in_keys(ACCTS)
+      requires notBool MINER in ACCTS
 ```
 
 -   `exception` only clears from the `<k>` cell if there is an exception preceding it.
@@ -369,7 +366,6 @@ The individual fields of the accounts are dealt with here.
            <balance> _ => BAL </balance>
            ...
          </account>
-         <activeAccounts> ... ACCT |-> (EMPTY => #if BAL =/=Int 0 #then false #else EMPTY #fi) ... </activeAccounts>
 
     rule <k> load "account" : { ACCT : { "code" : (CODE:WordStack) } } => . ... </k>
          <account>
@@ -377,7 +373,6 @@ The individual fields of the accounts are dealt with here.
            <code> _ => #dasmContract(CODE, Main) </code>
            ...
          </account>
-         <activeAccounts> ... ACCT |-> (EMPTY => #if CODE =/=K .WordStack #then false #else EMPTY #fi) ... </activeAccounts>
 
     rule <k> load "account" : { ACCT : { "nonce" : (NONCE:Int) } } => . ... </k>
          <account>
@@ -385,7 +380,6 @@ The individual fields of the accounts are dealt with here.
            <nonce> _ => NONCE </nonce>
            ...
          </account>
-         <activeAccounts> ... ACCT |-> (EMPTY => #if NONCE =/=Int 0 #then false #else EMPTY #fi) ... </activeAccounts>
 
     rule <k> load "account" : { ACCT : { "storage" : (STORAGE:Map) } } => . ... </k>
          <account>

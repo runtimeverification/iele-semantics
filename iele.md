@@ -117,7 +117,7 @@ In the comments next to each cell, we explain the purpose of the cell.
                     // Accounts Record
                     // ---------------
 
-                    <activeAccounts> .Map </activeAccounts> // Mapping from account ids to boolean representing whether the account is empty
+                    <activeAccounts> .Set </activeAccounts> // Set of keys in the accounts cell.
                     <accounts>
                       <account multiplicity="*" type="Map">
                         <acctID>   0          </acctID>     // ID of account
@@ -266,7 +266,7 @@ The `interimStates` cell stores a list of previous world states.
 -   `#dropWorldState` removes the top element of the `interimStates`.
 
 ```{.k .uiuck .rvk .standalone .node}
-    syntax Accounts ::= "{" AccountsCell "|" Map "}"
+    syntax Accounts ::= "{" AccountsCell "|" Set "}"
  // ------------------------------------------------
 
     syntax InternalOp ::= "#pushWorldState"
@@ -406,6 +406,94 @@ Some instructions require an argument to be interpreted as an address (modulo 16
     rule #addr?(REGS1 = call LABEL at W0 (REGS2) send W1 , gaslimit W2)     => REGS1 = call LABEL at #addr(W0) (REGS2) send W1 , gaslimit W2
     rule #addr?(REGS1 = staticcall LABEL at W0 (REGS2) gaslimit W1)         => REGS1 = staticcall LABEL at #addr(W0) (REGS2) gaslimit W1
     rule #addr?(OP)                                                         => OP [owise]
+```
+
+### Internal Operations
+
+-   `#newAccount_` allows declaring a new empty account with the given address (and assumes the rounding to 160 bits has already occured).
+    If the account already exists with non-zero nonce or non-empty code, an exception is thrown.
+    Otherwise, if the account already exists, the storage is cleared.
+
+```{.k .uiuck .rvk .standalone .node}
+    syntax InternalOp ::= "#newAccount" Int
+ // ---------------------------------------
+    rule <k> #newAccount ACCT => #exception ACCT_COLLISION ... </k>
+         <account>
+           <acctID> ACCT  </acctID>
+           <code>   CODE  </code>
+           <nonce>  NONCE </nonce>
+           ...
+         </account>
+      requires CODE =/=K #emptyCode orBool NONCE =/=K 0
+
+    rule <k> #newAccount ACCT => . ... </k>
+         <account>
+           <acctID>  ACCT       </acctID>
+           <code>    #emptyCode </code>
+           <nonce>   0          </nonce>
+           <storage> _ => .Map  </storage>
+           ...
+         </account>
+
+    rule <k> #newAccount ACCT => . ... </k>
+         <activeAccounts> ACCTS (.Set => SetItem(ACCT)) </activeAccounts>
+         <accounts>
+           ( .Bag
+          => <account>
+               <acctID>   ACCT       </acctID>
+               <balance>  0          </balance>
+               <code>     #emptyCode </code>
+               <storage>  .Map       </storage>
+               <nonce>    0          </nonce>
+             </account>
+           )
+           ...
+         </accounts>
+      requires notBool ACCT in ACCTS
+```
+
+-   `#transferFunds` moves money from one account into another, creating the destination account if it doesn't exist.
+
+```{.k .uiuck .rvk .standalone .node}
+    syntax InternalOp ::= "#transferFunds" Int Int Int
+ // --------------------------------------------------
+    rule <k> #transferFunds ACCTFROM ACCTTO VALUE => . ... </k>
+         <account>
+           <acctID> ACCTFROM </acctID>
+           <balance> ORIGFROM => ORIGFROM -Int VALUE </balance>
+           ...
+         </account>
+         <account>
+           <acctID> ACCTTO </acctID>
+           <balance> ORIGTO => ORIGTO +Int VALUE </balance>
+           ...
+         </account>
+      requires ACCTFROM =/=K ACCTTO andBool VALUE <=Int ORIGFROM
+
+    rule <k> #transferFunds ACCTFROM ACCTTO VALUE => #exception OUT_OF_FUNDS ... </k>
+         <account>
+           <acctID> ACCTFROM </acctID>
+           <balance> ORIGFROM </balance>
+           ...
+         </account>
+      requires VALUE >Int ORIGFROM
+
+    rule <k> (. => #newAccount ACCTTO) ~> #transferFunds ACCTFROM ACCTTO VALUE ... </k>
+         <activeAccounts> ACCTS </activeAccounts>
+         <account>
+           <acctID> ACCTFROM </acctID>
+           <balance> ORIGFROM </balance>
+           ...
+         </account>
+      requires ACCTFROM =/=K ACCTTO andBool notBool ACCTTO in ACCTS andBool VALUE <=Int ORIGFROM
+
+    rule <k> #transferFunds ACCT ACCT VALUE => . ... </k>
+         <account>
+           <acctID> ACCT </acctID>
+           <balance> ORIGFROM </balance>
+           ...
+         </account>
+      requires VALUE <=Int ORIGFROM
 endmodule
 ```
 
@@ -547,13 +635,12 @@ After executing a transaction, it's necessary to have the effect of the substate
            <balance> CURRBAL => CURRBAL +Int BAL </balance>
            ...
          </account>
-         <activeAccounts> ... ACCT |-> (EMPTY => #if BAL >Int 0 #then false #else EMPTY #fi) ... </activeAccounts>
 
     rule <k> (.K => #newAccount MINER) ~> #finalizeTx(_)... </k>
          <mode> NORMAL </mode>
          <beneficiary> MINER </beneficiary>
          <activeAccounts> ACCTS </activeAccounts>
-      requires notBool MINER in_keys(ACCTS)
+      requires notBool MINER in ACCTS
 
     rule <k> #finalizeTx(false) ... </k>
          <mode> NORMAL </mode>
@@ -590,7 +677,6 @@ After executing a transaction, it's necessary to have the effect of the substate
            <txGasPrice> GPRICE </txGasPrice>
            ...
          </message>
-         <activeAccounts> ... ORG |-> (ORGEMPTY => #if GAVAIL *Int GPRICE >Int 0 #then false #else ORGEMPTY #fi) MINER |-> (MINEMPTY => #if (GLIMIT -Int GAVAIL) *Int GPRICE >Int 0 #then false #else MINEMPTY #fi) ... </activeAccounts>
       requires ORG =/=Int MINER
 
     rule <k> #finalizeTx(false => true) ... </k>
@@ -610,11 +696,10 @@ After executing a transaction, it's necessary to have the effect of the substate
            <txGasPrice> GPRICE </txGasPrice>
            ...
          </message>
-         <activeAccounts> ... ACCT |-> (EMPTY => #if GLIMIT *Int GPRICE >Int 0 #then false #else EMPTY #fi) ... </activeAccounts>
 
     rule <k> #finalizeTx(true) ... </k>
          <selfDestruct> ... (SetItem(ACCT) => .Set) </selfDestruct>
-         <activeAccounts> ... (ACCT |-> _ => .Map) </activeAccounts>
+         <activeAccounts> ... (SetItem(ACCT) => .Set) </activeAccounts>
          <accounts>
            ( <account>
                <acctID> ACCT </acctID>
@@ -636,97 +721,6 @@ IELE Instructions
 
 Each subsection has a different class of instructions.
 Organization is based roughly on what parts of the execution state are needed to compute the result of each operator.
-
-### Internal Operations
-
--   `#newAccount_` allows declaring a new empty account with the given address (and assumes the rounding to 160 bits has already occured).
-    If the account already exists with non-zero nonce or non-empty code, an exception is thrown.
-    Otherwise, if the account already exists, the storage is cleared.
-
-```{.k .uiuck .rvk .standalone .node}
-    syntax InternalOp ::= "#newAccount" Int
- // ---------------------------------------
-    rule <k> #newAccount ACCT => #exception ACCT_COLLISION ... </k>
-         <account>
-           <acctID> ACCT  </acctID>
-           <code>   CODE  </code>
-           <nonce>  NONCE </nonce>
-           ...
-         </account>
-      requires CODE =/=K #emptyCode orBool NONCE =/=K 0
-
-    rule <k> #newAccount ACCT => . ... </k>
-         <account>
-           <acctID>  ACCT       </acctID>
-           <code>    #emptyCode </code>
-           <nonce>   0          </nonce>
-           <storage> _ => .Map  </storage>
-           ...
-         </account>
-
-    rule <k> #newAccount ACCT => . ... </k>
-         <activeAccounts> ACCTS (.Map => ACCT |-> true) </activeAccounts>
-         <accounts>
-           ( .Bag
-          => <account>
-               <acctID>   ACCT       </acctID>
-               <balance>  0          </balance>
-               <code>     #emptyCode </code>
-               <storage>  .Map       </storage>
-               <nonce>    0          </nonce>
-             </account>
-           )
-           ...
-         </accounts>
-      requires notBool ACCT in_keys(ACCTS)
-```
-
--   `#transferFunds` moves money from one account into another, creating the destination account if it doesn't exist.
-
-```{.k .uiuck .rvk .standalone .node}
-    syntax InternalOp ::= "#transferFunds" Int Int Int
- // --------------------------------------------------
-    rule <k> #transferFunds ACCTFROM ACCTTO VALUE => . ... </k>
-         <account>
-           <acctID> ACCTFROM </acctID>
-           <balance> ORIGFROM => ORIGFROM -Int VALUE </balance>
-           <nonce> NONCE </nonce>
-           <code> CODE </code>
-           ...
-         </account>
-         <account>
-           <acctID> ACCTTO </acctID>
-           <balance> ORIGTO => ORIGTO +Int VALUE </balance>
-           ...
-         </account>
-         <activeAccounts> ... ACCTTO |-> (EMPTY => #if VALUE >Int 0 #then false #else EMPTY #fi) ACCTFROM |-> (_ => ORIGFROM ==Int VALUE andBool NONCE ==Int 0 andBool CODE ==K #emptyCode) ... </activeAccounts>
-      requires ACCTFROM =/=K ACCTTO andBool VALUE <=Int ORIGFROM
-
-    rule <k> #transferFunds ACCTFROM ACCTTO VALUE => #exception OUT_OF_FUNDS ... </k>
-         <account>
-           <acctID> ACCTFROM </acctID>
-           <balance> ORIGFROM </balance>
-           ...
-         </account>
-      requires VALUE >Int ORIGFROM
-
-    rule <k> (. => #newAccount ACCTTO) ~> #transferFunds ACCTFROM ACCTTO VALUE ... </k>
-         <activeAccounts> ACCTS </activeAccounts>
-         <account>
-           <acctID> ACCTFROM </acctID>
-           <balance> ORIGFROM </balance>
-           ...
-         </account>
-      requires ACCTFROM =/=K ACCTTO andBool notBool ACCTTO in_keys(ACCTS) andBool VALUE <=Int ORIGFROM
-
-    rule <k> #transferFunds ACCT ACCT VALUE => . ... </k>
-         <account>
-           <acctID> ACCT </acctID>
-           <balance> ORIGFROM </balance>
-           ...
-         </account>
-      requires VALUE <=Int ORIGFROM
-```
 
 ### Invalid Operator
 
@@ -922,7 +916,9 @@ These operators make queries about the current execution state.
 
     rule <k> #exec REG = call @iele.msize    ( .Ints ) => #load REG 8 *Int MU ... </k> <peakMemory> MU </peakMemory>
     rule <k> #exec REG = call @iele.codesize ( .Ints ) => #load REG SIZE      ... </k> <programSize> SIZE </programSize>
+```
 
+```{.k .uiuck .rvk .standalone}
     rule <k> #exec REG = call @iele.blockhash ( N ) => #load REG #if N >=Int HI orBool HI -Int 256 >Int N orBool N <Int 0 #then 0 #else #parseHexWord(Keccak256(Int2String(N))) #fi ... </k> <number> HI </number> <mode> VMTESTS </mode>
     rule <k> #exec REG = call @iele.blockhash ( N ) => #load REG #blockhash(HASHES, N, HI -Int 1, 0) ... </k> <number> HI </number> <blockhash> HASHES </blockhash> <mode> NORMAL </mode>
 
@@ -1054,9 +1050,9 @@ Operators that require access to the rest of the IELE network world-state can be
            ...
          </account>
 
-    rule <k> #exec REG = call @iele.balance ( ACCT ) => #newAccount ACCT ~> #load REG 0 ... </k>
+    rule <k> (.K => #newAccount ACCT) ~> #exec REG = call @iele.balance ( ACCT ) ... </k>
          <activeAccounts> ACCTS </activeAccounts>
-      requires notBool ACCT in_keys(ACCTS)
+      requires notBool ACCT in ACCTS
 
     rule <k> #exec REG = call @iele.extcodesize ( ACCT ) => #load REG #contractSize(CODE, #mainContract(CODE)) ... </k>
          <account>
@@ -1067,7 +1063,7 @@ Operators that require access to the rest of the IELE network world-state can be
 
     rule <k> #exec REG = call @iele.extcodesize ( ACCT ) => #newAccount ACCT ~> #load REG 0 ... </k>
          <activeAccounts> ACCTS </activeAccounts>
-      requires notBool ACCT in_keys(ACCTS)
+      requires notBool ACCT in ACCTS
 ```
 
 ### Account Storage Operations
@@ -1127,7 +1123,7 @@ The various `call*` (and other inter-contract control flow) operations will be d
 
 ```{.k .uiuck .rvk .standalone .node}
     syntax InternalOp ::= "#checkCall" Int Int Int
-                        | "#call" Int Int IeleName Int Int Ints Bool
+                        | "#call" Int Int IeleName Operand Int Ints Bool [strict(4)]
                         | "#callWithCode" Int Int ProgramCell IeleName Int Int Ints Bool
                         | "#mkCall" Int Int ProgramCell IeleName Int Int Ints Bool
  // ----------------------------------------------------------------------------------
@@ -1150,14 +1146,14 @@ The various `call*` (and other inter-contract control flow) operations will be d
          </account>
       requires notBool (VALUE >Int BAL orBool CD >=Int 1024)
 
-    rule <k> #call ACCTFROM ACCTTO FUNC GLIMIT VALUE ARGS STATIC
+    rule <k> #call ACCTFROM ACCTTO FUNC GLIMIT:Int VALUE ARGS STATIC
           => #callWithCode ACCTFROM ACCTTO #precompiled FUNC GLIMIT VALUE ARGS STATIC
          ...
          </k>
          <schedule> SCHED </schedule>
       requires ACCTTO ==Int #precompiledAccount
 
-    rule <k> #call ACCTFROM ACCTTO FUNC GLIMIT VALUE ARGS STATIC
+    rule <k> #call ACCTFROM ACCTTO FUNC GLIMIT:Int VALUE ARGS STATIC
           => #callWithCode ACCTFROM ACCTTO #loadCode(CODE) FUNC GLIMIT VALUE ARGS STATIC
          ...
          </k>
@@ -1166,13 +1162,13 @@ The various `call*` (and other inter-contract control flow) operations will be d
          <code> CODE </code>
       requires ACCTTO =/=Int #precompiledAccount
 
-    rule <k> #call ACCTFROM ACCTTO FUNC GLIMIT VALUE ARGS STATIC
+    rule <k> #call ACCTFROM ACCTTO FUNC GLIMIT:Int VALUE ARGS STATIC
           => #callWithCode ACCTFROM ACCTTO #loadCode(#emptyCode) FUNC GLIMIT VALUE ARGS STATIC
          ...
          </k>
          <activeAccounts> ACCTS </activeAccounts>
          <schedule> SCHED </schedule>
-      requires ACCTTO =/=Int #precompiledAccount andBool notBool ACCTTO in_keys(ACCTS)
+      requires ACCTTO =/=Int #precompiledAccount andBool notBool ACCTTO in ACCTS
 
     rule #callWithCode ACCTFROM ACCTTO CODE FUNC GLIMIT VALUE ARGS STATIC
       => #pushCallStack ~> #pushWorldState ~> #pushSubstate
@@ -1278,7 +1274,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
 ```{.k .uiuck .rvk .standalone .node}
     rule <k> #exec REG , REGS = call @ LABEL at ACCTTO ( ARGS ) send VALUE , gaslimit GCAP
           => #checkCall ACCTFROM VALUE GCAP
-          ~> #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, VALUE, #sizeLVals(REGS), intSizes(ARGS)) VALUE ARGS false
+          ~> #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, #accountEmpty(ACCTTO), GCAP, GAVAIL, VALUE, #sizeLVals(REGS), intSizes(ARGS)) VALUE ARGS false
           ~> #return REGS REG
          ...
          </k>
@@ -1289,7 +1285,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
 
     rule <k> #exec REG , REGS = staticcall @ LABEL at ACCTTO ( ARGS ) gaslimit GCAP
           => #checkCall ACCTFROM 0 GCAP
-          ~> #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0, #sizeLVals(REGS), intSizes(ARGS)) 0 ARGS true
+          ~> #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, #accountEmpty(ACCTTO), GCAP, GAVAIL, 0, #sizeLVals(REGS), intSizes(ARGS)) 0 ARGS true
           ~> #return REGS REG
          ...
          </k>
@@ -1332,7 +1328,6 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
            <nonce> NONCE => #if EXECMODE ==K VMTESTS #then NONCE #else NONCE +Int 1 #fi </nonce>
            ...
          </account>
-         <activeAccounts> ... ACCT |-> (EMPTY => #if EXECMODE ==K VMTESTS #then EMPTY #else false #fi) ... </activeAccounts>
       requires notBool (VALUE >Int BAL orBool VALUE <Int 0 orBool CD >=Int 1024)
 
     rule #create ACCTFROM ACCTTO GAVAIL VALUE CODE ARGS
@@ -1359,7 +1354,6 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
            <nonce> NONCE => NONCE +Int 1 </nonce>
            ...
          </account>
-         <activeAccounts> ... ACCTTO |-> (EMPTY => false) ... </activeAccounts>
 
     syntax Contract ::= #subcontract ( Contract , IeleName ) [function]
  // -------------------------------------------------------------------
@@ -1398,7 +1392,6 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
            <code> _ => CODE </code>
            ...
          </account>
-         <activeAccounts> ... ACCT |-> (EMPTY => #if CODE =/=K #emptyCode #then false #else EMPTY #fi) ... </activeAccounts>
 
     rule <k> #exception STATUS ~> #finishCodeDeposit _ _ REG _ => #popCallStack ~> #popWorldState ~> #popSubstate ~> #registerDelta(REG, 1) ~> #load REG STATUS ... </k>
 ```
@@ -1460,7 +1453,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
            ...
          </account>
 
-    rule <k> (.K => #newAccount ACCT) ~> #exec _ , _ = copycreate ACCT ( _ ) send _ ... </k> <activeAccounts> ACCTS </activeAccounts> requires notBool ACCT in_keys(ACCTS)
+    rule <k> (.K => #newAccount ACCT) ~> #exec _ , _ = copycreate ACCT ( _ ) send _ ... </k> <activeAccounts> ACCTS </activeAccounts> requires notBool ACCT in ACCTS
 ```
 
 `selfdestruct` marks the current account for deletion and transfers funds out of the current account.
@@ -1488,11 +1481,8 @@ Self destructing to yourself, unlike a regular transfer, destroys the balance in
          <account>
            <acctID> ACCT </acctID>
            <balance> BALFROM => 0 </balance>
-           <nonce> NONCE </nonce>
-           <code> CODE </code>
            ...
          </account>
-         <activeAccounts> ... ACCT |-> (_ => NONCE ==Int 0 andBool CODE ==K #emptyCode) ... </activeAccounts>
          <output> _ => .Ints </output>
 endmodule
 ```
