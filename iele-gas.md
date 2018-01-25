@@ -58,7 +58,6 @@ IELE can decrease when memory cells are deallocated or resized.
 
 Note that the values returned by the above functions could be negative.
 
-
 ```{.k .uiuck .rvk .standalone .node}
     syntax InternalOp ::= "#memory" "[" Instruction "]"
  // ---------------------------------------------------
@@ -252,13 +251,22 @@ Storage contains arbitrary-precision values, therefore the memory cost of loadin
 is the cost associated with resizing the register to equal the value contained in storage.
 
 ```{.k .uiuck .rvk .standalone .node}
-    rule <k> #memory [ REG = sload INDEX ] => #registerDelta(REG, intSize(#lookup(STORAGE, INDEX))) ... </k>
+    rule <k> #memory [ REG = sload INDEX ] => #registerDelta(REG, intSize(VALUE)) ... </k>
+         <id> ACCT </id>
+         <account>
+           <acctID> ACCT </acctID>
+           <storage> ... INDEX |-> VALUE ... </storage>
+           ...
+         </account>
+
+    rule <k> (.K => #lookupStorage(ACCT, INDEX)) ~> #memory [ _ = sload INDEX ] ... </k>
          <id> ACCT </id>
          <account>
            <acctID> ACCT </acctID>
            <storage> STORAGE </storage>
            ...
          </account>
+      requires notBool INDEX in_keys(STORAGE)
 ```
 
 Storing to storage incurs no memory cost (its disk cost is included in its computational cost).
@@ -594,11 +602,11 @@ The cost of logging is similar to the cost in EVM: a constant ccost plus a cost 
 -   `sload` pays a constant cost plus a cost per word in the key, plus a cost per word loaded.
 
 ```{.k .uiuck .rvk .standalone .node}
-        rule <k> #compute [ _ = sload INDEX, SCHED ] => Gsload < SCHED > +Int Gsloadkey < SCHED > *Int intSize(INDEX) +Int Gsloadword < SCHED > *Int intSize(#lookup(STORAGE, INDEX)) ... </k>
+        rule <k> #compute [ _ = sload INDEX, SCHED ] => Gsload < SCHED > +Int Gsloadkey < SCHED > *Int intSize(INDEX) +Int Gsloadword < SCHED > *Int intSize(VALUE) ... </k>
          <id> ACCT </id>
          <account>
            <acctID> ACCT </acctID>
-           <storage> STORAGE </storage>
+           <storage> ... INDEX |-> VALUE ... </storage>
            ...
          </account>
 ```
@@ -606,13 +614,22 @@ The cost of logging is similar to the cost in EVM: a constant ccost plus a cost 
 -   `sstore` pays a constant cost plus a cost per word in the key and in the value, plus a larger cost for increasing the size of the storage of the account that is partially refunded when the storage is released.
 
 ```{.k .uiuck .rvk .standalone .node}
-    rule <k> #compute [ sstore VALUE , INDEX, SCHED ] => Csstore(SCHED, INDEX, VALUE, #lookup(STORAGE, INDEX)) ... </k>
+    rule <k> #compute [ sstore VALUE , INDEX, SCHED ] => Csstore(SCHED, INDEX, VALUE, OLDVALUE) ... </k>
+         <id> ACCT </id>
+         <account>
+           <acctID> ACCT </acctID>
+           <storage> ... INDEX |-> OLDVALUE ... </storage>
+           ...
+         </account>
+
+    rule <k> (.K => #lookupStorage(ACCT, INDEX)) ~> #compute [ sstore VALUE , INDEX, _ ] ... </k>
          <id> ACCT </id>
          <account>
            <acctID> ACCT </acctID>
            <storage> STORAGE </storage>
            ...
          </account>
+      requires notBool INDEX in_keys(STORAGE)
 ```
 
 ### Contract creation and destruction
