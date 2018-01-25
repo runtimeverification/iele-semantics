@@ -555,13 +555,11 @@ The cost to call another contract is very similar to the cost in EVM:
 -   The gas stipend paid to the callee to execute its code.
 
 ```{.k .uiuck .rvk .standalone .node}
-    rule <k> #compute [ _, RETS::LValues = call _ at ACCTTO ( ARGS ) send VALUE , gaslimit GCAP, SCHED ] => Ccall(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, VALUE, #sizeLVals(RETS), intSizes(ARGS)) ... </k>
+    rule <k> #compute [ _, RETS::LValues = call _ at ACCTTO ( ARGS ) send VALUE , gaslimit GCAP, SCHED ] => Ccall(SCHED, #accountEmpty(ACCTTO), GCAP, GAVAIL, VALUE, #sizeLVals(RETS), intSizes(ARGS)) ... </k>
          <gas> GAVAIL </gas>
-         <activeAccounts> ACCTS </activeAccounts>
 
-    rule <k> #compute [ _, RETS::LValues = staticcall _ at ACCTTO ( ARGS ) gaslimit GCAP, SCHED ] => Ccall(SCHED, ACCTTO, ACCTS, GCAP, GAVAIL, 0, #sizeLVals(RETS), intSizes(ARGS)) ... </k>
+    rule <k> #compute [ _, RETS::LValues = staticcall _ at ACCTTO ( ARGS ) gaslimit GCAP, SCHED ] => Ccall(SCHED, #accountEmpty(ACCTTO), GCAP, GAVAIL, 0, #sizeLVals(RETS), intSizes(ARGS)) ... </k>
          <gas> GAVAIL </gas>
-         <activeAccounts> ACCTS </activeAccounts>
 ```
 
 ### Logging
@@ -630,8 +628,7 @@ The cost of logging is similar to the cost in EVM: a constant ccost plus a cost 
 -   `selfdestruct` costs a fixed amount plus a cost if the account the funds are transferred to must be created.
 
 ```{.k .uiuck .rvk .standalone .node}
-    rule <k> #compute [ selfdestruct ACCTTO, SCHED ] => Cselfdestruct(SCHED, ACCTTO, ACCTS, BAL) ... </k>
-         <activeAccounts> ACCTS </activeAccounts>
+    rule <k> #compute [ selfdestruct ACCTTO, SCHED ] => Cselfdestruct(SCHED, #accountEmpty(ACCTTO), BAL) ... </k>
          <id> ACCTFROM </id>
          <account>
            <acctID> ACCTFROM </acctID>
@@ -664,48 +661,58 @@ Note: These are all functions as the operator `#compute` has already loaded all 
  // ----------------------------------------------------------
     rule Csstore(SCHED, INDEX, VALUE, OLDVALUE) => Gsstore < SCHED > +Int Gsstorekey < SCHED > *Int intSize(INDEX) +Int Gsstoreword < SCHED > *Int intSize(VALUE) +Int #if VALUE =/=Int 0 andBool OLDVALUE ==Int 0 #then Gsstoresetkey < SCHED > *Int intSize(INDEX) +Int Gsstoreset < SCHED > *Int intSize(VALUE) #else maxInt(0, Gsstoreset < SCHED > *Int (intSize(VALUE) -Int intSize(OLDVALUE))) #fi
 
-    syntax Int ::= Ccall    ( Schedule , Int , Map , Int , Int , Int , Int , Int ) [function]
-                 | Ccallgas ( Schedule , Int , Map , Int , Int , Int , Int , Int ) [function]
-                 | Cgascap  ( Schedule , Int , Int , Int )                         [function]
-                 | Cextra   ( Schedule , Int , Map , Int , Int , Int )             [function]
+    syntax Operand ::= Ccall    ( Schedule , BExp , Int , Int , Int , Int , Int )  [strict(2)]
+                     | Ccallgas ( Schedule , BExp , Int , Int , Int , Int , Int )  [strict(2)]
+    syntax Int ::= Cgascap  ( Schedule , Int , Int , Int )                         [function]
+                 | Cextra   ( Schedule , Bool , Int , Int , Int )                  [function]
                  | Cxfer    ( Schedule , Int )                                     [function]
-                 | Cnew     ( Schedule , Int , Map , Int )                         [function]
+                 | Cnew     ( Schedule , Bool , Int )                              [function]
                  | Ccallmem ( Schedule , Int , Int )                               [function]
  // -----------------------------------------------------------------------------------------
-    rule Ccall(SCHED, ACCT, ACCTS, GCAP, GAVAIL, VALUE, RETS, ARGS) => Cextra(SCHED, ACCT, ACCTS, VALUE, RETS, ARGS) +Int Cgascap(SCHED, GCAP, GAVAIL, Cextra(SCHED, ACCT, ACCTS, VALUE, RETS, ARGS))
+    rule Ccall(SCHED, ISEMPTY:Bool, GCAP, GAVAIL, VALUE, RETS, ARGS) => Cextra(SCHED, ISEMPTY, VALUE, RETS, ARGS) +Int Cgascap(SCHED, GCAP, GAVAIL, Cextra(SCHED, ISEMPTY, VALUE, RETS, ARGS))
 
-    rule Ccallgas(SCHED, ACCT, ACCTS, GCAP, GAVAIL, 0, RETS, ARGS)     => Cgascap(SCHED, GCAP, GAVAIL, Cextra(SCHED, ACCT, ACCTS,     0, RETS, ARGS))
-    rule Ccallgas(SCHED, ACCT, ACCTS, GCAP, GAVAIL, VALUE, RETS, ARGS) => Cgascap(SCHED, GCAP, GAVAIL, Cextra(SCHED, ACCT, ACCTS, VALUE, RETS, ARGS)) +Int Gcallstipend < SCHED > requires VALUE =/=K 0
+    rule Ccallgas(SCHED, ISEMPTY:Bool, GCAP, GAVAIL, 0, RETS, ARGS)     => Cgascap(SCHED, GCAP, GAVAIL, Cextra(SCHED, ISEMPTY,     0, RETS, ARGS))
+    rule Ccallgas(SCHED, ISEMPTY:Bool, GCAP, GAVAIL, VALUE, RETS, ARGS) => Cgascap(SCHED, GCAP, GAVAIL, Cextra(SCHED, ISEMPTY, VALUE, RETS, ARGS)) +Int Gcallstipend < SCHED > requires VALUE =/=K 0
 
     rule Cgascap(SCHED, GCAP, GAVAIL, GEXTRA) => minInt(#allBut64th(GAVAIL -Int GEXTRA), GCAP) requires GAVAIL >=Int GEXTRA andBool notBool Gstaticcalldepth << SCHED >>
     rule Cgascap(SCHED, GCAP, GAVAIL, GEXTRA) => GCAP                                          requires GAVAIL <Int  GEXTRA orBool Gstaticcalldepth << SCHED >>
 
-    rule Cextra(SCHED, ACCT, ACCTS, VALUE, RETS, ARGS) => Gcall < SCHED > +Int Cnew(SCHED, ACCT, ACCTS, VALUE) +Int Cxfer(SCHED, VALUE) +Int Ccallmem(SCHED, RETS, ARGS)
+    rule Cextra(SCHED, ISEMPTY, VALUE, RETS, ARGS) => Gcall < SCHED > +Int Cnew(SCHED, ISEMPTY, VALUE) +Int Cxfer(SCHED, VALUE) +Int Ccallmem(SCHED, RETS, ARGS)
 
     rule Cxfer(SCHED, 0) => 0
     rule Cxfer(SCHED, N) => Gcallvalue < SCHED > requires N =/=K 0
 
-    rule Cnew(SCHED, ACCT, ACCTS, VALUE) => Gnewaccount < SCHED >
-      requires         #accountNonexistent(SCHED, ACCT, ACCTS) andBool VALUE =/=Int 0
-    rule Cnew(SCHED, ACCT, ACCTS, VALUE) => 0
-      requires notBool #accountNonexistent(SCHED, ACCT, ACCTS) orBool  VALUE  ==Int 0
+    rule Cnew(SCHED, ISEMPTY:Bool, VALUE) => Gnewaccount < SCHED >
+      requires         ISEMPTY andBool VALUE =/=Int 0
+    rule Cnew(SCHED, ISEMPTY:Bool, VALUE) => 0
+      requires notBool ISEMPTY orBool  VALUE  ==Int 0
 
     rule Ccallmem(SCHED, RETS, ARGS) => Gmove < SCHED > *Int RETS +Int Gcopy < SCHED > *Int ARGS
 
-    syntax Int ::= Cselfdestruct ( Schedule , Int , Map , Int ) [function]
- // ----------------------------------------------------------------------
-    rule Cselfdestruct(SCHED, ACCT, ACCTS, BAL) => Gselfdestruct < SCHED > +Int Gnewaccount < SCHED >
-      requires (#accountNonexistent(SCHED, ACCT, ACCTS)) andBool (        Gselfdestructnewaccount << SCHED >>) andBool BAL =/=Int 0
-    rule Cselfdestruct(SCHED, ACCT, ACCTS, BAL) => Gselfdestruct < SCHED >
-      requires (#accountNonexistent(SCHED, ACCT, ACCTS)) andBool (notBool Gselfdestructnewaccount << SCHED >>  orBool  BAL  ==Int 0)
-    rule Cselfdestruct(SCHED, ACCT, ACCTS, BAL) => Gselfdestruct < SCHED >
-      requires notBool #accountNonexistent(SCHED, ACCT, ACCTS)
+    syntax Int ::= Cselfdestruct ( Schedule , BExp , Int ) [strict(2)]
+ // ------------------------------------------------------------------
+    rule Cselfdestruct(SCHED, ISEMPTY:Bool, BAL) => Gselfdestruct < SCHED > +Int Gnewaccount < SCHED >
+      requires ISEMPTY andBool (        Gselfdestructnewaccount << SCHED >>) andBool BAL =/=Int 0
+    rule Cselfdestruct(SCHED, ISEMPTY:Bool, BAL) => Gselfdestruct < SCHED >
+      requires ISEMPTY andBool (notBool Gselfdestructnewaccount << SCHED >>  orBool  BAL  ==Int 0)
+    rule Cselfdestruct(SCHED, ISEMPTY:Bool, BAL) => Gselfdestruct < SCHED >
+      requires notBool ISEMPTY
 
-    syntax Bool ::= #accountNonexistent ( Schedule , Int , Map ) [function]
-                  | #accountEmpty ( Int , Map )                  [function]
- // -----------------------------------------------------------------------
-    rule #accountNonexistent(SCHED, ACCT, ACCTS) => notBool ACCT in_keys(ACCTS) orBool #accountEmpty(ACCT, ACCTS)
-    rule #accountEmpty(ACCT, (ACCT |-> EMPTY) _) => EMPTY
+    syntax KResult ::= Bool
+    syntax BExp ::= Bool
+                  | #accountEmpty(Int)
+ // ----------------------------------
+    rule <k> #accountEmpty(ACCT) => CODE ==K #emptyCode andBool NONCE ==Int 0 andBool BAL ==Int 0 ... </k>
+         <account>
+           <acctID> ACCT </acctID>
+           <code> CODE </code>
+           <nonce> NONCE </nonce>
+           <balance> BAL </balance>
+           ...
+         </account>
+    rule <k> (.K => #newAccount ACCT) ~> #accountEmpty(ACCT) ... </k>
+         <activeAccounts> ACCTS </activeAccounts>
+      requires notBool ACCT in ACCTS
 
     syntax Int ::= #allBut64th ( Int ) [function]
  // ---------------------------------------------
