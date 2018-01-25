@@ -434,7 +434,9 @@ Some instructions require an argument to be interpreted as an address (modulo 16
            <storage> _ => .Map  </storage>
            ...
          </account>
+```
 
+```{.k .uiuck .rvk .standalone}
     rule <k> #newAccount ACCT => . ... </k>
          <activeAccounts> ACCTS (.Set => SetItem(ACCT)) </activeAccounts>
          <accounts>
@@ -450,6 +452,30 @@ Some instructions require an argument to be interpreted as an address (modulo 16
            ...
          </accounts>
       requires notBool ACCT in ACCTS
+```
+
+-   `#lookupStorage` loads the `<storage> cell with the storage value for a particular key in the account.
+
+```{.k .uiuck .rvk .standalone .node}
+    syntax InternalOp ::= #lookupStorage ( Int , Int )
+ // --------------------------------------------------
+    rule <k> #lookupStorage(ACCT, INDEX) => . ... </k>
+         <account>
+           <acctID>  ACCT    </acctID>
+           <storage> STORAGE </storage>
+           ...
+         </account>
+      requires INDEX in_keys(STORAGE)
+```
+
+```{.k .uiuck .rvk .standalone}
+    rule <k> #lookupStorage(ACCT, INDEX) => . ... </k>
+         <account>
+           <acctID>  ACCT                              </acctID>
+           <storage> STORAGE => STORAGE [ INDEX <- 0 ] </storage>
+           ...
+         </account>
+      requires notBool INDEX in_keys(STORAGE)
 ```
 
 -   `#transferFunds` moves money from one account into another, creating the destination account if it doesn't exist.
@@ -1074,14 +1100,6 @@ These operations interact with the account storage.
 -   `sstore VALUE, INDEX` stores the VALUE at INDEX in the account storage.
 
 ```{.k .uiuck .rvk .standalone .node}
-    rule <k> #exec REG = sload INDEX => #load REG 0 ... </k>
-         <id> ACCT </id>
-         <account>
-           <acctID> ACCT </acctID>
-           <storage> STORAGE </storage>
-           ...
-         </account> requires notBool INDEX in_keys(STORAGE)
-
     rule <k> #exec REG = sload INDEX => #load REG VALUE ... </k>
          <id> ACCT </id>
          <account>
@@ -1097,17 +1115,8 @@ These operations interact with the account storage.
            <storage> ... (INDEX |-> (OLD => VALUE)) ... </storage>
            ...
          </account>
-         <refund> R => R +Int Gsstoreset < SCHED > *Int maxInt(0, intSize(VALUE) -Int intSize(OLD)) </refund>
+         <refund> R => R +Int Gsstoreset < SCHED > *Int maxInt(0, intSize(OLD) -Int intSize(VALUE)) </refund>
          <schedule> SCHED </schedule>
-
-    rule <k> #exec sstore VALUE , INDEX => . ... </k>
-         <id> ACCT </id>
-         <account>
-           <acctID> ACCT </acctID>
-           <storage> STORAGE => STORAGE [ INDEX <- VALUE ] </storage>
-           ...
-         </account>
-      requires notBool (INDEX in_keys(STORAGE))
 ```
 
 ### Call Operations
