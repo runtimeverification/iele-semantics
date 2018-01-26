@@ -26,9 +26,3 @@
 /tmp
 
 # TODO: The RVK make recipie should be putting these in .build
-/KRYPTO.cmi
-/KRYPTO.cmx
-/KRYPTO.o
-/semantics.a
-/semantics.cmxa
-
