@@ -8,9 +8,9 @@ K_VERSION=rvk
 all: build split-vm-tests
 
 clean:
-	rm -rf .build/rvk
+	rm -rf .build/rvk .build/plugin
 
-build: tangle .build/${K_VERSION}/ethereum-kompiled/extras/timestamp assembler
+build: tangle .build/${K_VERSION}/ethereum-kompiled/interpreter assembler
 
 assembler:
 	cd compiler && stack build --install-ghc
@@ -21,13 +21,18 @@ assembler:
 tangle: defn proofs
 
 defn_dir=.build/${K_VERSION}
-defn_files=${defn_dir}/ethereum.k ${defn_dir}/data.k ${defn_dir}/iele.k ${defn_dir}/iele-gas.k ${defn_dir}/iele-binary.k ${defn_dir}/krypto.k ${defn_dir}/iele-syntax.k
+defn_files=${defn_dir}/ethereum.k ${defn_dir}/data.k ${defn_dir}/iele.k ${defn_dir}/iele-gas.k ${defn_dir}/iele-binary.k ${defn_dir}/krypto.k ${defn_dir}/iele-syntax.k ${defn_dir}/iele-node.k
 defn: $(defn_files)
+
+NODE?=standalone
 
 .build/${K_VERSION}/%.k: %.md
 	@echo "==  tangle: $@"
 	mkdir -p $(dir $@)
-	pandoc --from markdown --to tangle.lua --metadata=code:"k $(K_VERSION) standalone" $< > $@
+	pandoc --from markdown --to tangle.lua --metadata=code:"k $(K_VERSION) $(NODE)" $< > $@
+
+node: all
+node: NODE=node
 
 proof_dir=tests/proofs
 proof_files= 
@@ -104,19 +109,25 @@ deps:
 	opam repository add k "tests/ci/rv-k/k-distribution/target/release/k/lib/opam" || opam repository set-url k "tests/ci/rv-k/k-distribution/target/release/k/lib/opam"
 	opam update
 	opam switch 4.03.0+k
-	opam install mlgmp zarith uuidm cryptokit secp256k1 bn128 hex
+	opam install mlgmp zarith uuidm cryptokit secp256k1 bn128 hex ocaml-protoc
 
-.build/rvk/ethereum-kompiled/extras/timestamp: .build/rvk/ethereum-kompiled/interpreter
-.build/rvk/ethereum-kompiled/interpreter: $(defn_files) KRYPTO.ml
+.build/rvk/ethereum-kompiled/constants.cmx: $(defn_files)
 	@echo "== kompile: $@"
 	${KOMPILE} --debug --main-module ETHEREUM-SIMULATION \
 					--syntax-module IELE-SYNTAX $< --directory .build/rvk \
-					--hook-namespaces KRYPTO --gen-ml-only -O3 --non-strict
+					--hook-namespaces "KRYPTO MANTIS" --gen-ml-only -O3 --non-strict
 	ocamlfind opt -O3 -c .build/rvk/ethereum-kompiled/constants.ml -package gmp -package zarith -safe-string
-	ocamlfind opt -O3 -c -I .build/rvk/ethereum-kompiled KRYPTO.ml -package cryptokit -package secp256k1 -package bn128 -safe-string
-	ocamlfind opt -a -o semantics.cmxa KRYPTO.cmx
+
+.build/plugin/semantics.cmxa: iele-semantics-plugin/KRYPTO.ml .build/rvk/ethereum-kompiled/constants.cmx
+	mkdir -p .build/plugin
+	cp iele-semantics-plugin/*.ml iele-semantics-plugin/*.mli .build/plugin
+	ocaml-protoc iele-semantics-plugin/proto/*.proto -ml_out .build/plugin
+	cd .build/plugin && ocamlfind opt -O3 -c -I ../rvk/ethereum-kompiled msg_types.mli msg_types.ml world.mli world.ml caching.mli caching.ml MANTIS.ml KRYPTO.ml -package cryptokit -package secp256k1 -package bn128 -safe-string
+	cd .build/plugin && ocamlfind opt -a -o semantics.cmxa KRYPTO.cmx msg_types.cmx world.cmx caching.cmx MANTIS.cmx
 	ocamlfind remove iele-semantics-plugin
-	ocamlfind install iele-semantics-plugin META semantics.cmxa semantics.a KRYPTO.cmi KRYPTO.cmx
+	ocamlfind install iele-semantics-plugin iele-semantics-plugin/META .build/plugin/semantics.cmxa .build/plugin/semantics.a .build/plugin/*.cmi .build/plugin/*.cmx
+
+.build/rvk/ethereum-kompiled/interpreter: .build/plugin/semantics.cmxa
 	ocamllex .build/rvk/ethereum-kompiled/lexer.mll
 	ocamlyacc .build/rvk/ethereum-kompiled/parser.mly
 	cd .build/rvk/ethereum-kompiled && ocamlfind opt -O3 -c -package gmp -package zarith -package uuidm -safe-string -inline 20 -nodynlink prelude.ml plugin.ml parser.mli parser.ml lexer.ml run.ml

@@ -7,7 +7,13 @@ Actual execution of IELE is defined in [the IELE file](iele.md).
 ```{.k .uiuck .rvk .standalone .node}
 requires "iele.k"
 requires "iele-binary.k"
+```
 
+```{.k .uiuck .rvk .node}
+requires "iele-node.k"
+```
+
+```{.k .uiuck .rvk .standalone .node}
 module ETHEREUM-SIMULATION
     imports IELE
     imports IELE-BINARY
@@ -19,6 +25,10 @@ module ETHEREUM-SIMULATION
 
 ```{.k .rvk .standalone .node}
     imports K-REFLECTION
+```
+
+```{.k .uiuck .rvk .node}
+    imports IELE-NODE
 ```
 
 A IELE simulation is a list of IELE commands.
