@@ -14,6 +14,7 @@ module IELE-DATA
     imports STRING-BUFFER
     imports ARRAY
     imports IELE-COMMON
+    imports DOMAINS
 
     syntax KResult ::= Int
 ```

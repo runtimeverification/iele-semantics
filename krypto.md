@@ -6,6 +6,7 @@ Here we implement the various cryptographic primitives needed for IELE.
 ```{.k .uiuck .rvk}
 module KRYPTO
     imports STRING-SYNTAX
+    imports LIST
 ```
 
 -   `Keccak256` takes a string and returns a 64-character hex-encoded string of the 32-byte keccak256 hash of the string.
