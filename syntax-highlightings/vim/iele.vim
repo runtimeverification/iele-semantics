@@ -37,8 +37,7 @@ syn match ieleContractName   contained "[a-zA-Z0-9\\_\\-\\$\\.]\+"
 syn match ieleContract       "\(external\s\+\)\{0,1\}contract\s\+" nextgroup=ieleContractName skipwhite 
 
 " Function
-syn match ieleFunctionName   contained "@[a-zA-Z0-9\\_\\-\\$\\.]\+" 
-syn match ieleFunction       "define\s\+\(public\s\+\)\{0,1\}" nextgroup=ieleFunctionName skipwhite
+syn match ieleFunction       "define\s\+\(public\s\+\)\{0,1\}" nextgroup=ieleGlobalVariable skipwhite
 
 " Wrap up
 let b:current_syntax = "iele"
@@ -50,11 +49,10 @@ hi def link ieleNumber       Number
 hi def link ieleFloat        Float
 hi def link ieleString       String
 hi def link ieleVoid         Constant
-" hi def link ieleVariable     Identifier 
+hi def link ieleVariable     Identifier 
 hi def link ieleKeyword      Keyword 
 hi def link ieleLabel        Label
 hi def link ieleContractName Type 
 hi def link ieleContract     Keyword
-hi def link ieleFunctionName Function
 hi def link ieleFunction     Keyword
 
