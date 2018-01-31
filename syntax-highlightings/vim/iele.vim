@@ -41,6 +41,7 @@ syn match ieleKeywordMatch "\s*\(iszero\|not\|add\|sub\|mul\|div\|exp\|mod\|addm
 
 " Contract
 syn match ieleContractName   contained "[a-zA-Z0-9\\_\\-\\$\\.]\+"
+highlight ieleContractName   cterm=bold term=bold ctermfg=Cyan
 syn match ieleContract       "\(external\s\+\)\{0,1\}contract\s\+" nextgroup=ieleContractName skipwhite 
 
 " Function
@@ -66,4 +67,5 @@ hi def link ieleKeywordMatch     Keyword
 hi def link ieleContractName     Type 
 hi def link ieleContract         Keyword
 hi def link ieleFunction         Keyword
+
 
