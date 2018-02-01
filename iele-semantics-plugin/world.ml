@@ -8,12 +8,12 @@ module type WorldState = sig
 end
 
 let of_z z = 
-  let sign = if (Z.lt z Z.zero) then "\000" else "\001" in
+  let sign = if (Z.lt z Z.zero) then "\001" else "\000" in
   let str = sign ^ (Z.to_bits z) in
   Bytes.of_string str
 
 let to_z b =
-  let sign = if Bytes.get b 0 = '\000' then Z.neg Z.one else Z.one in
+  let sign = if Bytes.get b 0 = '\001' then Z.neg Z.one else Z.one in
   let magnitude = Z.of_bits (Bytes.to_string (Bytes.sub b 1 ((Bytes.length b) - 1))) in
   Z.mul sign magnitude
 

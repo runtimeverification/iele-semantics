@@ -134,3 +134,8 @@ deps:
 	cd .build/rvk/ethereum-kompiled && ocamlfind opt -O3 -c -w -11-26 -package gmp -package zarith -package uuidm -package iele-semantics-plugin -safe-string realdef.ml -match-context-rows 2
 	cd .build/rvk/ethereum-kompiled && ocamlfind opt -O3 -shared -o realdef.cmxs realdef.cmx
 	cd .build/rvk/ethereum-kompiled && ocamlfind opt -o interpreter constants.cmx prelude.cmx plugin.cmx parser.cmx lexer.cmx run.cmx interpreter.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin -linkpkg -inline 20 -nodynlink -O3 -linkall
+
+.build/vm/iele-vm: node $(wildcard iele-vm/*.ml iele-vm/*.mli)
+	mkdir -p .build/vm
+	cp iele-vm/*.ml iele-vm/*.mli .build/vm
+	cd .build/vm && ocamlfind opt -I ../rvk/ethereum-kompiled -o iele-vm constants.cmx prelude.cmx plugin.cmx parser.cmx lexer.cmx run.cmx ieleVM.mli ieleVM.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin -linkpkg -inline 20 -nodynlink -O3 -linkall

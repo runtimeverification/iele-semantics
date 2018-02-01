@@ -49,5 +49,60 @@ module IELE-NODE
     rule #exec REG = call @iele.blockhash ( N ) => #load REG 0
       requires N <Int 0 orBool N >=Int 256
 
+    syntax IELECommand ::= runVM(iscreate: Bool, to: Int, from: Int, code: String, args: List, value: Int, gasprice: Int, gas: Int, beneficiary: Int, difficulty: Int, number: Int, gaslimit: Int, timestamp: Int, function: String)
+
+    rule <k> (.K => #newAccount ACCTFROM) ~> runVM(... from: ACCTFROM) ... </k>
+         <activeAccounts> .Set </activeAccounts>
+
+    rule <k> runVM(true, _, ACCTFROM, CODESTR, ARGS, VALUE, GPRICE, GAVAIL, CB, DIFF, NUMB, GLIMIT, TS, _)
+          => #fun(CODE => #create ACCTFROM #newAddr(ACCTFROM, NONCE -Int 1) (GAVAIL -Int G0(SCHED, CODE, #toInts(ARGS), true)) VALUE #dasmContract(CODE, Main) #toInts(ARGS)
+          ~> #codeDeposit #newAddr(ACCTFROM, NONCE -Int 1) #sizeWordStack(CODE) #dasmContract(CODE, Main) %0 %1 true)(#parseByteStackRaw(CODESTR))
+         ...
+         </k>
+         <schedule> SCHED </schedule>
+         <gasPrice> _ => GPRICE </gasPrice>
+         <origin> _ => ACCTFROM </origin>
+         <callDepth> _ => -1 </callDepth>
+         <beneficiary> _ => CB </beneficiary>
+         <difficulty> _ => DIFF </difficulty>
+         <number> _ => NUMB </number>
+         <gasLimit> _ => GLIMIT </gasLimit>
+         <timestamp> _ => TS </timestamp>
+         <account>
+           <acctID> ACCTFROM </acctID>
+           <nonce> NONCE </nonce>
+           ...
+         </account>
+
+    rule <k> runVM(false, ACCTTO, ACCTFROM, _, ARGS, VALUE, GPRICE, GAVAIL, CB, DIFF, NUMB, GLIMIT, TS, FUNC)
+          => #call ACCTFROM ACCTTO {#parseToken("IeleName", FUNC)}:>IeleName (GAVAIL -Int G0(SCHED, .WordStack, #toInts(ARGS), false)) VALUE #toInts(ARGS) false
+          ~> #endVM
+         ...
+         </k>
+         <schedule> SCHED </schedule>
+         <gasPrice> _ => GPRICE </gasPrice>
+         <origin> _ => ACCTFROM </origin>
+         <callDepth> _ => -1 </callDepth>
+         <beneficiary> _ => CB </beneficiary>
+         <difficulty> _ => DIFF </difficulty>
+         <number> _ => NUMB </number>
+         <gasLimit> _ => GLIMIT </gasLimit>
+         <timestamp> _ => TS </timestamp>
+
+    syntax IELECommand ::= "#endVM"
+ // -------------------------------
+    rule <k> #exception STATUS ~> #endVM => #popCallStack ~> #popWorldState ~> #popSubstate ~> STATUS </k>
+         <output> _ => .Ints </output>
+    rule <k> #revert OUT       ~> #endVM => #popCallStack ~> #popWorldState ~> #popSubstate ~> #refund GAVAIL ~> OUT </k>
+         <gas> GAVAIL </gas>       
+
+    rule <k> #end ~> #endVM => #popCallStack ~> #dropWorldState ~> #dropSubstate ~> #refund GAVAIL ~> 0 </k>
+         <gas> GAVAIL </gas>
+
+    syntax Ints ::= #toInts(List) [function, klabel(ListToInts)]
+ // ------------------------------------------------------------
+    rule #toInts(.List) => .Ints
+    rule #toInts(ListItem(I) L) => I , #toInts(L)
+
 endmodule
 ```
