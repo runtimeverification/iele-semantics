@@ -16,3 +16,7 @@ end
 
 module InMemoryWorldState (Hashes : MockBlockhash) : WorldState
 module NetworkWorldState : WorldState
+
+val serve : Unix.sockaddr
+            -> (Msg_types.call_context -> Msg_types.call_result)
+            -> unit
