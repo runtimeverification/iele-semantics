@@ -718,8 +718,9 @@ Note: These are all functions as the operator `#compute` has already loaded all 
     syntax KResult ::= Bool
     syntax BExp ::= Bool
                   | #accountEmpty(Int)
- // ----------------------------------
-    rule <k> #accountEmpty(ACCT) => CODE ==K #emptyCode andBool NONCE ==Int 0 andBool BAL ==Int 0 ... </k>
+                  | #accountEmpty(Contract, Int, Int) [klabel(accountEmpty), function]
+ // ----------------------------------------------------------------------------------
+    rule <k> #accountEmpty(ACCT) => #accountEmpty(CODE, NONCE, BAL) ... </k>
          <account>
            <acctID> ACCT </acctID>
            <code> CODE </code>
@@ -730,6 +731,8 @@ Note: These are all functions as the operator `#compute` has already loaded all 
     rule <k> (.K => #loadAccount ACCT) ~> #accountEmpty(ACCT) ... </k>
          <activeAccounts> ACCTS </activeAccounts>
       requires notBool ACCT in ACCTS
+
+    rule #accountEmpty(CODE, NONCE, BAL) => CODE ==K #emptyCode andBool NONCE ==Int 0 andBool BAL ==Int 0
 
     syntax Int ::= #allBut64th ( Int ) [function]
  // ---------------------------------------------
