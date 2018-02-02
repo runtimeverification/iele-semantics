@@ -3,6 +3,12 @@ open Constants.K
 open World
 
 module Cache = Caching.Make(World.InMemoryWorldState)
+(*
+let get_blockhashes config = match config with
+  [KApply7(Lbl'_LT_'generatedTop'_GT_', _, _, _, _, _, [KApply15(Lbl'_LT_'iele'_GT_', _, _, _, _, _, _, _, _, _, _, _, _, _, _, [KApply1(Lbl'_LT_'blockhash'_GT_', [List(_,_,hashes)])])], _)] ->
+  Array.map (function [Int hash] -> of_z hash | _ -> failwith "invalid block hash") (Array.of_list hashes)
+| _ -> failwith "get_blockhashes"
+*)
 
 let hook_getBalance c _ _ config _ = match c with
   [Int acct] ->
