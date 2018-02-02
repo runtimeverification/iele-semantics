@@ -410,14 +410,15 @@ Some instructions require an argument to be interpreted as an address (modulo 16
 
 ### Internal Operations
 
--   `#newAccount_` allows declaring a new empty account with the given address (and assumes the rounding to 160 bits has already occured).
+-   `#loadAccount_` allows declaring a new empty account with the given address (and assumes the rounding to 160 bits has already occured).
     If the account already exists with non-zero nonce or non-empty code, an exception is thrown.
     Otherwise, if the account already exists, the storage is cleared.
 
 ```{.k .uiuck .rvk .standalone .node}
-    syntax InternalOp ::= "#newAccount" Int
- // ---------------------------------------
-    rule <k> #newAccount ACCT => #exception ACCT_COLLISION ... </k>
+    syntax InternalOp ::= "#loadAccount" Int
+                        | "#initAccount" Int
+ // ----------------------------------------
+    rule <k> #initAccount ACCT => #exception ACCT_COLLISION ... </k>
          <account>
            <acctID> ACCT  </acctID>
            <code>   CODE  </code>
@@ -426,7 +427,7 @@ Some instructions require an argument to be interpreted as an address (modulo 16
          </account>
       requires CODE =/=K #emptyCode orBool NONCE =/=K 0
 
-    rule <k> #newAccount ACCT => . ... </k>
+    rule <k> #initAccount ACCT => . ... </k>
          <account>
            <acctID>  ACCT       </acctID>
            <code>    #emptyCode </code>
@@ -434,19 +435,20 @@ Some instructions require an argument to be interpreted as an address (modulo 16
            <storage> _ => .Map  </storage>
            ...
          </account>
+
+    rule <k> (.K => #loadAccount ACCT) ~> #initAccount ACCT ... </k>
+         <activeAccounts> ACCTS </activeAccounts>
+      requires notBool ACCT in ACCTS
 ```
 
 ```{.k .uiuck .rvk .standalone}
-    rule <k> #newAccount ACCT => . ... </k>
+    rule <k> #loadAccount ACCT => . ... </k>
          <activeAccounts> ACCTS (.Set => SetItem(ACCT)) </activeAccounts>
          <accounts>
            ( .Bag
           => <account>
-               <acctID>   ACCT       </acctID>
-               <balance>  0          </balance>
-               <code>     #emptyCode </code>
-               <storage>  .Map       </storage>
-               <nonce>    0          </nonce>
+               <acctID>    ACCT       </acctID>
+               ...
              </account>
            )
            ...
@@ -511,7 +513,7 @@ Some instructions require an argument to be interpreted as an address (modulo 16
          </account>
       requires VALUE >Int ORIGFROM
 
-    rule <k> (. => #newAccount ACCTTO) ~> #transferFunds ACCTFROM ACCTTO VALUE ... </k>
+    rule <k> (. => #loadAccount ACCTTO) ~> #transferFunds ACCTFROM ACCTTO VALUE ... </k>
          <activeAccounts> ACCTS </activeAccounts>
          <account>
            <acctID> ACCTFROM </acctID>
@@ -669,7 +671,7 @@ After executing a transaction, it's necessary to have the effect of the substate
            ...
          </account>
 
-    rule <k> (.K => #newAccount MINER) ~> #finalizeTx(_)... </k>
+    rule <k> (.K => #loadAccount MINER) ~> #finalizeTx(_)... </k>
          <mode> NORMAL </mode>
          <beneficiary> MINER </beneficiary>
          <activeAccounts> ACCTS </activeAccounts>
@@ -1083,7 +1085,7 @@ Operators that require access to the rest of the IELE network world-state can be
            ...
          </account>
 
-    rule <k> (.K => #newAccount ACCT) ~> #exec REG = call @iele.balance ( ACCT ) ... </k>
+    rule <k> (.K => #loadAccount ACCT) ~> #exec REG = call @iele.balance ( ACCT ) ... </k>
          <activeAccounts> ACCTS </activeAccounts>
       requires notBool ACCT in ACCTS
 
@@ -1102,7 +1104,7 @@ Operators that require access to the rest of the IELE network world-state can be
            ...
          </account>
 
-    rule <k> (.K => #newAccount ACCT) ~> #exec REG = call @iele.extcodesize ( ACCT ) ... </k>
+    rule <k> (.K => #loadAccount ACCT) ~> #exec REG = call @iele.extcodesize ( ACCT ) ... </k>
          <activeAccounts> ACCTS </activeAccounts>
       requires notBool ACCT in ACCTS
 ```
@@ -1189,7 +1191,7 @@ The various `call*` (and other inter-contract control flow) operations will be d
          <code> .Contract </code>
       requires ACCT =/=Int #precompiledAccount
 
-    rule <k> (.K => #newAccount ACCT) ~> #call _ ACCT _ _ _ _ _ ... </k>
+    rule <k> (.K => #loadAccount ACCT) ~> #call _ ACCT _ _ _ _ _ ... </k>
          <activeAccounts> ACCTS </activeAccounts>
       requires ACCT =/=Int #precompiledAccount andBool notBool ACCT in ACCTS
 
@@ -1353,7 +1355,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
 
     rule #create ACCTFROM ACCTTO GAVAIL VALUE CODE ARGS
       => #pushCallStack ~> #pushWorldState ~> #pushSubstate
-      ~> #newAccount ACCTTO
+      ~> #initAccount ACCTTO
       ~> #transferFunds ACCTFROM ACCTTO VALUE
       ~> #mkCreate ACCTFROM ACCTTO CODE GAVAIL VALUE ARGS
 
@@ -1481,7 +1483,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
            ...
          </account>
 
-    rule <k> (.K => #newAccount ACCT) ~> #exec _ , _ = copycreate ACCT ( _ ) send _ ... </k> <activeAccounts> ACCTS </activeAccounts> requires notBool ACCT in ACCTS
+    rule <k> (.K => #loadAccount ACCT) ~> #exec _ , _ = copycreate ACCT ( _ ) send _ ... </k> <activeAccounts> ACCTS </activeAccounts> requires notBool ACCT in ACCTS
 ```
 
 `selfdestruct` marks the current account for deletion and transfers funds out of the current account.

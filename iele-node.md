@@ -7,7 +7,7 @@ module IELE-NODE
     syntax Int ::= #getBalance(Int) [function, hook(MANTIS.getBalance)]
                  | #getNonce(Int) [function, hook(MANTIS.getNonce)]
  // ---------------------------------------------------------------------------
-    rule <k> #newAccount ACCT => . ... </k>
+    rule <k> #loadAccount ACCT => . ... </k>
          <activeAccounts> ACCTS (.Set => SetItem(ACCT)) </activeAccounts>
          <accounts>
            ( .Bag

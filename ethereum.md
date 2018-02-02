@@ -222,7 +222,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            ...
          </account>
 
-    rule <k> (.K => #newAccount MINER) ~> #finalizeBlock ... </k>
+    rule <k> (.K => #loadAccount MINER) ~> #finalizeBlock ... </k>
          <beneficiary> MINER </beneficiary>
          <activeAccounts> ACCTS </activeAccounts>
       requires notBool MINER in ACCTS
@@ -336,7 +336,7 @@ State Manipulation
 ```{.k .uiuck .rvk .standalone .node}
     syntax IELECommand ::= "mkAcct" Int
  // -----------------------------------
-    rule <k> mkAcct ACCT => #newAccount ACCT ... </k>
+    rule <k> mkAcct ACCT => #loadAccount ACCT ... </k>
 ```
 
 -   `load` loads an account or transaction into the world state.

@@ -727,7 +727,7 @@ Note: These are all functions as the operator `#compute` has already loaded all 
            <balance> BAL </balance>
            ...
          </account>
-    rule <k> (.K => #newAccount ACCT) ~> #accountEmpty(ACCT) ... </k>
+    rule <k> (.K => #loadAccount ACCT) ~> #accountEmpty(ACCT) ... </k>
          <activeAccounts> ACCTS </activeAccounts>
       requires notBool ACCT in ACCTS
 
