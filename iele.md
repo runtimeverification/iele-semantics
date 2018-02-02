@@ -1048,23 +1048,23 @@ This is a right cons-list of `SubstateLogEntry` (which contains the account ID a
 The `log` instruction logs an entire memory cell to the substate log with zero to four log topics.
 
 ```{.k .uiuck .rvk .standalone .node}
-    syntax SubstateLogEntry ::= "{" Int "|" WordStack "|" WordStack "}"
- // -------------------------------------------------------------------
+    syntax SubstateLogEntry ::= "{" Int "|" List "|" String "}" [klabel(logEntry)]
+ // ------------------------------------------------------------------------------
 ```
 
 ```{.k .uiuck .rvk .standalone .node}
-    rule #exec log MEMINDEX                     => #log MEMINDEX .WordStack
-    rule #exec log MEMINDEX , W0                => #log MEMINDEX chop(W0) : .WordStack
-    rule #exec log MEMINDEX , W0 , W1           => #log MEMINDEX chop(W0) : chop(W1) : .WordStack
-    rule #exec log MEMINDEX , W0 , W1 , W2      => #log MEMINDEX chop(W0) : chop(W1) : chop(W2) : .WordStack
-    rule #exec log MEMINDEX , W0 , W1 , W2 , W3 => #log MEMINDEX chop(W0) : chop(W1) : chop(W2) : chop(W3) : .WordStack
+    rule #exec log MEMINDEX                     => #log MEMINDEX .List
+    rule #exec log MEMINDEX , W0                => #log MEMINDEX ListItem(chop(W0))
+    rule #exec log MEMINDEX , W0 , W1           => #log MEMINDEX ListItem(chop(W0)) ListItem(chop(W1))
+    rule #exec log MEMINDEX , W0 , W1 , W2      => #log MEMINDEX ListItem(chop(W0)) ListItem(chop(W1)) ListItem(chop(W2))
+    rule #exec log MEMINDEX , W0 , W1 , W2 , W3 => #log MEMINDEX ListItem(chop(W0)) ListItem(chop(W1)) ListItem(chop(W2)) ListItem(chop(W3))
 
-    syntax InternalOp ::= "#log" Int WordStack
- // ------------------------------------------
-    rule <k> #log MEMINDEX WS => . ... </k>
+    syntax InternalOp ::= "#log" Int List
+ // -------------------------------------
+    rule <k> #log MEMINDEX TOPICS => . ... </k>
          <id> ACCT </id>
          <localMem> LM </localMem>
-         <logData> ... (.List => ListItem({ ACCT | WS | {LM [ chop(MEMINDEX) ]}:>WordStack })) </logData>
+         <logData> ... (.List => ListItem({ ACCT | TOPICS | #unparseByteStack({LM [ chop(MEMINDEX) ]}:>WordStack) })) </logData>
 ```
 
 Network Ops
