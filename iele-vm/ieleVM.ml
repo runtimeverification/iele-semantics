@@ -27,8 +27,11 @@ let run_transaction (ctx: call_context) : call_result =
   let mode = [KApply0(LblNORMAL_IELE'Hyph'INFRASTRUCTURE)] in
   let schedule = [KApply0(LblALBE_IELE'Hyph'GAS)] in
   let k_args = List.map (fun z -> [Int z]) z_args in
-  let kcell = [KApply14(LblrunVM,[Bool iscreate],[Int z_to],[Int z_from],[String str_code],[List(SortList,Lbl_List_,k_args)],[Int z_value],[Int z_gasprice],[Int z_gas],[Int z_beneficiary],[Int z_difficulty],[Int z_number],[Int z_gaslimit],[Int z_timestamp],[String ctx.function_])] in
+  let kcell = [KApply15(Lbl'Hash'initVM,[Bool iscreate],[Int z_to],[Int z_from],[String str_code],[List(SortList,Lbl_List_,k_args)],[Int z_value],[Int z_gasprice],[Int z_gas],[Int z_beneficiary],[Int z_difficulty],[Int z_number],[Int z_gaslimit],[Int z_timestamp],[String ctx.function_],[Int Z.zero])] in
   let map = KMap.add [KToken(SortKConfigVar, "$PGM")] kcell (KMap.add [KToken(SortKConfigVar, "$MODE")] mode (KMap.singleton [KToken(SortKConfigVar, "$SCHEDULE")] schedule)) in
   let module Def = (val Plugin.get ()) in
   let init_config = Def.eval (KApply(LblinitGeneratedTopCell, [[Map(SortMap,Lbl_Map_,map)]])) [Bottom] in
   let final_config,_ = Run.run_no_thread_opt init_config (-1) in
+  default_call_result()
+
+let _ = World.serve (Unix.ADDR_INET (Unix.inet_addr_any,10000)) run_transaction

@@ -1,5 +1,5 @@
 version = "1.0"
 description = "IELE Plugin for K -- OCAML"
-requires = "gmp zarith cryptokit secp256k1 bn128"
+requires = "threads gmp zarith cryptokit secp256k1 bn128 ocaml-protoc"
 archive(native) = "semantics.cmxa"
 archive(byte) = "semantics.cma"
