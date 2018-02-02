@@ -9,6 +9,7 @@ module type KWorldState = sig
   val get_storage_data : Z.t -> Z.t -> Z.t
   val get_code : Z.t -> string
   val get_blockhash : Z.t -> Z.t
+  val is_code_empty : Z.t -> bool
 end
 
 module IntHash = Hashtbl.Make(Z)
@@ -31,10 +32,11 @@ module Make ( W : World.WorldState ) : KWorldState = struct
     getOrUpdate accounts acct (fun () -> 
       let data = W.get_account (of_z acct) in
       if data.code_empty then IntHash.add codes acct "";
-      (to_z data.balance, to_z data.nonce))
+      data)
 
-  let get_balance acct = fst (get_account acct)
-  let get_nonce acct = snd (get_account acct)
+  let get_balance acct = to_z (get_account acct).balance
+  let get_nonce acct = to_z (get_account acct).nonce
+  let is_code_empty acct = (get_account acct).code_empty
 
   let get_storage_data acct index =
     let map = getOrUpdate storages acct (fun () -> IntHash.create 10) in

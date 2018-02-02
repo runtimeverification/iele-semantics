@@ -7,6 +7,7 @@ module type KWorldState = sig
   val get_storage_data : Z.t -> Z.t -> Z.t
   val get_code : Z.t -> string
   val get_blockhash : Z.t -> Z.t
+  val is_code_empty : Z.t -> bool
 end
 
 module Make ( W : World.WorldState ) : KWorldState
