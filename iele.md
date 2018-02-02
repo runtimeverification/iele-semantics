@@ -774,7 +774,7 @@ Note that the syntax used in the following `#emptyCode` macro is desugared IELE 
 ```{.k .uiuck .rvk .standalone .node}
     syntax IeleName ::= "Main" [token]
  // ----------------------------------
-    rule #emptyCode => contract Main !0 { define public @deposit ( 0 ) { ret .NonEmptyOperands .Instructions .LabeledBlocks } } .Contract [macro]
+    rule #emptyCode => contract Main !0 "" { define public @deposit ( 0 ) { ret .NonEmptyOperands .Instructions .LabeledBlocks } } .Contract [macro]
 ```
 
 ### Register Manipulations
@@ -1380,7 +1380,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
 
     syntax Contract ::= #subcontract ( Contract , IeleName ) [function]
  // -------------------------------------------------------------------
-    rule #subcontract ( (contract NAME ! _ { _ } #as CONTRACT) _, NAME ) => CONTRACT .Contract
+    rule #subcontract ( (contract NAME ! _ _ { _ } #as CONTRACT) _, NAME ) => CONTRACT .Contract
     rule #subcontract ( CONTRACT CONTRACTS, NAME ) => CONTRACT #subcontract(CONTRACTS, NAME) [owise]
 
     syntax KItem ::= "#codeDeposit" Int Int Contract LValue LValue Bool
@@ -1685,15 +1685,15 @@ module IELE-PROGRAM-LOADING
     imports IELE-COMMON
     imports IELE-CONFIGURATION
 
-    syntax ContractDefinition ::= "contract" IeleName "!" /* size in bytes */ Int "{" TopLevelDefinitions "}" /* when desugared to include the code size */
+    syntax ContractDefinition ::= "contract" IeleName "!" /* size in bytes */ Int /* byte string */ String "{" TopLevelDefinitions "}" /* when desugared to include the code size */
     syntax FunctionParameters ::= Int /* when desugared to just the number of parameters */
 
     syntax ProgramCell ::= #loadCode ( Contract ) [function]
                          | #loadCode ( Contract , Contract ) [klabel(#loadCodeAux), function]
  // -----------------------------------------------------------------------------------------
-    rule #loadCode(contract _ ! _ { _ } CONTRACTS, CONTRACT) => #loadCode(CONTRACTS, CONTRACT)
+    rule #loadCode(contract _ ! _ _ { _ } CONTRACTS, CONTRACT) => #loadCode(CONTRACTS, CONTRACT)
       requires CONTRACTS =/=K .Contract
-    rule #loadCode(contract _ ! SIZE { DEFS }, CONTRACT)
+    rule #loadCode(contract _ ! SIZE _ { DEFS }, CONTRACT)
       => #loadDeclarations(DEFS,
          <program>
            <functions> .Bag </functions>
@@ -1719,14 +1719,19 @@ module IELE-PROGRAM-LOADING
     rule #loadFunction(FUNCS, BLOCKS, <program> PROG <functions> REST </functions> <funcIds> NAMES </funcIds> </program>, NAME, <function> FUNC <instructions> _ </instructions> <jumpTable> _ </jumpTable> <nregs> _ </nregs> </function>)
       => #loadDeclarations(FUNCS, <program> PROG <funcIds> NAMES SetItem(NAME) </funcIds> <functions> REST <function> FUNC <instructions> BLOCKS </instructions> <jumpTable> #computeJumpTable(BLOCKS) </jumpTable> <nregs> #computeNRegs(BLOCKS) </nregs> </function> </functions> </program>)
 
-    syntax IeleName ::= #mainContract ( Contract ) [function]
-    syntax Int ::= #contractSize ( Contract , IeleName ) [function]
- // ---------------------------------------------------------------
-    rule #mainContract(contract NAME ! _ { _ }) => NAME
-    rule #mainContract(contract _ ! _ { _ } REST) => #mainContract(REST) [owise]
+    syntax IeleName ::= #mainContract ( Contract )           [function]
+    syntax Int ::= #contractSize ( Contract , IeleName )     [function]
+    syntax String ::= #contractBytes ( Contract )            [function, klabel(contractBytes)]
+                    | #contractBytes ( Contract , IeleName ) [function, klabel(#contractBytesAux)]
+ // ----------------------------------------------------------------------------------------------
+    rule #mainContract(contract NAME ! _ _ { _ }) => NAME
+    rule #mainContract(contract _ ! _ _ { _ } REST) => #mainContract(REST) [owise]
 
-    rule #contractSize(contract NAME ! SIZE { _ } _, NAME) => SIZE
-    rule #contractSize(contract _ ! _ { _ } REST, NAME) => #contractSize(REST, NAME) [owise]
+    rule #contractSize(contract NAME ! SIZE _ { _ } _, NAME) => SIZE
+    rule #contractSize(contract _ ! _ _ { _ } REST, NAME) => #contractSize(REST, NAME) [owise]
+    rule #contractBytes(CONTRACT) => #contractBytes(CONTRACT, #mainContract(CONTRACT))
+    rule #contractBytes(contract NAME ! _ BYTES { _ } _, NAME) => BYTES
+    rule #contractBytes(contract _ ! _ _ { _ } REST, NAME) => #contractBytes(REST, NAME) [owise]
 
     syntax Map ::= #computeJumpTable ( Blocks )             [function]
                  | #computeJumpTable ( Blocks , Map , Set ) [function, klabel(#computeJumpTableAux)]
