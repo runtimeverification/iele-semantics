@@ -20,14 +20,14 @@ let to_z b =
 let zero = of_z Z.zero
 
 module type MockBlockhash = sig
-  val hashes : bytes list
+  val hashes : bytes array
 end
 
 module InMemoryWorldState ( Hashes : MockBlockhash ) = struct
   let get_account _ = {nonce=zero;balance=zero;code_empty=true}
   let get_storage_data _ _ = zero
   let get_code _ = Bytes.empty
-  let get_blockhash i = List.nth Hashes.hashes i
+  let get_blockhash i = Array.get Hashes.hashes i
 end
 
 module Connections = struct

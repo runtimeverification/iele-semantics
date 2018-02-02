@@ -11,7 +11,7 @@ val of_z : Z.t -> bytes
 val to_z : bytes -> Z.t
 
 module type MockBlockhash = sig
-  val hashes : bytes list
+  val hashes : bytes array
 end
 
 module InMemoryWorldState (Hashes : MockBlockhash) : WorldState
