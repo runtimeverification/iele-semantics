@@ -7,15 +7,38 @@ module type WorldState = sig
   val get_blockhash : int -> bytes
 end
 
+let rev_string str =
+  let buf = Buffer.create (String.length str) in
+  for i = (String.length str - 1) downto 0 do
+    Buffer.add_char buf str.[i]
+  done;
+  Buffer.contents buf
+
+let is_negative ch = match ch with
+| '\000'..'\127' -> false
+| '\128'..'\255' -> true
+
+let z_bytes z =
+  let rec aux z n =
+    if z = Z.zero then n
+    else aux (Z.shift_right z 8) (n+1)
+  in aux z 0
+
 let of_z z = 
-  let sign = if (Z.lt z Z.zero) then "\000" else "\001" in
-  let str = sign ^ (Z.to_bits z) in
-  Bytes.of_string str
+  let twos = if Z.geq z Z.zero then z else Z.extract z 0 (z_bytes (Z.sub (Z.mul (Z.neg z) (Z.of_int 2)) Z.one)) in
+  let little_endian = Z.to_bits twos in
+  let big_endian = rev_string little_endian in
+  if Z.geq z Z.zero && is_negative big_endian.[0] then
+    Bytes.of_string ("\000" ^ big_endian)
+  else
+    Bytes.of_string big_endian
 
 let to_z b =
-  let sign = if Bytes.get b 0 = '\000' then Z.neg Z.one else Z.one in
-  let magnitude = Z.of_bits (Bytes.to_string (Bytes.sub b 1 ((Bytes.length b) - 1))) in
-  Z.mul sign magnitude
+  let little_endian = rev_string (Bytes.to_string b) in
+  let unsigned = Z.of_bits little_endian in
+  if is_negative (Bytes.get b 0) then
+  Z.signed_extract unsigned 0 (Bytes.length b * 8)
+  else unsigned
 
 let zero = of_z Z.zero
 
