@@ -37,6 +37,12 @@ let be_int i =
     ""
   with Break i -> String.sub be i (len - i)
 
+let be_int_width i width =
+  let be = be_int i in
+  let unpadded_byte_width = String.length be in
+  let padded = Bytes.make width '\000' in
+  Bytes.blit_string be 0 padded (width - unpadded_byte_width) unpadded_byte_width;
+  padded
 
 let of_z z = 
   if Z.equal z Z.zero then Bytes.of_string "\000" else
@@ -46,6 +52,10 @@ let of_z z =
     Bytes.of_string ("\000" ^ big_endian)
   else
     Bytes.of_string big_endian
+
+let of_z_width width z = 
+  let twos = if Z.gt z Z.zero then z else Z.extract z 0 (z_bits (Z.sub (Z.mul (Z.neg z) (Z.of_int 2)) Z.one)) in
+  be_int_width twos width
 
 let to_z b =
   let little_endian = rev_string (Bytes.to_string b) in

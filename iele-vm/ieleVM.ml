@@ -85,7 +85,7 @@ let k_to_mod_acct (acct: k) : modified_account = match acct with
 let k_to_log (log: k) : log_entry = match log with
   [KApply3(LbllogEntry, [Int address], [List(SortList,Lbl_List_,topics)], [String data])] ->
   let z_topics = List.map k_to_z topics in
-  {address=World.of_z address;topics=List.map World.of_z z_topics;data=Bytes.of_string data}
+  {address=World.of_z_width 20 address;topics=List.map (World.of_z_width 32) z_topics;data=Bytes.of_string data}
 | _ -> failwith "Invalid value found where SubstateLogEntry was expected"
 
 let z_of_rlp rlp = 
