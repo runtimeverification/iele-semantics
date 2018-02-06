@@ -4,15 +4,12 @@ package io.iohk.ethereum.extvm;
 message Hello {
   string version = 1;
 
-  BlockchainConfig config = 2;
-}
-
-message BlockchainConfig {
   // A blockchain related configuration for the VM for the entire session.
   // Currently only Mantis-EVM is supported. Other VMs may ingore this
   // or may required different configurations.
   oneof config {
-    EthereumConfig ethereumConfig = 1;
+    EthereumConfig ethereumConfig = 2;
+    IELEConfig ieleConfig = 3;
   }
 }
 
@@ -30,7 +27,10 @@ message CallContext {
 
   // This may be used to override the VM configuration for the session. It used in tests to avoid
   // re-instantiating VM for each test.
-  BlockchainConfig config = 11;
+  oneof config {
+    EthereumConfig ethereumConfig = 11;
+    IELEConfig ieleConfig = 12;
+  }
 }
 
 message BlockHeader {
@@ -39,6 +39,9 @@ message BlockHeader {
   bytes number = 3;
   bytes gasLimit = 4;
   int64 unixTimestamp = 5;
+}
+
+message IELEConfig {
 }
 
 message EthereumConfig {
