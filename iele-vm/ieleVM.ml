@@ -105,6 +105,7 @@ let run_transaction (ctx: call_context) : call_result =
   let block_header = (match ctx.block_header with
   | Some hdr -> hdr
   | _ -> invalid_arg "Must pass a BlockHeader message as block_header") in
+  MANTIS.Cache.clear ();
   let iscreate = Bytes.length ctx.owner_addr = 0 in
   let z_to = World.to_z ctx.owner_addr in
   let z_from = World.to_z ctx.origin_addr in
