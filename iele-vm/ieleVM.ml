@@ -93,12 +93,16 @@ let z_of_rlp rlp =
   Rlp.RlpData rope -> World.to_z (Bytes.of_string (Rope.to_string rope))
 | Rlp.RlpList _ -> failwith "Invalid value where rlp-encoded string expected"
 
-let unpack_input data =
+let unpack_input iscreate data code =
   let rlp = Rlp.decode (Rope.of_string (Bytes.to_string data)) in
   match rlp with
-  Rlp.RlpList[Rlp.RlpData(func);Rlp.RlpList(args)] ->
+  Rlp.RlpList[Rlp.RlpData(rope);Rlp.RlpList(args)] ->
   let z_args = List.map z_of_rlp args in
-  z_args,Rope.to_string func
+  let str = Rope.to_string rope in
+  if iscreate then
+    str,z_args,""
+  else
+    Bytes.to_string code,z_args,str
 | _ -> failwith "Invalid value where rlp-encoded args and function name expected"
 
 let pack_output rets =
@@ -114,8 +118,7 @@ let run_transaction (ctx: call_context) : call_result =
   let iscreate = Bytes.length ctx.owner_addr = 0 in
   let z_to = World.to_z ctx.owner_addr in
   let z_from = World.to_z ctx.origin_addr in
-  let str_code = Bytes.to_string ctx.contract_code in
-  let z_args,function_ = unpack_input ctx.input_data in
+  let str_code,z_args,function_ = unpack_input iscreate ctx.input_data ctx.contract_code in
   let z_value = World.to_z ctx.call_value in
   let z_gasprice = World.to_z ctx.gas_price in
   let z_gas = World.to_z ctx.gas_provided in
@@ -154,5 +157,11 @@ let run_transaction (ctx: call_context) : call_result =
   {return_data=ret_data;return_code=error;gas_remaining=gas;gas_refund=refund;error=not (Z.equal z_status Z.zero);modified_accounts=mod_accounts;deleted_accounts=deleted_accounts;touched_accounts=[];logs=logs})
 | k -> prerr_endline (Prelude.print_k k); failwith "Unexpected value where vmResult expected"
 
-let g0 txdata txcreate code =
-  Z.zero
+let g0_byte res b = match b with
+| '\000' -> res := Z.add !res (Z.of_int 4)
+| _ -> res := Z.add !res (Z.of_int 68)
+
+let g0 txdata txcreate =
+  let res = ref (Z.of_int (if txcreate then 53000 else 21000)) in
+  Bytes.iter (g0_byte res) txdata;
+  !res

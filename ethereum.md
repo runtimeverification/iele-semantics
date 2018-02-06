@@ -121,7 +121,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
     syntax IELECommand ::= loadTx ( Int )
  // -------------------------------------
     rule <k> loadTx(ACCTFROM)
-          => #create ACCTFROM #newAddr(ACCTFROM, NONCE) (GLIMIT -Int G0(SCHED, CODE, ARGS, true)) VALUE #dasmContract(CODE, Main) ARGS
+          => #create ACCTFROM #newAddr(ACCTFROM, NONCE) (GLIMIT -Int G0(SCHED, CODE, ARGS)) VALUE #dasmContract(CODE, Main) ARGS
           ~> #codeDeposit #newAddr(ACCTFROM, NONCE) #sizeWordStack(CODE) #dasmContract(CODE, Main) %0 %1 true ~> #adjustGas ~> #finalizeTx(false) ~> startTx
          ...
          </k>
@@ -148,7 +148,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
          </account>
 
     rule <k> loadTx(ACCTFROM)
-          => #call ACCTFROM ACCTTO FUNC (GLIMIT -Int G0(SCHED, .WordStack, ARGS, false)) VALUE ARGS false
+          => #call ACCTFROM ACCTTO FUNC (GLIMIT -Int G0(SCHED, IeleName2String(FUNC), ARGS)) VALUE ARGS false
           ~> #finishTx ~> #adjustGas ~> #finalizeTx(false) ~> startTx
          ...
          </k>

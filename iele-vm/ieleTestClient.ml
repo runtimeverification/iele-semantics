@@ -79,9 +79,10 @@ let add_account (id,data) =
 let init_state state =
   List.iter add_account state
 
-let pack_input args function_ =
+let pack_input args function_ txcreate data =
+  let str = if txcreate then Bytes.to_string data else function_ in
   let l = List.map (fun arg -> Rlp.RlpData (Rope.of_string (Bytes.to_string arg))) args in
-  let rlp = Rlp.RlpList[Rlp.RlpData (Rope.of_string function_);Rlp.RlpList l] in
+  let rlp = Rlp.RlpList[Rlp.RlpData (Rope.of_string str);Rlp.RlpList l] in
   Bytes.of_string (Rope.to_string (Rlp.encode rlp))
 
 let unpack_output data =
@@ -154,18 +155,19 @@ let test_transaction header (state: (string * Basic.json) list) (tx: Basic.json)
   let checkpoint_state = checkpoint state gas_price gas_provided origin in
   init_state checkpoint_state;
   let code = if txcreate then
-    let data = tx |> member "data" |> to_string in
-    if data = "" then Bytes.empty else assemble data
+    Bytes.empty
   else 
     World.InMemoryWorldState.get_code (of_hex owner)
   in
+  let data_str = tx |> member "data" |> to_string in
+  let data = if data_str = "" then Bytes.empty else assemble data_str in
   let args = List.map (fun json -> of_hex (json |> to_string)) (tx |> member "arguments" |> to_list) in
   let value = tx |> member "value" |> to_string in
   let function_ = tx |> member "function" |> to_string in
-  let txdata = pack_input args function_ in
-  let g0 = IeleVM.g0 txdata txcreate code in
+  let txdata = pack_input args function_ txcreate data in
+  let g0 = IeleVM.g0 txdata txcreate in
   let gas_provided = Z.sub (World.to_z gas_provided) g0 in
-  let ctx = {owner_addr=of_hex owner;caller_addr=origin;origin_addr=origin;contract_code=code;input_data=pack_input args function_;call_value=of_hex value;gas_price=gas_price;gas_provided=World.of_z gas_provided;block_header=Some header;config=Iele_config;call_depth=0l} in
+  let ctx = {owner_addr=of_hex owner;caller_addr=origin;origin_addr=origin;contract_code=code;input_data=txdata;call_value=of_hex value;gas_price=gas_price;gas_provided=World.of_z gas_provided;block_header=Some header;config=Iele_config;call_depth=0l} in
   let call_result = IeleVM.run_transaction ctx in
   let expected_return = List.map (fun json -> of_hex (json |> to_string)) (result |> member "out" |> to_list) in
   let rets = unpack_output call_result.return_data in

@@ -646,7 +646,9 @@ Encoding
                     | #rlpEncodeWordStack ( WordStack ) [function]
                     | #rlpEncodeString ( String )       [function]
                     | #rlpEncodeAccount ( Account )     [function]
- // --------------------------------------------------------------
+                    | #rlpEncodeInts ( Ints ) [function]
+                    | #rlpEncodeInts ( StringBuffer, Ints ) [function, klabel(#rlpEncodeIntsAux)]
+ // ---------------------------------------------------------------------------------------------
     rule #rlpEncodeWord(0) => "\x80"
     rule #rlpEncodeWord(WORD) => chrChar(WORD) requires WORD >Int 0 andBool WORD <Int 128
     rule #rlpEncodeWord(WORD) => #rlpEncodeLength(#unparseByteStack(#asUnsignedBytes(WORD)), 128) requires WORD >=Int 128
@@ -661,6 +663,10 @@ Encoding
 
     rule #rlpEncodeAccount(.Account) => "\x80"
     rule #rlpEncodeAccount(ACCT)     => #rlpEncodeBytes(ACCT, 20) requires ACCT =/=K .Account
+
+    rule #rlpEncodeInts(INTS) => #rlpEncodeInts(.StringBuffer, INTS)
+    rule #rlpEncodeInts(BUF => BUF +String #rlpEncodeString(#unparseByteStack(#asSignedBytes(I))), (I , INTS) => INTS)
+    rule #rlpEncodeInts(BUF, .Ints) => StringBuffer2String(BUF)
 
     syntax String ::= #rlpEncodeLength ( String , Int )          [function]
                     | #rlpEncodeLength ( String , Int , String ) [function, klabel(#rlpEncodeLengthAux)]
