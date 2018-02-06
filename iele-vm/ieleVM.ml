@@ -20,7 +20,7 @@ let account_is_deleted _ acct = match acct with
 let storage_key_is_modified acctID k v =
   match k,v with
   [Int key],[Int value] ->
-  MANTIS.Cache.get_storage_data acctID key = value
+  MANTIS.Cache.get_storage_data acctID key <> value
 | _ -> failwith "Invalid values found where ints were expected"
 
 let storage_is_modified acctID storage =
@@ -37,11 +37,12 @@ let code_is_modified acctID code =
 let account_is_modified selfdestruct _ acct = 
 match acct with
   [KApply5(Lbl'_LT_'account'_GT_',[KApply1(Lbl'_LT_'acctID'_GT_',[Int acctID])],[KApply1(Lbl'_LT_'balance'_GT_',[Int balance])],[KApply1(Lbl'_LT_'code'_GT_',code)],[KApply1(Lbl'_LT_'storage'_GT_',[Map(SortMap,Lbl_Map_,storage)])],[KApply1(Lbl'_LT_'nonce'_GT_',[Int nonce])])] ->
-  not (List.mem acctID selfdestruct) &&
-  MANTIS.Cache.get_balance acctID = balance &&
-  MANTIS.Cache.get_nonce acctID = nonce &&
-  code_is_modified acctID code &&
-  storage_is_modified acctID storage
+  not (List.mem acctID selfdestruct) && (
+    MANTIS.Cache.get_balance acctID <> balance ||
+    MANTIS.Cache.get_nonce acctID <> nonce ||
+    code_is_modified acctID code ||
+    storage_is_modified acctID storage
+  )
 | _ -> failwith "Invalid value where account was expected"
 
 let k_to_z (k: k) : Z.t =
