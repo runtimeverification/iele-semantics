@@ -23,7 +23,7 @@
                     {
                         "out": ["0x01"],
                         "status": "",
-                        "gas": "0x0f9977",
+                        "gas": "0x0f3b77",
                         "logs": "0x2f03230630619d335a042eac0ab68661795909805479c42cfba11e2f067bffec",
                         "refund": "0x1d4c"
                     }

@@ -22,8 +22,29 @@
             {
                 "results": [
                     {
-                        "out": [],
+                        "out": ["0x01"],
                         "status": "",
+                        "gas": "0x0f52b9",
+                        "logs": "0xfa1cd3377e92afb59f25841ad5c4e09d1c5df0740643a23443dd2c19bbc9a227",
+                        "refund": ""
+                    },
+                    {
+                        "out": ["0x01"],
+                        "status": "",
+                        "gas": "0x0f52b9",
+                        "logs": "0xb5ce3fd234c5b42039652a5095dd31898f620375de8e358cb5384029cb278eab",
+                        "refund": ""
+                    },
+                    {
+                        "out": ["0x01"],
+                        "status": "",
+                        "gas": "0x0f7005",
+                        "logs": "0x594201aed4f6bf163101b0b62d02d3312bc74548dbb9091620ace5b78fe421b8",
+                        "refund": ""
+                    },
+                    {
+                        "out": [],
+                        "status": "0x04",
                         "gas": "",
                         "logs": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
                         "refund": ""
@@ -105,7 +126,7 @@
         "postState": {
             "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b": {
                 "nonce": "0x04", 
-                "balance": "0xe8d4a51000", 
+                "balance": "0xe8d4651000", 
                 "storage": {}, 
                 "code": ""
             },

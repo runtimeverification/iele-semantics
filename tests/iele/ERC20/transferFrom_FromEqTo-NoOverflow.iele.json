@@ -25,9 +25,9 @@
                     {
                         "out": ["0x01"],
                         "status": "",
-                        "gas": "",
-                        "logs": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
-                        "refund": ""
+                        "gas": "0x0f4055",
+                        "logs": "0x33ca5dd5859d44734eafd86dfd6cc218b46b60dd1df61c17dafdf1c9a246746b",
+                        "refund": "0x3a98"
                     }
                 ],
                 "transactions": [

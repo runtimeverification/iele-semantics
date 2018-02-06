@@ -23,14 +23,14 @@
                     {
                         "out": ["0x01"],
                         "status": "",
-                        "gas": "0x0fb3da",
+                        "gas": "0x0f594e",
                         "logs": "0xb6448cfcdc588a59da91f0dc3cd401660813bba0c680e958f32a05e43633bd7e",
                         "refund": ""
                     },
                     {
                         "out": ["0x01"],
                         "status": "",
-                        "gas": "0x0fdcf1",
+                        "gas": "0x0f8221",
                         "logs": "0x88c23802ee7ca77d55a251fd985bd2b370508a478033c829035031e44b2d55b9",
                         "refund": ""
                     }
