@@ -129,6 +129,9 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
          <gasPrice> _ => GPRICE </gasPrice>
          <origin> _ => ACCTFROM </origin>
          <callDepth> _ => -1 </callDepth>
+         <gas> _ => 0 </gas>
+         <refund> _ => 0 </refund>
+         <logData> _ => .List </logData>
          <txPending> ListItem(TXID:Int) ... </txPending>
          <message>
            <msgID>      TXID     </msgID>
@@ -156,6 +159,9 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
          <gasPrice> _ => GPRICE </gasPrice>
          <origin> _ => ACCTFROM </origin>
          <callDepth> _ => -1 </callDepth>
+         <gas> _ => 0 </gas>
+         <refund> _ => 0 </refund>
+         <logData> _ => .List </logData>
          <txPending> ListItem(TXID:Int) ... </txPending>
          <message>
            <msgID>      TXID   </msgID>
@@ -190,13 +196,14 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
          </message>
 
     rule <k> #adjustGas => . ... </k> <checkGas> true </checkGas>
+    rule STATUS:Int ~> #adjustGas => #load %0 STATUS ~> #adjustGas
 
     syntax IELECommand ::= "#finishTx"
  // ----------------------------------
-    rule <k> #exception _ ~> #finishTx => #popCallStack ~> #popWorldState ~> #popSubstate ... </k>
-    rule <k> #revert _    ~> #finishTx => #popCallStack ~> #popWorldState ~> #popSubstate ~> #refund GAVAIL ... </k> <gas> GAVAIL </gas>       
+    rule <k> #exception STATUS ~> #finishTx => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load %0 STATUS ... </k>
+    rule <k> #revert STATUS    ~> #finishTx => #popCallStack ~> #popWorldState ~> #popSubstate ~> #refund GAVAIL ~> #load %0 STATUS ... </k> <gas> GAVAIL </gas>       
 
-    rule <k> #end ~> #finishTx => #popCallStack ~> #dropWorldState ~> #dropSubstate ~> #refund GAVAIL ... </k>
+    rule <k> #end ~> #finishTx => #popCallStack ~> #dropWorldState ~> #dropSubstate ~> #refund GAVAIL ~> #load %0 0 ... </k>
          <gas> GAVAIL </gas>
          <txPending> ListItem(TXID:Int) ... </txPending>
          <message>
@@ -266,7 +273,7 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
 ```{.k .uiuck .rvk .standalone .node}
     syntax Set ::= "#loadKeys" [function]
  // -------------------------------------
-    rule #loadKeys => ( SetItem("env") SetItem("pre") SetItem("blockHeader") SetItem("transactions") SetItem("uncleHeaders") SetItem("network") SetItem("genesisRLP") SetItem("checkGas") )
+    rule #loadKeys => ( SetItem("env") SetItem("pre") SetItem("blockHeader") SetItem("transactions") SetItem("uncleHeaders") SetItem("network") SetItem("genesisRLP") SetItem("blockhashes") SetItem("checkGas") )
 
     rule run TESTID : { KEY : (VAL:JSON) , REST } => load KEY : VAL ~> run TESTID : { REST } requires KEY in #loadKeys
 
@@ -285,6 +292,7 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
 
     rule run TESTID : { "exec" : (EXEC:JSON) } => load "exec" : EXEC ~> start ~> flush
     rule run TESTID : { "lastblockhash" : (HASH:String) } => startTx
+    rule run TESTID : { .JSONList } => startTx
 ```
 
 -   `#postKeys` are a subset of `#checkKeys` which correspond to post-state account checks.
@@ -296,7 +304,7 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
     rule #postKeys    => ( SetItem("post") SetItem("postState") )
     rule #allPostKeys => ( #postKeys SetItem("expect") SetItem("export") SetItem("expet") )
     rule #checkKeys   => ( #allPostKeys SetItem("logs") SetItem("callcreates") SetItem("out") SetItem("gas")
-                           SetItem("genesisBlockHeader")
+                           SetItem("genesisBlockHeader") SetItem("results")
                          )
 
     rule run TESTID : { KEY : (VAL:JSON) , REST } => run TESTID : { REST } ~> check TESTID : { "post" : VAL } requires KEY in #allPostKeys
@@ -487,6 +495,9 @@ The `"blockHeader"` key loads the block information.
  // --------------------------------------------------------------------------------------------
     rule <k> load "genesisRLP": [ [ HP, HO, HC, HR, HT, HE:String, HB, HD, HI, HL, HG, HS, HX, HM, HN, .JSONList ], _, _, .JSONList ] => .K ... </k>
          <blockhash> .List => ListItem(#blockHeaderHash(HP, HO, HC, HR, HT, HE, HB, HD, HI, HL, HG, HS, HX, HM, HN)) ListItem(#asUnsigned(#parseByteStackRaw(HP))) ... </blockhash>
+
+    rule <k> load "blockhashes" : [ VAL:String , VALS ] => . ...</k>
+         <blockhash>... .List => ListItem(#asUnsigned(#parseByteStack(VAL))) </blockhash>
 ```
 
 The `"transactions"` key loads the transactions.
@@ -591,6 +602,9 @@ The `"transactions"` key loads the transactions.
 Here we check the other post-conditions associated with an EVM test.
 
 ```{.k .uiuck .rvk .standalone .node}
+    rule check TESTID : { "results" : [ _ , A , REST => A , REST ] }
+    rule check TESTID : { "results" : [ A , .JSONList ] } => check TESTID : A
+
     rule check TESTID : { "out" : OUT } => check "out" : OUT ~> failure TESTID
  // --------------------------------------------------------------------------
     rule check "out" : ((OUT:String) => #parseHexWord(OUT))
@@ -601,6 +615,16 @@ Here we check the other post-conditions associated with an EVM test.
     rule check TESTID : { "logs" : LOGS } => check "logs" : LOGS ~> failure TESTID
  // ------------------------------------------------------------------------------
     rule <k> check "logs" : HASH:String => . ... </k> <logData> SL </logData> requires #parseHexBytes(Keccak256(#rlpEncodeLogs(SL))) ==K #parseByteStack(HASH)
+
+    rule check TESTID : { "status" : STATUS } => check "status" : STATUS ~> failure TESTID
+ // --------------------------------------------------------------------------------------
+    rule check "status" : (STATUS:String => #parseHexWord(STATUS))
+    rule <k> check "status" : STATUS:Int => . ... </k> <regs> REGS </regs> requires REGS [ 0 ] ==K STATUS
+
+    rule check TESTID : { "refund" : REFUND } => check "refund" : REFUND ~> failure TESTID
+ // --------------------------------------------------------------------------------------
+    rule check "refund" : (REFUND:String => #parseHexWord(REFUND))
+    rule <k> check "refund" : REFUND:Int => . ... </k> <refund> REFUND </refund>
 
     syntax String ::= #rlpEncodeLogs(List)        [function]
                     | #rlpEncodeLogsAux(List)     [function]

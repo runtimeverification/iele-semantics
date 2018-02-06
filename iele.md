@@ -691,46 +691,7 @@ After executing a transaction, it's necessary to have the effect of the substate
 
     rule <k> #finalizeTx(false => true) ... </k>
          <mode> NORMAL </mode>
-         <origin> ORG </origin>
-         <beneficiary> MINER </beneficiary>
-         <gas> GAVAIL </gas>
-         <refund> 0 </refund>
-         <account>
-           <acctID> ORG </acctID>
-           <balance> ORGBAL => ORGBAL +Int GAVAIL *Int GPRICE </balance>
-           ...
-         </account>
-         <account>
-           <acctID> MINER </acctID>
-           <balance> MINBAL => MINBAL +Int (GLIMIT -Int GAVAIL) *Int GPRICE </balance>
-           ...
-         </account>
-         <txPending> ListItem(TXID:Int) => .List ... </txPending>
-         <message>
-           <msgID> TXID </msgID>
-           <txGasLimit> GLIMIT </txGasLimit>
-           <txGasPrice> GPRICE </txGasPrice>
-           ...
-         </message>
-      requires ORG =/=Int MINER
-
-    rule <k> #finalizeTx(false => true) ... </k>
-         <mode> NORMAL </mode>
-         <origin> ACCT </origin>
-         <beneficiary> ACCT </beneficiary>
-         <refund> 0 </refund>
-         <account>
-           <acctID> ACCT </acctID>
-           <balance> BAL => BAL +Int GLIMIT *Int GPRICE </balance>
-           ...
-         </account>
-         <txPending> ListItem(MsgId:Int) => .List ... </txPending>
-         <message>
-           <msgID> MsgId </msgID>
-           <txGasLimit> GLIMIT </txGasLimit>
-           <txGasPrice> GPRICE </txGasPrice>
-           ...
-         </message>
+         <txPending> ListItem(_) => .List ... </txPending>
 
     rule <k> #finalizeTx(true) ... </k>
          <selfDestruct> ... (SetItem(ACCT) => .Set) </selfDestruct>
