@@ -51,13 +51,13 @@ module IELE-NODE
     rule #exec REG = call @iele.blockhash ( N ) => #load REG 0
       requires N <Int 0 orBool N >=Int 256
 
-    syntax IELECommand ::= runVM(iscreate: Bool, to: Int, from: Int, code: String, args: List, value: Int, gasprice: Int, gas: Int, beneficiary: Int, difficulty: Int, number: Int, gaslimit: Int, timestamp: Int, function: String)
+    syntax IELESimulation ::= runVM(iscreate: Bool, to: Int, from: Int, code: String, args: List, value: Int, gasprice: Int, gas: Int, beneficiary: Int, difficulty: Int, number: Int, gaslimit: Int, timestamp: Int, function: String)
 
     rule <k> (.K => #loadAccount ACCTFROM) ~> runVM(... from: ACCTFROM) ... </k>
          <activeAccounts> .Set </activeAccounts>
 
     rule <k> runVM(true, _, ACCTFROM, CODESTR, ARGS, VALUE, GPRICE, GAVAIL, CB, DIFF, NUMB, GLIMIT, TS, _)
-          => #fun(CODE => #create ACCTFROM #newAddr(ACCTFROM, NONCE -Int 1) (GAVAIL -Int G0(SCHED, CODE, #toInts(ARGS), true)) VALUE #dasmContract(CODE, Main) #toInts(ARGS)
+          => #fun(CODE => #create ACCTFROM #newAddr(ACCTFROM, NONCE -Int 1) GAVAIL VALUE #dasmContract(CODE, Main) #toInts(ARGS)
           ~> #codeDeposit #newAddr(ACCTFROM, NONCE -Int 1) #sizeWordStack(CODE) #dasmContract(CODE, Main) %0 %1 true)(#parseByteStackRaw(CODESTR))
          ...
          </k>
@@ -75,9 +75,11 @@ module IELE-NODE
            <nonce> NONCE </nonce>
            ...
          </account>
+         <activeAccounts> ACCTS </activeAccounts>
+      requires ACCTFROM in ACCTS
 
     rule <k> runVM(false, ACCTTO, ACCTFROM, _, ARGS, VALUE, GPRICE, GAVAIL, CB, DIFF, NUMB, GLIMIT, TS, FUNC)
-          => #call ACCTFROM ACCTTO {#parseToken("IeleName", FUNC)}:>IeleName (GAVAIL -Int G0(SCHED, .WordStack, #toInts(ARGS), false)) VALUE #toInts(ARGS) false
+          => #call ACCTFROM ACCTTO {#parseToken("IeleName", FUNC)}:>IeleName GAVAIL VALUE #toInts(ARGS) false
           ~> #endVM
          ...
          </k>
@@ -90,6 +92,8 @@ module IELE-NODE
          <number> _ => NUMB </number>
          <gasLimit> _ => GLIMIT </gasLimit>
          <timestamp> _ => TS </timestamp>
+         <activeAccounts> ACCTS </activeAccounts>
+      requires ACCTFROM in ACCTS
 
     syntax IELECommand ::= "#endVM"
  // -------------------------------

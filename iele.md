@@ -1385,10 +1385,10 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
 
     syntax KItem ::= "#codeDeposit" Int Int Contract LValue LValue Bool
                    | "#mkCodeDeposit" Int Int Contract LValue LValue Bool
-                   | "#finishCodeDeposit" Int Contract LValue LValue
+                   | "#finishCodeDeposit" Int Contract LValue LValue Bool
  // ----------------------------------------------------------------
-    rule <k> #exception STATUS ~> #codeDeposit _ _ _ REG _ _ => #popCallStack ~> #popWorldState ~> #popSubstate ~> #registerDelta(REG, 1) ~> #load REG STATUS ... </k> <output> _ => .Ints </output>
-    rule <k> #revert OUT ~> #codeDeposit _ _ _ REG _ _ => #popCallStack ~> #popWorldState ~> #popSubstate ~> #registerDelta(REG, intSize(OUT)) ~> #refund GAVAIL ~> #load REG OUT ... </k>
+    rule <k> #exception STATUS ~> #codeDeposit _ _ _ REG _ NEW:Bool => #popCallStack ~> #popWorldState ~> #popSubstate ~> #if NEW #then STATUS #else #registerDelta(REG, 1) ~> #load REG STATUS #fi ... </k> <output> _ => .Ints </output>
+    rule <k> #revert OUT ~> #codeDeposit _ _ _ REG _ NEW:Bool => #popCallStack ~> #popWorldState ~> #popSubstate ~> #if NEW #then #refund GAVAIL ~> OUT #else #registerDelta(REG, intSize(OUT)) ~> #refund GAVAIL ~> #load REG OUT #fi ... </k>
          <gas> GAVAIL </gas>
 
     rule <mode> EXECMODE </mode>
@@ -1396,27 +1396,28 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
 
     rule <k> #mkCodeDeposit ACCT LEN CODE STATUS ACCTOUT NEW:Bool
           => #if EXECMODE ==K VMTESTS orBool notBool NEW #then . #else Gcodedeposit < SCHED > *Int LEN ~> #deductGas #fi
-          ~> #finishCodeDeposit ACCT CODE STATUS ACCTOUT
+          ~> #finishCodeDeposit ACCT CODE STATUS ACCTOUT NEW
          ...
          </k>
          <mode> EXECMODE </mode>
          <schedule> SCHED </schedule>
          <output> .Ints </output>
 
-    rule <k> #finishCodeDeposit ACCT CODE STATUS ACCTOUT
+    rule <k> #finishCodeDeposit ACCT CODE STATUS ACCTOUT NEW:Bool
           => #popCallStack ~> #if EXECMODE ==K VMTESTS #then #popWorldState #else #dropWorldState #fi ~> #dropSubstate
-          ~> #registerDelta(STATUS, 1) ~> #registerDelta(ACCTOUT, 3) ~> #refund GAVAIL ~> #load STATUS 0 ~> #load ACCTOUT ACCT
+          ~> #if NEW #then #refund GAVAIL ~> 0 #else #registerDelta(STATUS, 1) ~> #registerDelta(ACCTOUT, 3) ~> #refund GAVAIL ~> #load STATUS 0 ~> #load ACCTOUT ACCT #fi
          ...
          </k>
          <mode> EXECMODE </mode>
          <gas> GAVAIL </gas>
+         <output> _ => ACCT , .Ints </output>
          <account>
            <acctID> ACCT </acctID>
            <code> _ => CODE </code>
            ...
          </account>
 
-    rule <k> #exception STATUS ~> #finishCodeDeposit _ _ REG _ => #popCallStack ~> #popWorldState ~> #popSubstate ~> #registerDelta(REG, 1) ~> #load REG STATUS ... </k>
+    rule <k> #exception STATUS ~> #finishCodeDeposit _ _ REG _ NEW:Bool => #popCallStack ~> #popWorldState ~> #popSubstate ~> #if NEW #then STATUS #else #registerDelta(REG, 1) ~> #load REG STATUS #fi ... </k>
 ```
 
 -   `create` will attempt to `#create` the named contract using the initialization code and cleans up the result with `#codeDeposit`.
