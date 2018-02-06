@@ -408,7 +408,7 @@ The local memory of execution is a byte-array (instead of a word-array).
     rule #asSignedBytes( W ) => #asSignedBytes( W ,                                          .WordStack , true  ) requires W >=Int 0
     rule #asSignedBytes( W ) => #asSignedBytes( twos(#numBytes(0 -Int W *Int 2 -Int 1), W) , .WordStack , false ) requires W  <Int 0
     rule #asSignedBytes( 0 , WS         , false ) => WS
-    rule #asSignedBytes( 0 , .WordStack , true  ) => .WordStack
+    rule #asSignedBytes( 0 , .WordStack , true  ) => 0 : .WordStack
     rule #asSignedBytes( 0 , W : WS     , true  ) => W : WS requires W <Int 128
     rule #asSignedBytes( 0 , W : WS     , true  ) => 0 : W : WS requires W >=Int 128
     rule #asSignedBytes( W , WS , POS ) => #asSignedBytes( W /Int 256 , W %Int 256 : WS , POS ) requires W =/=K 0
@@ -666,7 +666,7 @@ Encoding
 
     rule #rlpEncodeInts(INTS) => #rlpEncodeInts(.StringBuffer, INTS)
     rule #rlpEncodeInts(BUF => BUF +String #rlpEncodeString(#unparseByteStack(#asSignedBytes(I))), (I , INTS) => INTS)
-    rule #rlpEncodeInts(BUF, .Ints) => StringBuffer2String(BUF)
+    rule #rlpEncodeInts(BUF, .Ints) => #rlpEncodeLength(StringBuffer2String(BUF), 192)
 
     syntax String ::= #rlpEncodeLength ( String , Int )          [function]
                     | #rlpEncodeLength ( String , Int , String ) [function, klabel(#rlpEncodeLengthAux)]
