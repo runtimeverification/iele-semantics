@@ -3,7 +3,7 @@ K_VERSION=rvk
 # Common to all versions of K
 # ===========================
 
-.PHONY: all clean build tangle defn proofs split-tests test vm-test blockchain-test deps assembler
+.PHONY: all clean build tangle defn proofs split-tests test vm-test blockchain-test deps assembler iele-test iele-test-node
 
 all: build split-vm-tests
 
@@ -74,11 +74,13 @@ passing_blockchain_targets=${passing_blockchain_tests:=.test}
 
 iele_tests=$(wildcard tests/iele/*/*.iele.json)
 iele_targets=${iele_tests:=.test}
+iele_node_targets=${iele_tests:=.nodetest}
 
 test: $(passing_targets) ${iele_targets}
 vm-test: $(passing_vm_targets)
 blockchain-test: $(passing_blockchain_targets)
 iele-test: ${iele_targets}
+iele-test-node: ${iele_node_targets}
 
 tests/VMTests/%.test: tests/VMTests/% | build
 	./vmtest $<
@@ -86,6 +88,8 @@ tests/BlockchainTests/%.test: tests/BlockchainTests/% | build
 	./blockchaintest $<
 tests/iele/%.test: tests/iele/% | build
 	./blockchaintest $<
+tests/iele/%.nodetest: tests/iele/% | node
+	.build/vm/iele-vm $<
 
 tests/%/make.timestamp: tests/ethereum-tests/%.json tests/evm-to-iele/evm-to-iele tests/evm-to-iele/evm-test-to-iele
 	@echo "==   split: $@"
