@@ -35,9 +35,9 @@ let of_hex_unsigned = of_hex false
 let of_hex = of_hex true
 
 let to_hex bytes =
-  if Bytes.length bytes = 0 then "" else
+  if Bytes.length bytes = 0 then "0x00" else
   let str = Bytes.to_string bytes in
-  let str = if str.[0] = '\000' then
+  let str = if String.length str > 1 && str.[0] = '\000' then
     String.sub str 1 (String.length str - 1)
   else
     str
