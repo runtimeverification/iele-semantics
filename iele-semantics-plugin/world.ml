@@ -18,17 +18,31 @@ let is_negative ch = match ch with
 | '\000'..'\127' -> false
 | '\128'..'\255' -> true
 
-let z_bytes z =
+let z_bits z =
   let rec aux z n =
     if z = Z.zero then n
-    else aux (Z.shift_right z 8) (n+1)
+    else aux (Z.shift_right z 8) (n+8)
   in aux z 0
 
+exception Break of int
+
+let be_int i =
+  let le = Z.to_bits i in
+  let be = rev_string le in
+  let len = String.length be in
+  try 
+    for i = 0 to len - 1 do
+      if be.[i] <> '\000' then raise (Break i)
+    done;
+    ""
+  with Break i -> String.sub be i (len - i)
+
+
 let of_z z = 
-  let twos = if Z.geq z Z.zero then z else Z.extract z 0 (z_bytes (Z.sub (Z.mul (Z.neg z) (Z.of_int 2)) Z.one)) in
-  let little_endian = Z.to_bits twos in
-  let big_endian = rev_string little_endian in
-  if Z.geq z Z.zero && is_negative big_endian.[0] then
+  if Z.equal z Z.zero then Bytes.of_string "\000" else
+  let twos = if Z.gt z Z.zero then z else Z.extract z 0 (z_bits (Z.sub (Z.mul (Z.neg z) (Z.of_int 2)) Z.one)) in
+  let big_endian = be_int twos in
+  if Z.gt z Z.zero && is_negative big_endian.[0] then
     Bytes.of_string ("\000" ^ big_endian)
   else
     Bytes.of_string big_endian
@@ -36,7 +50,7 @@ let of_z z =
 let to_z b =
   let little_endian = rev_string (Bytes.to_string b) in
   let unsigned = Z.of_bits little_endian in
-  if is_negative (Bytes.get b 0) then
+  if Bytes.length b > 0 && is_negative (Bytes.get b 0) then
   Z.signed_extract unsigned 0 (Bytes.length b * 8)
   else unsigned
 
