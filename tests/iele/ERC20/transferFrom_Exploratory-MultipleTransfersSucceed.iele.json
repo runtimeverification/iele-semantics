@@ -25,28 +25,28 @@
                         "out": ["0x01"],
                         "status": "",
                         "gas": "0x0f52b9",
-                        "logs": "0xfa1cd3377e92afb59f25841ad5c4e09d1c5df0740643a23443dd2c19bbc9a227",
+                        "logs": "0xe20781e713e8549ad760683371e433a6c11574953925a168b85fd80812489779",
                         "refund": ""
                     },
                     {
                         "out": ["0x01"],
                         "status": "",
                         "gas": "0x0f52b9",
-                        "logs": "0xb5ce3fd234c5b42039652a5095dd31898f620375de8e358cb5384029cb278eab",
+                        "logs": "0x72bef0feed228fe328420364825c97a3a0c77a70fbb4d6aea645d318dc68ff0f",
                         "refund": ""
                     },
                     {
                         "out": ["0x01"],
                         "status": "",
                         "gas": "0x0f7005",
-                        "logs": "0x594201aed4f6bf163101b0b62d02d3312bc74548dbb9091620ace5b78fe421b8",
+                        "logs": "0xf3156127cf38e82540a9494bfa58d6346ff1cef4d67cbd24393884ce7c019d57",
                         "refund": ""
                     },
                     {
                         "out": ["0x01"],
                         "status": "",
                         "gas": "0x0f4d47",
-                        "logs": "0x01fadfcc12614878f1b214863ae72ee7ddc9cc545c099d93add68961fb92d9fd",
+                        "logs": "0xd8fd11c72edbe6059b70d18e1a9e9a5e43c7ded7bef81be22877a67b241b1df5",
                         "refund": ""
                     }
                 ],
