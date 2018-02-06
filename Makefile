@@ -31,8 +31,7 @@ NODE?=standalone
 	mkdir -p $(dir $@)
 	pandoc --from markdown --to tangle.lua --metadata=code:"k $(K_VERSION) $(NODE)" $< > $@
 
-node: all
-node: NODE=node
+node: .build/vm/iele-vm
 
 proof_dir=tests/proofs
 proof_files= 
@@ -149,7 +148,8 @@ else
 endif
 	cd .build/rvk/ethereum-kompiled && ocamlfind $(OCAMLC) -g -o interpreter constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) run.$(EXT) interpreter.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin -linkpkg -linkall -safe-string
 
-.build/vm/iele-vm: node $(wildcard iele-vm/*.ml iele-vm/*.mli)
+.build/vm/iele-vm: NODE=node
+.build/vm/iele-vm: build $(wildcard iele-vm/*.ml iele-vm/*.mli)
 	mkdir -p .build/vm
 	cp iele-vm/*.ml iele-vm/*.mli .build/vm
 	cd .build/vm && ocamlfind $(OCAMLC) -g -I ../rvk/ethereum-kompiled -o iele-vm constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) realdef.$(EXT) run.$(EXT) ieleVM.mli ieleVM.ml ieleTestClient.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin -package rlp -package yojson -package hex -linkpkg -linkall -safe-string
