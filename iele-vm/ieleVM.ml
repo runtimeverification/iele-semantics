@@ -52,6 +52,10 @@ let k_to_z (k: k) : Z.t =
 
 let get_code_bytes code =
   let module Def = (val Plugin.get ()) in
+  match code with
+  | [KApply0(Lbl'Stop'List'LBraQuot'contractDefinitionList'QuotRBra')] -> Bytes.empty
+
+  | _ ->
   match Def.eval (KApply(LblcontractBytes, [code])) [Bottom] with
   | [String bytes] -> Bytes.of_string bytes
   | _ -> failwith "Invalid value where string was expected"
