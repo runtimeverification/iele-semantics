@@ -2,17 +2,17 @@
     "ERC20_IELE": {
         "pre": {
             "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b": {
-                "nonce": "0x", 
+                "nonce": "0x00", 
                 "balance": "0xe8d4a51000", 
                 "storage": {}, 
                 "code": ""
             },
             "0x1000000000000000000000000000000000000000": {
-                "nonce": "0x", 
-                "balance": "0x", 
+                "nonce": "0x00", 
+                "balance": "0x00", 
                 "storage": {
                     "0x01a94f5374fce5edbc8e2a8697c15331677e6ebf0b": "0x2710",
-                    "0x": "0x2710"
+                    "0x00": "0x2710"
                 }, 
                 "code": "../../../iele-examples/erc20.iele"
             }
@@ -30,7 +30,7 @@
                 ],
                 "transactions": [
                     {
-                        "nonce": "0x", 
+                        "nonce": "0x00", 
                         "function": "totalSupply", 
                         "gasLimit": "0x100000", 
                         "value": "0x00", 
@@ -61,11 +61,11 @@
                 "code": ""
             },
             "0x1000000000000000000000000000000000000000": {
-                "nonce": "0x", 
-                "balance": "0x", 
+                "nonce": "0x00", 
+                "balance": "0x00", 
                 "storage": {
                     "0x01a94f5374fce5edbc8e2a8697c15331677e6ebf0b": "0x2710",
-                    "0x": "0x2710"
+                    "0x00": "0x2710"
                 }, 
                 "code": "../../../iele-examples/erc20.iele"
             }

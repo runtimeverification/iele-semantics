@@ -2,7 +2,7 @@
     "ERC20_IELE": {
         "pre": {
             "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b": {
-                "nonce": "0x", 
+                "nonce": "0x00", 
                 "balance": "0xe8d4a51000", 
                 "storage": {}, 
                 "code": ""
@@ -21,7 +21,7 @@
                 ],
                 "transactions": [
                     {
-                        "nonce": "0x", 
+                        "nonce": "0x00", 
                         "function": "", 
                         "gasLimit": "0x100000", 
                         "value": "0x00", 
@@ -54,10 +54,10 @@
             },
             "0x6295ee1b4f6dd65047762f924ecd367c17eabf8f": {
                 "nonce": "0x01", 
-                "balance": "0x", 
+                "balance": "0x00", 
                 "storage": {
                     "0x01a94f5374fce5edbc8e2a8697c15331677e6ebf0b": "0x2710",
-                    "0x": "0x2710"
+                    "0x00": "0x2710"
                 }, 
                 "code": "../../../iele-examples/erc20.iele"
             }

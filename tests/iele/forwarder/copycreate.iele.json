@@ -2,7 +2,7 @@
     "Forwarder_IELE": {
         "pre": {
             "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b": {
-                "nonce": "0x", 
+                "nonce": "0x00", 
                 "balance": "0xe8d4a51000", 
                 "storage": {}, 
                 "code": ""
@@ -42,7 +42,7 @@
                 ],
                 "transactions": [
                     {
-                        "nonce": "0x", 
+                        "nonce": "0x00", 
                         "function": "", 
                         "gasLimit": "0x100000", 
                         "value": "0x00", 
@@ -54,7 +54,7 @@
                         "secretKey": "45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8"
                     },
 	            {
-                       "nonce": "0x", 
+                       "nonce": "0x00", 
                         "function": "", 
                         "gasLimit": "0x100000", 
                         "value": "0x00", 
@@ -68,7 +68,7 @@
                         "secretKey": "45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8"
                     },
                     {
-                        "nonce": "0x", 
+                        "nonce": "0x00", 
                         "function": "newForwarder", 
                         "gasLimit": "0x100000", 
                         "value": "0x00", 
@@ -80,7 +80,7 @@
                         "secretKey": "45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8"
                     },
                     {
-                        "nonce": "0x", 
+                        "nonce": "0x00", 
                         "function": "deposit", 
                         "gasLimit": "0x100000", 
                         "value": "0x0100", 
@@ -112,9 +112,9 @@
             },
             "0x6295ee1b4f6dd65047762f924ecd367c17eabf8f": {
                 "nonce": "0x01",
-                "balance": "0x",
+                "balance": "0x00",
                 "storage": {
-                    "0x": "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b"
+                    "0x00": "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b"
                 },
                 "code": "../../../iele-examples/forwarder.iele"
             },
@@ -122,16 +122,16 @@
                 "nonce": "0x02",
                 "balance": "0x0100",
                 "storage": {
-                    "0x": "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b",
+                    "0x00": "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b",
                     "0x01": "0x6295ee1b4f6dd65047762f924ecd367c17eabf8f"
                 },
                 "code": "../../../iele-examples/forwardingWallet-copycreate.iele"
             },
             "0xe3476106159f87477ad639e3ddcbb6b240efe459": {
                 "nonce": "0x01",
-                "balance": "0x",
+                "balance": "0x00",
                 "storage": {
-                    "0x": "0xec0e71ad0a90ffe1909d27dac207f7680abba42d"
+                    "0x00": "0xec0e71ad0a90ffe1909d27dac207f7680abba42d"
                 },
                 "code": "../../../iele-examples/forwarder.iele"
             }
