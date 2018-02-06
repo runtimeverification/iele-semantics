@@ -14,6 +14,11 @@ let hook_getNonce c _ _ config _ = match c with
   [Int (Cache.get_nonce acct)]
 | _ -> failwith "getNonce"
 
+let hook_isCodeEmpty c _ _ config _ = match c with
+  [Int acct] ->
+  [Bool (Cache.is_code_empty acct)]
+| _ -> failwith "isCodeEmpty"
+
 let hook_getStorageData c _ _ config _ = match c with
   [Int acct], [Int index] ->
   [Int (Cache.get_storage_data acct index)]

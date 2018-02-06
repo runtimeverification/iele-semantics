@@ -7,6 +7,7 @@ module IELE-NODE
 
     syntax Int ::= #getBalance(Int) [function, hook(MANTIS.getBalance)]
                  | #getNonce(Int) [function, hook(MANTIS.getNonce)]
+    syntax Bool ::= #isCodeEmpty(Int) [function, hook(MANTIS.isCodeEmpty)]
  // ---------------------------------------------------------------------------
     rule <k> #loadAccount ACCT => . ... </k>
          <activeAccounts> ACCTS (.Set => SetItem(ACCT)) </activeAccounts>
@@ -15,7 +16,7 @@ module IELE-NODE
           => <account>
                <acctID> ACCT </acctID>
                <balance> #getBalance(ACCT) </balance>
-               <code> .Contract </code>
+               <code> #if #isCodeEmpty(ACCT) #then #emptyCode #else .Contract #fi </code>
                <storage> .Map </storage>
                <nonce> #getNonce(ACCT) </nonce>
              </account>
