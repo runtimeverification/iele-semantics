@@ -10,6 +10,8 @@ end
 val of_z : Z.t -> bytes
 val to_z : bytes -> Z.t
 
+val is_negative : char -> bool
+
 module StringMap : Map.S with type key = string
 
 module InMemoryWorldState : sig

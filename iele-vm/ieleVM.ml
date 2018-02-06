@@ -145,4 +145,7 @@ let run_transaction (ctx: call_context) : call_result =
   let mod_accounts = match List.split (KMap.bindings k_mod_accounts) with _,l -> List.map k_to_mod_acct l in
   let logs = List.map k_to_log k_logs in
   {return_data=ret_data;return_code=error;gas_remaining=gas;gas_refund=refund;error=not (Z.equal z_status Z.zero);modified_accounts=mod_accounts;deleted_accounts=deleted_accounts;touched_accounts=[];logs=logs})
-| _ -> failwith "Unexpected value where vmResult expected"
+| k -> prerr_endline (Prelude.print_k k); failwith "Unexpected value where vmResult expected"
+
+let g0 txdata txcreate code =
+  Z.zero
