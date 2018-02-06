@@ -34,7 +34,7 @@ module ETHEREUM-SIMULATION
 A IELE simulation is a list of IELE commands.
 Some IELE commands take a specification of IELE state (eg. for an account or transaction).
 
-```{.k .uiuck .rvk .standalone .node}
+```{.k .uiuck .rvk .standalone }
     syntax IELESimulation ::= ".IELESimulation"
                                 | IELECommand IELESimulation
  // --------------------------------------------------------
