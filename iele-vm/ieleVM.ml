@@ -132,9 +132,11 @@ let run_transaction (ctx: call_context) : call_result =
   let module Def = (val Plugin.get ()) in
   let init_config = Def.eval (KApply(LblinitGeneratedTopCell, [[Map(SortMap,Lbl_Map_,map)]])) [Bottom] in
   let final_config,_ = Run.run_no_thread_opt init_config (-1) in
-  let extracted = Def.eval (KApply(LblextractConfig, [final_config])) [Bottom] in
+  let extracted = 
+  try Def.eval (KApply(LblextractConfig, [final_config])) [Bottom] 
+  with Stuck(k) -> prerr_endline (Prelude.print_k k); failwith "failed to execute extractConfig" in
   match extracted with
-  [KApply7(LblvmResult,[List(SortList,Lbl_List_,k_rets)],[Int z_gas],[Int z_refund],[Int z_status],[List(SortList,Lbl_List_,k_selfdestruct)],[List(SortList,Lbl_List_,k_logs)],[KApply1(Lbl'_LT_'accounts'_GT_',[Map(SortAccountCellMap,LblAccountCellMapItem,k_accounts)])])] ->
+  [KApply7(LblvmResult,[List(SortList,Lbl_List_,k_rets)],[Int z_gas],[Int z_refund],[Int z_status],[List(SortList,Lbl_List_,k_selfdestruct)],[List(SortList,Lbl_List_,k_logs)],[KApply1(Lbl'_LT_'accounts'_GT_',[Map(SortAccountCellMap,Lbl_AccountCellMap_,k_accounts)])])] ->
   (let z_rets = List.map k_to_z k_rets in
   let rets = List.map World.of_z z_rets in
   let ret_data = pack_output rets in
