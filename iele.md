@@ -1691,6 +1691,7 @@ module IELE-PROGRAM-LOADING
 
     rule #contractSize(contract NAME ! SIZE _ { _ } _, NAME) => SIZE
     rule #contractSize(contract _ ! _ _ { _ } REST, NAME) => #contractSize(REST, NAME) [owise]
+    
     rule #contractBytes(CONTRACT) => #contractBytes(CONTRACT, #mainContract(CONTRACT))
     rule #contractBytes(contract NAME ! _ BYTES { _ } _, NAME) => BYTES
     rule #contractBytes(contract _ ! _ _ { _ } REST, NAME) => #contractBytes(REST, NAME) [owise]
