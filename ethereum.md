@@ -93,7 +93,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
 -   `#adjustGas` fakes the gas usage of the transaction since the EVM-to-IELE conversion does not preserve gas usage.
 -   `finishTx` is a place-holder for performing necessary cleanup after a transaction.
 
-```{.k .uiuck .rvk .standalon}
+```{.k .uiuck .rvk .standalone}
     syntax IELECommand ::= "startTx"
  // --------------------------------
     rule <k> startTx => #finalizeBlock ... </k>
