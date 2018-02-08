@@ -140,6 +140,7 @@ end
 let input_framed in_chan decoder =
   let len = input_binary_int in_chan in
   let bytes = Bytes.create len in
+  really_input in_chan bytes 0 len;
   decoder (Pbrt.Decoder.of_bytes bytes)
 let output_framed out_chan encoder v =
   let enc = Pbrt.Encoder.create() in
@@ -147,6 +148,7 @@ let output_framed out_chan encoder v =
   let encoded = Pbrt.Encoder.to_bytes enc in
   output_binary_int out_chan (Bytes.length encoded);
   output_bytes out_chan encoded;
+  flush out_chan
 
 module NetworkWorldState = struct
   let send_query (q: Msg_types.vmquery) (decoder : Pbrt.Decoder.t -> 'a) : 'a =
@@ -176,7 +178,7 @@ let serve addr (run_transaction : Msg_types.call_context -> Msg_types.call_resul
       while true do
         let call_context = input_framed in_chan Msg_pb.decode_call_context in
         let call_result = run_transaction call_context in
-        output_framed out_chan Msg_pb.encode_call_result call_result
+        output_framed out_chan Msg_pb.encode_vmquery (Call_result call_result)
       done
     with
       End_of_file -> ()
