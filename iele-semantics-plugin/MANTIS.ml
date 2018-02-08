@@ -2,7 +2,7 @@ open Constants
 open Constants.K
 open World
 
-module Cache = Caching.Make(World.InMemoryWorldState)
+module Cache = Caching.Make(World.NetworkWorldState)
 (*
 let get_blockhashes config = match config with
   [KApply7(Lbl'_LT_'generatedTop'_GT_', _, _, _, _, _, [KApply15(Lbl'_LT_'iele'_GT_', _, _, _, _, _, _, _, _, _, _, _, _, _, _, [KApply1(Lbl'_LT_'blockhash'_GT_', [List(_,_,hashes)])])], _)] ->
