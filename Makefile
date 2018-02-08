@@ -89,8 +89,10 @@ tests/BlockchainTests/%.test: tests/BlockchainTests/% | build
 	./blockchaintest $<
 tests/iele/%.test: tests/iele/% | build
 	./blockchaintest $<
+
+PORT?=10000
 tests/iele/%.nodetest: tests/iele/% | testnode
-	.build/vm/iele-test-vm $<
+	.build/vm/iele-test-vm $< $(PORT)
 
 tests/%/make.timestamp: tests/ethereum-tests/%.json tests/evm-to-iele/evm-to-iele tests/evm-to-iele/evm-test-to-iele
 	@echo "==   split: $@"

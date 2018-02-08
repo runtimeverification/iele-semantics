@@ -4,8 +4,8 @@ open Msg_types
 
 let file = Sys.argv.(1)
 
-let () = if Array.length Sys.argv <> 2 then 
-  prerr_endline ("usage: " ^ Sys.argv.(0) ^ " <file.iele.json>")
+let () = if Array.length Sys.argv <> 3 then 
+  prerr_endline ("usage: " ^ Sys.argv.(0) ^ " <file.iele.json> <port>")
 
 let json = Yojson.Basic.from_channel (open_in file)
 
@@ -144,6 +144,10 @@ let rec rlp_to_hex = function
   | Rlp.RlpData str -> Rlp.RlpData (Rope.of_string (to_hex (Bytes.of_string (Rope.to_string str))))
   | Rlp.RlpList l -> Rlp.RlpList (List.map rlp_to_hex l)
 
+let send_request ctx = 
+  let addr = Unix.ADDR_INET(Unix.inet_addr_loopback,(int_of_string Sys.argv.(2))) in
+  World.send addr ctx
+
 let test_transaction header (state: (string * Basic.json) list) (tx: Basic.json) (result: Basic.json) : (string * Basic.json) list =
   let gas_price = of_hex (tx |> member "gasPrice" |> to_string) in
   let gas_provided = of_hex (tx |> member "gasLimit" |> to_string) in
@@ -172,7 +176,7 @@ let test_transaction header (state: (string * Basic.json) list) (tx: Basic.json)
   let g0 = IeleVM.g0 txdata txcreate in
   let gas_provided = Z.sub (World.to_z gas_provided) g0 in
   let ctx = {owner_addr=of_hex owner;caller_addr=origin;origin_addr=origin;contract_code=code;input_data=txdata;call_value=of_hex value;gas_price=gas_price;gas_provided=World.of_z gas_provided;block_header=Some header;config=Iele_config;call_depth=0l} in
-  let call_result = IeleVM.run_transaction ctx in
+  let call_result = send_request ctx in
   let expected_return = List.map (fun json -> of_hex (json |> to_string)) (result |> member "out" |> to_list) in
   let rets = unpack_output call_result.return_data in
   let actual_return = List.map (fun arg -> `String (Bytes.to_string arg)) rets in

@@ -204,11 +204,51 @@ let serve addr (run_transaction : Msg_types.call_context -> Msg_types.call_resul
       ()
     done
   in
+  let print_addr = function
+  | Unix.ADDR_UNIX str -> "file://" ^ str
+  | Unix.ADDR_INET(inet,port) -> "tcp://" ^ (Unix.string_of_inet_addr inet) ^ ":" ^ (string_of_int port)
+  in
   let create_socket addr =
     let open Unix in
     let sock = socket PF_INET SOCK_STREAM 0 in
     Unix.bind sock addr;
     listen sock 10;
+    print_endline("Listening for requests at address " ^ (print_addr addr));
     sock
   in
   serve_on (create_socket addr)
+
+let send addr ctx =
+  let create_socket addr =
+    let open Unix in
+    let sock = socket PF_INET SOCK_STREAM 0 in
+    connect sock addr;
+    sock
+  in
+  let sock = create_socket addr in
+  let chans = (Unix.in_channel_of_descr sock, Unix.out_channel_of_descr sock) in
+  let hello = {version="1.0";config=Iele_config} in
+    output_framed (snd chans) Msg_pb.encode_hello hello;
+    output_framed (snd chans) Msg_pb.encode_call_context ctx;
+    let result = ref None in
+    while !result = None do
+      let query = input_framed (fst chans) Msg_pb.decode_vmquery in
+      match query with
+      | Get_account { address=addr } -> 
+        let account = InMemoryWorldState.get_account addr in
+        output_framed (snd chans) Msg_pb.encode_account account
+      | Get_storage_data { address=addr; offset=off } ->
+        let data = InMemoryWorldState.get_storage_data addr off in
+        output_framed (snd chans) Msg_pb.encode_storage_data {data=data}
+      | Get_code { address=addr } ->
+        let code = InMemoryWorldState.get_code addr in
+        output_framed (snd chans) Msg_pb.encode_code {code=code}
+      | Get_blockhash { offset=off } ->
+        let hash = InMemoryWorldState.get_blockhash (Int32.to_int off) in
+        output_framed (snd chans) Msg_pb.encode_blockhash {hash=hash}
+      | Call_result res ->
+        result := Some res
+    done;
+    match !result with
+    | Some res -> res
+    | None -> failwith "unreachable"
