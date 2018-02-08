@@ -117,11 +117,15 @@ deps:
 ifeq ($(BYTE),yes)
 EXT=cmo
 LIBEXT=cma
+DLLEXT=cma
 OCAMLC=c
+LIBFLAG=-a
 else
 EXT=cmx
 LIBEXT=cmxa
+DLLEXT=cmxs
 OCAMLC=opt -O3
+LIBFLAG=-shared
 endif
 
 .build/rvk/ethereum-kompiled/constants.$(EXT): $(defn_files)
@@ -145,11 +149,7 @@ endif
 	ocamlyacc .build/rvk/ethereum-kompiled/parser.mly
 	cd .build/rvk/ethereum-kompiled && ocamlfind $(OCAMLC) -c -g -package gmp -package zarith -package uuidm -safe-string prelude.ml plugin.ml parser.mli parser.ml lexer.ml run.ml
 	cd .build/rvk/ethereum-kompiled && ocamlfind $(OCAMLC) -c -g -w -11-26 -package gmp -package zarith -package uuidm -package iele-semantics-plugin -safe-string realdef.ml -match-context-rows 2
-ifeq ($(BYTE),yes)
-	cd .build/rvk/ethereum-kompiled && ocamlfind c -a -o realdef.cma realdef.cmo
-else
-	cd .build/rvk/ethereum-kompiled && ocamlfind opt -O3 -shared -o realdef.cmxs realdef.cmx
-endif
+	cd .build/rvk/ethereum-kompiled && ocamlfind $(OCAMLC) $(LIBFLAG) -o realdef.$(DLLEXT) realdef.$(EXT)
 	cd .build/rvk/ethereum-kompiled && ocamlfind $(OCAMLC) -g -o interpreter constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) run.$(EXT) interpreter.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin -linkpkg -linkall -safe-string
 
 .build/vm/iele-vm: NODE=node
