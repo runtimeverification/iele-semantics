@@ -4,7 +4,7 @@ IELE Binary Encoding (Work In Progress)
 Here we define an ad-hoc binary encoding for IELE. This encoding is subject to change and should not be viewed as final. The actual semantics of IELE is defined in terms of a fragment of its textual representation.
 You can use the IELE assembler provided with the semantics to convert from the textual encoding into this binary encoding.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
 requires "iele.k"
 requires "iele-syntax.k"
 
@@ -18,7 +18,7 @@ Each operation consists of its OpCode plus zero or more bytes containing the reg
 The first byte represents the operation in question, and contains enough information to determine and decode the rest of the OpCode. The remainder of the OpCode then
 contains enough information to determine and decode the rest of the operation.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
 
     syntax NullOp ::= LOADPOS ( Int , Int )
                     | LOADNEG ( Int , Int )
@@ -121,16 +121,16 @@ After interpreting the strings representing programs as a `WordStack`, it should
 -   `#dasmInstruction` disassembles the registers for a single instruction.
 -   `#dasmOpCode` interperets a `Int` as an `OpCode`.
 
-```{.k .uiuck .rvk}
+```{.k .uiuck .rvk .standalone .node}
 
     syntax Contract ::= #dasmContract ( WordStack , IeleName )       [function]
-                      | #dasmContract ( WordStack , Int , Map, IeleName , TopLevelDefinitions, Int , Int ) [function, klabel(#dasmContractAux)]
- // -------------------------------------------------------------------------------------------------------------------------------------------
+                      | #dasmContract ( WordStack , Int , Map, IeleName , TopLevelDefinitions, Int , Int , String ) [function, klabel(#dasmContractAux)]
+ // ----------------------------------------------------------------------------------------------------------------------------------------------------
     rule #dasmContract( .WordStack, _) => #emptyCode
-    rule #dasmContract( 99 : NBITS : WS, NAME ) => #dasmContract(WS, NBITS, 0 |-> init, NAME, .TopLevelDefinitions, 1, #sizeWordStack(WS) +Int 2)
-    rule #dasmContract( 105 : W1 : W2 : WS, NBITS, FUNCS, NAME, DEFS, N, SIZE ) => #dasmContract(#drop(W1 *Int 256 +Int W2, WS), NBITS, N |-> #parseToken("IeleName", #unparseByteStack(#take(W1 *Int 256 +Int W2, WS))) FUNCS, NAME, DEFS, N +Int 1, SIZE )
-    rule #dasmContract( 106 : W1 : W2 : WS, NBITS, FUNCS, NAME, DEFS, N, SIZE ) => #dasmContract(#take(W1 *Int 256 +Int W2, WS), NAME +.+IeleName N) ++Contract #dasmContract(#drop(W1 *Int 256 +Int W2, WS), NBITS, FUNCS, NAME, external contract NAME +.+IeleName N DEFS, N +Int 1, SIZE)
-    rule #dasmContract( WS, NBITS, FUNCS, NAME, DEFS, N, SIZE ) => contract NAME ! SIZE { DEFS ++TopLevelDefinitions #dasmFunctions(WS, NBITS, FUNCS, NAME) } .Contract [owise]
+    rule #dasmContract( 99 : NBITS : WS, NAME ) => #dasmContract(WS, NBITS, 0 |-> init, NAME, .TopLevelDefinitions, 1, #sizeWordStack(WS) +Int 2 , #unparseByteStack(99 : NBITS : WS))
+    rule #dasmContract( 105 : W1 : W2 : WS, NBITS, FUNCS, NAME, DEFS, N, SIZE, BYTES ) => #dasmContract(#drop(W1 *Int 256 +Int W2, WS), NBITS, N |-> #parseToken("IeleName", #unparseByteStack(#take(W1 *Int 256 +Int W2, WS))) FUNCS, NAME, DEFS, N +Int 1, SIZE, BYTES )
+    rule #dasmContract( 106 : W1 : W2 : WS, NBITS, FUNCS, NAME, DEFS, N, SIZE, BYTES ) => #dasmContract(#take(W1 *Int 256 +Int W2, WS), NAME +.+IeleName N) ++Contract #dasmContract(#drop(W1 *Int 256 +Int W2, WS), NBITS, FUNCS, NAME, external contract NAME +.+IeleName N DEFS, N +Int 1, SIZE, BYTES)
+    rule #dasmContract( WS, NBITS, FUNCS, NAME, DEFS, N, SIZE, BYTES ) => contract NAME ! SIZE BYTES { DEFS ++TopLevelDefinitions #dasmFunctions(WS, NBITS, FUNCS, NAME) } .Contract [owise]
 
     syntax priorities contractDefinitionList > contractAppend
     syntax priorities topLevelDefinitionList > topLevelAppend
