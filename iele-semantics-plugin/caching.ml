@@ -38,7 +38,7 @@ module Make ( W : World.WorldState ) : KWorldState = struct
   let blockhashes (_,_,_,b) = b
 
   let get_account acct =
-    getOrUpdateLocal accounts acct (fun () -> 
+    getOrUpdateLocal accounts acct (fun () ->
       let data = W.get_account (of_z acct) in
       data)
 
@@ -49,7 +49,7 @@ module Make ( W : World.WorldState ) : KWorldState = struct
   let get_storage_data acct index =
     let map = getOrUpdateLocal storages acct (fun () -> IntHash.create 10) in
     getOrUpdate map index (fun () -> to_z (W.get_storage_data (of_z acct) (of_z index)))
-       
+
   let get_code acct =
     getOrUpdateLocal codes acct (fun () -> Bytes.to_string (W.get_code (of_z acct)))
 

@@ -44,12 +44,6 @@ let be_int_width i width =
   Bytes.blit_string be 0 padded (width - unpadded_byte_width) unpadded_byte_width;
   padded
 
-(*
-let of_z z =
-  let sign = if (Z.lt z Z.zero) then "\001" else "\000" in
-  let str = sign ^ (Z.to_bits z) in
-  Bytes.of_string str
- *)
 let of_z z =
   if Z.equal z Z.zero then Bytes.of_string "\000" else
   let twos = if Z.gt z Z.zero then z else Z.extract z 0 (z_bits (Z.sub (Z.mul (Z.neg z) (Z.of_int 2)) Z.one)) in
@@ -234,7 +228,7 @@ let send addr ctx =
     while !result = None do
       let query = input_framed (fst chans) Msg_pb.decode_vmquery in
       match query with
-      | Get_account { address=addr } -> 
+      | Get_account { address=addr } ->
         let account = InMemoryWorldState.get_account addr in
         output_framed (snd chans) Msg_pb.encode_account account
       | Get_storage_data { address=addr; offset=off } ->
