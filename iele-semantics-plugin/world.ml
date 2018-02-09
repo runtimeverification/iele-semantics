@@ -106,30 +106,7 @@ module InMemoryWorldState = struct
   let get_blockhash i = List.nth !hashes i
 end
 
-module Connections = struct
-  let connection_table : (int , (in_channel * out_channel)) Hashtbl.t
-      = Hashtbl.create 10
-  let connection_mutex : Mutex.t = Mutex.create ()
-  let register chans : unit =
-    let my_id = Thread.id (Thread.self()) in
-    Mutex.lock connection_mutex;
-    Hashtbl.add connection_table my_id chans;
-    Mutex.unlock connection_mutex
-  let get () =
-    let my_id = Thread.id (Thread.self()) in
-    Mutex.lock connection_mutex;
-    let r = Hashtbl.find connection_table my_id in
-    Mutex.unlock connection_mutex;
-    r
-  let unregister () =
-    let my_id = Thread.id (Thread.self()) in
-    Mutex.lock connection_mutex;
-    let (in_chan, out_chan) = Hashtbl.find connection_table my_id in
-    Hashtbl.remove connection_table my_id;
-    Mutex.unlock connection_mutex;
-    close_in in_chan;
-    close_out out_chan
-end
+let connections = ThreadLocal.create 10
 
 let input_framed in_chan decoder =
   let len = input_binary_int in_chan in
@@ -146,7 +123,7 @@ let output_framed out_chan encoder v =
 
 module NetworkWorldState = struct
   let send_query (q: Msg_types.vmquery) (decoder : Pbrt.Decoder.t -> 'a) : 'a =
-    let (in_chan,out_chan) = Connections.get () in
+    let (in_chan,out_chan) = ThreadLocal.find connections in
     output_framed out_chan Msg_pb.encode_vmquery q;
     input_framed in_chan decoder
 
@@ -181,15 +158,19 @@ let serve addr (run_transaction : Msg_types.call_context -> Msg_types.call_resul
   in
   let accept_connection conn =
     let fd, _ = conn in
-    let chans = (Unix.in_channel_of_descr fd, Unix.out_channel_of_descr fd) in
-    Connections.register chans;
+    let in_chan = Unix.in_channel_of_descr fd in
+    let out_chan = Unix.out_channel_of_descr fd in
+    let chans = (in_chan,out_chan) in
+    ThreadLocal.put connections chans;
+    let finish () = ThreadLocal.remove connections;
+                    close_in in_chan; close_out out_chan in
     (try
-      let hello = input_framed (fst chans) Msg_pb.decode_hello in
+      let hello = input_framed in_chan Msg_pb.decode_hello in
       if hello.config = Iele_config && String.equal hello.version "1.0" then
         process_transactions chans
     with
-      exn -> Connections.unregister (); raise exn);
-    Connections.unregister ()
+      exn -> finish (); raise exn);
+    finish ()
   in
   let serve_on socket =
     while true do

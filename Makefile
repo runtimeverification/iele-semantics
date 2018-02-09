@@ -142,8 +142,8 @@ endif
 	mkdir -p .build/plugin
 	cp iele-semantics-plugin/*.ml iele-semantics-plugin/*.mli .build/plugin
 	ocaml-protoc iele-semantics-plugin/proto/*.proto -ml_out .build/plugin
-	cd .build/plugin && ocamlfind $(OCAMLC) -c -g -I ../rvk/ethereum-kompiled msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml world.mli world.ml caching.mli caching.ml MANTIS.ml KRYPTO.ml -package cryptokit -package secp256k1 -package bn128 -package ocaml-protoc -safe-string -thread
-	cd .build/plugin && ocamlfind $(OCAMLC) -a -o semantics.$(LIBEXT) KRYPTO.$(EXT) msg_types.$(EXT) msg_pb.$(EXT) world.$(EXT) caching.$(EXT) MANTIS.$(EXT) -thread
+	cd .build/plugin && ocamlfind $(OCAMLC) -c -g -I ../rvk/ethereum-kompiled msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml threadLocal.mli threadLocal.ml world.mli world.ml caching.mli caching.ml MANTIS.ml KRYPTO.ml -package cryptokit -package secp256k1 -package bn128 -package ocaml-protoc -safe-string -thread
+	cd .build/plugin && ocamlfind $(OCAMLC) -a -o semantics.$(LIBEXT) KRYPTO.$(EXT) msg_types.$(EXT) msg_pb.$(EXT) threadLocal.$(EXT) world.$(EXT) caching.$(EXT) MANTIS.$(EXT) -thread
 	ocamlfind remove iele-semantics-plugin
 	ocamlfind install iele-semantics-plugin iele-semantics-plugin/META .build/plugin/semantics.* .build/plugin/*.cmi .build/plugin/*.$(EXT)
 

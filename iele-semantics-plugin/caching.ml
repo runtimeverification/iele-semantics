@@ -14,40 +14,30 @@ module type KWorldState = sig
   val clear : unit -> unit
 end
 
-module IntHash = Hashtbl.Make(Z)
+let getOrUpdate hash key default =
+  try Hashtbl.find hash key
+  with Not_found -> let value = default () in Hashtbl.add hash key value; value
+let getOrUpdateLocal local_hash key default =
+  getOrUpdate (ThreadLocal.getOrUpdate local_hash (fun () -> Hashtbl.create 10))
+    key default
 
 module Make ( W : World.WorldState ) : KWorldState = struct
-  let cache = IntHash.create 10
+  module IntHash = Hashtbl.Make(Z)
 
-  let getOrUpdate map key default =
-    try
-      IntHash.find map key
-    with Not_found ->
-      let result = default () in
-      IntHash.add map key result;
-      result
-
-  let thread_id () = Z.of_int (Thread.id (Thread.self()))
-
-  let getOrUpdateLocal select key default =
-    getOrUpdate (select (getOrUpdate cache (thread_id ()) (fun () -> (IntHash.create 10,IntHash.create 10,IntHash.create 10,IntHash.create 10)))) key default
-
-  let accounts    (a,_,_,_) = a
-  let storages    (_,s,_,_) = s
-  let codes       (_,_,c,_) = c
-  let blockhashes (_,_,_,b) = b
+  let accounts = ThreadLocal.create 10
+  let storages = ThreadLocal.create 10
+  let codes    = ThreadLocal.create 10
+  let blockhashes = ThreadLocal.create 10
 
   let get_account acct =
-    getOrUpdateLocal accounts acct (fun () ->
-      let data = W.get_account (of_z acct) in
-      data)
+    getOrUpdateLocal accounts acct (fun () -> W.get_account (of_z acct))
 
   let get_balance acct = to_z (get_account acct).balance
   let get_nonce acct = to_z (get_account acct).nonce
   let is_code_empty acct = (get_account acct).code_empty
 
   let get_storage_data acct index =
-    let map = getOrUpdateLocal storages acct (fun () -> IntHash.create 10) in
+    let map = getOrUpdateLocal storages acct (fun () -> Hashtbl.create 10) in
     getOrUpdate map index (fun () -> to_z (W.get_storage_data (of_z acct) (of_z index)))
 
   let get_code acct =
@@ -57,5 +47,8 @@ module Make ( W : World.WorldState ) : KWorldState = struct
     getOrUpdateLocal blockhashes offset (fun () -> to_z (W.get_blockhash (Z.to_int offset)))
 
   let clear () =
-    IntHash.remove cache (thread_id ())
+    ThreadLocal.remove accounts;
+    ThreadLocal.remove storages;
+    ThreadLocal.remove codes;
+    ThreadLocal.remove blockhashes
 end
