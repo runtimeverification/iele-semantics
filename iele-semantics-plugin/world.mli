@@ -21,3 +21,9 @@ module InMemoryWorldState : sig
   val add_blockhash : bytes -> unit
 end
 module NetworkWorldState : WorldState
+
+val serve : Unix.sockaddr
+            -> (Msg_types.call_context -> Msg_types.call_result)
+            -> unit
+
+val send : Unix.sockaddr -> Msg_types.call_context -> Msg_types.call_result

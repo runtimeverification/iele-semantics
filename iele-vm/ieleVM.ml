@@ -34,7 +34,7 @@ let code_is_modified acctID code =
   MANTIS.Cache.is_code_empty acctID &&
   not is_code_empty
 
-let account_is_modified selfdestruct _ acct = 
+let account_is_modified selfdestruct _ acct =
 match acct with
   [KApply5(Lbl'_LT_'account'_GT_',[KApply1(Lbl'_LT_'acctID'_GT_',[Int acctID])],[KApply1(Lbl'_LT_'balance'_GT_',[Int balance])],[KApply1(Lbl'_LT_'code'_GT_',code)],[KApply1(Lbl'_LT_'storage'_GT_',[Map(SortMap,Lbl_Map_,storage)])],[KApply1(Lbl'_LT_'nonce'_GT_',[Int nonce])])] ->
   not (List.mem acctID selfdestruct) && (
@@ -71,7 +71,7 @@ let k_to_mod_acct (acct: k) : modified_account = match acct with
   let address = World.of_z acctID in
   let nonce = World.of_z nonce in
   let balance = World.of_z balance in
-  let code = 
+  let code =
   if code_is_modified acctID code then
     get_code_bytes code
   else
@@ -88,7 +88,7 @@ let k_to_log (log: k) : log_entry = match log with
   {address=World.of_z_width 20 address;topics=List.map (World.of_z_width 32) z_topics;data=Bytes.of_string data}
 | _ -> failwith "Invalid value found where SubstateLogEntry was expected"
 
-let z_of_rlp rlp = 
+let z_of_rlp rlp =
   match rlp with
   Rlp.RlpData rope -> World.to_z (Bytes.of_string (Rope.to_string rope))
 | Rlp.RlpList _ -> failwith "Invalid value where rlp-encoded string expected"
@@ -135,8 +135,8 @@ let run_transaction (ctx: call_context) : call_result =
   let module Def = (val Plugin.get ()) in
   let init_config = Def.eval (KApply(LblinitGeneratedTopCell, [[Map(SortMap,Lbl_Map_,map)]])) [Bottom] in
   let final_config,_ = Run.run_no_thread_opt init_config (-1) in
-  let extracted = 
-  try Def.eval (KApply(LblextractConfig, [final_config])) [Bottom] 
+  let extracted =
+  try Def.eval (KApply(LblextractConfig, [final_config])) [Bottom]
   with Stuck(k) -> prerr_endline (Prelude.print_k k); failwith "failed to execute extractConfig" in
   match extracted with
   [KApply7(LblvmResult,[List(SortList,Lbl_List_,k_rets)],[Int z_gas],[Int z_refund],[Int z_status],[List(SortList,Lbl_List_,k_selfdestruct)],[List(SortList,Lbl_List_,k_logs)],[KApply1(Lbl'_LT_'accounts'_GT_',[Map(SortAccountCellMap,Lbl_AccountCellMap_,k_accounts)])])] ->

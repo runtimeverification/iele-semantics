@@ -2,7 +2,7 @@ open Constants
 open Constants.K
 open World
 
-module Cache = Caching.Make(World.InMemoryWorldState)
+module Cache = Caching.Make(World.NetworkWorldState)
 
 let hook_getBalance c _ _ config _ = match c with
   [Int acct] ->
