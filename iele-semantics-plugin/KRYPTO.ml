@@ -56,7 +56,7 @@ let get_pt k = match k with
 | [KApply2(Lbl'LPar'_'Comm'_'RPar'_KRYPTO, [Int x], [Int y])] ->
     if Z.equal x Z.zero && Z.equal y Z.zero then BN128Curve.Infinite else
     if (Z.lt x BN128Elements.field_modulus && Z.lt y BN128Elements.field_modulus
-        && Z.geq x Z.zero && Z.geq y Z.zero) then 
+        && Z.geq x Z.zero && Z.geq y Z.zero) then
       let pt = BN128Curve.Finite (BN128Elements.FQ.create x, BN128Elements.FQ.create y) in
       if BN128Curve.G1.is_on_curve pt then pt else raise InvalidPoint
     else raise InvalidPoint
@@ -77,8 +77,8 @@ let project_pt pt = let x, y = match pt with
 | BN128Curve.Infinite -> Z.zero, Z.zero
 in [KApply2(Lbl'LPar'_'Comm'_'RPar'_KRYPTO, [Int x], [Int y])]
 
-let hook_bn128valid c lbl sort config ff = 
-  try 
+let hook_bn128valid c lbl sort config ff =
+  try
     let _ = get_pt c in
     [Bool true]
   with InvalidPoint -> [Bool false]
@@ -96,7 +96,7 @@ let hook_bn128add c lbl sort config ff = match c with
   project_pt (BN128Curve.G1.add pt1 pt2)
 
 let hook_bn128mul c lbl sort config ff = match c with
-  k, 
+  k,
   [Int s] ->
   let pt1 = get_pt k in
   project_pt (BN128Curve.G1.mul pt1 s)

@@ -4,8 +4,8 @@ open Msg_types
 
 let file = Sys.argv.(1)
 
-let () = if Array.length Sys.argv <> 2 then 
-  prerr_endline ("usage: " ^ Sys.argv.(0) ^ " <file.iele.json>")
+let () = if Array.length Sys.argv <> 3 then
+  prerr_endline ("usage: " ^ Sys.argv.(0) ^ " <file.iele.json> <port>")
 
 let json = Yojson.Basic.from_channel (open_in file)
 
@@ -44,7 +44,7 @@ let to_hex bytes =
   in
   "0x" ^ (match Hex.of_string str with (`Hex str) -> str)
 
-let abs_path rel = 
+let abs_path rel =
   if Filename.is_relative rel then (Sys.getcwd ()) ^ "/" ^ rel else rel
 
 let assemble file =
@@ -60,7 +60,7 @@ let assemble file =
 let checkpoint pre gas_provided gas_price origin : (string * Basic.json) list =
   List.map (fun (k,v) ->
     if of_hex k = origin then match v with
-    | `Assoc a -> 
+    | `Assoc a ->
       let without = List.remove_assoc "nonce" (List.remove_assoc "balance" a) in
       let new_nonce = World.of_z (Z.add Z.one (World.to_z (of_hex (v |> member "nonce" |> to_string)))) in
       let gas_payment = Z.mul (World.to_z gas_price) (World.to_z gas_provided) in
@@ -68,7 +68,7 @@ let checkpoint pre gas_provided gas_price origin : (string * Basic.json) list =
       (k,`Assoc(("nonce", `String(to_hex new_nonce))::("balance", `String(to_hex new_balance))::without))
     | _ -> failwith "Invalid value where json object expected"
     else (k,v)) pre
-   
+
 let add_account (id,data) =
   let acctID = of_hex id in
   let old_nonce = data |> member "nonce" |> to_string in
@@ -117,13 +117,13 @@ let update_storage (storage: (string * Basic.json) list) (updates: storage_updat
 
 let mod_acct_to_json (pre: (string * Basic.json) list) (acct: modified_account) : string * Basic.json =
   let address = to_hex acct.address in
-  let storage,old_code = try 
+  let storage,old_code = try
     let account = List.assoc address pre in
     let storage = account |> member "storage" |> to_assoc in
     let code = account |> member "code" |> to_string in
     storage,code
   with Not_found -> [],"" in
-  let new_code = if Bytes.length acct.code = 0 then 
+  let new_code = if Bytes.length acct.code = 0 then
     old_code
   else
     to_hex acct.code
@@ -144,6 +144,10 @@ let rec rlp_to_hex = function
   | Rlp.RlpData str -> Rlp.RlpData (Rope.of_string (to_hex (Bytes.of_string (Rope.to_string str))))
   | Rlp.RlpList l -> Rlp.RlpList (List.map rlp_to_hex l)
 
+let send_request ctx =
+  let addr = Unix.ADDR_INET(Unix.inet_addr_loopback,(int_of_string Sys.argv.(2))) in
+  World.send addr ctx
+
 let test_transaction header (state: (string * Basic.json) list) (tx: Basic.json) (result: Basic.json) : (string * Basic.json) list =
   let gas_price = of_hex (tx |> member "gasPrice" |> to_string) in
   let gas_provided = of_hex (tx |> member "gasLimit" |> to_string) in
@@ -160,7 +164,7 @@ let test_transaction header (state: (string * Basic.json) list) (tx: Basic.json)
   init_state checkpoint_state;
   let code = if txcreate then
     Bytes.empty
-  else 
+  else
     World.InMemoryWorldState.get_code (of_hex owner)
   in
   let data_str = tx |> member "data" |> to_string in
@@ -172,7 +176,7 @@ let test_transaction header (state: (string * Basic.json) list) (tx: Basic.json)
   let g0 = IeleVM.g0 txdata txcreate in
   let gas_provided = Z.sub (World.to_z gas_provided) g0 in
   let ctx = {owner_addr=of_hex owner;caller_addr=origin;origin_addr=origin;contract_code=code;input_data=txdata;call_value=of_hex value;gas_price=gas_price;gas_provided=World.of_z gas_provided;block_header=Some header;config=Iele_config;call_depth=0l} in
-  let call_result = IeleVM.run_transaction ctx in
+  let call_result = send_request ctx in
   let expected_return = List.map (fun json -> of_hex (json |> to_string)) (result |> member "out" |> to_list) in
   let rets = unpack_output call_result.return_data in
   let actual_return = List.map (fun arg -> `String (Bytes.to_string arg)) rets in
