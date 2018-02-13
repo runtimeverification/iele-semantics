@@ -6,18 +6,33 @@ In a nutshell, to install IELE on an Ubuntu 16.04 machine, run:
 ```
 
 sudo apt-get update
-sudo apt-get install make gcc maven curl openjdk-8-jdk flex opam pkg-config libmpfr-dev autoconf libtool pandoc libssl-dev build-essential libffi-dev libpython-dev python-setuptools libssl-dev
+sudo apt-get install make gcc maven curl openjdk-8-jdk flex opam pkg-config libmpfr-dev autoconf libtool pandoc libssl-dev build-essential libffi-dev libpython-dev python-setuptools
 git submodule update --init # Initialize submodules
 curl -sSL https://get.haskellstack.org/ | sh # Install stack
 cd .build/secp256k1 && ./autogen.sh && ./configure --enable-module-recovery --enable-module-ecdh --enable-experimental && make && sudo make install # install secp256k1 from bitcoin-core
 cd ../..
-cd .build/pyethereum && sudo python setup.py install # install pyethereum to sign "ethereum" transactions
+cd .build/pyethereum && sudo CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS" python setup.py install # install pyethereum to sign "ethereum" transactions
 cd ../..
 make deps # Build dependencies not installed by package manager
 eval `opam config env` # add OCAML installation to path
 make # Build project
 
 ```
+
+To install on MacOS, after installing the command line tools package:
+
+```
+
+brew tap caskroom/cask caskroom/version
+brew cask install java8
+brew install maven opam pkg-config gmp mpfr automake libtool pandoc
+export LDFLAGS="-L$(brew --prefix openssl)/lib" # needed by pyethereum
+export CFLAGS="-I$(brew --prefix openssl)/include" # needed by pyethereum
+```
+
+Followed by the Ubuntu instructi0ons beginning at `git submodule updat --init`
+
+--------------
 
 To test against a fragment of the ethereum test suite, run `make test`
 
