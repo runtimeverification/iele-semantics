@@ -1,7 +1,7 @@
 # Common to all versions of K
 # ===========================
 
-.PHONY: all clean build tangle defn proofs split-tests test vm-test blockchain-test deps assembler iele-test iele-test-node node testnode
+.PHONY: all clean build tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode
 .SECONDARY: .build/standalone/ethereum-kompiled/constants.cmx .build/node/ethereum-kompiled/constants.cmx
 
 all: build split-vm-tests
@@ -114,13 +114,16 @@ tests/ethereum-tests/%.json:
 
 KOMPILE=tests/ci/rv-k/k-distribution/target/release/k/bin/kompile
 
-deps:
+deps: k-deps ocaml-deps
+k-deps:
 	cd tests/ci/rv-k && mvn package
+
+ocaml-deps:
 	opam init
 	opam repository add k "tests/ci/rv-k/k-distribution/target/release/k/lib/opam" || opam repository set-url k "tests/ci/rv-k/k-distribution/target/release/k/lib/opam"
 	opam update
 	opam switch 4.03.0+k
-	opam install mlgmp zarith uuidm cryptokit secp256k1 bn128 hex ocaml-protoc rlp yojson
+	eval `opam config env` && opam install -y mlgmp zarith uuidm cryptokit secp256k1 bn128 hex ocaml-protoc rlp yojson
 
 ifeq ($(BYTE),yes)
 EXT=cmo
