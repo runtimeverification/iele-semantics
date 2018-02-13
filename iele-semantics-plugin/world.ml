@@ -188,7 +188,8 @@ let serve addr (run_transaction : Msg_types.call_context -> Msg_types.call_resul
     let sock = socket PF_INET SOCK_STREAM 0 in
     Unix.bind sock addr;
     listen sock 10;
-    print_endline("Listening for requests at address " ^ (print_addr addr));
+    let new_addr = Unix.getsockname sock in
+    print_endline("Listening for requests at address " ^ (print_addr new_addr));
     sock
   in
   serve_on (create_socket addr)
