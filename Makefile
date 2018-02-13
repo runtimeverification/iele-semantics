@@ -82,7 +82,7 @@ iele_tests=$(wildcard tests/iele/*/*.iele.json)
 iele_targets=${iele_tests:=.test}
 iele_node_targets=${iele_tests:=.nodetest}
 
-test: $(passing_targets) ${iele_targets}
+test: $(passing_targets) ${iele_targets} ${iele_node_targets}
 vm-test: $(passing_vm_targets)
 blockchain-test: $(passing_blockchain_targets)
 iele-test: ${iele_targets}
