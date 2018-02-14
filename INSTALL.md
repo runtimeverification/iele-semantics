@@ -30,7 +30,7 @@ export LDFLAGS="-L$(brew --prefix openssl)/lib" # needed by pyethereum
 export CFLAGS="-I$(brew --prefix openssl)/include" # needed by pyethereum
 ```
 
-Followed by the Ubuntu instructi0ons beginning at `git submodule update --init`
+Followed by the Ubuntu instructions beginning at `git submodule update --init`
 
 --------------
 
