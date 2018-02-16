@@ -58,9 +58,12 @@ let of_z_width width z =
   let twos = if Z.gt z Z.zero then z else Z.extract z 0 (z_bits (Z.sub (Z.mul (Z.neg z) (Z.of_int 2)) Z.one)) in
   be_int_width twos width
 
-let to_z b =
+let to_z_unsigned b =
   let little_endian = rev_string (Bytes.to_string b) in
-  let unsigned = Z.of_bits little_endian in
+  Z.of_bits little_endian
+
+let to_z b =
+  let unsigned = to_z_unsigned b in
   if Bytes.length b > 0 && is_negative (Bytes.get b 0) then
   Z.signed_extract unsigned 0 (Bytes.length b * 8)
   else unsigned
@@ -166,7 +169,7 @@ let serve addr (run_transaction : Msg_types.call_context -> Msg_types.call_resul
                     close_in in_chan; close_out out_chan in
     (try
       let hello = input_framed in_chan Msg_pb.decode_hello in
-      if hello.config = Iele_config && String.equal hello.version "1.0" then
+      if String.equal hello.version "1.0" then
         process_transactions chans
     with
       exn -> finish (); raise exn);

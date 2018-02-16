@@ -30,21 +30,21 @@ module Make ( W : World.WorldState ) : KWorldState = struct
   let blockhashes = ThreadLocal.create 10
 
   let get_account acct =
-    getOrUpdateLocal accounts acct (fun () -> W.get_account (of_z acct))
+    getOrUpdateLocal accounts acct (fun () -> W.get_account (of_z_width 20 acct))
 
-  let get_balance acct = to_z (get_account acct).balance
-  let get_nonce acct = to_z (get_account acct).nonce
+  let get_balance acct = to_z_unsigned (get_account acct).balance
+  let get_nonce acct = to_z_unsigned (get_account acct).nonce
   let is_code_empty acct = (get_account acct).code_empty
 
   let get_storage_data acct index =
     let map = getOrUpdateLocal storages acct (fun () -> Hashtbl.create 10) in
-    getOrUpdate map index (fun () -> to_z (W.get_storage_data (of_z acct) (of_z index)))
+    getOrUpdate map index (fun () -> to_z (W.get_storage_data (of_z_width 20 acct) (of_z index)))
 
   let get_code acct =
-    getOrUpdateLocal codes acct (fun () -> Bytes.to_string (W.get_code (of_z acct)))
+    getOrUpdateLocal codes acct (fun () -> Bytes.to_string (W.get_code (of_z_width 20 acct)))
 
   let get_blockhash offset =
-    getOrUpdateLocal blockhashes offset (fun () -> to_z (W.get_blockhash (Z.to_int offset)))
+    getOrUpdateLocal blockhashes offset (fun () -> to_z_unsigned (W.get_blockhash (Z.to_int offset)))
 
   let clear () =
     ThreadLocal.remove accounts;
