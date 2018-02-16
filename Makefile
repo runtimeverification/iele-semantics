@@ -2,7 +2,7 @@
 # ===========================
 
 .PHONY: all clean build tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode
-.SECONDARY: .build/standalone/ethereum-kompiled/constants.cmx .build/node/ethereum-kompiled/constants.cmx
+.SECONDARY: .build/standalone/ethereum-kompiled/constants.$(EXT) .build/node/ethereum-kompiled/constants.$(EXT)
 
 all: build split-vm-tests
 
