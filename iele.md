@@ -1009,8 +1009,8 @@ This is a right cons-list of `SubstateLogEntry` (which contains the account ID a
 The `log` instruction logs an entire memory cell to the substate log with zero to four log topics.
 
 ```{.k .uiuck .rvk .standalone .node}
-    syntax SubstateLogEntry ::= "{" Int "|" List "|" String "}" [klabel(logEntry)]
- // ------------------------------------------------------------------------------
+    syntax SubstateLogEntry ::= "{" Int "|" List "|" WordStack "}" [klabel(logEntry)]
+ // ---------------------------------------------------------------------------------
 ```
 
 ```{.k .uiuck .rvk .standalone .node}
@@ -1025,7 +1025,7 @@ The `log` instruction logs an entire memory cell to the substate log with zero t
     rule <k> #log MEMINDEX TOPICS => . ... </k>
          <id> ACCT </id>
          <localMem> LM </localMem>
-         <logData> ... (.List => ListItem({ ACCT | TOPICS | #unparseByteStack({LM [ chop(MEMINDEX) ]}:>WordStack) })) </logData>
+         <logData> ... (.List => ListItem({ ACCT | TOPICS | {LM [ chop(MEMINDEX) ]}:>WordStack })) </logData>
 ```
 
 Network Ops
@@ -1693,6 +1693,8 @@ module IELE-PROGRAM-LOADING
     rule #contractSize(contract _ ! _ _ { _ } REST, NAME) => #contractSize(REST, NAME) [owise]
     
     rule #contractBytes(CONTRACT) => #contractBytes(CONTRACT, #mainContract(CONTRACT))
+      requires CONTRACT =/=K .Contract
+    rule #contractBytes(.Contract) => ""
     rule #contractBytes(contract NAME ! _ BYTES { _ } _, NAME) => BYTES
     rule #contractBytes(contract _ ! _ _ { _ } REST, NAME) => #contractBytes(REST, NAME) [owise]
 
