@@ -1,6 +1,20 @@
 # Common to all versions of K
 # ===========================
 
+ifeq ($(BYTE),yes)
+EXT=cmo
+LIBEXT=cma
+DLLEXT=cma
+OCAMLC=c
+LIBFLAG=-a
+else
+EXT=cmx
+LIBEXT=cmxa
+DLLEXT=cmxs
+OCAMLC=opt -O3
+LIBFLAG=-shared
+endif
+
 .PHONY: all clean build tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode
 .SECONDARY: .build/standalone/ethereum-kompiled/constants.$(EXT) .build/node/ethereum-kompiled/constants.$(EXT)
 
@@ -125,20 +139,6 @@ ocaml-deps:
 	opam switch 4.03.0+k
 	eval `opam config env` && opam install -y mlgmp zarith uuidm cryptokit secp256k1 bn128 hex ocaml-protoc rlp yojson
 
-ifeq ($(BYTE),yes)
-EXT=cmo
-LIBEXT=cma
-DLLEXT=cma
-OCAMLC=c
-LIBFLAG=-a
-else
-EXT=cmx
-LIBEXT=cmxa
-DLLEXT=cmxs
-OCAMLC=opt -O3
-LIBFLAG=-shared
-endif
-
 .build/%/ethereum-kompiled/constants.$(EXT): $(defn_files)
 	@echo "== kompile: $@"
 	${KOMPILE} --debug --main-module ETHEREUM-SIMULATION \
@@ -166,9 +166,9 @@ endif
 .build/vm/iele-test-vm: .build/node/ethereum-kompiled/interpreter $(wildcard plugin/vm/*.ml plugin/vm/*.mli)
 	mkdir -p .build/vm
 	cp plugin/vm/*.ml plugin/vm/*.mli .build/vm
-	cd .build/vm && ocamlfind $(OCAMLC) -g -I ../node/ethereum-kompiled -o iele-test-vm constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) realdef.$(EXT) run.$(EXT) ieleVM.mli ieleVM.ml ieleTestClient.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin-node -package rlp -package yojson -package hex -linkpkg -linkall -thread -safe-string
+	cd .build/vm && ocamlfind $(OCAMLC) -g -I ../node/ethereum-kompiled -o iele-test-vm constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) realdef.$(EXT) run.$(EXT) VM.mli VM.ml ieleTestClient.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin-node -package rlp -package yojson -package hex -linkpkg -linkall -thread -safe-string
 
 .build/vm/iele-vm: .build/node/ethereum-kompiled/interpreter $(wildcard plugin/vm/*.ml plugin/vm/*.mli)
 	mkdir -p .build/vm
 	cp plugin/vm/*.ml plugin/vm/*.mli .build/vm
-	cd .build/vm && ocamlfind $(OCAMLC) -g -I ../node/ethereum-kompiled -o iele-vm constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) realdef.$(EXT) run.$(EXT) ieleVM.mli ieleVM.ml ieleNetworkServer.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin-node -package rlp -package yojson -package hex -linkpkg -linkall -thread -safe-string
+	cd .build/vm && ocamlfind $(OCAMLC) -g -I ../node/ethereum-kompiled -o iele-vm constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) realdef.$(EXT) run.$(EXT) VM.mli VM.ml vmNetworkServer.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin-node -package rlp -package yojson -package hex -linkpkg -linkall -thread -safe-string

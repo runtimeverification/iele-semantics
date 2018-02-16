@@ -220,7 +220,7 @@ Our semantics is modal, with the initial mode being set on the command line via 
 module IELE-INFRASTRUCTURE
     imports IELE-CONFIGURATION
 
-    syntax Mode ::= "NORMAL" | "VMTESTS"
+    syntax Mode ::= "NORMAL" [klabel(NORMAL)] | "VMTESTS"
 ```
 
 -   `#setMode_` sets the mode to the supplied one.
