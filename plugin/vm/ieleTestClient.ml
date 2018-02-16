@@ -59,18 +59,18 @@ let assemble file =
 
 let checkpoint pre gas_provided gas_price origin : (string * Basic.json) list =
   List.map (fun (k,v) ->
-    if of_hex k = origin then match v with
+    if of_hex_unsigned k = origin then match v with
     | `Assoc a ->
       let without = List.remove_assoc "nonce" (List.remove_assoc "balance" a) in
-      let new_nonce = World.of_z (Z.add Z.one (World.to_z (of_hex (v |> member "nonce" |> to_string)))) in
-      let gas_payment = Z.mul (World.to_z gas_price) (World.to_z gas_provided) in
-      let new_balance = World.of_z (Z.sub (World.to_z (of_hex (v |> member "balance" |> to_string))) gas_payment) in
+      let new_nonce = World.of_z (Z.add Z.one (World.to_z_unsigned (of_hex (v |> member "nonce" |> to_string)))) in
+      let gas_payment = Z.mul (World.to_z_unsigned gas_price) (World.to_z_unsigned gas_provided) in
+      let new_balance = World.of_z (Z.sub (World.to_z_unsigned (of_hex (v |> member "balance" |> to_string))) gas_payment) in
       (k,`Assoc(("nonce", `String(to_hex new_nonce))::("balance", `String(to_hex new_balance))::without))
     | _ -> failwith "Invalid value where json object expected"
     else (k,v)) pre
 
 let add_account (id,data) =
-  let acctID = of_hex id in
+  let acctID = of_hex_unsigned id in
   let old_nonce = data |> member "nonce" |> to_string in
   let old_balance = data |> member "balance" |> to_string in
   let code = data |> member "code" |> to_string in
@@ -93,7 +93,7 @@ let unpack_output data =
   let rlp = Rlp.decode (Rope.of_string (Bytes.to_string data)) in
   match rlp with
   Rlp.RlpList(rets) ->
-  List.map (fun rlp -> World.of_z (IeleVM.z_of_rlp rlp)) rets
+  List.map (fun rlp -> World.of_z (VM.z_of_rlp rlp)) rets
 | _ -> failwith "Invalid value where rlp-encoded return values expected"
 
 let rlp_of_bytes (b: bytes) : Rlp.t =
@@ -159,13 +159,13 @@ let test_transaction header (state: (string * Basic.json) list) (tx: Basic.json)
   let pubkey_string = String.init 64 (fun idx -> Bigarray.Array1.get (Secp256k1.Public.to_bytes ~compress:false context pubkey) (idx+1)) in
   let pubkey_hash = Cryptokit.hash_string (hash()) pubkey_string in
   let origin = String.sub pubkey_hash 12 20 in
-  let origin = Bytes.of_string (if World.is_negative origin.[0] then "\000" ^ origin else origin) in
+  let origin = Bytes.of_string origin in
   let checkpoint_state = checkpoint state gas_price gas_provided origin in
   init_state checkpoint_state;
   let code = if txcreate then
     Bytes.empty
   else
-    World.InMemoryWorldState.get_code (of_hex owner)
+    World.InMemoryWorldState.get_code (of_hex_unsigned owner)
   in
   let data_str = tx |> member "data" |> to_string in
   let data = if data_str = "" then Bytes.empty else assemble data_str in
@@ -173,9 +173,9 @@ let test_transaction header (state: (string * Basic.json) list) (tx: Basic.json)
   let value = tx |> member "value" |> to_string in
   let function_ = tx |> member "function" |> to_string in
   let txdata = pack_input args function_ txcreate data in
-  let g0 = IeleVM.g0 txdata txcreate in
-  let gas_provided = Z.sub (World.to_z gas_provided) g0 in
-  let ctx = {owner_addr=of_hex owner;caller_addr=origin;origin_addr=origin;contract_code=code;input_data=txdata;call_value=of_hex value;gas_price=gas_price;gas_provided=World.of_z gas_provided;block_header=Some header;config=Iele_config;call_depth=0l} in
+  let g0 = VM.g0 txdata txcreate in
+  let gas_provided = Z.sub (World.to_z_unsigned gas_provided) g0 in
+  let ctx = {owner_addr=of_hex_unsigned owner;caller_addr=origin;origin_addr=origin;contract_code=code;input_data=txdata;call_value=of_hex value;gas_price=gas_price;gas_provided=World.of_z gas_provided;block_header=Some header;config=Iele_config;call_depth=0l} in
   let call_result = send_request ctx in
   let expected_return = List.map (fun json -> of_hex (json |> to_string)) (result |> member "out" |> to_list) in
   let rets = unpack_output call_result.return_data in
@@ -190,12 +190,12 @@ let test_transaction header (state: (string * Basic.json) list) (tx: Basic.json)
     failed := true;
   end;
   let expected_gas = of_hex (result |> member "gas" |> to_string) in
-  if World.to_z expected_gas <> World.to_z call_result.gas_remaining then begin
+  if World.to_z_unsigned expected_gas <> World.to_z_unsigned call_result.gas_remaining then begin
     prerr_endline ("failed " ^ file ^ ": gas:\n" ^ (to_hex call_result.gas_remaining));
     failed := true;
   end;
   let expected_refund = of_hex (result |> member "refund" |> to_string) in
-  if World.to_z expected_refund <> World.to_z call_result.gas_refund then begin
+  if World.to_z_unsigned expected_refund <> World.to_z_unsigned call_result.gas_refund then begin
     prerr_endline ("failed " ^ file ^ ": refund:\n" ^ (to_hex call_result.gas_refund));
     failed := true;
   end;
@@ -221,7 +221,7 @@ let test_block state block =
   let number = bh |> member "number" |> to_string in
   let gas_limit = bh |> member "gasLimit" |> to_string in
   let timestamp = bh |> member "timestamp" |> to_string in
-  let block_header = {beneficiary=of_hex beneficiary;difficulty=of_hex difficulty;number=of_hex number;gas_limit=of_hex gas_limit;unix_timestamp=Z.to_int64 (World.to_z (of_hex timestamp))} in
+  let block_header = {beneficiary=of_hex_unsigned beneficiary;difficulty=of_hex difficulty;number=of_hex number;gas_limit=of_hex gas_limit;unix_timestamp=Z.to_int64 (World.to_z (of_hex timestamp))} in
   let transactions = block |> member "transactions" |> to_list in
   let results = block |> member "results" |> to_list in
   List.fold_left2 (test_transaction block_header) state transactions results
@@ -231,7 +231,7 @@ let blocks = test |> member "blocks" |> to_list
 let expected = sort (canonicalize (test |> member "postState" |> to_assoc))
 let json_blockhashes = test |> member "blockhashes" |> to_list
 let str_blockhashes = List.map to_string json_blockhashes
-let blockhashes = List.map of_hex str_blockhashes;;
+let blockhashes = List.map of_hex_unsigned str_blockhashes;;
 List.iter World.InMemoryWorldState.add_blockhash (List.rev blockhashes);;
 let actual = sort (canonicalize (List.fold_left test_block pre blocks));;
 if expected <> actual then begin

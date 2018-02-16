@@ -10,6 +10,7 @@ end
 val of_z : Z.t -> bytes
 val of_z_width : int -> Z.t -> bytes
 val to_z : bytes -> Z.t
+val to_z_unsigned : bytes -> Z.t
 
 val is_negative : char -> bool
 
