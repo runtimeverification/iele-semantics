@@ -105,6 +105,14 @@ module IELE-NODE
     rule <k> #end ~> #endVM => #popCallStack ~> #dropWorldState ~> #dropSubstate ~> #refund GAVAIL ~> 0 </k>
          <gas> GAVAIL </gas>
 
+    rule <k> _:Int </k>
+         (<account>
+           <balance> 0 </balance>
+           <code> #emptyCode </code>
+           <nonce> 0 </nonce>
+           ...
+         </account> => .Bag)
+
     syntax Ints ::= #toInts(List) [function, klabel(ListToInts)]
  // ------------------------------------------------------------
     rule #toInts(.List) => .Ints
