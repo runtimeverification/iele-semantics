@@ -13,3 +13,6 @@
 [submodule ".build/pyethereum"]
 	path = .build/pyethereum
 	url = https://github.com/ethereum/pyethereum
+[submodule "plugin"]
+	path = plugin
+	url = https://github.com/runtimeverification/blockchain-k-plugin

@@ -105,6 +105,16 @@ module IELE-NODE
     rule <k> #end ~> #endVM => #popCallStack ~> #dropWorldState ~> #dropSubstate ~> #refund GAVAIL ~> 0 </k>
          <gas> GAVAIL </gas>
 
+    // the k cell doesn't completely empty during function call/return or at any other time while executing a contract,
+    // therefore this rule can only apply at the end following an #endVM or a #codeDeposit _ _ _ _ _ true.
+    rule <k> _:Int </k>
+         (<account>
+           <balance> 0 </balance>
+           <code> #emptyCode </code>
+           <nonce> 0 </nonce>
+           ...
+         </account> => .Bag)
+
     syntax Ints ::= #toInts(List) [function, klabel(ListToInts)]
  // ------------------------------------------------------------
     rule #toInts(.List) => .Ints
@@ -115,10 +125,10 @@ module IELE-NODE
     rule #toList(.Ints) => .List
     rule #toList(I , L) => ListItem(I) #toList(L)
 
-    syntax KItem ::= vmResult(return: List,gas: Int,refund: Int,status: Int,selfdestruct: List,logs: List,AccountsCell)
+    syntax KItem ::= vmResult(return: List,gas: Int,refund: Int,status: Int,selfdestruct: List,logs: List,AccountsCell, touched: List)
     syntax KItem ::= extractConfig(GeneratedTopCell) [function]
  // ----------------------------------------------------------
-    rule extractConfig(<generatedTop>... <output> OUT </output> <gas> GAVAIL </gas> <refund> REFUND </refund> <k> STATUS:Int </k> <selfDestruct> SD </selfDestruct> <logData> LOGS </logData> <accounts> ACCTS </accounts> ... </generatedTop>) => vmResult(#toList(OUT),GAVAIL,REFUND,STATUS,Set2List(SD),LOGS,<accounts> ACCTS </accounts>)
+    rule extractConfig(<generatedTop>... <output> OUT </output> <gas> GAVAIL </gas> <refund> REFUND </refund> <k> STATUS:Int </k> <selfDestruct> SD </selfDestruct> <logData> LOGS </logData> <accounts> ACCTS </accounts> ... </generatedTop>) => vmResult(#toList(OUT),GAVAIL,REFUND,STATUS,Set2List(SD),LOGS,<accounts> ACCTS </accounts>, .List)
 
 endmodule
 ```
