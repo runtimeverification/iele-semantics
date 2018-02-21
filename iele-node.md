@@ -105,6 +105,8 @@ module IELE-NODE
     rule <k> #end ~> #endVM => #popCallStack ~> #dropWorldState ~> #dropSubstate ~> #refund GAVAIL ~> 0 </k>
          <gas> GAVAIL </gas>
 
+    // the k cell doesn't completely empty during function call/return or at any other time while executing a contract,
+    // therefore this rule can only apply at the end following an #endVM or a #codeDeposit _ _ _ _ _ true.
     rule <k> _:Int </k>
          (<account>
            <balance> 0 </balance>
