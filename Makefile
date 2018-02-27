@@ -40,15 +40,17 @@ defn_files=$(standalone_files) $(node_files)
 
 defn: $(defn_files)
 
+export LUA_PATH=$(shell pwd)/.build/tangle/?.lua;;
+
 
 .build/node/%.k: %.md
 	@echo "==  tangle: $@"
 	mkdir -p $(dir $@)
-	pandoc --from markdown --to tangle.lua --metadata=code:"k rvk node" $< > $@
+	pandoc --from markdown --to .build/tangle/tangle.lua --metadata=code:".k:not(.standalone),.node" $< > $@
 .build/standalone/%.k: %.md
 	@echo "==  tangle: $@"
 	mkdir -p $(dir $@)
-	pandoc --from markdown --to tangle.lua --metadata=code:"k rvk standalone" $< > $@
+	pandoc --from markdown --to .build/tangle/tangle.lua --metadata=code:".k:not(.node),.standalone" $< > $@
 
 node: .build/vm/iele-vm
 testnode : .build/vm/iele-test-vm

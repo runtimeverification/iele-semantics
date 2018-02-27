@@ -1,4 +1,4 @@
-```{.k .uiuck .rvk .node}
+```{.k .node}
 module IELE-NODE
     imports IELE
     imports IELE-BINARY

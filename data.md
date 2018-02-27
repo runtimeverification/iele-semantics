@@ -5,7 +5,7 @@ IELE uses arbitrary-precision integers, and sometimes also bytes (8 bit words).
 Here we provide the arithmetic of these words, as well as some data-structures over them.
 Both are implemented using K's `Int`.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
 requires "krypto.k"
 requires "domains.k"
 
@@ -21,7 +21,7 @@ module IELE-DATA
 
 Some important numbers that are referred to often during execution:
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax Int ::= "pow16"  [function]
                  | "pow30"  [function]
                  | "pow160" [function]
@@ -38,7 +38,7 @@ Some important numbers that are referred to often during execution:
 The JSON format is used to encode IELE test cases.
 Writing a JSON-ish parser in K takes 6 lines.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax JSONList ::= List{JSON,","}
     syntax JSONKey  ::= String | Int
     syntax JSON     ::= String | Bool
@@ -56,7 +56,7 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to IELE'
 -   `chop` interperets an integers modulo $2^256$. This is used when interpreting
     arbitrary precision integers as memory indices.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax Int ::= chop ( Int ) [function]
  // --------------------------------------
     rule chop ( I:Int ) => I modInt pow256 requires I <Int 0  orBool I >=Int pow256
@@ -66,7 +66,7 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to IELE'
 -   `bool2Word` interperets a `Bool` as a `Int`.
 -   `word2Bool` interperets a `Int` as a `Bool`.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax Int ::= bool2Word ( Bool ) [function]
  // --------------------------------------------
     rule bool2Word(true)  => 1
@@ -84,7 +84,7 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to IELE'
     the actual value of the account ID is the empty set. This is used, for example, when
     referring to the destination of a message which creates a new contract.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax Account ::= ".Account" | Int
 ```
 
@@ -93,7 +93,7 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to IELE'
 -   `#sizeRegs(R)` returns the number of registers in a list of Operands.
 -   `#sizeLVals(R)` returns the number of registers in a list of LValues.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax Int ::= #sizeRegs ( Operands ) [function]
                  | #sizeRegs ( Operands , Int ) [function, klabel(#sizeRegsAux)]
  // ----------------------------------------------------------------------------
@@ -117,7 +117,7 @@ Arithmetic
 NOTE: Here, we choose to add `I2 -Int 1` to the numerator beforing doing the division to mimic the C++ implementation.
 You could alternatively calculate `I1 %Int I2`, then add one to the normal integer division afterward depending on the result.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax Int ::= Int "up/Int" Int [function, klabel(ceilDiv)]
  // -----------------------------------------------------------
     rule I1 up/Int 0  => 0
@@ -127,7 +127,7 @@ You could alternatively calculate `I1 %Int I2`, then add one to the normal integ
 
 -   `logNInt` returns the log base N (floored) of an integer.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax Int ::= log2Int ( Int ) [function]
  // -----------------------------------------
     rule log2Int(1) => 0
@@ -143,7 +143,7 @@ You could alternatively calculate `I1 %Int I2`, then add one to the normal integ
 -   `bitsInWords` converts a number of bits to a number of words.
 -   `bytesInWords` ocnverts a number of bytes to a number of words.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax Int ::= intSize ( Int ) [function]
  // -----------------------------------------
     rule intSize(N) => (log2Int(N) +Int 2) up/Int 64 requires N >Int 0
@@ -173,7 +173,7 @@ You could alternatively calculate `I1 %Int I2`, then add one to the normal integ
 
 Here we provide simple syntactic sugar over our power-modulus operator.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax Int ::= powmod(Int, Int, Int) [function]
  // -----------------------------------------------
     rule powmod(W0, W1, W2) => W0 ^%Int W1 W2 requires W2 =/=Int 0
@@ -182,7 +182,7 @@ Here we provide simple syntactic sugar over our power-modulus operator.
 
 -   `gcdInt` computes the gcd of two integers.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax Int ::= gcdInt(Int, Int)  [function]
                  | #gcdInt(Int, Int) [function]
  // -------------------------------------------
@@ -198,7 +198,7 @@ Bitwise Operators
 -   `bit` gets bit $N$ (0 being LSB).
 -   `byte` gets byte $N$ (0 being the LSB).
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax Int ::= bit  ( Int , Int ) [function]
                  | byte ( Int , Int ) [function]
  // --------------------------------------------
@@ -211,7 +211,7 @@ Bitwise Operators
 -   `#nBytes` shifts in $N$ bytes of ones from the right.
 -   `_<<Byte_` shifts an integer 8 bits to the left.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax Int ::= #nBits  ( Int )  [function]
                  | #nBytes ( Int )  [function]
                  | Int "<<Byte" Int [function]
@@ -224,7 +224,7 @@ Bitwise Operators
 -   `signextend(N, W)` sign-extends from byte $N$ of $W$ (0 being LSB).
 -   `twos(N, W)` converts a signed integer from byte $N$ of $W$ to twos-complement representation (0 being LSB).
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax Int ::= signextend ( Int , Int ) [function]
                  | twos ( Int , Int )       [function]
  // --------------------------------------------------
@@ -236,7 +236,7 @@ Bitwise Operators
 
 -   `keccak` serves as a wrapper around the `Keccak256` in `KRYPTO`.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax Int ::= keccak ( WordStack ) [function]
  // ----------------------------------------------
     rule keccak(WS) => #parseHexWord(Keccak256(#unparseByteStack(WS)))
@@ -254,7 +254,7 @@ IELE makes use of a stack in some places in order to represent lists of integers
 The stack and some standard operations over it are provided here.
 This stack also serves as a cons-list, so we provide some standard cons-list manipulation tools.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax WordStack [flatPredicate]
     syntax WordStack ::= ".WordStack" | Int ":" WordStack
  // -----------------------------------------------------
@@ -266,7 +266,7 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
 -   `#drop(N , WS)` removes the first $N$ elements of a `WordStack`.
 -   `WS [ N .. W ]` access the range of `WS` beginning with `N` of width `W`.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax WordStack ::= WordStack "++" WordStack [function, right]
  // ---------------------------------------------------------------
     rule .WordStack ++ WS' => WS'
@@ -300,7 +300,7 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
 -   `WS [ N := W ]` sets element $N$ of $WS$ to $W$ (padding with zeros as needed).
 -   `WS [ N := WS' ]` sets elements starting at $N$ of $WS$ to $WS'$ (padding with zeros as needed).
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax Int ::= WordStack "[" Int "]" [function]
  // -----------------------------------------------
     rule (W0 : WS)   [0] => W0
@@ -321,7 +321,7 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
 -   `#sizeWordStack` calculates the size of a `WordStack`.
 -   `_in_` determines if a `Int` occurs in a `WordStack`.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax Int ::= #sizeWordStack ( WordStack )       [function, smtlib(sizeWordStack)]
                  | #sizeWordStack ( WordStack , Int ) [function, klabel(sizeWordStackAux), smtlib(sizeWordStackAux)]
  // ----------------------------------------------------------------------------------------------------------------
@@ -337,7 +337,7 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
 
 -   `#padToWidth(N, WS)` makes sure that a `WordStack` is the correct size.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax WordStack ::= #padToWidth ( Int , WordStack ) [function]
  // ---------------------------------------------------------------
     rule #padToWidth(N, WS) => WS                     requires notBool #sizeWordStack(WS) <Int N
@@ -354,7 +354,7 @@ We use the impure attribute on the function definitions because the Array sort i
 fast backend is mutable, so we need to ensure we do not cache identical arrays for each time
 we call this function.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
 
     syntax Array ::= ".Array" [function, impure]
                    | ".Memory" [function, impure]
@@ -375,7 +375,7 @@ The local memory of execution is a byte-array (instead of a word-array).
 -   `#asSignedBytes` will split a single signed integer up into a `WordStack` where each word is a byte wide.
 -   `#asUnsignedBytes` will split a single unsigned integer up into a `WordStack` where each word is a byte wide.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax Int ::= #asSigned ( WordStack )       [function]
                  | #asSigned ( WordStack , Int ) [function, klabel(#asSignedAux), smtlib(asSigned)]
  // -----------------------------------------------------------------------------------------------
@@ -427,7 +427,7 @@ Addresses
 
 -   `#addr` turns a IELE arbitrary-precision word into the corresponding IELE address (modulo 2^160).
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax Int ::= #addr ( Int ) [function]
  // ---------------------------------------
     rule #addr(W) => W modInt pow160
@@ -436,7 +436,7 @@ Addresses
 -   `#newAddr` computes the address of a new account given the address and nonce of the creating account.
 -   `#sender` computes the sender of the transaction from its data and signature. The format which takes an entire transaction is used only for backwards compatibility with the EVM test suite; the argument which takes an ECDSA signature is used by IELE.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax Int ::= #newAddr ( Int , Int ) [function]
  // ------------------------------------------------
     rule #newAddr(ACCT, NONCE) => #addr(#parseHexWord(Keccak256(#rlpEncodeLength(#rlpEncodeBytes(ACCT, 20) +String #rlpEncodeWord(NONCE), 192))))
@@ -456,7 +456,7 @@ Addresses
 
 -   `#blockHeaderHash` computes the hash of a block header given all the block data. This is used solely for backwards compatibility with the EVM test suite.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax Int ::= #blockHeaderHash( Int , Int , Int , Int , Int , Int , WordStack , Int , Int , Int , Int , Int , WordStack , Int , Int ) [function]
                  | #blockHeaderHash(String, String, String, String, String, String, String, String, String, String, String, String, String, String, String) [function, klabel(#blockHashHeaderStr)]
  // -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -502,7 +502,7 @@ We are using the polymorphic `Array` sort for these word maps.
 -   `WM [ N := WS ]` assigns a contiguous chunk of $WM$ to $WS$ starting at position $W$.
 -   `#range(M, START, WIDTH)` reads off $WIDTH$ elements from $WM$ beginning at position $START$ (padding with zeros as needed).
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax Array ::= Array "[" Int ":=" WordStack "]" [function]
  // ------------------------------------------------------------
     rule WM::Array[ N := .WordStack ] => WM
@@ -514,19 +514,12 @@ We are using the polymorphic `Array` sort for these word maps.
     rule #range(WM, START, WIDTH) => #range(WM, chop(START) +Int chop(WIDTH) -Int 1, chop(WIDTH), .WordStack)
 
     rule #range(WM, END, 0,     WS) => WS
-```
-
-```{.k .uiuck}
-    rule #range(WM, END, WIDTH, WS) => #range(WM, END -Int 1, WIDTH -Int 1, WM [ END ]:>Int : WS) requires (WIDTH >Int 0)
-```
-
-```{.k .rvk .standalone .node}
     rule #range(WM, END, WIDTH, WS) => #range(WM, END -Int 1, WIDTH -Int 1, {WM [ END ]}:>Int : WS) requires (WIDTH >Int 0)
 ```
 
 -   `#removeZeros` removes any entries in a map with zero values.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax Map ::= #removeZeros ( Map ) [function]
  // ----------------------------------------------
     rule #removeZeros( .Map )               => .Map
@@ -536,7 +529,7 @@ We are using the polymorphic `Array` sort for these word maps.
 
 -   `#lookup` looks up a key in a map and returns 0 if the key doesn't exist, otherwise returning its value.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax Int ::= #lookup ( Map , Int ) [function]
  // -----------------------------------------------
     rule #lookup( (KEY |-> VAL) M, KEY ) => VAL
@@ -562,7 +555,7 @@ These parsers can interperet hex-encoded strings as `Int`s, `WordStack`s, and `M
 -   `#parseMap` interperets a JSON key/value object as a map from `Word` to `Word`.
 -   `#parseAddr` interperets a string as a 160 bit hex-endcoded address.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax Int ::= #parseHexWord ( String ) [function]
                  | #parseWord    ( String ) [function]
  // --------------------------------------------------
@@ -609,7 +602,7 @@ We need to interperet a `WordStack` as a `String` again so that we can call `Kec
 -   `#unparseByteStack` turns a stack of bytes (as a `WordStack`) into a `String`.
 -   `#padByte` ensures that the `String` interperetation of a `Int` is wide enough.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax String ::= #unparseByteStack ( WordStack )                [function, klabel(unparseByteStack)]
                     | #unparseByteStack ( WordStack , StringBuffer ) [function, klabel(#unparseByteStackAux)]
  // ---------------------------------------------------------------------------------------------------------
@@ -640,7 +633,7 @@ Encoding
 -   `#rlpEncodeString` RLP encodes a single `String`.
 -   `#rlpEncodeAccount` RLP encodes a single account ID.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax String ::= #rlpEncodeWord ( Int )            [function]
                     | #rlpEncodeBytes ( Int , Int )     [function]
                     | #rlpEncodeWordStack ( WordStack ) [function]
@@ -683,7 +676,7 @@ Decoding
 -   `#rlpDecodeList` RLP decodes a single `String` into a `JSONList`, interpereting the string as the RLP encoding of a list.
 -   `#loadLen` and `#loadOffset` decode a `WordStack` into a single string in an RLP-like encoding which does not allow lists in its structure.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax JSON ::= #rlpDecode(String)               [function]
                   | #rlpDecode(String, LengthPrefix) [function, klabel(#rlpDecodeAux)]
  // ----------------------------------------------------------------------------------

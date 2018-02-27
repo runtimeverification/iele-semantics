@@ -16,3 +16,6 @@
 [submodule "plugin"]
 	path = plugin
 	url = https://github.com/runtimeverification/blockchain-k-plugin
+[submodule ".build/tangle"]
+	path = .build/tangle
+	url = https://github.com/ehildenb/pandoc-tangle
