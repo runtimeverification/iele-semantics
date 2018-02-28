@@ -5,12 +5,16 @@ In this repository we provide a model of IELE in K.
 
 ### Structure
 
+The file [iele-syntax.md](iele-syntax.md) contains the syntax definition of IELE, along with comments that guide the reader through the structure of the language and links to more detailed descriptions of various features. This file is a good starting point for getting familiar with the language.
+
 The file [data.md](data.md) explains the basic data of IELE (including words and some datastructures over them).
 This data is defined functionally.
 
 [iele.md](iele.md) is the file containing the semantics of IELE.
 This file contains the **configuration** (a map of the state), and a simple imperative execution machine which IELE lives on top of.
 It deals with the semantics of opcodes, the gas cost of execution, and parsing/unparsing/assembling/disassembling.
+
+Finally, the file [Design.md](Design.md) discusses the design rationale of IELE. It also provides more detailed descriptions of various IELE features, as well as differences and similarities with EVM and LLVM.
 
 ### Testing
 
