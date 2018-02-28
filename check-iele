@@ -1,0 +1,12 @@
+#!/bin/sh
+interpreter="$(dirname "$0")/.build/check/well-formedness-kompiled/interpreter"
+kast="$(mktemp)"
+trap "rm -rf $kast" INT TERM EXIT
+tests/ci/rv-k/k-distribution/target/release/k/bin/kast -d "$(dirname "$0")/.build/check" "$1" > "$kast"
+$interpreter "$(dirname "$0")/.build/check/well-formedness-kompiled/realdef.cma" -c PGM "$kast" textfile
+exit=$?
+if [ $exit -eq 0 ]; then
+  exit 0
+fi
+printf "error: IELE contract failed to pass well-formedness check.\n"
+exit $exit
