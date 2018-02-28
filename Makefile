@@ -99,18 +99,25 @@ iele_tests=$(wildcard tests/iele/*/*.iele.json)
 iele_targets=${iele_tests:=.test}
 iele_node_targets=${iele_tests:=.nodetest}
 
-test: $(passing_targets) ${iele_targets} ${iele_node_targets}
+iele_contracts=$(wildcard iele-examples/*.iele tests/iele/*/*.iele)
+well_formedness_targets=${iele_contracts:=.test}
+
+test: $(passing_targets) ${iele_targets} ${iele_node_targets} ${well_formedness_targets}
 vm-test: $(passing_vm_targets)
 blockchain-test: $(passing_blockchain_targets)
 iele-test: ${iele_targets}
 iele-test-node: ${iele_node_targets}
+well-formed-test: ${well_formedness_targets}
 
-tests/VMTests/%.test: tests/VMTests/% | build
+tests/VMTests/%.json.test: tests/VMTests/%.json | build
 	./vmtest $<
-tests/BlockchainTests/%.test: tests/BlockchainTests/% | build
+tests/BlockchainTests/%.json.test: tests/BlockchainTests/%.json | build
 	./blockchaintest $<
-tests/iele/%.test: tests/iele/% | build
+tests/iele/%.json.test: tests/iele/%.json | build
 	./blockchaintest $<
+
+%.iele.test: %.iele | build
+	./check-iele $<
 
 PORT?=10000
 tests/iele/%.nodetest: tests/iele/% | testnode
