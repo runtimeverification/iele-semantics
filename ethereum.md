@@ -601,7 +601,7 @@ Here we check the other post-conditions associated with an EVM test.
     rule check TESTID : { "out" : OUT } => check "out" : OUT ~> failure TESTID
  // --------------------------------------------------------------------------
     rule check "out" : ((OUT:String) => #parseHexWord(OUT))
-    rule <k> check "out" : OUT => . ... </k> <output> OUT , .Ints </output>
+    rule <k> check "out" : OUT:Int => . ... </k> <output> OUT , .Ints </output>
     rule <k> check "out" : 0   => . ... </k> <output> .Ints </output>
     rule <k> check "out" : [ OUT ] => . ... </k> <output> OUTPUT </output> requires #toInts(OUT) ==K OUTPUT
 

@@ -30,6 +30,7 @@ Local register names are desugared to integers when assembling an IELE program
 ```k
 module IELE-COMMON
   imports DOMAINS-SYNTAX
+  imports INT-SYNTAX
   syntax NumericIeleName ::= Int
   syntax IeleName ::= NumericIeleName
 ```
@@ -55,7 +56,9 @@ IELE has two categories of identifiers: local and global names.
 -   IELE globals serve as names with contract-wide scope that hold a constant value (cannot be modified).
 
 ```k
-  syntax Constant ::= Int | GlobalName
+  syntax Constant ::= IntConstant | GlobalName
+  syntax IntConstant ::= Int | Bool | HexConstant
+  syntax HexConstant ::= r"0x[0-9a-fA-F]+" [token]
 ```
 
 Instructions
