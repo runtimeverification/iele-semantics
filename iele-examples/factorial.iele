@@ -22,4 +22,6 @@ contract Factorial {
   throw:
     call @iele.invalid()
   }
+
+  define @init() {}
 }

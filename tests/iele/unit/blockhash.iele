@@ -4,4 +4,6 @@ contract blockhash_test {
     %hash = call @iele.blockhash(%offset)
     sstore %hash, @idx
   }
+
+  define @init() {}
 }
