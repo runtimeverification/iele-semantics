@@ -363,8 +363,6 @@ Description of registers.
  // -----------------------
     rule isKResult(.Operands) => true
 
-    syntax String ::= IeleName2String ( IeleName ) [function, hook(STRING.token2string)]
- // ------------------------------------------------------------------------------------
     rule % NAME:NumericIeleName => % String2Int(IeleName2String(NAME)) requires notBool isInt(NAME)
 
     syntax LValues ::= #regRange ( Int ) [function]

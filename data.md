@@ -107,6 +107,9 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to IELE'
     rule #sizeLVals(REGS) => #sizeLVals(REGS, 0)
     rule #sizeLVals(REG , REGS, N) => #sizeLVals(REGS, N +Int 1)
     rule #sizeLVals(.LValues, N) => N
+
+    syntax String ::= IeleName2String ( IeleName ) [function, hook(STRING.token2string)]
+ // ------------------------------------------------------------------------------------
 ```
 
 Arithmetic
