@@ -325,7 +325,7 @@ A contract can only create accounts with deployed contracts that have been exter
 Definition of globals and their constant values. Globals are accessible from within any function of the contract and their value cannot be modified.
 
 ```k
-  syntax GlobalDefinition ::= GlobalName "=" Int
+  syntax GlobalDefinition ::= GlobalName "=" IntConstant  [klabel(globalDefinition)]
 ```
 
 ### Functions
@@ -354,7 +354,7 @@ The body of a function is a list of blocks, where each block is a list of IELE i
   syntax UnlabeledBlock ::= Instructions
 
   syntax Blocks [flatPredicate]
-  syntax Blocks ::= UnlabeledBlock LabeledBlocks | LabeledBlocks
+  syntax Blocks ::= UnlabeledBlock LabeledBlocks [avoid] | LabeledBlocks
 ```
 
 ### Reserved IELE Function Names
