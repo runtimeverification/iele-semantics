@@ -48,7 +48,7 @@ A IELE program consists of a list of contracts, where contracts later in the lis
 * A special private function named `@init` should be defined for any contract and will called when an account is created with this contract. If this function is not defined the contract is malformed.
 * An account to which code has never been deployed contains an implicit public function `@deposit` which takes no arguments, returns no values, and does nothing. This function exists to allow accounts to receive payment even if they do not have a contract deployed to them, and functions analogously to calling an account with no code in EVM. Note that a contract can forbid payments by refusing to declare the `@deposit` function, and explicitly raising an exception if any of its entry points are invoked with a balance transfer. A contract can also define code to be executed when it is paid by defining its own deposit function.
 * A global definition defines a global name and its constant value (which is an unbounded signed integer). Globals are accessible from within any function of the contract and their value cannot be modified.
-* The contract is malformed if it contains multiple function and/or global definitions with the same name.
+* The contract is malformed if it contains multiple function and/or global definitions with the same name, or if it references a global that has not been declared.
 
 ## Static Jumps
 
