@@ -13,13 +13,21 @@ Names and Literals
 
 ### IELE Names
 
-IELE uses alphanumeric names for identifying registers, labels, functions, and contracts.
+IELE uses alphanumeric names for identifying registers, labels, functions, and contracts. IELE "keywords" are also valid identifiers.
 
 ```k
 module IELE-SYNTAX
   imports IELE-COMMON
 
-  syntax IeleName ::= r"(?<![A-Za-z0-9\\_\\.\\-\\$])[a-zA-Z\\.\\_\\-\\$][0-9a-zA-Z\\.\\_\\-\\$]*" [token, notInRules, prec(3)]
+  syntax IeleName ::= r"(?<![A-Za-z0-9\\_\\.\\-\\$])[a-zA-Z\\.\\_\\$][0-9a-zA-Z\\.\\_\\-\\$]*" [token, notInRules, prec(3)]
+
+  syntax Keyword ::= "load" | "store" | "sload"  | "sstore" | "iszero" | "not"  | "add"  | "mul"  | "sub" | "div"
+                   | "exp"  | "mod"   | "addmod" | "mulmod" | "expmod" | "byte" | "sext" | "twos" | "and" | "or"
+                   | "xor"  | "shift" | "lt"     | "le"     | "gt"     | "ge"   | "eq"   | "ne"   | "cmp" | "sha3"
+  
+  syntax Keyword ::= "br"  | "call"   | "staticcall" | "at" | "send"  | "gaslimit" | "ret"      | "void"   | "revert"
+                   | "log" | "create" | "copycreate" | "selfdestruct" | "contract" | "external" | "define" | "public"
+  syntax IeleName ::= Keyword [token]
 
   syntax NumericIeleName ::= r"[0-9]+" [token]
 endmodule
