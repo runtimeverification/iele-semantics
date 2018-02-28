@@ -23,7 +23,7 @@ all: build split-vm-tests
 clean:
 	rm -rf .build/standalone .build/node .build/plugin-node .build/plugin-standalone .build/vm
 
-build: tangle .build/standalone/ethereum-kompiled/interpreter .build/vm/iele-vm assembler
+build: tangle .build/standalone/ethereum-kompiled/interpreter .build/vm/iele-vm assembler .build/check/well-formedness-kompiled/interpreter
 
 assembler:
 	cd compiler && stack build --install-ghc
@@ -36,6 +36,7 @@ tangle: defn proofs
 k_files:=ethereum.k data.k iele.k iele-gas.k iele-binary.k krypto.k iele-syntax.k iele-node.k
 standalone_files:=$(patsubst %,.build/standalone/%,$(k_files))
 node_files:=$(patsubst %,.build/node/%,$(k_files))
+checker_files:=.build/standalone/iele-syntax.k .build/standalone/well-formedness.k
 defn_files=$(standalone_files) $(node_files)
 
 defn: $(defn_files)
@@ -147,6 +148,15 @@ ocaml-deps:
 					--syntax-module IELE-SYNTAX .build/$*/ethereum.k --directory .build/$* \
 					--hook-namespaces "KRYPTO MANTIS" --gen-ml-only -O3 --non-strict
 	cd .build/$*/ethereum-kompiled && ocamlfind $(OCAMLC) -c -g constants.ml -package gmp -package zarith -safe-string
+
+.build/check/well-formedness-kompiled/interpreter: $(checker_files)
+	${KOMPILE} --debug --main-module IELE-WELL-FORMEDNESS \
+	                                --syntax-module IELE-SYNTAX .build/standalone/well-formedness.k --directory .build/check \
+	                                --gen-ml-only -O3 --non-strict
+	cd .build/check/well-formedness-kompiled && ocamlfind $(OCAMLC) -c -g -package gmp -package zarith -package uuidm -safe-string constants.ml prelude.ml plugin.ml parser.mli parser.ml lexer.ml run.ml
+	cd .build/check/well-formedness-kompiled && ocamlfind $(OCAMLC) -c -g -w -11-26 -package gmp -package zarith -package uuidm -safe-string realdef.ml -match-context-rows 2
+	cd .build/check/well-formedness-kompiled && ocamlfind $(OCAMLC) $(LIBFLAG) -o realdef.$(DLLEXT) realdef.$(EXT)
+	cd .build/check/well-formedness-kompiled && ocamlfind $(OCAMLC) -g -o interpreter constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) run.$(EXT) interpreter.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -linkpkg -linkall -safe-string
 
 .build/plugin-%/semantics.$(LIBEXT): $(wildcard plugin/plugin/*.ml plugin/plugin/*.mli) .build/%/ethereum-kompiled/constants.$(EXT)
 	mkdir -p .build/plugin-$*
