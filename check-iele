@@ -2,7 +2,7 @@
 interpreter="$(dirname "$0")/.build/check/well-formedness-kompiled/interpreter"
 kast="$(mktemp)"
 trap "rm -rf $kast" INT TERM EXIT
-tests/ci/rv-k/k-distribution/target/release/k/bin/kast -d "$(dirname "$0")/.build/check" "$1" > "$kast"
+tests/ci/rv-k/k-distribution/target/release/k/bin/kast --expand-macros -d "$(dirname "$0")/.build/check" "$1" > "$kast"
 $interpreter "$(dirname "$0")/.build/check/well-formedness-kompiled/realdef.cma" -c PGM "$kast" textfile
 exit=$?
 if [ $exit -eq 0 ]; then
