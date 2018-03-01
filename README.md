@@ -53,6 +53,14 @@ To execute a Blockchain test, run `./blockchaintest $file` where `$file` is a JS
 
 To execute all currently passing tests, run `make test`.
 
+To run only the pure-IELE tests, run `make iele-test`.
+
+For testing the interprocess VM API, first start the vm server
+by running `.build/vm/iele-vm 10000 127.0.0.1` in another shell or
+in the background.
+With the server running, run `make iele-test-node` to run the pure-IELE
+tests on the vm server, or run individual tests using `.build/vm/iele-vm-test`.
+
 ### Debugging
 
 When executing a test, if a test fails, the intermediate state of the IELE VM is dumped on the command line. This can be used to provide
