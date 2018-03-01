@@ -1301,7 +1301,9 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
     syntax InternalOp ::= "#create" Int Int Int Int Contract Ints
                         | "#mkCreate" Int Int Contract Int Int Ints
                         | "#checkCreate" Int Int
- // --------------------------------------------
+                        | "#checkContract" Contract
+                        | "#finishTypeChecking"
+ // -----------------------------------------------
     rule <k> #checkCreate ACCT VALUE ~> #create _ _ GAVAIL _ _ _ _ => #refund GAVAIL ~> #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception (#if VALUE >Int BAL #then OUT_OF_FUNDS #else CALL_STACK_OVERFLOW #fi) ... </k>
          <callDepth> CD </callDepth>
          <output> _ => .Ints </output>
@@ -1322,6 +1324,15 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
            ...
          </account>
       requires notBool (VALUE >Int BAL orBool VALUE <Int 0 orBool CD >=Int 1024)
+
+    rule <k> #checkContract CONTRACT => CONTRACT ~> #finishTypeChecking ... </k>
+         (_:WellFormednessCell => 
+         <well-formedness>
+           <typeChecking> true </typeChecking>
+           ...
+         </well-formedness>)
+    rule <k> #finishTypeChecking => . ... </k>
+         <typeChecking> _ => false </typeChecking>
 
     rule #create ACCTFROM ACCTTO GAVAIL VALUE CODE ARGS
       => #pushCallStack ~> #pushWorldState ~> #pushSubstate

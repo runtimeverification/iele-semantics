@@ -114,8 +114,10 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
     syntax IELECommand ::= loadTx ( Int )
  // -------------------------------------
     rule <k> loadTx(ACCTFROM)
-          => #create ACCTFROM #newAddr(ACCTFROM, NONCE) (GLIMIT -Int G0(SCHED, CODE, ARGS)) VALUE #dasmContract(CODE, Main) ARGS
-          ~> #codeDeposit #newAddr(ACCTFROM, NONCE) #sizeWordStack(CODE) #dasmContract(CODE, Main) %0 %1 true ~> #adjustGas ~> #finalizeTx(false) ~> startTx
+          => #fun(CONTRACT =>
+             #checkContract CONTRACT
+          ~> #create ACCTFROM #newAddr(ACCTFROM, NONCE) (GLIMIT -Int G0(SCHED, CODE, ARGS)) VALUE CONTRACT ARGS
+          ~> #codeDeposit #newAddr(ACCTFROM, NONCE) #sizeWordStack(CODE) CONTRACT %0 %1 true ~> #adjustGas ~> #finalizeTx(false) ~> startTx)(#dasmContract(CODE, Main))
          ...
          </k>
          <schedule> SCHED </schedule>
