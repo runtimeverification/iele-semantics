@@ -340,6 +340,7 @@ Simple commands controlling exceptions provide control-flow.
                  | "ACCT_COLLISION"
                  | "OUT_OF_FUNDS"
                  | "CALL_STACK_OVERFLOW"
+                 | "CONTRACT_INVALID"
  // ------------------------------------
     rule FUNC_NOT_FOUND      => 1 [macro]
     rule FUNC_WRONG_SIG      => 2 [macro]
@@ -349,6 +350,7 @@ Simple commands controlling exceptions provide control-flow.
     rule ACCT_COLLISION      => 6 [macro]
     rule OUT_OF_FUNDS        => 7 [macro]
     rule CALL_STACK_OVERFLOW => 8 [macro]
+    rule CONTRACT_INVALID    => 9 [macro]
 ```
 
 Description of registers.

@@ -81,6 +81,7 @@ IELE function calls take an arbitrary number of register arguments and return va
   * 6: deploying to an account that already exists
   * 7: insufficient balance to transfer
   * 8: negative balance or gas limit or call depth exceeded
+  * 9: contract being uploaded to blockchain is not well formed
 * Because they are no longer needed, we remove EVM's CALLDATA* instructions and RETURNDATA* instructions.
 * Because of security concerns, we remove the EVM's CALLCODE and DELEGATECALL instructions. We provide a different way to more cheaply create many contracts that share code.
 
