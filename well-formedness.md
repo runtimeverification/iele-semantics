@@ -94,39 +94,42 @@ Top Level Definitions
          <types> TYPES => TYPES NAME |-> int </types>
       requires notBool NAME in_keys(TYPES)
 
-    rule <k> define @ init ( ARGS::LocalNames ) { BLOCKS } => . ... </k>
+    rule <k> define @ init ( ARGS::FunctionParameters ) { BLOCKS } => . ... </k>
          <types> TYPES => TYPES init |-> ints(#sizeNames(ARGS)) -> .Types </types>
-         <functionBodies> .K => function(init) ~> BLOCKS ... </functionBodies>
+         <functionBodies> .K => processFunction(init) ~> BLOCKS ... </functionBodies>
       requires notBool init in_keys(TYPES)
 
-    rule <k> define @ NAME ( ARGS::LocalNames ) { BLOCKS } => checkName(NAME) ~> checkArgs(ARGS) ... </k>
+    rule <k> define @ NAME ( ARGS::FunctionParameters ) { BLOCKS } => checkName(NAME) ~> checkArgs(ARGS) ... </k>
          <types> TYPES => TYPES NAME |-> (ints(#sizeNames(ARGS)) -> unknown) </types>
-         <functionBodies> .K => function(NAME) ~> BLOCKS ... </functionBodies>
+         <functionBodies> .K => processFunction(NAME) ~> BLOCKS ... </functionBodies>
       requires notBool NAME in_keys(TYPES) andBool NAME =/=K init
 
-    rule <k> define public @ NAME ( ARGS::LocalNames ) { BLOCKS } => checkName(NAME) ~> checkArgs(ARGS) ... </k>
+    rule <k> define public @ NAME ( ARGS::FunctionParameters ) { BLOCKS } => checkName(NAME) ~> checkArgs(ARGS) ... </k>
          <types> TYPES => TYPES NAME |-> ints(#sizeNames(ARGS)) -> unknown </types>
-         <functionBodies> .K => function(NAME) ~> BLOCKS ... </functionBodies>
+         <functionBodies> .K => processFunction(NAME) ~> BLOCKS ... </functionBodies>
       requires notBool NAME in_keys(TYPES) andBool NAME =/=K init
 
-    syntax KItem ::= function(IeleName)
- // -----------------------------------
-    rule <k> function(NAME) => . ... </k>
+    syntax KItem ::= processFunction(IeleName)
+ // ------------------------------------------
+    rule <k> processFunction(NAME) => . ... </k>
          (_:CurrentFunctionCell => <currentFunction>
            <functionName> NAME </functionName>
            ...
          </currentFunction>)
 
-    syntax Int ::= #sizeNames(LocalNames) [function]
- // ------------------------------------------------
+    syntax FunctionParameters ::= Int
+    syntax Int ::= #sizeNames(FunctionParameters) [function]
+ // --------------------------------------------------------
+    rule #sizeNames(I:Int) => I
     rule #sizeNames(.LocalNames) => 0
     rule #sizeNames(N , NAMES) => 1 +Int #sizeNames(NAMES)
 
-    syntax KItem ::= checkArgs(LocalNames)
+    syntax KItem ::= checkArgs(FunctionParameters)
                    | checkNameArgs(LocalNames)
                    | checkIntArgs(LocalNames, Int)
  // ----------------------------------------------
     rule checkArgs(.LocalNames) => .
+    rule checkArgs(_:Int) => . 
     rule checkArgs(% N:NumericIeleName , ARGS) => checkIntArgs(% N, ARGS, 0)
     rule checkArgs(% N, ARGS) => checkNameArgs(ARGS) requires notBool isNumericIeleName(N)
 

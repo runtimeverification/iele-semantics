@@ -1656,6 +1656,9 @@ module IELE-PROGRAM-LOADING
     imports IELE-COMMON
     imports IELE-CONFIGURATION
 
+    // when type checking contracts
+    rule contract NAME ! _ _ { DEFS } => contract NAME { DEFS }
+
     syntax ContractDefinition ::= "contract" IeleName "!" /* size in bytes */ Int /* byte string */ String "{" TopLevelDefinitions "}" /* when desugared to include the code size */
     syntax FunctionParameters ::= Int /* when desugared to just the number of parameters */
 
