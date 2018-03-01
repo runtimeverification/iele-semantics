@@ -150,7 +150,7 @@ In the comments next to each cell, we explain the purpose of the cell.
                         <value>      0          </value>              // Value in funds to transfer by transaction
                         <v>          0          </v>                  // Transaction signature (v)
                         <r>          .WordStack </r>                  // Transaction signature (r)
-                        <s>          .WordStack </s>                  // Transaction signature (s)
+                        <sigS>       .WordStack </sigS>               // Transaction signature (s)
                         <data>       .WordStack </data>               // Arguments to function called by transaction
                         <args>       .Ints      </args>
                       </message>

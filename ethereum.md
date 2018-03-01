@@ -106,7 +106,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            <value>      TV   </value>
            <v>          TW   </v>
            <r>          TR   </r>
-           <s>          TS   </s>
+           <sigS>       TS   </sigS>
            <data>       DATA </data>
            ...
          </message>
@@ -516,7 +516,7 @@ The `"transactions"` key loads the transactions.
                <value>      #asUnsigned(#parseByteStack(TV))     </value>
                <v>          #asUnsigned(#parseByteStack(TW))     </v>
                <r>          #padToWidth(32, #parseByteStack(TR)) </r>
-               <s>          #padToWidth(32, #parseByteStack(TS)) </s>
+               <sigS>       #padToWidth(32, #parseByteStack(TS)) </sigS>
                <data>       #parseByteStack(TI)                  </data>
                <args>       #toInts(ARGS)                        </args>
              </message>
