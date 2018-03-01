@@ -361,7 +361,7 @@ Description of registers.
 
     syntax KResult ::= Int
  // ----------------------
-    rule <k> % REG:Int => REGS [ REG ] ... </k> <regs> REGS </regs>
+    rule <k> % REG:Int => REGS [ REG ] ... </k> <regs> REGS </regs> <typeChecking> false </typeChecking>
 
     syntax NonEmptyOperands ::= Operands
     syntax KResult ::= Ints
@@ -560,21 +560,26 @@ Execution follows a simple cycle where first the state is checked for exceptions
 
 ```k
     rule <k> .LabeledBlocks => ret .NonEmptyOperands .Instructions .LabeledBlocks ... </k>
+         <typeChecking> false </typeChecking>
 ```
 
 -   The rule for sequential composition checks if the instruction is exceptional, runs it if not, then executes the next instruction (assuming
     the instruction doesn't execute a transfer of control flow).
 
 ```k
-    rule OP::Instruction OPS::Instructions BLOCKS::LabeledBlocks
-      => #exceptional? [ OP ] ~> OP
-      ~> OPS BLOCKS
+    rule <k> OP::Instruction OPS::Instructions BLOCKS::LabeledBlocks
+          => #exceptional? [ OP ] ~> OP
+          ~> OPS BLOCKS
+         ...
+         </k>
+         <typeChecking> false </typeChecking>
 ```
 
 When execution reaches the end of a block, we fall through to the immediately next block.
 
 ```k
-    rule .Instructions BLOCKS::LabeledBlocks => BLOCKS
+    rule <k> .Instructions BLOCKS::LabeledBlocks => BLOCKS ... </k>
+         <typeChecking> false </typeChecking>
 ```
 
 ### Exceptional Ops
@@ -940,6 +945,7 @@ When execution of the callee reaches a `ret` instruction, control returns to the
 
 ```k
     rule <k> _:IeleName : INSTRS BLOCKS::LabeledBlocks => INSTRS BLOCKS ... </k>
+         <typeChecking> false </typeChecking>
 
     rule <k> #exec br LABEL ~> _:Blocks => CODE ... </k> <fid> FUNC </fid> <function>... <funcId> FUNC </funcId> <jumpTable> ... LABEL |-> CODE </jumpTable> </function>
 

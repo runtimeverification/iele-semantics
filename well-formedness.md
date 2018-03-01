@@ -56,6 +56,8 @@ IELE is a primarily untyped language, and therefore identifiers have one of two 
  // -------------------------------------
     rule ints(0) => .Types
     rule ints(N) => int , ints(N -Int 1) [owise]
+
+    rule <k> % _ => int ... </k> <typeChecking> true </typeChecking>
 ```
 
 Contracts
@@ -141,17 +143,22 @@ Blocks
 
 ```k
     rule <k> BLOCK:UnlabeledBlock BLOCKS => BLOCKS ... </k>
-         <instructions> .K => BLOCK ... </instructions>
-    rule BLOCK::LabeledBlock BLOCKS => BLOCK ~> BLOCKS
+         <typeChecking> true </typeChecking>
+         <currentInstructions> .K => BLOCK ... </currentInstructions>
+    rule <k> BLOCK::LabeledBlock BLOCKS => BLOCK ~> BLOCKS ... </k>
+         <typeChecking> true </typeChecking>
     rule <k> .LabeledBlocks => INSTRS ... </k>
-         <instructions> INSTRS </instructions>
+         <typeChecking> true </typeChecking>
+         <currentInstructions> INSTRS </currentInstructions>
 
     rule <k> NAME : BLOCK::Instructions => . ... </k>
+         <typeChecking> true </typeChecking>
          <labels> LABELS => LABELS SetItem(NAME) </labels>
-         <instructions> .K => BLOCK ... </instructions>
+         <currentInstructions> .K => BLOCK ... </currentInstructions>
       requires notBool NAME in LABELS
 
-    rule INSTR::Instruction INSTRS::Instructions => INSTR ~> INSTRS
+    rule <k> INSTR::Instruction INSTRS::Instructions => check ~> INSTR ~> INSTRS ... </k>
+         <typeChecking> true </typeChecking>
     rule .Instructions => .
 ```
 
@@ -163,54 +170,55 @@ Instructions
 Each of these instructions takes some number of immediates, globals, or registers, and returns zero or one registers. Checking them is as straightforward as checking for reserved names.
 
 ```k
-    syntax KResult ::= Operand
-                     | Operands
+    syntax KResult ::= Type
+                     | Types
     syntax NonEmptyOperands ::= Operands
- // ------------------------------------
+    syntax KItem ::= "check"
+ // ------------------------
 
-    rule LVAL = OP1 => checkLVal(LVAL) ~> checkOperand(OP1)
-    rule LVAL = load OP1 => checkLVal(LVAL) ~> checkOperand(OP1)
-    rule LVAL = load OP1, OP2, OP3 => checkLVal(LVAL) ~> checkOperands(OP1, OP2, OP3)
-    rule store OP1, OP2 => checkOperands(OP1, OP2)
-    rule store OP1, OP2, OP3, OP4 => checkOperands(OP1, OP2, OP3, OP4)
+    rule check ~> LVAL = OP1 => checkLVal(LVAL) ~> checkOperand(OP1)
+    rule check ~> LVAL = load OP1 => checkLVal(LVAL) ~> checkOperand(OP1)
+    rule check ~> LVAL = load OP1, OP2, OP3 => checkLVal(LVAL) ~> checkOperands(OP1, OP2, OP3)
+    rule check ~> store OP1, OP2 => checkOperands(OP1, OP2)
+    rule check ~> store OP1, OP2, OP3, OP4 => checkOperands(OP1, OP2, OP3, OP4)
 
-    rule LVAL = sload OP1 => checkLVal(LVAL) ~> checkOperand(OP1)
-    rule sstore OP1, OP2 => checkOperands(OP1, OP2)
+    rule check ~> LVAL = sload OP1 => checkLVal(LVAL) ~> checkOperand(OP1)
+    rule check ~> sstore OP1, OP2 => checkOperands(OP1, OP2)
 
-    rule LVAL = iszero OP1 => checkLVal(LVAL) ~> checkOperand(OP1)
-    rule LVAL = not    OP1 => checkLVal(LVAL) ~> checkOperand(OP1)
+    rule check ~> LVAL = iszero OP1 => checkLVal(LVAL) ~> checkOperand(OP1)
+    rule check ~> LVAL = not    OP1 => checkLVal(LVAL) ~> checkOperand(OP1)
 
-    rule LVAL = add OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
-    rule LVAL = mul OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
-    rule LVAL = sub OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
-    rule LVAL = div OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
-    rule LVAL = exp OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
-    rule LVAL = mod OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
+    rule check ~> LVAL = add OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
+    rule check ~> LVAL = mul OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
+    rule check ~> LVAL = sub OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
+    rule check ~> LVAL = div OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
+    rule check ~> LVAL = exp OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
+    rule check ~> LVAL = mod OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
 
-    rule LVAL = addmod OP1, OP2, OP3 => checkLVal(LVAL) ~> checkOperands(OP1, OP2, OP3)
-    rule LVAL = mulmod OP1, OP2, OP3 => checkLVal(LVAL) ~> checkOperands(OP1, OP2, OP3)
-    rule LVAL = expmod OP1, OP2, OP3 => checkLVal(LVAL) ~> checkOperands(OP1, OP2, OP3)
+    rule check ~> LVAL = addmod OP1, OP2, OP3 => checkLVal(LVAL) ~> checkOperands(OP1, OP2, OP3)
+    rule check ~> LVAL = mulmod OP1, OP2, OP3 => checkLVal(LVAL) ~> checkOperands(OP1, OP2, OP3)
+    rule check ~> LVAL = expmod OP1, OP2, OP3 => checkLVal(LVAL) ~> checkOperands(OP1, OP2, OP3)
 
-    rule LVAL = byte OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
-    rule LVAL = sext OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
-    rule LVAL = twos OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
+    rule check ~> LVAL = byte OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
+    rule check ~> LVAL = sext OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
+    rule check ~> LVAL = twos OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
 
-    rule LVAL = and   OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
-    rule LVAL = or    OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
-    rule LVAL = xor   OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
-    rule LVAL = shift OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
+    rule check ~> LVAL = and   OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
+    rule check ~> LVAL = or    OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
+    rule check ~> LVAL = xor   OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
+    rule check ~> LVAL = shift OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
 
-    rule LVAL = cmp _ OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
+    rule check ~> LVAL = cmp _ OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
 
-    rule LVAL = sha3 OP1 => checkLVal(LVAL) ~> checkOperand(OP1)
-    rule log OP1                     => checkOperand(OP1)
-    rule log OP1, OP2                => checkOperands(OP1, OP2)
-    rule log OP1, OP2, OP3           => checkOperands(OP1, OP2, OP3)
-    rule log OP1, OP2, OP3, OP4      => checkOperands(OP1, OP2, OP3, OP4)
-    rule log OP1, OP2, OP3, OP4, OP5 => checkOperands(OP1, OP2, OP3, OP4, OP5)
+    rule check ~> LVAL = sha3 OP1 => checkLVal(LVAL) ~> checkOperand(OP1)
+    rule check ~> log OP1                     => checkOperand(OP1)
+    rule check ~> log OP1, OP2                => checkOperands(OP1, OP2)
+    rule check ~> log OP1, OP2, OP3           => checkOperands(OP1, OP2, OP3)
+    rule check ~> log OP1, OP2, OP3, OP4      => checkOperands(OP1, OP2, OP3, OP4)
+    rule check ~> log OP1, OP2, OP3, OP4, OP5 => checkOperands(OP1, OP2, OP3, OP4, OP5)
 
-    rule revert OP1 => checkOperand(OP1)
-    rule selfdestruct OP1 => checkOperand(OP1)
+    rule check ~> revert OP1 => checkOperand(OP1)
+    rule check ~> selfdestruct OP1 => checkOperand(OP1)
 ```
 
 ### Static Jumps
@@ -218,10 +226,10 @@ Each of these instructions takes some number of immediates, globals, or register
 Checking these instructions requires checking that a label exists that matches the specified label.
 
 ```k
-    rule <k> br NAME => . ... </k>
+    rule <k> check ~> br NAME => . ... </k>
          <labels> ... SetItem(NAME) </labels>
 
-    rule <k> br OP1, NAME => checkOperand(OP1) ... </k>
+    rule <k> check ~> br OP1, NAME => checkOperand(OP1) ... </k>
          <labels> ... SetItem(NAME) </labels>
 ```
 
@@ -230,23 +238,23 @@ Checking these instructions requires checking that a label exists that matches t
 Checking these instructions requires checking the types of local function calls and checking the consistency of the return type.
 
 ```k
-    rule <k> RETS = call @ NAME ( ARGS ) => checkLVals(RETS) ~> checkOperands(ARGS) ... </k>
+    rule <k> check ~> RETS = call @ NAME ( ARGS ) => checkLVals(RETS) ~> checkOperands(ARGS) ... </k>
          <types> ... NAME |-> ARGTYPES -> RETTYPES:Types </types>
       requires ints(#sizeRegs(ARGS)) ==K ARGTYPES andBool ints(#sizeLVals(RETS)) ==K RETTYPES
 
-    rule <k> RETS = call @ NAME ( ARGS ) => checkLVals(RETS) ~> checkOperands(ARGS) ... </k>
+    rule <k> check ~> RETS = call @ NAME ( ARGS ) => checkLVals(RETS) ~> checkOperands(ARGS) ... </k>
          <types> ... NAME |-> ARGTYPES -> (unknown => ints(#sizeLVals(RETS))) </types>
       requires ints(#sizeRegs(ARGS)) ==K ARGTYPES
 
-    rule STATUS, RETS = call @ NAME at OP1 ( ARGS ) send OP2 , gaslimit OP3 => checkLVals(STATUS, RETS) ~> checkOperands(OP1 , OP2 , OP3 , ARGS)
+    rule check ~> STATUS, RETS = call @ NAME at OP1 ( ARGS ) send OP2 , gaslimit OP3 => checkLVals(STATUS, RETS) ~> checkOperands(OP1 , OP2 , OP3 , ARGS)
     rule STATUS, RETS = staticcall @ NAME at OP1 ( ARGS ) gaslimit OP2 => checkLVals(STATUS, RETS) ~> checkOperands(OP1 , OP2 , ARGS)
 
-    rule <k> ret OPS => checkOperands(OPS) ... </k>
+    rule <k> check ~> ret OPS => checkOperands(OPS) ... </k>
          <functionName> NAME </functionName>
          <types> ... NAME |-> _ -> RETTYPES:Types </types>
       requires ints(#sizeRegs(OPS)) ==K RETTYPES
 
-    rule <k> ret OPS => checkOperands(OPS) ... </k>
+    rule <k> check ~> ret OPS => checkOperands(OPS) ... </k>
          <functionName> NAME </functionName>
          <types> ... NAME |-> _ -> (unknown => ints(#sizeRegs(OPS))) </types>
 ```
@@ -256,10 +264,10 @@ Checking these instructions requires checking the types of local function calls 
 Checking these instructions also requires checking that the contract they reference has been declared.
 
 ```k
-    rule <k> STATUS , RET = create NAME ( ARGS ) send OP1 => checkLVals(STATUS, RET) ~> checkOperands(OP1 , ARGS) ... </k>
+    rule <k> check ~> STATUS , RET = create NAME ( ARGS ) send OP1 => checkLVals(STATUS, RET) ~> checkOperands(OP1 , ARGS) ... </k>
          <declaredContracts> ... SetItem(NAME) </declaredContracts>
 
-    rule STATUS , RET = copycreate OP1 ( ARGS ) send OP2 => checkLVals(STATUS, RET) ~> checkOperands(OP1 , OP2 , ARGS)
+    rule check ~> STATUS , RET = copycreate OP1 ( ARGS ) send OP2 => checkLVals(STATUS, RET) ~> checkOperands(OP1 , OP2 , ARGS)
 ```
 
 ```
