@@ -13,6 +13,7 @@ module IELE-WELL-FORMEDNESS
     imports IELE-COMMON
     imports IELE-DATA
     imports DOMAINS
+    imports DEFAULT-CONFIGURATION
 ```
 
 Configuration
@@ -23,20 +24,21 @@ The semantic checker for IELE has its own configuration separate from the config
 ```k
     syntax IeleName ::= "Main" [token]
 
-    configuration <k> $PGM:Contract </k>
-                  <exit-code exit=""> 1 </exit-code>
-                  <contracts> .Set </contracts>
-                  <currentContract>
-                    <types> intrinsicTypes </types>
-                    <contractName> Main </contractName>
-                    <declaredContracts> .Set </declaredContracts>
-                    <functionBodies> .K </functionBodies>
-                    <currentFunction>
-                      <functionName> deposit </functionName>
-                      <labels> .Set </labels>
-                      <instructions> .K </instructions>
-                    </currentFunction>
-                  </currentContract>
+    configuration <well-formedness>
+                    <typeChecking> false </typeChecking>
+                    <contracts> .Set </contracts>
+                    <currentContract>
+                      <types> intrinsicTypes </types>
+                      <contractName> Main </contractName>
+                      <declaredContracts> .Set </declaredContracts>
+                      <functionBodies> .K </functionBodies>
+                      <currentFunction>
+                        <functionName> deposit </functionName>
+                        <labels> .Set </labels>
+                        <currentInstructions> .K </currentInstructions>
+                      </currentFunction>
+                    </currentContract>
+                  </well-formedness>
 ```
 
 Types
@@ -75,8 +77,6 @@ Contracts
     rule <k> .TopLevelDefinitions => BODIES ... </k>
          <functionBodies> BODIES </functionBodies>
          <types> ... init |-> _ -> .Types </types>
-
-    rule <k> .K </k> <exit-code> 1 => 0 </exit-code>
 ```
 
 Top Level Definitions
@@ -334,5 +334,16 @@ Checking LValues
     rule checkLVals(.LValues) => .
 
     rule checkLVal(% NAME) => checkName(NAME)
+endmodule
+
+module IELE-WELL-FORMEDNESS-STANDALONE
+    imports DEFAULT-CONFIGURATION
+    imports IELE-WELL-FORMEDNESS
+
+    configuration <k/> <well-formedness/> <exit-code exit=""> 1 </exit-code>
+
+    rule <typeChecking> false => true </typeChecking>
+    rule <k> . </k> <exit-code> 1 => 0 </exit-code>
+
 endmodule
 ```

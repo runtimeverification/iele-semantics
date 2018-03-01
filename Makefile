@@ -33,7 +33,7 @@ assembler:
 
 tangle: defn proofs
 
-k_files:=ethereum.k data.k iele.k iele-gas.k iele-binary.k krypto.k iele-syntax.k iele-node.k
+k_files:=ethereum.k data.k iele.k iele-gas.k iele-binary.k krypto.k iele-syntax.k iele-node.k well-formedness.k
 standalone_files:=$(patsubst %,.build/standalone/%,$(k_files))
 node_files:=$(patsubst %,.build/node/%,$(k_files))
 checker_files:=.build/standalone/iele-syntax.k .build/standalone/well-formedness.k
@@ -157,7 +157,7 @@ ocaml-deps:
 	cd .build/$*/ethereum-kompiled && ocamlfind $(OCAMLC) -c -g constants.ml -package gmp -package zarith -safe-string
 
 .build/check/well-formedness-kompiled/interpreter: $(checker_files)
-	${KOMPILE} --debug --main-module IELE-WELL-FORMEDNESS \
+	${KOMPILE} --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE \
 	                                --syntax-module IELE-SYNTAX .build/standalone/well-formedness.k --directory .build/check \
 	                                --gen-ml-only -O3 --non-strict
 	cd .build/check/well-formedness-kompiled && ocamlfind $(OCAMLC) -c -g -package gmp -package zarith -package uuidm -safe-string constants.ml prelude.ml plugin.ml parser.mli parser.ml lexer.ml run.ml

@@ -10,11 +10,14 @@ of the transaction protocol.
 requires "data.k"
 requires "iele-syntax.k"
 requires "iele-gas.k"
+requires "well-formedness.k"
 
 module IELE-CONFIGURATION
     imports STRING
     imports IELE-DATA
     imports IELE-COMMON
+    imports IELE-WELL-FORMEDNESS
+    imports DEFAULT-CONFIGURATION
 ```
 
 Configuration
@@ -24,11 +27,13 @@ We've broken up the configuration into two components; those parts of the state 
 In the comments next to each cell, we explain the purpose of the cell.
 
 ```k
-    configuration <k> $PGM:IELESimulation </k>                       // Current computation
+    configuration <k/>                                               // Current computation
                   <exit-code exit=""> 1 </exit-code>                 // Exit code of interpreter process
                   <mode> $MODE:Mode </mode>                          // Execution mode: VMTESTS or NORMAL
                   <schedule> $SCHEDULE:Schedule </schedule>          // Gas Schedule: DEFAULT or ALBE
                   <checkGas> true </checkGas>                        // Enables/disables gas check in test driver
+
+                  <well-formedness/>
 
                   // IELE Specific
                   // =============
