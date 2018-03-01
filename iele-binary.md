@@ -149,6 +149,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
  // ----------------------------------------------------------------------------------------------------------------------------
     rule #dasmFunctions(103 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS, NAME) => #dasmFunction(false, {FUNCS [ W1 *Int 256 +Int W2 ] orDefault W1 *Int 256 +Int W2}:>IeleName, NAME, W3 *Int 256 +Int W4, WS, NBITS, FUNCS, .Instructions, .K)
     rule #dasmFunctions(104 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS, NAME) => #dasmFunction(true, {FUNCS [ W1 *Int 256 +Int W2 ] orDefault W1 *Int 256 +Int W2}:>IeleName, NAME, W3 *Int 256 +Int W4, WS, NBITS, FUNCS, .Instructions, .K)
+    rule #dasmFunctions(.WordStack, NBITS, FUNCS, NAME) => .TopLevelDefinitions
 
     rule #dasmFunction(false, NAME, CNAME, SIG, W : WS, NBITS, FUNCS, INSTRS, .K) => define @ NAME ( SIG ) { #toBlocks(INSTRS) } #dasmFunctions(W : WS, NBITS, FUNCS, CNAME)
       requires W ==Int 103 orBool W ==Int 104
