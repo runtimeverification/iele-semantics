@@ -207,7 +207,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmInstruction ( LOADPOS ( _, I ),  R, W, M, _, _ ) => %(R, W, M, 0) = I
     rule #dasmInstruction ( LOADNEG ( _, I ),  R, W, M, _, _ ) => %(R, W, M, 0) = (0 -Int I)
     rule #dasmInstruction ( BR ( LABEL ),      _, _, _, _, _ ) => br LABEL 
-    rule #dasmInstruction ( INVALID (),        R, W, M, _, _ ) => %(R, W, M, 0) = call @iele.invalid ( .Operands )
+    rule #dasmInstruction ( INVALID (),        R, W, M, _, _ ) => .LValues = call @iele.invalid ( .Operands )
     rule #dasmInstruction ( BRLABEL ( LABEL ), _, _, _, _, _ ) => label ( LABEL )
 
     rule #dasmInstruction ( SELFDESTRUCT (), R, W, M, _, _ ) => selfdestruct %(R, W, M, 0)
