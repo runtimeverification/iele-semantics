@@ -100,7 +100,8 @@ iele_targets=${iele_tests:=.test}
 iele_node_targets=${iele_tests:=.nodetest}
 
 iele_contracts=$(wildcard iele-examples/*.iele tests/iele/*/*.iele)
-well_formedness_targets=${iele_contracts:=.test}
+well_formed_contracts=$(filter-out $(wildcard tests/iele/ill-formed/*.iele), ${iele_contracts})
+well_formedness_targets=${well_formed_contracts:=.test}
 
 test: $(passing_targets) ${iele_targets} ${iele_node_targets} ${well_formedness_targets}
 vm-test: $(passing_vm_targets)
