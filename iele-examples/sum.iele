@@ -32,4 +32,6 @@ contract Sum {
   throw:
     call @iele.invalid()
   }
+
+  define @init() {}
 }

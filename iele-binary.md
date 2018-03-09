@@ -4,7 +4,7 @@ IELE Binary Encoding (Work In Progress)
 Here we define an ad-hoc binary encoding for IELE. This encoding is subject to change and should not be viewed as final. The actual semantics of IELE is defined in terms of a fragment of its textual representation.
 You can use the IELE assembler provided with the semantics to convert from the textual encoding into this binary encoding.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
 requires "iele.k"
 requires "iele-syntax.k"
 
@@ -18,7 +18,7 @@ Each operation consists of its OpCode plus zero or more bytes containing the reg
 The first byte represents the operation in question, and contains enough information to determine and decode the rest of the OpCode. The remainder of the OpCode then
 contains enough information to determine and decode the rest of the operation.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
 
     syntax NullOp ::= LOADPOS ( Int , Int )
                     | LOADNEG ( Int , Int )
@@ -121,7 +121,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
 -   `#dasmInstruction` disassembles the registers for a single instruction.
 -   `#dasmOpCode` interperets a `Int` as an `OpCode`.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
 
     syntax Contract ::= #dasmContract ( WordStack , IeleName )       [function]
                       | #dasmContract ( WordStack , Int , Map, IeleName , TopLevelDefinitions, Int , Int , String ) [function, klabel(#dasmContractAux)]
@@ -149,6 +149,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
  // ----------------------------------------------------------------------------------------------------------------------------
     rule #dasmFunctions(103 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS, NAME) => #dasmFunction(false, {FUNCS [ W1 *Int 256 +Int W2 ] orDefault W1 *Int 256 +Int W2}:>IeleName, NAME, W3 *Int 256 +Int W4, WS, NBITS, FUNCS, .Instructions, .K)
     rule #dasmFunctions(104 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS, NAME) => #dasmFunction(true, {FUNCS [ W1 *Int 256 +Int W2 ] orDefault W1 *Int 256 +Int W2}:>IeleName, NAME, W3 *Int 256 +Int W4, WS, NBITS, FUNCS, .Instructions, .K)
+    rule #dasmFunctions(.WordStack, NBITS, FUNCS, NAME) => .TopLevelDefinitions
 
     rule #dasmFunction(false, NAME, CNAME, SIG, W : WS, NBITS, FUNCS, INSTRS, .K) => define @ NAME ( SIG ) { #toBlocks(INSTRS) } #dasmFunctions(W : WS, NBITS, FUNCS, CNAME)
       requires W ==Int 103 orBool W ==Int 104
@@ -207,7 +208,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmInstruction ( LOADPOS ( _, I ),  R, W, M, _, _ ) => %(R, W, M, 0) = I
     rule #dasmInstruction ( LOADNEG ( _, I ),  R, W, M, _, _ ) => %(R, W, M, 0) = (0 -Int I)
     rule #dasmInstruction ( BR ( LABEL ),      _, _, _, _, _ ) => br LABEL 
-    rule #dasmInstruction ( INVALID (),        R, W, M, _, _ ) => %(R, W, M, 0) = call @iele.invalid ( .Operands )
+    rule #dasmInstruction ( INVALID (),        R, W, M, _, _ ) => .LValues = call @iele.invalid ( .Operands )
     rule #dasmInstruction ( BRLABEL ( LABEL ), _, _, _, _, _ ) => label ( LABEL )
 
     rule #dasmInstruction ( SELFDESTRUCT (), R, W, M, _, _ ) => selfdestruct %(R, W, M, 0)

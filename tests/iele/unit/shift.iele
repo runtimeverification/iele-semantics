@@ -9,4 +9,6 @@ contract shift_test {
     %2 = shift %2, %b
     sstore %2, @y
   }
+
+  define @init() {}
 }

@@ -3,7 +3,7 @@ Cryptographic Primitives
 
 Here we implement the various cryptographic primitives needed for IELE.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
 module KRYPTO
     imports STRING-SYNTAX
     imports LIST
@@ -18,7 +18,7 @@ module KRYPTO
 -   `BN128Mul` takes a point on the G1 curve of the Barreto-Naehrig elliptic curve and multiplies it against a scalar.
 -   `BN128AtePairing` computes the Ate pairing of a G1 point and a G2 point, and is used to perform computations relating to zero knowledge proofs.
 
-```{.k .uiuck .rvk .standalone .node}
+```k
     syntax String ::= Keccak256 ( String )                            [function, hook(KRYPTO.keccak256)]
                     | ECDSARecover ( String , Int , String , String ) [function, hook(KRYPTO.ecdsaRecover)]
                     | Sha256 ( String )                               [function, hook(KRYPTO.sha256)]
