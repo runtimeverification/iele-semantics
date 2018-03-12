@@ -15,8 +15,8 @@ OCAMLC=opt -O3
 LIBFLAG=-shared
 endif
 
-.PHONY: all clean build tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode
-.SECONDARY: .build/standalone/ethereum-kompiled/constants.$(EXT) .build/node/ethereum-kompiled/constants.$(EXT)
+.PHONY: all clean build tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode install
+.SECONDARY:
 
 all: build split-vm-tests
 
@@ -27,6 +27,9 @@ build: tangle .build/standalone/ethereum-kompiled/interpreter .build/vm/iele-vm 
 
 assembler:
 	cd compiler && stack build --install-ghc
+
+install: assembler
+	cd compiler && stack install
 
 # Tangle from *.md files
 # ----------------------
@@ -176,8 +179,8 @@ ocaml-deps:
 	ocamlfind install iele-semantics-plugin-$* plugin/plugin/META .build/plugin-$*/semantics.* .build/plugin-$*/*.cmi .build/plugin-$*/*.$(EXT)
 
 .build/%/ethereum-kompiled/interpreter: .build/plugin-%/semantics.$(LIBEXT)
-	ocamllex .build/$*/ethereum-kompiled/lexer.mll
-	ocamlyacc .build/$*/ethereum-kompiled/parser.mly
+	cd .build/$*/ethereum-kompiled && ocamllex lexer.mll
+	cd .build/$*/ethereum-kompiled && ocamlyacc parser.mly
 	cd .build/$*/ethereum-kompiled && ocamlfind $(OCAMLC) -c -g -package gmp -package zarith -package uuidm -safe-string prelude.ml plugin.ml parser.mli parser.ml lexer.ml run.ml -thread
 	cd .build/$*/ethereum-kompiled && ocamlfind $(OCAMLC) -c -g -w -11-26 -package gmp -package zarith -package uuidm -package iele-semantics-plugin-$* -safe-string realdef.ml -match-context-rows 2
 	cd .build/$*/ethereum-kompiled && ocamlfind $(OCAMLC) $(LIBFLAG) -o realdef.$(DLLEXT) realdef.$(EXT)
