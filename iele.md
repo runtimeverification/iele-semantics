@@ -150,9 +150,7 @@ In the comments next to each cell, we explain the purpose of the cell.
                         <sendto>     .Account   </sendto>             // Destination of transaction (.Account for account creation)
                         <func>       deposit    </func>               // Function to call by transaction
                         <value>      0          </value>              // Value in funds to transfer by transaction
-                        <v>          0          </v>                  // Transaction signature (v)
-                        <r>          .WordStack </r>                  // Transaction signature (r)
-                        <sigS>       .WordStack </sigS>               // Transaction signature (s)
+                        <from>       0          </from>               // Sender of transaction
                         <data>       .WordStack </data>               // Arguments to function called by transaction
                         <args>       .Ints      </args>
                       </message>
