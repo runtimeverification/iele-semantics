@@ -64,12 +64,13 @@ import Data.Map.Strict(Map)
 import Control.Applicative ((<|>), (<*), many)
 import Control.Monad (void)
 import Text.Parsec (try, (<?>), skipMany, satisfy)
-import Text.Parsec.Char (char, digit, hexDigit, letter, oneOf, string)
+import Text.Parsec.Char (char, digit, hexDigit, letter, oneOf, noneOf, string)
 import Text.Parsec.Combinator (eof, many1, choice, notFollowedBy, sepBy, sepBy1)
 import Text.Parsec.String (Parser)
 
 import Data.Word
 import Data.Data
+import Data.Char
 
 import IeleTypes hiding (instructions)
 import IeleInstructions
@@ -151,8 +152,29 @@ ieleNameTokenNumber :: Parser IeleName
 ieleNameTokenNumber =
     lexeme $ IeleNameNumber . read <$> many1 digit <* notFollowedBy ieleNameNonFirstChar
 
+escape :: Parser Char
+escape = do
+  d <- char '\\'
+  c1 <- oneOf "0123456789abcdefABCDEF"
+  c2 <- oneOf "0123456789abcdefABCDEF"
+  return (chr (((digitToInt c1) * 16) + (digitToInt c2)))
+
+nonEscape :: Parser Char
+nonEscape = noneOf "\\\""
+
+character :: Parser Char
+character = nonEscape <|> escape
+
+ieleNameTokenString :: Parser IeleName
+ieleNameTokenString =
+  lexeme $ do
+    char '"'
+    chars <- many character
+    char '"'
+    return (IeleNameText chars)
+
 ieleNameToken :: Parser IeleName
-ieleNameToken = ieleNameTokenNotNumber <|> ieleNameTokenNumber
+ieleNameToken = ieleNameTokenNotNumber <|> ieleNameTokenNumber <|> ieleNameTokenString
 
 positiveDecIntToken :: Parser IntToken
 positiveDecIntToken = lexeme $ IntToken . read <$>
