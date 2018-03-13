@@ -30,6 +30,7 @@ assembler:
 
 install: assembler
 	cd compiler && stack install
+	cp .build/vm/iele-vm .build/vm/iele-test-vm ~/.local/bin
 
 # Tangle from *.md files
 # ----------------------
