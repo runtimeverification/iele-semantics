@@ -11,22 +11,28 @@ else
 EXT=cmx
 LIBEXT=cmxa
 DLLEXT=cmxs
-OCAMLC=opt -O3
+OCAMLC=opt -O3 -cclib -Wl,-rpath=/usr/local/lib
 LIBFLAG=-shared
 endif
 
-.PHONY: all clean build tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode
-.SECONDARY: .build/standalone/ethereum-kompiled/constants.$(EXT) .build/node/ethereum-kompiled/constants.$(EXT)
+export PATH:=$(shell cd compiler && stack path --local-install-root)/bin:${PATH}
+
+.PHONY: all clean build tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode install
+.SECONDARY:
 
 all: build split-vm-tests
 
 clean:
-	rm -rf .build/standalone .build/node .build/plugin-node .build/plugin-standalone .build/vm
+	rm -rf .build/standalone .build/node .build/plugin-node .build/plugin-standalone .build/vm compiler/.stack-work
 
 build: tangle .build/standalone/ethereum-kompiled/interpreter .build/vm/iele-vm assembler .build/check/well-formedness-kompiled/interpreter
 
 assembler:
 	cd compiler && stack build --install-ghc
+
+install: assembler
+	cd compiler && stack install
+	cp .build/vm/iele-vm .build/vm/iele-test-vm ~/.local/bin
 
 # Tangle from *.md files
 # ----------------------
@@ -176,8 +182,8 @@ ocaml-deps:
 	ocamlfind install iele-semantics-plugin-$* plugin/plugin/META .build/plugin-$*/semantics.* .build/plugin-$*/*.cmi .build/plugin-$*/*.$(EXT)
 
 .build/%/ethereum-kompiled/interpreter: .build/plugin-%/semantics.$(LIBEXT)
-	ocamllex .build/$*/ethereum-kompiled/lexer.mll
-	ocamlyacc .build/$*/ethereum-kompiled/parser.mly
+	cd .build/$*/ethereum-kompiled && ocamllex lexer.mll
+	cd .build/$*/ethereum-kompiled && ocamlyacc parser.mly
 	cd .build/$*/ethereum-kompiled && ocamlfind $(OCAMLC) -c -g -package gmp -package zarith -package uuidm -safe-string prelude.ml plugin.ml parser.mli parser.ml lexer.ml run.ml -thread
 	cd .build/$*/ethereum-kompiled && ocamlfind $(OCAMLC) -c -g -w -11-26 -package gmp -package zarith -package uuidm -package iele-semantics-plugin-$* -safe-string realdef.ml -match-context-rows 2
 	cd .build/$*/ethereum-kompiled && ocamlfind $(OCAMLC) $(LIBFLAG) -o realdef.$(DLLEXT) realdef.$(EXT)
@@ -186,7 +192,7 @@ ocaml-deps:
 .build/vm/iele-test-vm: .build/node/ethereum-kompiled/interpreter $(wildcard plugin/vm/*.ml plugin/vm/*.mli)
 	mkdir -p .build/vm
 	cp plugin/vm/*.ml plugin/vm/*.mli .build/vm
-	cd .build/vm && ocamlfind $(OCAMLC) -g -I ../node/ethereum-kompiled -o iele-test-vm constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) realdef.$(EXT) run.$(EXT) VM.mli VM.ml ieleTestClient.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin-node -package rlp -package yojson -package hex -linkpkg -linkall -thread -safe-string
+	cd .build/vm && ocamlfind $(OCAMLC) -g -I ../node/ethereum-kompiled -o iele-test-vm constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) realdef.$(EXT) run.$(EXT) VM.mli VM.ml ieleClientUtils.ml ieleVmTest.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin-node -package rlp -package yojson -package hex -linkpkg -linkall -thread -safe-string
 
 .build/vm/iele-vm: .build/node/ethereum-kompiled/interpreter $(wildcard plugin/vm/*.ml plugin/vm/*.mli)
 	mkdir -p .build/vm

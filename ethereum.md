@@ -95,7 +95,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
     rule <k> startTx => #finalizeBlock ... </k>
          <txPending> .List </txPending>
 
-    rule <k> startTx => loadTx(#sender(TN, TP, TG, TT, TV, #unparseByteStack(DATA), TW, TR, TS)) ... </k>
+    rule <k> startTx => loadTx(TS) ... </k>
          <txPending> ListItem(TXID:Int) ... </txPending>
          <message>
            <msgID>      TXID </msgID>
@@ -104,9 +104,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            <txGasLimit> TG   </txGasLimit>
            <sendto>     TT   </sendto>
            <value>      TV   </value>
-           <v>          TW   </v>
-           <r>          TR   </r>
-           <sigS>       TS   </sigS>
+           <from>       TS   </from>
            <data>       DATA </data>
            ...
          </message>
@@ -501,7 +499,7 @@ The `"transactions"` key loads the transactions.
     rule load "transactions" : { TX } => load "transactions" : { #sortJSONList(TX) }
          requires notBool #isSorted(TX)
 
-    rule <k> load "transactions" : { "arguments" : [ ARGS ],  "data" : TI , "function" : FUNC, "gasLimit" : TG , "gasPrice" : TP , "nonce" : TN , "r" : TR , "s" : TS , "to" : TT , "v" : TW , "value" : TV , .JSONList } => . ... </k>
+    rule <k> load "transactions" : { "arguments" : [ ARGS ],  "data" : TI , "from" : FROM, "function" : FUNC, "gasLimit" : TG , "gasPrice" : TP , "nonce" : TN , "to" : TT , "value" : TV , .JSONList } => . ... </k>
          <txOrder>   ... .List => ListItem(!ID) </txOrder>
          <txPending> ... .List => ListItem(!ID) </txPending>
          <messages>
@@ -514,9 +512,7 @@ The `"transactions"` key loads the transactions.
                <sendto>     #asAccount(#parseByteStack(TT))      </sendto>
                <func>       {#parseToken("IeleName", FUNC)}:>IeleName        </func>
                <value>      #asUnsigned(#parseByteStack(TV))     </value>
-               <v>          #asUnsigned(#parseByteStack(TW))     </v>
-               <r>          #padToWidth(32, #parseByteStack(TR)) </r>
-               <sigS>       #padToWidth(32, #parseByteStack(TS)) </sigS>
+               <from>       #asUnsigned(#parseByteStack(FROM))   </from>
                <data>       #parseByteStack(TI)                  </data>
                <args>       #toInts(ARGS)                        </args>
              </message>
