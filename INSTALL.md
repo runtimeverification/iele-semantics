@@ -14,6 +14,7 @@ cd ../..
 make deps # Build dependencies not installed by package manager
 eval `opam config env` # add OCAML installation to path
 make # Build project
+make install # install to ~/.local
 
 ```
 
