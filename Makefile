@@ -15,13 +15,15 @@ OCAMLC=opt -O3
 LIBFLAG=-shared
 endif
 
+export PATH:=$(shell cd compiler && stack path --local-install-root)/bin:${PATH}
+
 .PHONY: all clean build tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode install
 .SECONDARY:
 
 all: build split-vm-tests
 
 clean:
-	rm -rf .build/standalone .build/node .build/plugin-node .build/plugin-standalone .build/vm
+	rm -rf .build/standalone .build/node .build/plugin-node .build/plugin-standalone .build/vm compiler/.stack-work
 
 build: tangle .build/standalone/ethereum-kompiled/interpreter .build/vm/iele-vm assembler .build/check/well-formedness-kompiled/interpreter
 
