@@ -78,8 +78,6 @@ See [INSTALL.md](INSTALL.md).
 To execute a VM test, run `./vmtest $file` where `$file` is a JSON file containing the specification of the test.
 To execute a Blockchain test, run `./blockchaintest $file` where `$file` is a JSON file containing the specification of the test.
 
-To execute all currently passing tests, run `make test`.
-
 To run only the pure-IELE tests, run `make iele-test`.
 
 For testing the interprocess VM API, first start the vm server
@@ -87,6 +85,8 @@ by running `.build/vm/iele-vm 10000 127.0.0.1` in another shell or
 in the background.
 With the server running, run `make iele-test-node` to run the pure-IELE
 tests on the vm server, or run individual tests using `.build/vm/iele-vm-test`.
+
+To execute all currently passing tests, run `make test`. Note that the vm server should have been started for `make test` to succeed.
 
 ### Debugging
 
