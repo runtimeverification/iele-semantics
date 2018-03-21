@@ -154,7 +154,7 @@ ocaml-deps:
 	opam repository add k "tests/ci/rv-k/k-distribution/target/release/k/lib/opam" || opam repository set-url k "tests/ci/rv-k/k-distribution/target/release/k/lib/opam"
 	opam update
 	opam switch 4.03.0+k
-	eval `opam config env` && opam install -y mlgmp zarith uuidm cryptokit secp256k1.0.3.2 bn128 hex ocaml-protoc rlp yojson
+	eval `opam config env` && opam install -y mlgmp zarith uuidm cryptokit secp256k1.0.3.2 bn128 hex ocaml-protoc rlp yojson ocp-ocamlres
 
 .build/%/ethereum-kompiled/constants.$(EXT): $(defn_files)
 	@echo "== kompile: $@"
@@ -175,9 +175,10 @@ ocaml-deps:
 .build/plugin-%/semantics.$(LIBEXT): $(wildcard plugin/plugin/*.ml plugin/plugin/*.mli) .build/%/ethereum-kompiled/constants.$(EXT)
 	mkdir -p .build/plugin-$*
 	cp plugin/plugin/*.ml plugin/plugin/*.mli .build/plugin-$*
+	ocp-ocamlres -format ocaml plugin/plugin/proto/VERSION -o .build/plugin-$*/apiVersion.ml
 	ocaml-protoc plugin/plugin/proto/*.proto -ml_out .build/plugin-$*
-	cd .build/plugin-$* && ocamlfind $(OCAMLC) -c -g -I ../$*/ethereum-kompiled msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml threadLocal.mli threadLocal.ml world.mli world.ml caching.mli caching.ml MANTIS.ml KRYPTO.ml -package cryptokit -package secp256k1 -package bn128 -package ocaml-protoc -safe-string -thread
-	cd .build/plugin-$* && ocamlfind $(OCAMLC) -a -o semantics.$(LIBEXT) KRYPTO.$(EXT) msg_types.$(EXT) msg_pb.$(EXT) threadLocal.$(EXT) world.$(EXT) caching.$(EXT) MANTIS.$(EXT) -thread
+	cd .build/plugin-$* && ocamlfind $(OCAMLC) -c -g -I ../$*/ethereum-kompiled msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml threadLocal.mli threadLocal.ml apiVersion.ml world.mli world.ml caching.mli caching.ml MANTIS.ml KRYPTO.ml -package cryptokit -package secp256k1 -package bn128 -package ocaml-protoc -safe-string -thread
+	cd .build/plugin-$* && ocamlfind $(OCAMLC) -a -o semantics.$(LIBEXT) KRYPTO.$(EXT) msg_types.$(EXT) msg_pb.$(EXT) threadLocal.$(EXT) apiVersion.$(EXT) world.$(EXT) caching.$(EXT) MANTIS.$(EXT) -thread
 	ocamlfind remove iele-semantics-plugin-$*
 	ocamlfind install iele-semantics-plugin-$* plugin/plugin/META .build/plugin-$*/semantics.* .build/plugin-$*/*.cmi .build/plugin-$*/*.$(EXT)
 
