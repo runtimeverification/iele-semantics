@@ -32,7 +32,7 @@ assembler:
 
 install: assembler
 	cd compiler && stack install
-	cp .build/vm/iele-vm .build/vm/iele-test-vm ~/.local/bin
+	cp .build/vm/iele-vm .build/vm/iele-test-client .build/vm/iele-test-vm ~/.local/bin
 
 # Tangle from *.md files
 # ----------------------
@@ -60,7 +60,7 @@ export LUA_PATH=$(shell pwd)/.build/tangle/?.lua;;
 	pandoc --from markdown --to .build/tangle/tangle.lua --metadata=code:".k:not(.node),.standalone" $< > $@
 
 node: .build/vm/iele-vm
-testnode : .build/vm/iele-test-vm
+testnode : .build/vm/iele-test-vm .build/vm/iele-test-client
 
 proof_dir=tests/proofs
 proof_files=
@@ -199,3 +199,10 @@ ocaml-deps:
 	mkdir -p .build/vm
 	cp plugin/vm/*.ml plugin/vm/*.mli .build/vm
 	cd .build/vm && ocamlfind $(OCAMLC) -g -I ../node/ethereum-kompiled -o iele-vm constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) realdef.$(EXT) run.$(EXT) VM.mli VM.ml vmNetworkServer.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin-node -package rlp -package yojson -package hex -linkpkg -linkall -thread -safe-string
+
+.build/vm/iele-test-client: .build/node/ethereum-kompiled/interpreter $(wildcard plugin/vm/*.ml plugin/vm/*.mli)
+	mkdir -p .build/vm
+	cp plugin/vm/*.ml plugin/vm/*.mli .build/vm
+	cd .build/vm && ocamlfind $(OCAMLC) -g -I ../node/ethereum-kompiled -o iele-test-client constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) realdef.$(EXT) run.$(EXT) VM.mli VM.ml ieleClientUtils.ml ieleApi.mli ieleApi.ml ieleApiClient.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin-node -package rlp -package yojson -package hex -linkpkg -linkall -thread -safe-string
+
+
