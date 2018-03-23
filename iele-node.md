@@ -5,9 +5,9 @@ module IELE-NODE
     imports K-REFLECTION
     imports COLLECTIONS
 
-    syntax Int ::= #getBalance(Int) [function, hook(MANTIS.getBalance)]
-                 | #getNonce(Int) [function, hook(MANTIS.getNonce)]
-    syntax Bool ::= #isCodeEmpty(Int) [function, hook(MANTIS.isCodeEmpty)]
+    syntax Int ::= #getBalance(Int) [function, hook(BLOCKCHAIN.getBalance)]
+                 | #getNonce(Int) [function, hook(BLOCKCHAIN.getNonce)]
+    syntax Bool ::= #isCodeEmpty(Int) [function, hook(BLOCKCHAIN.isCodeEmpty)]
  // ---------------------------------------------------------------------------
     rule <k> #loadAccount ACCT => . ... </k>
          <activeAccounts> ACCTS (.Set => SetItem(ACCT)) </activeAccounts>
@@ -25,7 +25,7 @@ module IELE-NODE
          </accounts>
       requires notBool ACCT in ACCTS
 
-    syntax Int ::= #getStorageData(Int, Int) [function, hook(MANTIS.getStorageData)]
+    syntax Int ::= #getStorageData(Int, Int) [function, hook(BLOCKCHAIN.getStorageData)]
  // --------------------------------------------------------------------------------
     rule <k> #lookupStorage(ACCT, INDEX) => . ... </k>
          <account>
@@ -35,7 +35,7 @@ module IELE-NODE
          </account>
       requires notBool INDEX in_keys(STORAGE)
 
-    syntax String ::= #getCode(Int) [function, hook(MANTIS.getCode)]
+    syntax String ::= #getCode(Int) [function, hook(BLOCKCHAIN.getCode)]
  // ----------------------------------------------------------------
     rule <k> #lookupCode(ACCT) => . ... </k>
          <account>
@@ -44,7 +44,7 @@ module IELE-NODE
            ...
          </account>
 
-    syntax Int ::= #getBlockhash(Int) [function, hook(MANTIS.getBlockhash)]
+    syntax Int ::= #getBlockhash(Int) [function, hook(BLOCKCHAIN.getBlockhash)]
  // -----------------------------------------------------------------------
     rule #exec REG = call @iele.blockhash ( N ) => #load REG #getBlockhash(N)
       requires N >=Int 0  andBool N <Int 256
