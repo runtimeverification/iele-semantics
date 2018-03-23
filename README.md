@@ -37,7 +37,7 @@ The structure of the json files is as follows:
       * "value": the amount of currency sent with the transaction.
       * "to": the account the transaction is calling a function on. If the transaction creates an account, this field should be the empty string.
       * "arguments": a list of integers representing the input arguments of the top-level function call of the transaction.
-      * "data": the contract being uploaded. Should be the empty string if the "to" field is NOT the empty string.
+      * "contractCode": the contract being uploaded. Should be the empty string if the "to" field is NOT the empty string.
       * "gasPrice": the price to be paid per unit of gas used.
       * "secretKey" OR ("v" AND "r" AND "s"): the signature of the transaction (either as a private key or as an ECDSA signature of the remaining fields) used to sign the transaction.
     * "results": a list of results of each transaction in the block, each containing the following fields:

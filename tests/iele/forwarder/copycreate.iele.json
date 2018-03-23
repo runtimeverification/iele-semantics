@@ -49,7 +49,7 @@
                         "to": "", 
                         "arguments": [
                         ], 
-                        "data": "../../../iele-examples/forwarder.iele",
+                        "contractCode": "../../../iele-examples/forwarder.iele",
                         "gasPrice": "0x01",
                         "from": "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b"
                     },
@@ -63,7 +63,7 @@
                           "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b",
                           "0x6295ee1b4f6dd65047762f924ecd367c17eabf8f"
                         ], 
-                       "data": "../../../iele-examples/forwardingWallet-copycreate.iele",
+                       "contractCode": "../../../iele-examples/forwardingWallet-copycreate.iele",
                         "gasPrice": "0x01",
                         "from": "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b"
                     },
@@ -75,7 +75,7 @@
                         "to": "0xec0e71ad0a90ffe1909d27dac207f7680abba42d", 
                         "arguments": [
                         ], 
-                        "data": "",
+                        "contractCode": "",
                         "gasPrice": "0x01",
                         "from": "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b"
                     },
@@ -87,7 +87,7 @@
                         "to": "0xe3476106159f87477ad639e3ddcbb6b240efe459", 
                         "arguments": [
                         ], 
-                        "data": "",
+                        "contractCode": "",
                         "gasPrice": "0x01",
                         "from": "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b"
                     }
