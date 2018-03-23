@@ -17,13 +17,16 @@ endif
 
 export PATH:=$(shell cd compiler && stack path --local-install-root)/bin:${PATH}
 
-.PHONY: all clean build tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode install
+.PHONY: all clean distclean build tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode install
 .SECONDARY:
 
 all: build split-vm-tests
 
 clean:
-	rm -rf .build/standalone .build/node .build/plugin-node .build/plugin-standalone .build/vm compiler/.stack-work
+	rm -rf .build/standalone .build/node .build/check .build/plugin-node .build/plugin-standalone .build/vm compiler/.stack-work
+
+distclean: clean
+	cd tests/ci/rv-k && mvn clean
 
 build: tangle .build/standalone/ethereum-kompiled/interpreter .build/vm/iele-vm assembler .build/check/well-formedness-kompiled/interpreter
 
