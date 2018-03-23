@@ -20,7 +20,7 @@ export PATH:=$(shell cd compiler && stack path --local-install-root)/bin:${PATH}
 .PHONY: all clean distclean build tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode install
 .SECONDARY:
 
-all: build split-vm-tests
+all: build split-vm-tests testnode
 
 clean:
 	rm -rf .build/standalone .build/node .build/check .build/plugin-node .build/plugin-standalone .build/vm compiler/.stack-work
