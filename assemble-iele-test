@@ -28,7 +28,7 @@ def convertToBinaryIele(json):
       if json["to"] == "":
         isCreateTx = True
     for key, value in json.iteritems():
-      if key == "code" or (key == "data" and isCreateTx):
+      if key == "code" or (key == "contractCode" and isCreateTx):
         res[key] = assembleIele(value)
       else:
         res[key] = convertToBinaryIele(value)

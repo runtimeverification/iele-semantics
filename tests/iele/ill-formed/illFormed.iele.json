@@ -27,7 +27,7 @@
                         "value": "0x00", 
                         "to": "",
                         "arguments": [], 
-                        "data": "illFormed.iele",
+                        "contractCode": "illFormed.iele",
                         "gasPrice": "0x01",
                         "from": "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b"
                     }

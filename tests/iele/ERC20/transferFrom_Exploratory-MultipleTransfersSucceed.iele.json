@@ -62,7 +62,7 @@
                           "0x0000000000000000000000000000000000000005",
                           "0x0a"
                         ], 
-                        "data": "",
+                        "contractCode": "",
                         "gasPrice": "0x01",
                         "from": "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b"
                     },
@@ -77,7 +77,7 @@
                           "0x0000000000000000000000000000000000000006",
                           "0x0a"
                         ], 
-                        "data": "",
+                        "contractCode": "",
                         "gasPrice": "0x01",
                         "from": "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b"
                     },
@@ -92,7 +92,7 @@
                           "0x0000000000000000000000000000000000000007",
                           "0x0a"
                         ], 
-                        "data": "",
+                        "contractCode": "",
                         "gasPrice": "0x01",
                         "from": "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b"
                     },
@@ -107,7 +107,7 @@
                           "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b",
                           "0x0a"
                         ], 
-                        "data": "",
+                        "contractCode": "",
                         "gasPrice": "0x01",
                         "from": "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b"
                     }

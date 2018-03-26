@@ -29,7 +29,7 @@
                         "arguments": [
                           "0x2710"
                         ], 
-                        "data": "../../../iele-examples/erc20.iele",
+                        "contractCode": "../../../iele-examples/erc20.iele",
                         "gasPrice": "0x01",
                         "from": "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b"
                     }

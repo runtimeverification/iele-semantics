@@ -30,7 +30,7 @@
                           "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b",
                           "0x1000"
                         ], 
-                        "data": "../../../iele-examples/simpleOpenAuction.iele",
+                        "contractCode": "../../../iele-examples/simpleOpenAuction.iele",
                         "gasPrice": "0x01",
                         "from": "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b"
                     }

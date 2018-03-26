@@ -163,7 +163,7 @@ ocaml-deps:
 	@echo "== kompile: $@"
 	${KOMPILE} --debug --main-module ETHEREUM-SIMULATION \
 					--syntax-module IELE-SYNTAX .build/$*/ethereum.k --directory .build/$* \
-					--hook-namespaces "KRYPTO MANTIS" --gen-ml-only -O3 --non-strict
+					--hook-namespaces "KRYPTO BLOCKCHAIN" --gen-ml-only -O3 --non-strict
 	cd .build/$*/ethereum-kompiled && ocamlfind $(OCAMLC) -c -g constants.ml -package gmp -package zarith -safe-string
 
 .build/check/well-formedness-kompiled/interpreter: $(checker_files)
@@ -180,8 +180,8 @@ ocaml-deps:
 	cp plugin/plugin/*.ml plugin/plugin/*.mli .build/plugin-$*
 	ocp-ocamlres -format ocaml plugin/plugin/proto/VERSION -o .build/plugin-$*/apiVersion.ml
 	ocaml-protoc plugin/plugin/proto/*.proto -ml_out .build/plugin-$*
-	cd .build/plugin-$* && ocamlfind $(OCAMLC) -c -g -I ../$*/ethereum-kompiled msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml threadLocal.mli threadLocal.ml apiVersion.ml world.mli world.ml caching.mli caching.ml MANTIS.ml KRYPTO.ml -package cryptokit -package secp256k1 -package bn128 -package ocaml-protoc -safe-string -thread
-	cd .build/plugin-$* && ocamlfind $(OCAMLC) -a -o semantics.$(LIBEXT) KRYPTO.$(EXT) msg_types.$(EXT) msg_pb.$(EXT) threadLocal.$(EXT) apiVersion.$(EXT) world.$(EXT) caching.$(EXT) MANTIS.$(EXT) -thread
+	cd .build/plugin-$* && ocamlfind $(OCAMLC) -c -g -I ../$*/ethereum-kompiled msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml threadLocal.mli threadLocal.ml apiVersion.ml world.mli world.ml caching.mli caching.ml BLOCKCHAIN.ml KRYPTO.ml -package cryptokit -package secp256k1 -package bn128 -package ocaml-protoc -safe-string -thread
+	cd .build/plugin-$* && ocamlfind $(OCAMLC) -a -o semantics.$(LIBEXT) KRYPTO.$(EXT) msg_types.$(EXT) msg_pb.$(EXT) threadLocal.$(EXT) apiVersion.$(EXT) world.$(EXT) caching.$(EXT) BLOCKCHAIN.$(EXT) -thread
 	ocamlfind remove iele-semantics-plugin-$*
 	ocamlfind install iele-semantics-plugin-$* plugin/plugin/META .build/plugin-$*/semantics.* .build/plugin-$*/*.cmi .build/plugin-$*/*.$(EXT)
 

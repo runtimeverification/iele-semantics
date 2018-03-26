@@ -499,7 +499,7 @@ The `"transactions"` key loads the transactions.
     rule load "transactions" : { TX } => load "transactions" : { #sortJSONList(TX) }
          requires notBool #isSorted(TX)
 
-    rule <k> load "transactions" : { "arguments" : [ ARGS ],  "data" : TI , "from" : FROM, "function" : FUNC, "gasLimit" : TG , "gasPrice" : TP , "nonce" : TN , "to" : TT , "value" : TV , .JSONList } => . ... </k>
+    rule <k> load "transactions" : { "arguments" : [ ARGS ],  "contractCode" : TI , "from" : FROM, "function" : FUNC, "gasLimit" : TG , "gasPrice" : TP , "nonce" : TN , "to" : TT , "value" : TV , .JSONList } => . ... </k>
          <txOrder>   ... .List => ListItem(!ID) </txOrder>
          <txPending> ... .List => ListItem(!ID) </txPending>
          <messages>
