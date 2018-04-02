@@ -171,7 +171,7 @@ ocaml-deps:
 	                                --syntax-module IELE-SYNTAX .build/standalone/well-formedness.k --directory .build/check \
 	                                --gen-ml-only -O3 --non-strict
 	cd .build/check/well-formedness-kompiled && ocamlfind $(OCAMLC) -c -g -package gmp -package zarith -package uuidm -safe-string constants.ml prelude.ml plugin.ml parser.mli parser.ml lexer.ml run.ml
-	cd .build/check/well-formedness-kompiled && ocamlfind $(OCAMLC) -c -g -w -11-26 -package gmp -package zarith -package uuidm -safe-string realdef.ml -match-context-rows 2
+	cd .build/check/well-formedness-kompiled && ocamlfind $(OCAMLC) -c -g -w -11-26 -package gmp -package zarith -package uuidm -safe-string realdef.ml -match-context-rows 2 -thread
 	cd .build/check/well-formedness-kompiled && ocamlfind $(OCAMLC) $(LIBFLAG) -o realdef.$(DLLEXT) realdef.$(EXT)
 	cd .build/check/well-formedness-kompiled && ocamlfind $(OCAMLC) -g -o interpreter constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) run.$(EXT) interpreter.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -linkpkg -linkall -safe-string
 
@@ -189,7 +189,7 @@ ocaml-deps:
 	cd .build/$*/ethereum-kompiled && ocamllex lexer.mll
 	cd .build/$*/ethereum-kompiled && ocamlyacc parser.mly
 	cd .build/$*/ethereum-kompiled && ocamlfind $(OCAMLC) -c -g -package gmp -package zarith -package uuidm -safe-string prelude.ml plugin.ml parser.mli parser.ml lexer.ml run.ml -thread
-	cd .build/$*/ethereum-kompiled && ocamlfind $(OCAMLC) -c -g -w -11-26 -package gmp -package zarith -package uuidm -package iele-semantics-plugin-$* -safe-string realdef.ml -match-context-rows 2
+	cd .build/$*/ethereum-kompiled && ocamlfind $(OCAMLC) -c -g -w -11-26 -package gmp -package zarith -package uuidm -package iele-semantics-plugin-$* -safe-string realdef.ml -match-context-rows 2 -thread
 	cd .build/$*/ethereum-kompiled && ocamlfind $(OCAMLC) $(LIBFLAG) -o realdef.$(DLLEXT) realdef.$(EXT)
 	cd .build/$*/ethereum-kompiled && ocamlfind $(OCAMLC) -g -o interpreter constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) run.$(EXT) interpreter.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin-$* -linkpkg -linkall -thread -safe-string
 
