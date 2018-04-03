@@ -439,10 +439,9 @@ staticCallInst = do
   name <- skipKeyword "staticcall" *> globalNameInclReserved
   tgt <- skipKeyword "at" *> operand
   args <- parens operands
-  value <- skipKeyword "send" *> operand
-  gas <- comma *> skipKeyword "gaslimit" *> operand
+  gas <- skipKeyword "gaslimit" *> operand
   let op = STATICCALL name (argsLength args) (fmap (subtract 1) (retsLength results))
-  pure (CallOp op results ([gas,tgt,value]++args))
+  pure (CallOp op results ([gas,tgt]++args))
 
 
 argumentsOrVoid :: Parser [Operand]
