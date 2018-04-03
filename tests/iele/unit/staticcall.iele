@@ -1,0 +1,29 @@
+contract staticcall_test {
+  define public @test_staticcall() {
+    %address = call @iele.address()
+    %gas = call @iele.gas()
+    %status, %ret = staticcall @static at %address () gaslimit %gas
+    br %status, throw1
+    br %ret, throw2
+    %status, %ret = staticcall @nonstatic at %address () gaslimit %gas
+    %cmp = cmp ne %status, 4
+    br %cmp, throw3
+    ret 0
+  throw1:
+    revert -1
+  throw2:
+    revert -2
+  throw3:
+    revert -3
+  }
+
+  define public @static() {
+    ret 0
+  }
+
+  define public @nonstatic() {
+    sstore 0, 0
+  }
+
+  define @init() {}
+}

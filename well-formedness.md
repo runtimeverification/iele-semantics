@@ -250,7 +250,7 @@ Checking these instructions requires checking the types of local function calls 
       requires ints(#sizeRegs(ARGS)) ==K ARGTYPES
 
     rule check ~> STATUS, RETS = call @ NAME at OP1 ( ARGS ) send OP2 , gaslimit OP3 => checkLVals(STATUS, RETS) ~> checkOperands(OP1 , OP2 , OP3 , ARGS)
-    rule STATUS, RETS = staticcall @ NAME at OP1 ( ARGS ) gaslimit OP2 => checkLVals(STATUS, RETS) ~> checkOperands(OP1 , OP2 , ARGS)
+    rule check ~> STATUS, RETS = staticcall @ NAME at OP1 ( ARGS ) gaslimit OP2 => checkLVals(STATUS, RETS) ~> checkOperands(OP1 , OP2 , ARGS)
 
     rule <k> check ~> ret OPS => checkOperands(OPS) ... </k>
          <functionName> NAME </functionName>
