@@ -855,6 +855,9 @@ Expression calculations are simple and don't require anything but the arguments 
     rule <k> #exec REG = sext WIDTH , W => #exception USER_ERROR                ... </k> requires W <Int 0
     rule <k> #exec REG = twos WIDTH , W => #load REG twos(chop(WIDTH), W)       ... </k>
 
+    rule <k> #exec REG = log2 W => #load REG log2Int(W)  ... </k> requires W >Int 0
+    rule <k> #exec REG = log2 W => #exception USER_ERROR ... </k> requires W <=Int 0
+
     rule <k> #exec REG = and   W0 , W1 => #load REG W0 &Int W1   ... </k>
     rule <k> #exec REG = or    W0 , W1 => #load REG W0 |Int W1   ... </k>
     rule <k> #exec REG = xor   W0 , W1 => #load REG W0 xorInt W1 ... </k>
@@ -1769,6 +1772,7 @@ module IELE-PROGRAM-LOADING
     rule #registers(sstore % R1, % R2) => maxInt(R1, R2)
     rule #registers(% R1 = iszero % R2) => maxInt(R1, R2)
     rule #registers(% R1 = not % R2) => maxInt(R1, R2)
+    rule #registers(% R1 = log2 % R2) => maxInt(R1, R2)
     rule #registers(% R1 = add % R2, % R3) => maxInt(R1, maxInt(R2, R3))
     rule #registers(% R1 = mul % R2, % R3) => maxInt(R1, maxInt(R2, R3))
     rule #registers(% R1 = sub % R2, % R3) => maxInt(R1, maxInt(R2, R3))

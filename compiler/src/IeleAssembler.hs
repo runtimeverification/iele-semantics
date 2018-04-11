@@ -44,6 +44,7 @@ asm_iele_opcode1 op1 = case op1 of
   OR -> putWord8 0x17
   XOR -> putWord8 0x18
   NOT -> putWord8 0x19
+  LOG2 -> putWord8 0x1c
 
   BYTE -> putWord8 0x1a
   SHIFT -> putWord8 0x1b
