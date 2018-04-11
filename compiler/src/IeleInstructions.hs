@@ -79,6 +79,7 @@ data IeleOpcode1 =
  | EQ
 
  | ISZERO
+ | LOG2
  | AND
  | OR
  | XOR

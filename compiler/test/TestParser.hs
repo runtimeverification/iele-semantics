@@ -214,6 +214,10 @@ instructionTests =
       "Not"
       (Op NOT "%a" ["%b"])
       "%a = not %b"
+  , testIeleInst
+      "Log2"
+      (Op LOG2 "%a" ["%b"])
+      "%a = log2 %b"
   , testBinaryOperation "add" ADD
   , testBinaryOperation "mul" MUL
   , testBinaryOperation "sub" SUB
