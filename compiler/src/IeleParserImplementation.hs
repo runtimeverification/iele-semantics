@@ -144,8 +144,8 @@ positiveInt :: Parser Int
 positiveInt = lexeme (read <$> many1 digit <* notFollowedBy ieleNameNonFirstChar)
   <?> "number"
 
-ieleNameTokenNotNumber :: Parser IeleName
-ieleNameTokenNotNumber =
+ieleNameTokenNormal :: Parser IeleName
+ieleNameTokenNormal =
   lexeme $ IeleNameText <$> ((:) <$> ieleNameFirstChar <*> many ieleNameNonFirstChar)
 
 ieleNameTokenNumber :: Parser IeleName
@@ -173,8 +173,11 @@ ieleNameTokenString =
     char '"'
     return (IeleNameText chars)
 
+ieleNameTokenNormalOrString :: Parser IeleName
+ieleNameTokenNormalOrString = ieleNameTokenNormal <|> ieleNameTokenString
+
 ieleNameToken :: Parser IeleName
-ieleNameToken = ieleNameTokenNotNumber <|> ieleNameTokenNumber <|> ieleNameTokenString
+ieleNameToken = ieleNameTokenNormalOrString <|> ieleNameTokenNumber
 
 positiveDecIntToken :: Parser IntToken
 positiveDecIntToken = lexeme $ IntToken . read <$>
@@ -526,7 +529,7 @@ functionDefinition = do
 topLevelDefinition :: Parser TopLevelDefinition
 topLevelDefinition =
       TopLevelDefinitionContract <$ skipKeyword "external" <* skipKeyword "contract"
-        <*> ieleNameTokenNotNumber
+        <*> ieleNameTokenNormalOrString
   <|> TopLevelDefinitionFunction <$> functionDefinition
   <|> TopLevelDefinitionGlobal <$> globalName <* equal <*> int
  where
