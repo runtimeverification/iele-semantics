@@ -24,6 +24,7 @@ module IeleParserImplementation
     , instructions
     , intToken
     , isZeroInst
+    , log2Inst
     , jumpInst
     , labeledBlock
     , labeledBlocks
@@ -264,6 +265,7 @@ ieleOp1 = do
     , loadInst
     , sloadInst
     , isZeroInst
+    , log2Inst
     , notInst
     , shaInst
     , binaryInst
@@ -322,6 +324,9 @@ jumpInst = do
 
 isZeroInst :: LValue -> Parser IeleOpP
 isZeroInst = simpleOp1 "iszero" 1 ISZERO
+
+log2Inst :: LValue -> Parser IeleOpP
+log2Inst = simpleOp1 "log2" 1 LOG2
 
 notInst :: LValue -> Parser IeleOpP
 notInst = simpleOp1 "not" 1 NOT

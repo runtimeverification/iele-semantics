@@ -175,6 +175,7 @@ prettyOp1 op args = case op of
   EXPMOD -> simple "expmod"
   SIGNEXTEND -> simple "sext"
   TWOS -> simple "twos"
+  LOG2 -> simple "log2"
   NE -> simple "cmp ne"
   LT -> simple "cmp lt"
   GT -> simple "cmp gt"

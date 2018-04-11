@@ -77,6 +77,9 @@ as follows:
     size of the result is the maximum of the sizes of W0 and W1
 -   `REG = shift W0, W1`
     size of the result is the size of the variable modified by the shift amount (positive for left shift, negative for right shift)
+-   `REG = log2 W` size of logarithm base 2 is equal to at most 8 * the size in bytes of the number,
+    which must be less than 2^64 to fit in memory on a 64-bit processor. We can compute this as a linear cost
+    on the word size because it is a floored logarithm and can be computed using bit counting.
 
 ```k
     rule #memory [ REG = not   W       ] => #registerDelta(REG, intSize(W))
@@ -84,6 +87,7 @@ as follows:
     rule #memory [ REG = or    W0 , W1 ] => #registerDelta(REG, maxInt(intSize(W0), intSize(W1)))
     rule #memory [ REG = xor   W0 , W1 ] => #registerDelta(REG, maxInt(intSize(W0), intSize(W1)))
     rule #memory [ REG = shift W0 , W1 ] => #registerDelta(REG, maxInt(1, intSize(W0) +Int bitsInWords(W1)))
+    rule #memory [ REG = log2  W       ] => #registerDelta(REG, 2)
 ```
 
 #### Comparison operators
@@ -412,6 +416,7 @@ The bitwise expressions have a constant cost plus a linear factor in the number 
     rule #compute [ _ = or    W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gbitwiseword < SCHED >
     rule #compute [ _ = xor   W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gbitwiseword < SCHED >
     rule #compute [ _ = shift W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(1, intSize(W0) +Int bitsInWords(W1)) *Int Gbitwiseword < SCHED >
+    rule #compute [ _ = log2 W,        SCHED ] => Gbitwise < SCHED > +Int intSize(W) *Int Gbitwiseword < SCHED >
 ```
 
 #### Comparison operators

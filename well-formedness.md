@@ -206,6 +206,8 @@ Each of these instructions takes some number of immediates, globals, or register
     rule check ~> LVAL = sext OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
     rule check ~> LVAL = twos OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
 
+    rule check ~> LVAL = log2 OP1 => checkLVal(LVAL) ~> checkOperands(OP1)
+
     rule check ~> LVAL = and   OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
     rule check ~> LVAL = or    OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
     rule check ~> LVAL = xor   OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
