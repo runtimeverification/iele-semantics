@@ -78,7 +78,8 @@ as follows:
 -   `REG = shift W0, W1`
     size of the result is the size of the variable modified by the shift amount (positive for left shift, negative for right shift)
 -   `REG = log2 W` size of logarithm base 2 is equal to at most 8 * the size in bytes of the number,
-    which must be less than 2^64 to fit in memory on a 64-bit processor.
+    which must be less than 2^64 to fit in memory on a 64-bit processor. We can compute this as a linear costg
+    on the word size because it is a floored logarithm and can be computed using bit counting.
 
 ```k
     rule #memory [ REG = not   W       ] => #registerDelta(REG, intSize(W))

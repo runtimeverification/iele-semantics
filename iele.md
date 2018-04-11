@@ -815,6 +815,8 @@ Expression calculations are simple and don't require anything but the arguments 
 -   `REG = mulmod W0, W1, W2` performs multiplication of W0 and W1 modulo W2. It is an exception to modulus by zero.
 -   `REG = expmod W0, W1, W2` performs exponentiation of W0 and W1 modulo W2. It is an exception to modulus by zero.
 
+-   `REG = log2 W` performs the floored logarithm base 2 of W. It is an exception to compute the logarithm of 0 or of a negative number.
+
 -   `REG = and W0, W1` performs bitwise AND on W0 and W1.
 -   `REG = or W0, W1` performs bitwise inclusive OR on W0 and W1.
 -   `REG = xor W0, W1` performs bitwise exclusive OR on W0 and W1.
