@@ -1,0 +1,10 @@
+contract "\00\01\0a\1f\ff" {
+  define @init () {}
+}
+
+contract Foo {
+  external contract "\00\01\0a\1f\ff"
+  define @init () {}
+
+  define public @test() {}
+}

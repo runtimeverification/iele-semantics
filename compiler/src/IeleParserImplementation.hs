@@ -541,7 +541,7 @@ topLevelDefinition =
   int = fmap (\(IntToken i) -> i) intToken
 
 contract :: Parser ContractP
-contract = ContractP <$ skipKeyword "contract" <*> ieleNameToken
+contract = ContractP <$ skipKeyword "contract" <*> ieleNameTokenNormalOrString
                      <*> (Just <$ char '!' <*> positiveInt <|> pure Nothing)
                      <*> braces (many topLevelDefinition)
                      <?> "contract"
