@@ -793,7 +793,7 @@ These operations are getters/setters of the local execution memory.
          <localMem> LM </localMem>
 
     rule <k> #exec store VALUE , CELL , OFFSET , WIDTH => . ... </k>
-         <localMem> LM => LM [ chop(CELL) <- {LM [ chop(CELL) ]}:>WordStack [ OFFSET := #padToWidth(chop(WIDTH), #asUnsignedBytesLE(VALUE modInt (2 ^Int (chop(WIDTH) *Int 8)))) ] ] </localMem>
+         <localMem> LM => LM [ chop(CELL) <- {LM [ chop(CELL) ]}:>WordStack [ OFFSET := #asUnsignedBytesLE(chop(WIDTH), VALUE modInt (2 ^Int (chop(WIDTH) *Int 8))) ] ] </localMem>
 
     rule <k> #exec store VALUE , CELL => . ... </k>
          <localMem> LM => LM [ chop(CELL) <- #asSignedBytesLE(VALUE) ] </localMem>
