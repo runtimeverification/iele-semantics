@@ -31,6 +31,8 @@ module IELE-SYNTAX
   syntax IeleName ::= Keyword [token]
 
   syntax NumericIeleName ::= r"[0-9]+" [token]
+
+  syntax StringIeleName ::= r"\\\"(([^\\\"\\\\])|(\\\\[0-9a-fA-F]{2}))*\\\"" [token]
 endmodule
 ```
 
@@ -41,7 +43,9 @@ module IELE-COMMON
   imports DOMAINS-SYNTAX
   imports INT-SYNTAX
   syntax NumericIeleName ::= Int
+  syntax StringIeleName
   syntax IeleName ::= NumericIeleName
+  syntax IeleName ::= StringIeleName [klabel(StringIeleName), avoid]
 ```
 
 ### Identifiers
