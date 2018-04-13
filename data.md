@@ -373,14 +373,26 @@ Byte Arrays
 
 The local memory of execution is a byte-array (instead of a word-array).
 
--   `#asSigned` will interperet a stack of bytes as a single signed arbitrary-precision integaer (with MSB first).
+-   `#asSignedLE` will interperet a stack of bytes as a single signed arbitrary-precision integer (with LSB first).
+-   `#asSigned` will interperet a stack of bytes as a single signed arbitrary-precision integer (with MSB first).
+-   `#asUnsignedLE` will interperet a stack of bytes as a single unsigned arbitrary-precision integer (with LSB first).
 -   `#asUnsigned` will interperet a stack of bytes as a single unsigned arbitrary-precision integer (with MSB first).
 -   `#asAccount` will interpret a stack of bytes as a single account id (with MSB first).
     Differs from `#asUnsigned` only in that an empty stack represents the empty account, not account zero.
--   `#asSignedBytes` will split a single signed integer up into a `WordStack` where each word is a byte wide.
--   `#asUnsignedBytes` will split a single unsigned integer up into a `WordStack` where each word is a byte wide.
+-   `#asSignedBytesLE` will split a single signed integer up into a `WordStack` where each word is a byte wide, following a little-endian convention.
+-   `#asSignedBytes` will split a single signed integer up into a `WordStack` where each word is a byte wide, following a big-endian convention.
+-   `#asUnsignedBytesLE` will split a single unsigned integer up into a `WordStack` where each word is a byte wide, following a little-endian convention.
+-   `#asUnsignedBytes` will split a single unsigned integer up into a `WordStack` where each word is a byte wide, following a big-endian convention.
 
 ```k
+    syntax Int ::= #asSignedLE ( WordStack )       [function]
+                 | #asSignedLE ( WordStack , Int ) [function, klabel(#asSignedLEAux), smtlib(asSigned)]
+ // -----------------------------------------------------------------------------------------------
+    rule #asSignedLE( WS )                => #asSignedLE(WS, 0)
+    rule #asSignedLE( .WordStack,     _ ) => 0
+    rule #asSignedLE( W : .WordStack, N ) => signextend(N, W)
+    rule #asSignedLE( W0 : W1 : WS,   N ) => #asSignedLE((W0 +Int (W1 *Int 256)) : WS, N +Int 1)
+
     syntax Int ::= #asSigned ( WordStack )       [function]
                  | #asSigned ( WordStack , Int ) [function, klabel(#asSignedAux), smtlib(asSigned)]
  // -----------------------------------------------------------------------------------------------
@@ -388,6 +400,12 @@ The local memory of execution is a byte-array (instead of a word-array).
     rule #asSigned( .WordStack,     _ ) => 0
     rule #asSigned( W : .WordStack, N ) => signextend(N, W)
     rule #asSigned( W0 : W1 : WS,   N ) => #asSigned(((W0 *Int 256) +Int W1) : WS, N +Int 1)
+
+    syntax Int ::= #asUnsignedLE ( WordStack ) [function]
+ // ---------------------------------------------------
+    rule #asUnsignedLE( .WordStack )    => 0
+    rule #asUnsignedLE( W : .WordStack) => W
+    rule #asUnsignedLE( W0 : W1 : WS )  => #asUnsignedLE((W0 +Int (W1 *Int 256)) : WS)
 
     syntax Int ::= #asUnsigned ( WordStack ) [function]
  // ---------------------------------------------------
@@ -407,6 +425,24 @@ The local memory of execution is a byte-array (instead of a word-array).
     rule #numBytes(0, N) => N
     rule #numBytes(W, N) => #numBytes(W >>Int 8, N +Int 1) [owise]
 
+    syntax WordStack ::= #revBytes ( WordStack )             [function]
+                       | #revBytes ( WordStack , WordStack ) [function, klabel(#revBytesAux)]
+ // -----------------------------------------------------------------------
+    rule #revBytes( W )                => #revBytes( W , .WordStack )
+    rule #revBytes( .WordStack , RWS ) => RWS
+    rule #revBytes( W : WS     , RWS ) => #revBytes( WS , W : RWS   ) [owise]
+
+    syntax WordStack ::= #asSignedBytesLE ( Int )                    [function]
+                       | #asSignedBytesLE ( Int , WordStack , Bool ) [function, klabel(#asSignedBytesLEAux), smtlib(asSignedBytesLE)]
+ // ---------------------------------------------------------------------------------------------------------------------------
+    rule #asSignedBytesLE( W ) => #asSignedBytesLE( W ,                                          .WordStack , true  ) requires W >=Int 0
+    rule #asSignedBytesLE( W ) => #asSignedBytesLE( twos(#numBytes(0 -Int W *Int 2 -Int 1), W) , .WordStack , false ) requires W  <Int 0
+    rule #asSignedBytesLE( 0 , WS         , false ) => WS
+    rule #asSignedBytesLE( 0 , .WordStack , true  ) => 0 : .WordStack
+    rule #asSignedBytesLE( 0 , W : WS     , true  ) => #revBytes( W : WS     ) requires W <Int 128
+    rule #asSignedBytesLE( 0 , W : WS     , true  ) => #revBytes( 0 : W : WS ) requires W >=Int 128
+    rule #asSignedBytesLE( W , WS , POS ) => #asSignedBytesLE( W /Int 256 , W %Int 256 : WS , POS ) requires W =/=K 0
+
     syntax WordStack ::= #asSignedBytes ( Int )                    [function]
                        | #asSignedBytes ( Int , WordStack , Bool ) [function, klabel(#asSignedBytesAux), smtlib(asSignedBytes)]
  // ---------------------------------------------------------------------------------------------------------------------------
@@ -417,6 +453,13 @@ The local memory of execution is a byte-array (instead of a word-array).
     rule #asSignedBytes( 0 , W : WS     , true  ) => W : WS requires W <Int 128
     rule #asSignedBytes( 0 , W : WS     , true  ) => 0 : W : WS requires W >=Int 128
     rule #asSignedBytes( W , WS , POS ) => #asSignedBytes( W /Int 256 , W %Int 256 : WS , POS ) requires W =/=K 0
+
+    syntax WordStack ::= #asUnsignedBytesLE ( Int )             [function]
+                       | #asUnsignedBytesLE ( Int , WordStack ) [function, klabel(#asUnsignedBytesLEAux), smtlib(asUnsignedBytesLE)]
+ // --------------------------------------------------------------------------------------------------------------------------
+    rule #asUnsignedBytesLE( W ) => #asUnsignedBytesLE( W , .WordStack )
+    rule #asUnsignedBytesLE( 0 , WS ) => #revBytes ( WS )
+    rule #asUnsignedBytesLE( W , WS ) => #asUnsignedBytesLE( W /Int 256 , W %Int 256 : WS ) requires W =/=K 0
 
     syntax WordStack ::= #asUnsignedBytes ( Int )             [function]
                        | #asUnsignedBytes ( Int , WordStack ) [function, klabel(#asUnsignedBytesAux), smtlib(asUnsignedBytes)]
