@@ -454,12 +454,12 @@ The local memory of execution is a byte-array (instead of a word-array).
     rule #asSignedBytes( 0 , W : WS     , true  ) => 0 : W : WS requires W >=Int 128
     rule #asSignedBytes( W , WS , POS ) => #asSignedBytes( W /Int 256 , W %Int 256 : WS , POS ) requires W =/=K 0
 
-    syntax WordStack ::= #asUnsignedBytesLE ( Int )             [function]
-                       | #asUnsignedBytesLE ( Int , WordStack ) [function, klabel(#asUnsignedBytesLEAux), smtlib(asUnsignedBytesLE)]
+    syntax WordStack ::= #asUnsignedBytesLE ( Int , Int )             [function]
+                       | #asUnsignedBytesLE ( Int , Int , WordStack ) [function, klabel(#asUnsignedBytesLEAux), smtlib(asUnsignedBytesLE)]
  // --------------------------------------------------------------------------------------------------------------------------
-    rule #asUnsignedBytesLE( W ) => #asUnsignedBytesLE( W , .WordStack )
-    rule #asUnsignedBytesLE( 0 , WS ) => #revBytes ( WS )
-    rule #asUnsignedBytesLE( W , WS ) => #asUnsignedBytesLE( W /Int 256 , W %Int 256 : WS ) requires W =/=K 0
+    rule #asUnsignedBytesLE( WIDTH , W ) => #asUnsignedBytesLE( WIDTH , W , .WordStack )
+    rule #asUnsignedBytesLE( WIDTH , 0 , WS ) => #revBytes ( #padToWidth( WIDTH , WS ) )
+    rule #asUnsignedBytesLE( WIDTH , W , WS ) => #asUnsignedBytesLE( WIDTH , W /Int 256 , W %Int 256 : WS ) requires W =/=K 0
 
     syntax WordStack ::= #asUnsignedBytes ( Int )             [function]
                        | #asUnsignedBytes ( Int , WordStack ) [function, klabel(#asUnsignedBytesAux), smtlib(asUnsignedBytes)]
