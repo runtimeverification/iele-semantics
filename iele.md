@@ -786,17 +786,17 @@ These operations are getters/setters of the local execution memory.
 -   `REG = store VALUE, CELL` stores VALUE into the specified memory CELL, overwriting the previous value of the entire cell.
 
 ```k
-    rule <k> #exec REG = load CELL , OFFSET , WIDTH => #load REG #asSigned({LM [ chop(CELL) ]}:>WordStack [ OFFSET .. WIDTH ]) ... </k>
+    rule <k> #exec REG = load CELL , OFFSET , WIDTH => #load REG #asSignedLE({LM [ chop(CELL) ]}:>WordStack [ OFFSET .. WIDTH ]) ... </k>
          <localMem> LM </localMem>
 
-    rule <k> #exec REG = load CELL => #load REG #asSigned({LM [ chop(CELL) ]}:>WordStack) ... </k>
+    rule <k> #exec REG = load CELL => #load REG #asSignedLE({LM [ chop(CELL) ]}:>WordStack) ... </k>
          <localMem> LM </localMem>
 
     rule <k> #exec store VALUE , CELL , OFFSET , WIDTH => . ... </k>
-         <localMem> LM => LM [ chop(CELL) <- {LM [ chop(CELL) ]}:>WordStack [ OFFSET := #padToWidth(chop(WIDTH), #asUnsignedBytes(VALUE modInt (2 ^Int (chop(WIDTH) *Int 8)))) ] ] </localMem>
+         <localMem> LM => LM [ chop(CELL) <- {LM [ chop(CELL) ]}:>WordStack [ OFFSET := #padToWidth(chop(WIDTH), #asUnsignedBytesLE(VALUE modInt (2 ^Int (chop(WIDTH) *Int 8)))) ] ] </localMem>
 
     rule <k> #exec store VALUE , CELL => . ... </k>
-         <localMem> LM => LM [ chop(CELL) <- #asSignedBytes(VALUE) ] </localMem>
+         <localMem> LM => LM [ chop(CELL) <- #asSignedBytesLE(VALUE) ] </localMem>
 ```
 
 ### Expressions
