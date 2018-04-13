@@ -145,8 +145,8 @@ positiveInt :: Parser Int
 positiveInt = lexeme (read <$> many1 digit <* notFollowedBy ieleNameNonFirstChar)
   <?> "number"
 
-ieleNameTokenNotNumber :: Parser IeleName
-ieleNameTokenNotNumber =
+ieleNameTokenNormal :: Parser IeleName
+ieleNameTokenNormal =
   lexeme $ IeleNameText <$> ((:) <$> ieleNameFirstChar <*> many ieleNameNonFirstChar)
 
 ieleNameTokenNumber :: Parser IeleName
@@ -174,8 +174,11 @@ ieleNameTokenString =
     char '"'
     return (IeleNameText chars)
 
+ieleNameTokenNormalOrString :: Parser IeleName
+ieleNameTokenNormalOrString = ieleNameTokenNormal <|> ieleNameTokenString
+
 ieleNameToken :: Parser IeleName
-ieleNameToken = ieleNameTokenNotNumber <|> ieleNameTokenNumber <|> ieleNameTokenString
+ieleNameToken = ieleNameTokenNormalOrString <|> ieleNameTokenNumber
 
 positiveDecIntToken :: Parser IntToken
 positiveDecIntToken = lexeme $ IntToken . read <$>
@@ -531,14 +534,14 @@ functionDefinition = do
 topLevelDefinition :: Parser TopLevelDefinition
 topLevelDefinition =
       TopLevelDefinitionContract <$ skipKeyword "external" <* skipKeyword "contract"
-        <*> ieleNameTokenNotNumber
+        <*> ieleNameTokenNormalOrString
   <|> TopLevelDefinitionFunction <$> functionDefinition
   <|> TopLevelDefinitionGlobal <$> globalName <* equal <*> int
  where
   int = fmap (\(IntToken i) -> i) intToken
 
 contract :: Parser ContractP
-contract = ContractP <$ skipKeyword "contract" <*> ieleNameToken
+contract = ContractP <$ skipKeyword "contract" <*> ieleNameTokenNormalOrString
                      <*> (Just <$ char '!' <*> positiveInt <|> pure Nothing)
                      <*> braces (many topLevelDefinition)
                      <?> "contract"

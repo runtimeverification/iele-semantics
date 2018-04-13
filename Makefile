@@ -45,7 +45,7 @@ tangle: defn proofs
 k_files:=ethereum.k data.k iele.k iele-gas.k iele-binary.k krypto.k iele-syntax.k iele-node.k well-formedness.k
 standalone_files:=$(patsubst %,.build/standalone/%,$(k_files))
 node_files:=$(patsubst %,.build/node/%,$(k_files))
-checker_files:=.build/standalone/iele-syntax.k .build/standalone/well-formedness.k
+checker_files:=.build/standalone/iele-syntax.k .build/standalone/well-formedness.k .build/standalone/data.k
 defn_files=$(standalone_files) $(node_files)
 
 defn: $(defn_files)

@@ -110,6 +110,8 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to IELE'
 
     syntax String ::= IeleName2String ( IeleName ) [function, hook(STRING.token2string)]
  // ------------------------------------------------------------------------------------
+    syntax String ::= StringIeleName2String ( StringIeleName ) [function, hook(STRING.token2string)]
+ // ------------------------------------------------------------------------------------------------
 ```
 
 Arithmetic
