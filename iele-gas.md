@@ -144,13 +144,14 @@ Result size of SHA3 is 256 bits, i.e., 4 words.
 #### Byte access
 
 -   `REG = byte INDEX, W`  the result size is one byte, fitting in one word
--   `REG = sext WIDTH , W` and `REG = twos WIDTH , W`
+-   `REG = sext WIDTH , W`, `REG = twos WIDTH , W`, and `REG = bswap WIDTH , W`
     the result size is WIDTH bytes, i.e., WIDTH / 8 words.
 
 ```k
-    rule #memory [ REG = byte INDEX , _ ] => #registerDelta(REG, bytesInWords(1))
-    rule #memory [ REG = sext WIDTH , _ ] => #registerDelta(REG, bytesInWords(chop(WIDTH)))
-    rule #memory [ REG = twos WIDTH , _ ] => #registerDelta(REG, bytesInWords(chop(WIDTH)))
+    rule #memory [ REG = byte  INDEX , _ ] => #registerDelta(REG, bytesInWords(1))
+    rule #memory [ REG = sext  WIDTH , _ ] => #registerDelta(REG, bytesInWords(chop(WIDTH)))
+    rule #memory [ REG = twos  WIDTH , _ ] => #registerDelta(REG, bytesInWords(chop(WIDTH)))
+    rule #memory [ REG = bswap WIDTH , _ ] => #registerDelta(REG, bytesInWords(chop(WIDTH)))
 ```
 
 #### Local state operations
@@ -468,12 +469,13 @@ The cost of hashing a memory cell is equal to a constant plus the size of the ce
 #### Byte access
 
 -   `byte` has a constant cost.
--   `twos` and `sign` have a constant cost plus a linear factor in the `WIDTH` parameter.
+-   `twos`, `sext`, and `bswap` have a constant cost plus a linear factor in the `WIDTH` parameter.
 
 ```k
     rule #compute [ _ = byte _ , _, SCHED ] => Gbyte < SCHED >
-    rule #compute [ _ = twos WIDTH, _, SCHED ] => Gsign < SCHED > +Int maxInt(1, bytesInWords(chop(WIDTH))) *Int Gsignword < SCHED >
-    rule #compute [ _ = sext WIDTH, _, SCHED ] => Gsign < SCHED > +Int maxInt(1, bytesInWords(chop(WIDTH))) *Int Gsignword < SCHED >
+    rule #compute [ _ = twos  WIDTH, _, SCHED ] => Gsign < SCHED > +Int maxInt(1, bytesInWords(chop(WIDTH))) *Int Gsignword < SCHED >
+    rule #compute [ _ = sext  WIDTH, _, SCHED ] => Gsign < SCHED > +Int maxInt(1, bytesInWords(chop(WIDTH))) *Int Gsignword < SCHED >
+    rule #compute [ _ = bswap WIDTH, _, SCHED ] => Gsign < SCHED > +Int maxInt(1, bytesInWords(chop(WIDTH))) *Int Gsignword < SCHED >
 ```
 
 #### Local state operations

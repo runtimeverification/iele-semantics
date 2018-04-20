@@ -356,6 +356,7 @@ binaryOperations =
   ,("shift",SHIFT)
   ,("sext",SIGNEXTEND)
   ,("twos",TWOS)
+  ,("bswap",BSWAP)
   ]
 
 binaryInst :: LValue -> Parser IeleOpP

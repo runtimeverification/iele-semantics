@@ -70,6 +70,7 @@ data IeleOpcode1 =
 
  | SIGNEXTEND
  | TWOS
+ | BSWAP
 
  | NE
  | LT
