@@ -112,12 +112,17 @@ iele_contracts=$(wildcard iele-examples/*.iele tests/iele/*/*.iele)
 well_formed_contracts=$(filter-out $(wildcard tests/iele/ill-formed/*.iele), ${iele_contracts})
 well_formedness_targets=${well_formed_contracts:=.test}
 
-test: $(passing_targets) ${iele_targets} ${iele_node_targets} ${well_formedness_targets}
+test: $(passing_targets) ${iele_targets} ${iele_node_targets} ${well_formedness_targets} test-bad-packet
 vm-test: $(passing_vm_targets)
 blockchain-test: $(passing_blockchain_targets)
 iele-test: ${iele_targets}
 iele-test-node: ${iele_node_targets}
 well-formed-test: ${well_formedness_targets}
+
+test-bad-packet:
+	netcat 127.0.0.1 $(PORT) < tests/bad-packet
+	netcat 127.0.0.1 $(PORT) < tests/bad-packet-2
+	.build/vm/iele-test-vm tests/iele/sum/sum_zero.iele.json $(PORT)
 
 tests/VMTests/%.json.test: tests/VMTests/%.json | build
 	./vmtest $<
