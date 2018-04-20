@@ -202,9 +202,10 @@ Each of these instructions takes some number of immediates, globals, or register
     rule check ~> LVAL = mulmod OP1, OP2, OP3 => checkLVal(LVAL) ~> checkOperands(OP1, OP2, OP3)
     rule check ~> LVAL = expmod OP1, OP2, OP3 => checkLVal(LVAL) ~> checkOperands(OP1, OP2, OP3)
 
-    rule check ~> LVAL = byte OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
-    rule check ~> LVAL = sext OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
-    rule check ~> LVAL = twos OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
+    rule check ~> LVAL = byte  OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
+    rule check ~> LVAL = sext  OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
+    rule check ~> LVAL = twos  OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
+    rule check ~> LVAL = bswap OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
 
     rule check ~> LVAL = log2 OP1 => checkLVal(LVAL) ~> checkOperands(OP1)
 

@@ -852,10 +852,12 @@ Expression calculations are simple and don't require anything but the arguments 
     rule <k> #exec REG = expmod W0 , W1 ,  0 => #exception USER_ERROR          ... </k>
     rule <k> #exec REG = expmod W0 , W1 , W2 => #exception USER_ERROR          ... </k> requires W1 <Int 0 andBool gcdInt(W0, W2) =/=Int 1
 
-    rule <k> #exec REG = byte INDEX , W => #load REG byte(chop(INDEX), W)       ... </k>
-    rule <k> #exec REG = sext WIDTH , W => #load REG signextend(chop(WIDTH), W) ... </k> requires W >=Int 0
-    rule <k> #exec REG = sext WIDTH , W => #exception USER_ERROR                ... </k> requires W <Int 0
-    rule <k> #exec REG = twos WIDTH , W => #load REG twos(chop(WIDTH), W)       ... </k>
+    rule <k> #exec REG = byte  INDEX , W => #load REG byte(chop(INDEX), W)       ... </k>
+    rule <k> #exec REG = sext  WIDTH , W => #load REG signextend(chop(WIDTH), W) ... </k> requires W >=Int 0
+    rule <k> #exec REG = sext  WIDTH , W => #exception USER_ERROR                ... </k> requires W <Int 0
+    rule <k> #exec REG = twos  WIDTH , W => #load REG twos(chop(WIDTH), W)       ... </k>
+    rule <k> #exec REG = bswap WIDTH , W => #load REG bswap(chop(WIDTH), W)      ... </k> requires W >=Int 0
+    rule <k> #exec REG = bswap WIDTH , W => #exception USER_ERROR                ... </k> requires W <Int 0
 
     rule <k> #exec REG = log2 W => #load REG log2Int(W)  ... </k> requires W >Int 0
     rule <k> #exec REG = log2 W => #exception USER_ERROR ... </k> requires W <=Int 0
@@ -1787,6 +1789,7 @@ module IELE-PROGRAM-LOADING
     rule #registers(% R1 = byte % R2, % R3) => maxInt(R1, maxInt(R2, R3))
     rule #registers(% R1 = sext % R2, % R3) => maxInt(R1, maxInt(R2, R3))
     rule #registers(% R1 = twos % R2, % R3) => maxInt(R1, maxInt(R2, R3))
+    rule #registers(% R1 = bswap % R2, % R3) => maxInt(R1, maxInt(R2, R3))
     rule #registers(% R1 = and % R2, % R3) => maxInt(R1, maxInt(R2, R3))
     rule #registers(% R1 = or % R2, % R3) => maxInt(R1, maxInt(R2, R3))
     rule #registers(% R1 = xor % R2, % R3) => maxInt(R1, maxInt(R2, R3))

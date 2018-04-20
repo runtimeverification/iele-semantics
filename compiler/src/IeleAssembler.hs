@@ -31,6 +31,7 @@ asm_iele_opcode1 op1 = case op1 of
 
   SIGNEXTEND -> putWord8 0x0b
   TWOS -> putWord8 0x0c
+  BSWAP -> putWord8 0x0d
 
   NE -> putWord8 0x0f
   LT -> putWord8 0x10

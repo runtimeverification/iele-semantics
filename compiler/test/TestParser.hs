@@ -233,6 +233,7 @@ instructionTests =
   , testBinaryOperation "shift" SHIFT
   , testBinaryOperation "sext" SIGNEXTEND
   , testBinaryOperation "twos" TWOS
+  , testBinaryOperation "bswap" BSWAP
 
   , testBinaryOperation "and" AND
   , testBinaryOperation "or" OR

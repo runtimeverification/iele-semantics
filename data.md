@@ -228,15 +228,19 @@ Bitwise Operators
 
 -   `signextend(N, W)` sign-extends from byte $N$ of $W$ (0 being LSB).
 -   `twos(N, W)` converts a signed integer from byte $N$ of $W$ to twos-complement representation (0 being LSB).
+-   `bswap(N, W)` converts a signed integer from byte $N$ of $W$ from little endian to big endian representation (or back).
 
 ```k
     syntax Int ::= signextend ( Int , Int ) [function]
                  | twos ( Int , Int )       [function]
+                 | bswap ( Int , Int )      [function]
  // --------------------------------------------------
     rule signextend(N, W) => twos(N +Int 1, W) -Int (1 <<Byte (N +Int 1))  requires         word2Bool(bit((8 *Int (N +Int 1) -Int 1), twos(N +Int 1, W)))
     rule signextend(N, W) => twos(N +Int 1, W)                             requires notBool word2Bool(bit((8 *Int (N +Int 1) -Int 1), twos(N +Int 1, W)))
 
     rule twos(N, W) => W modInt (1 <<Byte N)
+
+    rule bswap(N, W) => #asUnsigned(#rev(#asUnsignedBytes(twos(N, W)), .WordStack))
 ```
 
 -   `keccak` serves as a wrapper around the `Keccak256` in `KRYPTO`.
