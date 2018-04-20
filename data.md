@@ -228,7 +228,7 @@ Bitwise Operators
 
 -   `signextend(N, W)` sign-extends from byte $N$ of $W$ (0 being LSB).
 -   `twos(N, W)` converts a signed integer from byte $N$ of $W$ to twos-complement representation (0 being LSB).
--   `bswap(N, W)` converts a signed integer from byte $N$ of $W$ to twos-complement representation (0 being LSB).
+-   `bswap(N, W)` converts a signed integer from byte $N$ of $W$ from little endian to big endian representation (or back).
 
 ```k
     syntax Int ::= signextend ( Int , Int ) [function]
