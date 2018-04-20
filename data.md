@@ -240,7 +240,7 @@ Bitwise Operators
 
     rule twos(N, W) => W modInt (1 <<Byte N)
 
-    rule bswap(N, W) => #asUnsigned(#rev(#asUnsignedBytes(twos(N, W)), .WordStack))
+    rule bswap(N, W) => #asUnsigned(#rev(#padToWidth(N, #asUnsignedBytes(twos(N, W))), .WordStack))
 ```
 
 -   `keccak` serves as a wrapper around the `Keccak256` in `KRYPTO`.
