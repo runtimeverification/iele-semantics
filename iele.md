@@ -1017,6 +1017,7 @@ When execution of the callee reaches a `ret` instruction, control returns to the
          <localCalls> ListItem({ OPS | FUNC | RETURNS | REGS }) => .List ... </localCalls>
 
     rule <k> #exec revert VALUE => #revert VALUE ... </k>
+         <output> _ => .Ints </output>
 ```
 
 ### Log Operations
