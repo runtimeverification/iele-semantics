@@ -144,7 +144,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
          </account>
 
     rule <k> loadTx(ACCTFROM)
-          => #call ACCTFROM ACCTTO FUNC (GLIMIT -Int G0(SCHED, IeleName2String(FUNC), ARGS)) VALUE ARGS false
+          => #call ACCTFROM ACCTTO @ FUNC (GLIMIT -Int G0(SCHED, IeleName2String(FUNC), ARGS)) VALUE ARGS false
           ~> #finishTx ~> #adjustGas ~> #finalizeTx(false) ~> startTx
          ...
          </k>
