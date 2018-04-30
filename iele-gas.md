@@ -210,6 +210,13 @@ to the function, which consume as much as the size of their arguments.
          <schedule> SCHED </schedule>
          <funcId> NAME </funcId>
          <nregs> REGISTERS </nregs>
+
+    rule <k> #memory [ _ = call (IDX:Int => @ FUNC) ( _ ) ] ... </k>
+         <funcLabels> ... IDX |-> FUNC ... </funcLabels>
+    // this will throw an exception, so the gas cost doesn't really matter
+    rule <k> #memory [ _ = call IDX:Int ( _ ) ] => . ... </k>
+         <funcLabels> LABELS </funcLabels>
+      requires notBool IDX in_keys(LABELS)
 ```
 
 The memory cost of returning to a function is negative. Instead of charging a gas cost, memory is reclaimed according to the
@@ -543,6 +550,12 @@ constant cost to perform the jump and store the return address.
     rule <k> #compute [ _ = call @ NAME ( ARGS ), SCHED ] => Gcallreg < SCHED > *Int REGISTERS +Int intSizes(ARGS) *Int Gcopy < SCHED > +Int Glocalcall < SCHED > ... </k>
          <funcId> NAME </funcId>
          <nregs> REGISTERS </nregs>
+    rule <k> #compute [ _ = call (IDX:Int => @ FUNC) ( _ ), _ ] ... </k>
+         <funcLabels> ... IDX |-> FUNC ... </funcLabels>
+    // this will throw an exception, so the gas cost doesn't really matter
+    rule <k> #compute [ _ = call IDX:Int ( _ ), _ ] => 0 ... </k>
+         <funcLabels> LABELS </funcLabels>
+      requires notBool IDX in_keys(LABELS)
 ```
 
 The cost to return from an intra-contract call is the cost to move the return values into the result registers plus the cost to
