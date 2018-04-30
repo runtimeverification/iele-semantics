@@ -241,6 +241,11 @@ operand = RegOperand <$> lValue
       <|> ImmOperand <$> intToken
       <|> GlobalOperand <$> globalName
 
+operandInclReserved :: Parser Operand
+operandInclReserved = RegOperand <$> lValue
+      <|> ImmOperand <$> intToken
+      <|> GlobalOperand <$> globalNameInclReserved
+
 operands :: Parser [Operand]
 operands = commaSep0 operand
 
@@ -417,40 +422,54 @@ builtins = Map.fromList
 localCallInst :: Parser IeleOpP
 localCallInst = do
   results <- callResult
-  name <- skipKeyword "call" *> globalNameInclReserved
+  name <- skipKeyword "call" *> operandInclReserved
   args <- parens operands
-  let call = CallOp (LOCALCALL name (argsLength args) (retsLength results)) results args
-  case Map.lookup name builtins of
-    Nothing | name /= GlobalName (IeleNameText "iele.invalid") -> pure call
-            | not (null results) -> fail $ "builtin iele.invalid returns no results"
-            | not (null args) -> fail $ "builtin iele.invalid takes no arguments"
-            | otherwise -> pure $ VoidOp INVALID []
-    Just (op,arity)
-      | length results /= 1 -> fail $ "builtin "++show name++" returns exactly one result"
-      | arity == length args -> pure $ Op (IeleOpcodesQuery op) (head results) args
-      | otherwise -> fail $ "builtin "++show name++" expects "++show arity++" arguments"
+  case name of
+    GlobalOperand globalName ->
+      let call = CallOp (LOCALCALL globalName (argsLength args) (retsLength results)) results args in
+      case Map.lookup globalName builtins of
+        Nothing | globalName /= GlobalName (IeleNameText "iele.invalid") -> pure call
+                | not (null results) -> fail $ "builtin iele.invalid returns no results"
+                | not (null args) -> fail $ "builtin iele.invalid takes no arguments"
+                | otherwise -> pure $ VoidOp INVALID []
+        Just (op,arity)
+          | length results /= 1 -> fail $ "builtin "++show globalName++" returns exactly one result"
+          | arity == length args -> pure $ Op (IeleOpcodesQuery op) (head results) args
+          | otherwise -> fail $ "builtin "++show name++" expects "++show arity++" arguments"
+    _ -> 
+      pure $ CallOp (LOCALCALLDYN (argsLength args) (retsLength results)) results (name : args)
 
 
 accountCallInst :: Parser IeleOpP
 accountCallInst = do
   results <- nonEmptyLValues <* equal
-  name <- skipKeyword "call" *> globalNameInclReserved
+  name <- skipKeyword "call" *> operandInclReserved
   tgt <- skipKeyword "at" *> operand
   args <- parens operands
   value <- skipKeyword "send" *> operand
   gas <- comma *> skipKeyword "gaslimit" *> operand
-  let op = CALL name (argsLength args) (fmap (subtract 1) (retsLength results))
-  pure (CallOp op results ([gas,tgt,value]++args))
+  case name of
+    GlobalOperand globalName ->
+      let op = CALL globalName (argsLength args) (fmap (subtract 1) (retsLength results)) in
+      pure (CallOp op results ([gas,tgt,value]++args))
+    _ ->
+      let op = CALLDYN (argsLength args) (fmap (subtract 1) (retsLength results)) in
+      pure (CallOp op results ([name,gas,tgt,value]++args))
 
 staticCallInst :: Parser IeleOpP
 staticCallInst = do
   results <- nonEmptyLValues <* equal
-  name <- skipKeyword "staticcall" *> globalNameInclReserved
+  name <- skipKeyword "staticcall" *> operandInclReserved
   tgt <- skipKeyword "at" *> operand
   args <- parens operands
   gas <- skipKeyword "gaslimit" *> operand
-  let op = STATICCALL name (argsLength args) (fmap (subtract 1) (retsLength results))
-  pure (CallOp op results ([gas,tgt]++args))
+  case name of
+    GlobalOperand globalName ->
+      let op = STATICCALL globalName (argsLength args) (fmap (subtract 1) (retsLength results)) in
+      pure (CallOp op results ([gas,tgt]++args))
+    _ ->
+      let op = STATICCALLDYN (argsLength args) (fmap (subtract 1) (retsLength results)) in
+      pure (CallOp op results ([name,gas,tgt]++args))
 
 
 argumentsOrVoid :: Parser [Operand]

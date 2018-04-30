@@ -182,9 +182,12 @@ data IeleOpcodeLi =
   deriving (Show, Eq, Data)
 
 data IeleOpcodeCall contractId funId =
-   CALL funId (Args Word16) (Rets  Word16)
+   CALL funId (Args Word16) (Rets Word16)
+ | CALLDYN (Args Word16) (Rets Word16)
  | STATICCALL funId (Args Word16) (Rets Word16)
+ | STATICCALLDYN (Args Word16) (Rets Word16)
  | LOCALCALL funId (Args Word16) (Rets Word16)
+ | LOCALCALLDYN (Args Word16) (Rets Word16)
 
  | CREATE contractId (Args Word16) -- contract Id
  | COPYCREATE (Args Word16)
@@ -197,8 +200,11 @@ retypeOpcodeCall :: (Applicative f)
                  -> f (IeleOpcodeCall contractId' funId')
 retypeOpcodeCall contract fun i = case i of
     CALL f nargs nrets -> (\f -> CALL f nargs nrets) <$> fun f
+    CALLDYN nargs nrets -> pure (CALLDYN nargs nrets)
     STATICCALL f nargs nrets -> (\f -> STATICCALL f nargs nrets) <$> fun f
+    STATICCALLDYN nargs nrets -> pure (STATICCALLDYN nargs nrets)
     LOCALCALL f nargs nrets -> (\f -> LOCALCALL f nargs nrets) <$> fun f
+    LOCALCALLDYN nargs nrets -> pure (LOCALCALLDYN nargs nrets)
     CREATE c nargs -> (\c -> CREATE c nargs) <$> contract c
     COPYCREATE nargs -> pure (COPYCREATE nargs)
 
