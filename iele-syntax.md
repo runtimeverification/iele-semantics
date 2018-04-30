@@ -179,12 +179,12 @@ Instructions for conditional and unconditional jumps within the function's body.
 Instructions for local functions calls to other functions of the same contract, as well as contract function calls to public functions of contracts deployed in other accounts. For more details see [here](Design.md#function-callreturn).
 
 ```k
-  syntax LocalCallInst   ::= "call" GlobalName "(" Operands ")"
-                           | LValues "=" "call" GlobalName "(" Operands ")" [hybrid, strict(3)]
-  syntax AccountCallInst ::= "call" GlobalName "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand
-                           | LValues "=" "call" GlobalName "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand [hybrid, seqstrict(3,4,5,6)]
-  syntax AccountCallInst ::= "staticcall" GlobalName "at" Operand "(" Operands ")" "gaslimit" Operand
-                           | LValues "=" "staticcall" GlobalName "at" Operand "(" Operands ")" "gaslimit" Operand [hybrid, seqstrict(3,4,5)]
+  syntax LocalCallInst   ::= "call" Operand "(" Operands ")"
+                           | LValues "=" "call" Operand "(" Operands ")" [hybrid, strict(2,3)]
+  syntax AccountCallInst ::= "call" Operand "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand
+                           | LValues "=" "call" Operand "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand [hybrid, seqstrict(2,3,4,5,6)]
+  syntax AccountCallInst ::= "staticcall" Operand "at" Operand "(" Operands ")" "gaslimit" Operand
+                           | LValues "=" "staticcall" Operand "at" Operand "(" Operands ")" "gaslimit" Operand [hybrid, seqstrict(2,3,4,5)]
 
   syntax ReturnInst ::= "ret" NonEmptyOperands [hybrid, strict(1)]
                       | "ret" "void"
