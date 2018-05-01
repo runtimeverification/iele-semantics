@@ -183,9 +183,9 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, 242 : W1 : W2 : W3 : W4 : W5 : W6 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, WS, NBITS, FUNCS, INSTRS, CALL(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, W5 *Int 256 +Int W6))
     rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, 243 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, WS, NBITS, FUNCS, INSTRS, CALLDYN(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4))
     rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, 245 : W1 : W2 : W3 : W4 : W5 : W6 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, WS, NBITS, FUNCS, INSTRS, STATICCALL(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, W5 *Int 256 +Int W6))
-    rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, 249 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, WS, NBITS, FUNCS, INSTRS, STATICCALLDYN(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4))
+    rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, 244 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, WS, NBITS, FUNCS, INSTRS, STATICCALLDYN(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4))
     rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, 248 : W1 : W2 : W3 : W4 : W5 : W6 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, WS, NBITS, FUNCS, INSTRS, LOCALCALL(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, W5 *Int 256 +Int W6))
-    rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, 244 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, WS, NBITS, FUNCS, INSTRS, LOCALCALLDYN(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4))
+    rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, 249 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, WS, NBITS, FUNCS, INSTRS, LOCALCALLDYN(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4))
 
     syntax Blocks ::= #toBlocks ( Instructions ) [function]
                     | #toBlocks ( Instructions , Blocks ) [function, klabel(#toBlockAux)]
