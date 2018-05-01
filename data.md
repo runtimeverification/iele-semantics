@@ -133,10 +133,12 @@ You could alternatively calculate `I1 %Int I2`, then add one to the normal integ
 -   `logNInt` returns the log base N (floored) of an integer.
 
 ```k
-    syntax Int ::= log2Int ( Int ) [function]
- // -----------------------------------------
-    rule log2Int(1) => 0
-    rule log2Int(W) => 1 +Int log2Int(W >>Int 1) requires W >Int 1
+    syntax Int ::= log2Int ( Int )       [function]
+                 | log2Int ( Int , Int ) [function, klabel(log2IntAux)]
+ // -------------------------------------------------------------------
+    rule log2Int(I) => log2Int(I, 0)
+    rule log2Int(1, N) => N
+    rule log2Int(W, N) => log2Int(W >>Int 1, N +Int 1) requires W >Int 1
 
     syntax Int ::= log256Int ( Int ) [function]
  // -------------------------------------------
