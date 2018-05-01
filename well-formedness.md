@@ -252,8 +252,10 @@ Checking these instructions requires checking the types of local function calls 
          <types> ... NAME |-> ARGTYPES -> (unknown => ints(#sizeLVals(RETS))) </types>
       requires ints(#sizeRegs(ARGS)) ==K ARGTYPES
 
-    rule check ~> STATUS, RETS = call @ NAME at OP1 ( ARGS ) send OP2 , gaslimit OP3 => checkLVals(STATUS, RETS) ~> checkOperands(OP1 , OP2 , OP3 , ARGS)
-    rule check ~> STATUS, RETS = staticcall @ NAME at OP1 ( ARGS ) gaslimit OP2 => checkLVals(STATUS, RETS) ~> checkOperands(OP1 , OP2 , ARGS)
+    rule <k> check ~> RETS = call % NAME ( ARGS ) => checkLVals(RETS) ~> checkOperands(ARGS) ... </k>
+
+    rule check ~> STATUS, RETS = call NAME at OP1 ( ARGS ) send OP2 , gaslimit OP3 => checkLVals(STATUS, RETS) ~> checkOperands(OP1 , OP2 , OP3 , ARGS)
+    rule check ~> STATUS, RETS = staticcall NAME at OP1 ( ARGS ) gaslimit OP2 => checkLVals(STATUS, RETS) ~> checkOperands(OP1 , OP2 , ARGS)
 
     rule <k> check ~> ret OPS => checkOperands(OPS) ... </k>
          <functionName> NAME </functionName>
@@ -349,8 +351,7 @@ Checking Operands
 
     rule checkOperand(% NAME) => .
     rule checkOperand(_:IntConstant) => .
-    rule <k> checkOperand(@ NAME) => . ... </k>
-         <types> ... NAME |-> int </types>
+    rule checkOperand(@ NAME) => .
 ```
 
 Checking LValues

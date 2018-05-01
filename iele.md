@@ -66,6 +66,7 @@ In the comments next to each cell, we explain the purpose of the cell.
                           </function>
                         </functions>
                         <funcIds>     .Set </funcIds>                // Set of all names of functions in <functions> cell
+                        <funcLabels>  .Map </funcLabels>             // Map of integer function IDS to all function names in the <functions> cell
                         <exported>    .Set </exported>               // Set of all names of functions defined with define public
                         <programSize> 0    </programSize>            // Size in bytes of currently loaded contract
                         <contractCode> .Contract </contractCode>     // Disassembled entire contract
@@ -361,8 +362,8 @@ Description of registers.
 
 ```k
 
-    syntax KResult ::= Int
- // ----------------------
+    syntax KResult ::= Constant
+ // ---------------------------
     rule <k> % REG:Int => REGS [ REG ] ... </k> <regs> REGS </regs> <typeChecking> false </typeChecking>
 
     syntax NonEmptyOperands ::= Operands
@@ -970,6 +971,22 @@ When execution of the callee reaches a `ret` instruction, control returns to the
          <localCalls> .List => ListItem({ OPS | FUNC | RETURNS | REGS }) ... </localCalls>
       requires notBool isIeleBuiltin(LABEL)
 
+    rule <k> #exec _ = call (IDX:Int => @ LABEL) ( ARGS ) ... </k>
+         <funcLabels> ... IDX |-> LABEL ... </funcLabels>
+         <funcId> LABEL </funcId>
+         <nparams> NPARAMS </nparams>
+      requires #sizeRegs(ARGS) ==Int NPARAMS
+
+    rule <k> #exec _ = call IDX:Int ( _ ) => #exception FUNC_NOT_FOUND ...</k>
+         <funcLabels> LBLS </funcLabels>
+      requires notBool IDX in_keys(LBLS)
+
+    rule <k> #exec _ = call IDX:Int ( ARGS ) => #exception FUNC_WRONG_SIG ... </k>
+         <funcLabels> ... IDX |-> LABEL ... </funcLabels>
+         <funcId> LABEL </funcId>
+         <nparams> NPARAMS </nparams>
+      requires #sizeRegs(ARGS) =/=Int NPARAMS
+
     syntax Bool ::= isIeleBuiltin(IeleName) [function]
  // --------------------------------------------------
     rule isIeleBuiltin(iele.invalid) => true
@@ -1129,8 +1146,8 @@ The various `call*` (and other inter-contract control flow) operations will be d
 
 ```k
     syntax InternalOp ::= "#checkCall" Int Int Int
-                        | "#call" Int Int IeleName Operand Int Ints Bool [strict(4)]
-                        | "#callWithCode" Int Int ProgramCell IeleName Int Int Ints Bool
+                        | "#call" Int Int Constant Operand Int Ints Bool [strict(4)]
+                        | "#callWithCode" Int Int ProgramCell Constant Int Int Ints Bool
                         | "#mkCall" Int Int ProgramCell IeleName Int Int Ints Bool
  // ----------------------------------------------------------------------------------
     rule <k> #checkCall ACCT VALUE GCAP ~> #call _ _ _ GLIMIT _ _ _ => #refund GLIMIT ~> #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception (#if VALUE >Int BAL #then OUT_OF_FUNDS #else CALL_STACK_OVERFLOW #fi) ... </k>
@@ -1175,7 +1192,16 @@ The various `call*` (and other inter-contract control flow) operations will be d
          <activeAccounts> ACCTS </activeAccounts>
       requires ACCT =/=Int #precompiledAccount andBool notBool ACCT in ACCTS
 
-    rule #callWithCode ACCTFROM ACCTTO CODE FUNC GLIMIT VALUE ARGS STATIC
+    rule #callWithCode ACCTFROM ACCTTO CODE @ FUNC GLIMIT VALUE ARGS STATIC
+      => #pushCallStack ~> #pushWorldState ~> #pushSubstate
+      ~> #transferFunds ACCTFROM ACCTTO VALUE
+      ~> #mkCall ACCTFROM ACCTTO CODE FUNC GLIMIT VALUE ARGS STATIC
+
+    rule #callWithCode ACCTFROM ACCTTO <program>... <funcLabels> LBLS </funcLabels> ...</program> IDX:Int GLIMIT VALUE ARGS STATIC
+      => #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception FUNC_NOT_FOUND
+      requires notBool IDX in_keys(LBLS)
+
+    rule #callWithCode ACCTFROM ACCTTO (<program>... <funcLabels>... IDX |-> FUNC </funcLabels> ...</program> #as CODE) IDX:Int GLIMIT VALUE ARGS STATIC
       => #pushCallStack ~> #pushWorldState ~> #pushSubstate
       ~> #transferFunds ACCTFROM ACCTTO VALUE
       ~> #mkCall ACCTFROM ACCTTO CODE FUNC GLIMIT VALUE ARGS STATIC
@@ -1277,7 +1303,7 @@ If the function being called is not public, does not exist, or has the wrong num
 For each `call*` operation, we make a corresponding call to `#call` and a state-change to setup the custom parts of the calling environment.
 
 ```k
-    rule <k> #exec REG , REGS = call @ LABEL at ACCTTO ( ARGS ) send VALUE , gaslimit GCAP
+    rule <k> #exec REG , REGS = call LABEL at ACCTTO ( ARGS ) send VALUE , gaslimit GCAP
           => #checkCall ACCTFROM VALUE GCAP
           ~> #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, #accountEmpty(ACCTTO), GCAP, GAVAIL, VALUE, #sizeLVals(REGS), intSizes(ARGS)) VALUE ARGS false
           ~> #return REGS REG
@@ -1287,7 +1313,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
          <id> ACCTFROM </id>
          <previousGas> GAVAIL </previousGas>
 
-    rule <k> #exec REG , REGS = staticcall @ LABEL at ACCTTO ( ARGS ) gaslimit GCAP
+    rule <k> #exec REG , REGS = staticcall LABEL at ACCTTO ( ARGS ) gaslimit GCAP
           => #checkCall ACCTFROM 0 GCAP
           ~> #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, #accountEmpty(ACCTTO), GCAP, GAVAIL, 0, #sizeLVals(REGS), intSizes(ARGS)) 0 ARGS true
           ~> #return REGS REG
@@ -1566,6 +1592,15 @@ module IELE-PRECOMPILED
              SetItem(iele.ecmul)
              SetItem(iele.ecpairing)
            </exported>
+           <funcLabels>
+             1 |-> iele.ecrec
+             2 |-> iele.sha256
+             3 |-> iele.rip160
+             4 |-> iele.id
+             5 |-> iele.ecadd
+             6 |-> iele.ecmul
+             7 |-> iele.ecpairing
+           </funcLabels>
            ...
          </program>
 ```
@@ -1704,26 +1739,27 @@ module IELE-PROGRAM-LOADING
          <program>
            <functions> .Bag </functions>
            <funcIds> .Set </funcIds>
+           <funcLabels> .Map </funcLabels>
            <programSize> SIZE </programSize>
            <exported> .Set </exported>
            <contractCode> CONTRACT </contractCode>
-         </program>)
+         </program>, 1)
       [owise]
      rule #loadCode(CONTRACT) => #loadCode(CONTRACT, CONTRACT)
 
-    syntax ProgramCell ::= #loadDeclarations ( TopLevelDefinitions , ProgramCell ) [function]
-                         | #loadFunction  ( TopLevelDefinitions , Blocks , ProgramCell , IeleName , FunctionCell ) [function]
+    syntax ProgramCell ::= #loadDeclarations ( TopLevelDefinitions , ProgramCell , Int ) [function]
+                         | #loadFunction  ( TopLevelDefinitions , Blocks , ProgramCell , IeleName , FunctionCell , Int ) [function]
  // -------------------------------------------------------------------------------------------------------------------------
-    rule #loadDeclarations(define @ NAME ( NARGS:Int ) { BLOCKS } FUNCS, <program> PROG </program>)
-      => #loadFunction(FUNCS, BLOCKS, <program> PROG </program>, NAME, <function> <funcId> NAME </funcId> <nparams> NARGS </nparams> ... </function>)
-    rule #loadDeclarations(define public @ NAME ( NARGS:Int ) { BLOCKS } FUNCS, <program> <exported> EXPORTS </exported> REST </program>)
-      => #loadFunction(FUNCS, BLOCKS, <program> <exported> SetItem(NAME) EXPORTS </exported> REST </program>, NAME, <function> <funcId> NAME </funcId> <nparams> NARGS </nparams> ... </function>)
-    rule #loadDeclarations(external contract _ FUNCS, <program> PROG </program>)
-      => #loadDeclarations(FUNCS, <program> PROG </program>)
-    rule #loadDeclarations(.TopLevelDefinitions, <program> PROG </program>) => <program> PROG </program>
+    rule #loadDeclarations(define @ NAME ( NARGS:Int ) { BLOCKS } FUNCS, <program> PROG </program>, IDX)
+      => #loadFunction(FUNCS, BLOCKS, <program> PROG </program>, NAME, <function> <funcId> NAME </funcId> <nparams> NARGS </nparams> ... </function>, IDX)
+    rule #loadDeclarations(define public @ NAME ( NARGS:Int ) { BLOCKS } FUNCS, <program> <exported> EXPORTS </exported> REST </program>, IDX)
+      => #loadFunction(FUNCS, BLOCKS, <program> <exported> SetItem(NAME) EXPORTS </exported> REST </program>, NAME, <function> <funcId> NAME </funcId> <nparams> NARGS </nparams> ... </function>, IDX)
+    rule #loadDeclarations(external contract _ FUNCS, <program> PROG </program>, IDX)
+      => #loadDeclarations(FUNCS, <program> PROG </program>, IDX)
+    rule #loadDeclarations(.TopLevelDefinitions, <program> PROG </program>, _) => <program> PROG </program>
 
-    rule #loadFunction(FUNCS, BLOCKS, <program> PROG <functions> REST </functions> <funcIds> NAMES </funcIds> </program>, NAME, <function> FUNC <instructions> _ </instructions> <jumpTable> _ </jumpTable> <nregs> _ </nregs> </function>)
-      => #loadDeclarations(FUNCS, <program> PROG <funcIds> NAMES SetItem(NAME) </funcIds> <functions> REST <function> FUNC <instructions> BLOCKS </instructions> <jumpTable> #computeJumpTable(BLOCKS) </jumpTable> <nregs> #computeNRegs(BLOCKS) </nregs> </function> </functions> </program>)
+    rule #loadFunction(FUNCS, BLOCKS, <program> PROG <functions> REST </functions> <funcIds> NAMES </funcIds> <funcLabels> LBLS </funcLabels> </program>, NAME, <function> FUNC <instructions> _ </instructions> <jumpTable> _ </jumpTable> <nregs> _ </nregs> </function>, IDX)
+      => #loadDeclarations(FUNCS, <program> PROG <funcIds> NAMES SetItem(NAME) </funcIds> <funcLabels> LBLS #if NAME =/=K init #then IDX |-> NAME #else .Map #fi </funcLabels> <functions> REST <function> FUNC <instructions> BLOCKS </instructions> <jumpTable> #computeJumpTable(BLOCKS) </jumpTable> <nregs> #computeNRegs(BLOCKS) </nregs> </function> </functions> </program>, #if NAME ==K init #then IDX #else IDX +Int 1 #fi)
 
     syntax IeleName ::= #mainContract ( Contract )           [function]
     syntax Int ::= #contractSize ( Contract , IeleName )     [function]
@@ -1799,9 +1835,12 @@ module IELE-PROGRAM-LOADING
     rule #registers(% R1 = sha3 % R2) => maxInt(R1, R2)
     rule #registers(br _) => -1
     rule #registers(br % R1, _) => R1
-    rule #registers(R1 = call _ ( R2 )) => maxInt(#registers(R1), #registers(R2))
-    rule #registers(R1 = call _ at % R2 ( R3 ) send % R4, gaslimit % R5) => maxInt(#registers(R1), maxInt(R2, maxInt(#registers(R3), maxInt(R4, R5))))
-    rule #registers(R1 = staticcall _ at % R2 ( R3 ) gaslimit % R4) => maxInt(#registers(R1), maxInt(R2, maxInt(#registers(R3), R4)))
+    rule #registers(R1 = call @ _ ( R2 )) => maxInt(#registers(R1), #registers(R2))
+    rule #registers(R1 = call @ _ at % R2 ( R3 ) send % R4, gaslimit % R5) => maxInt(#registers(R1), maxInt(R2, maxInt(#registers(R3), maxInt(R4, R5))))
+    rule #registers(R1 = staticcall @ _ at % R2 ( R3 ) gaslimit % R4) => maxInt(#registers(R1), maxInt(R2, maxInt(#registers(R3), R4)))
+    rule #registers(R1 = call % R3 ( R2 )) => maxInt(R3, maxInt(#registers(R1), #registers(R2)))
+    rule #registers(R1 = call % R6 at % R2 ( R3 ) send % R4, gaslimit % R5) => maxInt(#registers(R1), maxInt(R2, maxInt(#registers(R3), maxInt(R4, maxInt(R5, R6)))))
+    rule #registers(R1 = staticcall % R5 at % R2 ( R3 ) gaslimit % R4) => maxInt(#registers(R1), maxInt(R2, maxInt(#registers(R3), maxInt(R4, R5))))
     rule #registers(ret R1::NonEmptyOperands) => #registers(R1)
     rule #registers(revert % R1) => R1
     rule #registers(log % R1) => R1
