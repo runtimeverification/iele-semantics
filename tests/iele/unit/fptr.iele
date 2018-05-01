@@ -1,6 +1,8 @@
 contract test {
   define public @test() {
     %func = @test2
+    store %func, 0
+    %func = load 0
     %ret = call %func()
     br %ret, throw
     %addr = call @iele.address()
