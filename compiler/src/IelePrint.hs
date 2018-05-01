@@ -64,7 +64,7 @@ prettyContractD (cname, ContractD functionNames externalContracts functionDefini
   ++intersperse blank (map (prettyFunDef . formatDef) functionDefinitions)
  where
   numToLValue n = LValueLocalName (LocalName (IeleNameNumber n))
-  formatDef :: FunctionDefinitionD Word16 Word16 Word16 Int
+  formatDef :: FunctionDefinitionD Word16 Word16 Word16 Int Int
             -> FunctionDefinition GlobalName IeleName LValue Doc
   formatDef def = def & name %~ GlobalName . IeleNameNumber . fromIntegral
                       & parameters . traverse %~ numToLValue

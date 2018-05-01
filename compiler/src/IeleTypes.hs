@@ -173,13 +173,13 @@ data ContractP = ContractP
   }
   deriving (Show, Eq, Data)
 
-type FunctionDefinitionD contract funId blkId reg =
-  FunctionDefinition funId blkId reg (IeleOpG contract funId blkId reg reg)
+type FunctionDefinitionD contract funId blkId lval op =
+  FunctionDefinition funId blkId lval (IeleOpG contract funId blkId lval op)
 
 data ContractD contractId = ContractD
   { functionNames :: [String]
   , externalContracts :: [contractId]
-  , functionDefinitions :: [FunctionDefinitionD Word16 Word16 Word16 Int]
+  , functionDefinitions :: [FunctionDefinitionD Word16 Word16 Word16 Int Int]
   }
 
 makePrisms ''TopLevelDefinition

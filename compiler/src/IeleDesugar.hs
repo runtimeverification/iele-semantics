@@ -44,8 +44,8 @@ expandImmediates inst =
   in reverse loads++[inst']
 
 desugarFundef :: Map GlobalName Integer
-              -> FunctionDefinition Word16 IeleName LValue (IeleOpG IeleName Word16 IeleName LValue Operand)
-              -> FunctionDefinitionD IeleName Word16 IeleName LValue
+              -> FunctionDefinitionD IeleName Word16 IeleName LValue Operand
+              -> FunctionDefinitionD IeleName Word16 IeleName LValue LValue
 desugarFundef globals fundef =
   fundef & functionInsts %~ concatMap expandImmediates
                           . (traverse . ieleOpArg %~ lookupGlobal globals)
@@ -74,8 +74,8 @@ applyIeleNameMap _ (IeleNameNumber n) = n
 applyIeleNameMap mapping (IeleNameText t)
   | Just ix <- Map.lookup t mapping = ix
 
-numberBlocks :: FunctionDefinitionD conId funId IeleName reg
-             -> FunctionDefinitionD conId funId Word16 reg
+numberBlocks :: FunctionDefinitionD conId funId IeleName reg reg
+             -> FunctionDefinitionD conId funId Word16 reg reg
 numberBlocks funDef =
   let rename = fromIntegral . applyIeleNameMap (numberIeleNames (funDef ^.. blocks . traverse . label))
   in funDef & blocks . traverse . label %~ rename
@@ -88,8 +88,8 @@ assignLocals args bodyRefs =
       namedArgs = [(t,ix) | (IeleNameText t,ix) <- zip args [0..]]
   in extendAssignment (Map.fromList namedArgs) usedNums usedNames
 
-numberLocals :: FunctionDefinitionD conId funId blkId LValue
-             -> FunctionDefinitionD conId funId blkId Int
+numberLocals :: FunctionDefinitionD conId funId blkId LValue LValue
+             -> FunctionDefinitionD conId funId blkId Int Int
 numberLocals funDef =
   let funLocalRegs f = (functionInsts . traverse . ieleOpRegs') f
       funParams f = (parameters . traverse) f
@@ -107,7 +107,7 @@ setNub l = go Set.empty l
                         else x:go (Set.insert x acc) xs
 
 numberFunctions :: [FunctionDefinitionP]
-                -> ([String],(Map IeleName Word16),[FunctionDefinition Word16 IeleName LValue (IeleOpG IeleName Word16 IeleName LValue Operand)])
+                -> ([String],(Map IeleName Word16),[FunctionDefinitionD IeleName Word16 IeleName LValue Operand])
 numberFunctions fundefs =
   let declaredFuns = fundefs ^.. traverse . name . _GlobalName
       calledFuns = fundefs ^.. traverse . functionInsts . traverse . ieleOpFunId . _GlobalName
@@ -122,8 +122,8 @@ numberFunctions fundefs =
 
 numberContracts :: [IeleName]
                 -> [String]
-                -> [FunctionDefinitionD IeleName Word16 blk reg]
-                -> [FunctionDefinitionD Word16 Word16 blk reg]
+                -> [FunctionDefinitionD IeleName Word16 blk reg reg]
+                -> [FunctionDefinitionD Word16 Word16 blk reg reg]
 numberContracts declaredContracts functionNames fundefs =
   let nextId = length functionNames + 1
       contractMapping = Map.fromList (zip declaredContracts [fromIntegral nextId..])
@@ -142,7 +142,7 @@ processContract (ContractP name _ definitions) =
       funDefsD = numberContracts externalContracts functionNames funDefs'
   in (name, ContractD functionNames externalContracts funDefsD)
 
-flattenFundef :: FunctionDefinitionD Word16 Word16 Word16 Int -> [IeleOp]
+flattenFundef :: FunctionDefinitionD Word16 Word16 Word16 Int Int -> [IeleOp]
 flattenFundef (FunctionDefinition isPublic name args entry blocks) =
   VoidOp ((if isPublic then EXTCALLDEST else CALLDEST) name (argsLength args)) []
   :entry++concatMap flattenBlock blocks
