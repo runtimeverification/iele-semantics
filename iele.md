@@ -411,6 +411,7 @@ Some instructions require an argument to be interpreted as an address (modulo 16
     rule #addr?(selfdestruct W)                                             => selfdestruct #addr(W)
     rule #addr?(REGS1 = call LABEL at W0 (REGS2) send W1 , gaslimit W2)     => REGS1 = call LABEL at #addr(W0) (REGS2) send W1 , gaslimit W2
     rule #addr?(REGS1 = staticcall LABEL at W0 (REGS2) gaslimit W1)         => REGS1 = staticcall LABEL at #addr(W0) (REGS2) gaslimit W1
+    rule #addr?(REG = calladdress LABEL at W0)                              => REG = calladdress LABEL at #addr(W0)
     rule #addr?(OP)                                                         => OP [owise]
 ```
 
@@ -1073,6 +1074,7 @@ Operators that require access to the rest of the IELE network world-state can be
 
 -   `REG = call @iele.balance(ACCT)` returns the balance of the specified account (zero if the account does not exist).
 -   `REG = call @iele.extcodesize(ACCT)` returns the code si of the specified account (zero if the account does not exist).
+-   `REG = calladdress NAME at ACCT` returns the function pointer pointing to the function named NAME on the specified account (zero if the function does not exist)
 
 ```k
     rule <k> #exec REG = call @iele.balance ( ACCT ) => #load REG BAL ... </k>
@@ -1101,9 +1103,28 @@ Operators that require access to the rest of the IELE network world-state can be
            ...
          </account>
 
-    rule <k> (.K => #loadAccount ACCT) ~> #exec REG = call @iele.extcodesize ( ACCT ) ... </k>
+    rule <k> (.K => #loadAccount ACCT) ~> #exec _ = call @iele.extcodesize ( ACCT ) ... </k>
          <activeAccounts> ACCTS </activeAccounts>
       requires notBool ACCT in ACCTS
+
+    rule <k> (.K => #loadAccount ACCT) ~> #exec _ = calladdress _ at ACCT ... </k>
+         <activeAccounts> ACCTS </activeAccounts>
+      requires notBool ACCT in ACCTS
+
+    rule <k> (.K => #lookupCode(ACCT)) ~> #exec _ = calladdress _ at ACCT ... </k>
+         <account>
+           <acctID> ACCT </acctID>
+           <code> .Contract </code>
+           ...
+         </account>
+
+    rule <k> #exec REG = calladdress @ NAME at ACCT => #load REG #callAddress(CODE, #mainContract(CODE), NAME) ... </k>
+         <account>
+           <acctID> ACCT </acctID>
+           <code> CODE </code>
+           ...
+         </account>
+       requires CODE =/=K .Contract
 ```
 
 ### Account Storage Operations
@@ -1761,16 +1782,29 @@ module IELE-PROGRAM-LOADING
     rule #loadFunction(FUNCS, BLOCKS, <program> PROG <functions> REST </functions> <funcIds> NAMES </funcIds> <funcLabels> LBLS </funcLabels> </program>, NAME, <function> FUNC <instructions> _ </instructions> <jumpTable> _ </jumpTable> <nregs> _ </nregs> </function>, IDX)
       => #loadDeclarations(FUNCS, <program> PROG <funcIds> NAMES SetItem(NAME) </funcIds> <funcLabels> LBLS #if NAME =/=K init #then IDX |-> NAME #else .Map #fi </funcLabels> <functions> REST <function> FUNC <instructions> BLOCKS </instructions> <jumpTable> #computeJumpTable(BLOCKS) </jumpTable> <nregs> #computeNRegs(BLOCKS) </nregs> </function> </functions> </program>, #if NAME ==K init #then IDX #else IDX +Int 1 #fi)
 
-    syntax IeleName ::= #mainContract ( Contract )           [function]
-    syntax Int ::= #contractSize ( Contract , IeleName )     [function]
-    syntax String ::= #contractBytes ( Contract )            [function, klabel(contractBytes)]
-                    | #contractBytes ( Contract , IeleName ) [function, klabel(#contractBytesAux)]
- // ----------------------------------------------------------------------------------------------
+    syntax IeleName ::= #mainContract ( Contract )                       [function]
+    syntax Int ::= #contractSize ( Contract , IeleName )                 [function]
+    syntax String ::= #contractBytes ( Contract )                        [function, klabel(contractBytes)]
+                    | #contractBytes ( Contract , IeleName )             [function, klabel(#contractBytesAux)]
+    syntax Int ::= #callAddress ( Contract , IeleName , IeleName )       [function]
+                 | #callAddress ( TopLevelDefinitions , IeleName , Int ) [function, klabel(#callAddressAux)]
+ // --------------------------------------------------------------------------------------------------------
     rule #mainContract(contract NAME ! _ _ { _ }) => NAME
     rule #mainContract(contract _ ! _ _ { _ } REST) => #mainContract(REST) [owise]
 
     rule #contractSize(contract NAME ! SIZE _ { _ } _, NAME) => SIZE
     rule #contractSize(contract _ ! _ _ { _ } REST, NAME) => #contractSize(REST, NAME) [owise]
+
+    rule #callAddress(contract NAME ! _ _ { FUNCS } _, NAME, FUNC) => #callAddress(FUNCS, FUNC, 1)
+    rule #callAddress(contract _ ! _ _ { _ } REST, NAME, FUNC) => #callAddress(REST, NAME, FUNC) [owise]
+    rule #callAddress(define public @ NAME ( _ ) { _ } REST, NAME, IDX) => IDX
+    rule #callAddress(define @init ( _ ) { _ } REST, FUNC, IDX) => #callAddress(REST, FUNC, IDX)
+    rule #callAddress(define @ NAME ( _ ) { _ } REST, FUNC, IDX) => #callAddress(REST, FUNC, IDX +Int 1)
+      requires NAME =/=K init
+    rule #callAddress(define public @ NAME ( _ ) { _ } REST, FUNC, IDX) => #callAddress(REST, FUNC, IDX +Int 1)
+      requires NAME =/=K FUNC
+    rule #callAddress(_::TopLevelDefinition REST, FUNC, IDX) => #callAddress(REST, FUNC, IDX) [owise]
+    rule #callAddress(.TopLevelDefinitions, _, _) => 0
     
     rule #contractBytes(CONTRACT) => #contractBytes(CONTRACT, #mainContract(CONTRACT))
       requires CONTRACT =/=K .Contract
@@ -1840,6 +1874,7 @@ module IELE-PROGRAM-LOADING
     rule #registers(R1 = staticcall @ _ at % R2 ( R3 ) gaslimit % R4) => maxInt(#registers(R1), maxInt(R2, maxInt(#registers(R3), R4)))
     rule #registers(R1 = call % R3 ( R2 )) => maxInt(R3, maxInt(#registers(R1), #registers(R2)))
     rule #registers(R1 = call % R6 at % R2 ( R3 ) send % R4, gaslimit % R5) => maxInt(#registers(R1), maxInt(R2, maxInt(#registers(R3), maxInt(R4, maxInt(R5, R6)))))
+    rule #registers(% R1 = calladdress _ at % R2) => maxInt(R1, R2)
     rule #registers(R1 = staticcall % R5 at % R2 ( R3 ) gaslimit % R4) => maxInt(#registers(R1), maxInt(R2, maxInt(#registers(R3), maxInt(R4, R5))))
     rule #registers(ret R1::NonEmptyOperands) => #registers(R1)
     rule #registers(revert % R1) => R1
