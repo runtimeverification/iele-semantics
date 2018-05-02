@@ -27,7 +27,7 @@ module IELE-SYNTAX
   
   syntax Keyword ::= "br"   | "call"   | "staticcall" | "at" | "send"  | "gaslimit" | "ret"      | "void"   | "revert"
                    | "log"  | "create" | "copycreate" | "selfdestruct" | "contract" | "external" | "define" | "public"
-                   | "log2" | "bswap"
+                   | "log2" | "bswap"  | "calladdress"
   syntax IeleName ::= Keyword [token]
 
   syntax NumericIeleName ::= r"[0-9]+" [token]
@@ -186,6 +186,8 @@ Instructions for local functions calls to other functions of the same contract, 
   syntax AccountCallInst ::= "staticcall" Operand "at" Operand "(" Operands ")" "gaslimit" Operand
                            | LValues "=" "staticcall" Operand "at" Operand "(" Operands ")" "gaslimit" Operand [hybrid, seqstrict(2,3,4,5)]
 
+  syntax CallAddressInst ::= LValue "=" "calladdress" GlobalName "at" Operand [hybrid, strict(3)]
+
   syntax ReturnInst ::= "ret" NonEmptyOperands [hybrid, strict(1)]
                       | "ret" "void"
   syntax RevertInst ::= "revert" Operand [hybrid, strict(1)]
@@ -284,6 +286,7 @@ Precompiled contracts are also available as IELE builtins but they should be cal
   | CondJumpInst
   | LocalCallInst
   | AccountCallInst
+  | CallAddressInst
   | ReturnInst
   | RevertInst
   | LogInst
