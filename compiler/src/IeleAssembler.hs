@@ -117,6 +117,7 @@ asm_iele_opcode_call opCall = case opCall of
   STATICCALLDYN nargs nreturn -> putWord8 0xf4 >> putArgs16 nargs >> putRets16 nreturn
   LOCALCALL call nargs nreturn -> putWord8 0xf8 >> putWord16be call >> putArgs16 nargs >> putRets16 nreturn
   LOCALCALLDYN nargs nreturn -> putWord8 0xf9 >> putArgs16 nargs >> putRets16 nreturn
+  CALLADDRESS call -> putWord8 0xfa >> putWord16be call
 
   CREATE contract nargs -> putWord8 0xf0 >> putWord16be contract >> putArgs16 nargs
   COPYCREATE nargs -> putWord8 0xf1 >> putArgs16 nargs

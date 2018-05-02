@@ -262,6 +262,7 @@ callInsts :: Parser IeleOpP
 callInsts = try localCallInst
         <|> try accountCallInst
         <|> try staticCallInst
+        <|> try callAddressInst
 
 ieleOp1 :: Parser Instruction
 ieleOp1 = do
@@ -471,6 +472,12 @@ staticCallInst = do
       let op = STATICCALLDYN (argsLength args) (fmap (subtract 1) (retsLength results)) in
       pure (CallOp op results ([name,gas,tgt]++args))
 
+callAddressInst :: Parser IeleOpP
+callAddressInst = do
+  result <- lValue <* equal
+  name <- skipKeyword "calladdress" *> globalName
+  tgt <- skipKeyword "at" *> operand
+  pure (CallOp (CALLADDRESS name) [result] [tgt])
 
 argumentsOrVoid :: Parser [Operand]
 argumentsOrVoid = commaSep1 operand <|> [] <$ skipKeyword "void"
