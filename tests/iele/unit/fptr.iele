@@ -27,6 +27,8 @@ contract test {
     revert -1
   }
 
+  @unused = 13
+
   define @init () {}
 
   define public @test2() {

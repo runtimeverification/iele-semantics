@@ -96,6 +96,7 @@ contains enough information to determine and decode the rest of the operation.
                     | CALLDYN ( Int , Int )
                     | STATICCALL ( Int , Int , Int )
                     | STATICCALLDYN ( Int , Int )
+                    | CALLADDRESS ( Int )
 
     syntax ReturnOp ::= RETURN ( Int )
                       | REVERT ( Int )
@@ -164,7 +165,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, W : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, WS, NBITS, FUNCS, INSTRS, #dasmOpCode(W))
       requires (W >=Int 0   andBool W <=Int 96)
         orBool (W >=Int 107 andBool W <=Int 239)
-        orBool (W >=Int 250 andBool W <=Int 255)
+        orBool (W >=Int 251 andBool W <=Int 255)
 
     rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, WS, NBITS, FUNCS, INSTRS, OP:OpCode) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, #drop(#opWidth(OP, NBITS) -Int #opCodeWidth(OP), WS), NBITS, FUNCS, #dasmInstruction(OP, #take(#opWidth(OP, NBITS) -Int #opCodeWidth(OP), WS), NBITS, FUNCS, CNAME) INSTRS, .K)
 
@@ -186,6 +187,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, 244 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, WS, NBITS, FUNCS, INSTRS, STATICCALLDYN(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4))
     rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, 248 : W1 : W2 : W3 : W4 : W5 : W6 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, WS, NBITS, FUNCS, INSTRS, LOCALCALL(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4, W5 *Int 256 +Int W6))
     rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, 249 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, WS, NBITS, FUNCS, INSTRS, LOCALCALLDYN(W1 *Int 256 +Int W2, W3 *Int 256 +Int W4))
+    rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, 250 : W1 : W2 : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, WS, NBITS, FUNCS, INSTRS, CALLADDRESS(W1 *Int 256 +Int W2))
 
     syntax Blocks ::= #toBlocks ( Instructions ) [function]
                     | #toBlocks ( Instructions , Blocks ) [function, klabel(#toBlockAux)]
@@ -285,6 +287,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmInstruction ( CALLDYN (ARGS, RETS), R, W, M, F, _ ) => %l(R, W, M, 0, RETS +Int 1) = call %(R, W, M, 1 +Int RETS) at %(R, W, M, 3 +Int RETS) ( %o(R, W, M, 5 +Int RETS, ARGS) ) send %(R, W, M, 4 +Int RETS) , gaslimit %(R, W, M, 2 +Int RETS)
     rule #dasmInstruction ( LOCALCALL (LABEL, ARGS, RETS), R, W, M, F, _ ) => %l(R, W, M, 0, RETS) = call @ {F [ LABEL ] orDefault LABEL}:>IeleName ( %o(R, W, M, RETS, ARGS) )
     rule #dasmInstruction ( LOCALCALLDYN (ARGS, RETS), R, W, M, F, _ ) => %l(R, W, M, 0, RETS) = call %(R, W, M, RETS) ( %o(R, W, M, 1 +Int RETS, ARGS) )
+    rule #dasmInstruction ( CALLADDRESS (LABEL), R, W, M, F, _ ) => %(R, W, M, 0) = calladdress @ {F [ LABEL ]}:>IeleName at %(R, W, M, 1)
 
     rule #dasmInstruction ( CREATE (LABEL, ARGS), R, W, M, _, NAME ) => %(R, W, M, 0) , %(R, W, M, 1) = create NAME +.+IeleName {#parseToken("IeleName", Int2String(LABEL))}:>IeleName ( %o(R, W, M, 3, ARGS) ) send %(R, W, M, 2)
     rule #dasmInstruction ( COPYCREATE (ARGS), R, W, M, _, _ ) => %(R, W, M, 0) , %(R, W, M, 1) = copycreate %(R, W, M, 3) ( %o(R, W, M, 4, ARGS) ) send %(R, W, M, 2)
@@ -327,6 +330,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #opCodeWidth( CALLDYN(_,_) )       => 5
     rule #opCodeWidth( STATICCALL(_,_,_) )  => 7
     rule #opCodeWidth( STATICCALLDYN(_,_) ) => 5
+    rule #opCodeWidth( CALLADDRESS(_) )     => 3
     rule #opCodeWidth( _:CreateOp )         => 5
     rule #opCodeWidth( _:CopyCreateOp )     => 3
     rule #opCodeWidth( OP )                 => 1 [owise]
@@ -345,6 +349,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #numArgs ( CALLDYN      (   ARGS, RETS) ) => 5 +Int ARGS +Int RETS
     rule #numArgs ( LOCALCALL    (_, ARGS, RETS) ) => ARGS +Int RETS
     rule #numArgs ( LOCALCALLDYN (   ARGS, RETS) ) => 1 +Int ARGS +Int RETS
+    rule #numArgs ( CALLADDRESS(_) )               => 2
     rule #numArgs ( RETURN(RETS) )                 => RETS
     rule #numArgs ( REVERT(RETS) )                 => RETS
     rule #numArgs ( CREATE(_, ARGS) )              => 3 +Int ARGS

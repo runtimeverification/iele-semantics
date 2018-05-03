@@ -188,6 +188,7 @@ data IeleOpcodeCall contractId funId =
  | STATICCALLDYN (Args Word16) (Rets Word16)
  | LOCALCALL funId (Args Word16) (Rets Word16)
  | LOCALCALLDYN (Args Word16) (Rets Word16)
+ | CALLADDRESS funId
 
  | CREATE contractId (Args Word16) -- contract Id
  | COPYCREATE (Args Word16)
@@ -205,6 +206,7 @@ retypeOpcodeCall contract fun i = case i of
     STATICCALLDYN nargs nrets -> pure (STATICCALLDYN nargs nrets)
     LOCALCALL f nargs nrets -> (\f -> LOCALCALL f nargs nrets) <$> fun f
     LOCALCALLDYN nargs nrets -> pure (LOCALCALLDYN nargs nrets)
+    CALLADDRESS f -> CALLADDRESS <$> fun f
     CREATE c nargs -> (\c -> CREATE c nargs) <$> contract c
     COPYCREATE nargs -> pure (COPYCREATE nargs)
 

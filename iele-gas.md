@@ -166,6 +166,7 @@ Operations whose result should fit into a word.
     rule #memory [ REG = call @iele.msize       ( .Ints ) ] => #registerDelta(REG, 1)
     rule #memory [ REG = call @iele.codesize    ( .Ints ) ] => #registerDelta(REG, 1)
     rule #memory [ REG = call @iele.extcodesize ( _     ) ] => #registerDelta(REG, 1)
+    rule #memory [ REG = calladdress _ at _               ] => #registerDelta(REG, 1)
 ```
 
 Operations whose result is an address:
@@ -518,6 +519,7 @@ Each of these operations pays a constant cost to look up information about an ac
 ```k
     rule #compute [ _ = call @iele.balance     ( _ ), SCHED ] => Gbalance     < SCHED >
     rule #compute [ _ = call @iele.extcodesize ( _ ), SCHED ] => Gextcodesize < SCHED >
+    rule #compute [ _ = calladdress _ at _,           SCHED ] => Gcalladdress < SCHED >
 ```
 
 #### Assignment operations
@@ -904,6 +906,7 @@ A `ScheduleConst` is a constant determined by the fee schedule; applying a `Sche
                            | "Gsload"     | "Gsloadkey"    | "Gsloadword" | "Gselfdestruct" | "Gcallmemory"    | "Gcallreg"      | "Glocalcall"   | "Gret"
                            | "Gcall"      | "Gcallstipend" | "Gcallvalue" | "Gnewaccount"   | "Gcreate"        | "Gcopycreate"   | "Gcodedeposit" | "Gmemory"
                            | "Gquadcoeff" | "Gtransaction" | "Gtxcreate"  | "Gtxdatazero"   | "Gtxdatanonzero" | "Rselfdestruct" | "Rb"           | "Smemallowance"
+                           | "Gcalladdress"
  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------
 ```
 
@@ -954,6 +957,7 @@ This schedule is used to execute the EVM VM tests, and contains minor variations
     rule Gstoreword     < DEFAULT > => 3
     rule Gbalance       < DEFAULT > => 400
     rule Gextcodesize   < DEFAULT > => 700
+    rule Gcalladdress   < DEFAULT > => 700
     rule Glog           < DEFAULT > => 375
     rule Glogdata       < DEFAULT > => 8
     rule Glogtopic      < DEFAULT > => 375

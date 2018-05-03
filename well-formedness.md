@@ -257,6 +257,8 @@ Checking these instructions requires checking the types of local function calls 
     rule check ~> STATUS, RETS = call NAME at OP1 ( ARGS ) send OP2 , gaslimit OP3 => checkLVals(STATUS, RETS) ~> checkOperands(OP1 , OP2 , OP3 , ARGS)
     rule check ~> STATUS, RETS = staticcall NAME at OP1 ( ARGS ) gaslimit OP2 => checkLVals(STATUS, RETS) ~> checkOperands(OP1 , OP2 , ARGS)
 
+    rule check ~> RET = calladdress NAME at OP => checkLVal(RET) ~> checkOperand(OP)
+
     rule <k> check ~> ret OPS => checkOperands(OPS) ... </k>
          <functionName> NAME </functionName>
          <types> ... NAME |-> _ -> RETTYPES:Types </types>
