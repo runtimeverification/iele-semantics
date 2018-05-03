@@ -167,7 +167,7 @@ prettyIeleInst (CallOp (CALLADDRESS name) results allArgs) = case results of
          (acct:[]) ->
            prettyResults results <+> text "calladdress" <+> prettyName name
              <+> text "at" <+> acct
-         _ -> error "external calladdress instruction must encode at least target argument"
+         _ -> error "external calladdress instruction must encode exactly one target argument"
   _ -> error "external calladdress instruction must have exactly one result"
 prettyIeleInst (CallOp (CREATE name _) results (val:args)) = case results of
   [status,addr] ->
