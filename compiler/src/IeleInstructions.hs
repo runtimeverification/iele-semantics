@@ -206,7 +206,7 @@ retypeOpcodeCall contract fun i = case i of
     STATICCALLDYN nargs nrets -> pure (STATICCALLDYN nargs nrets)
     LOCALCALL f nargs nrets -> (\f -> LOCALCALL f nargs nrets) <$> fun f
     LOCALCALLDYN nargs nrets -> pure (LOCALCALLDYN nargs nrets)
-    CALLADDRESS f -> (\f -> CALLADDRESS f) <$> fun f
+    CALLADDRESS f -> CALLADDRESS <$> fun f
     CREATE c nargs -> (\c -> CREATE c nargs) <$> contract c
     COPYCREATE nargs -> pure (COPYCREATE nargs)
 
