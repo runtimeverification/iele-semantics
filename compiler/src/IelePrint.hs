@@ -163,12 +163,12 @@ prettyIeleInst (CallOp (STATICCALLDYN _ _) results allArgs) = case results of
              <+> text "gaslimit" <+> gas
          _ -> error "external staticcall instruction must encode at least target and gaslimit arguments"
 prettyIeleInst (CallOp (CALLADDRESS name) results allArgs) = case results of
-  [] -> error "external call instruction must have at least one result"
-  _ -> case allArgs of
+  _:[] -> case allArgs of
          (acct:[]) ->
            prettyResults results <+> text "calladdress" <+> prettyName name
              <+> text "at" <+> acct
-         _ -> error "external staticcall instruction must encode at least target argument"
+         _ -> error "external calladdress instruction must encode at least target argument"
+  _ -> error "external calladdress instruction must have exactly one result"
 prettyIeleInst (CallOp (CREATE name _) results (val:args)) = case results of
   [status,addr] ->
     prettyResults [status,addr] <+> text "create"
