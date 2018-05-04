@@ -1259,7 +1259,7 @@ If the function being called is not public, does not exist, or has the wrong num
          <id> ACCT </id>
          <funcId> LABEL </funcId>
          <nparams> NPARAMS </nparams>
-      requires NARGS =/=Int NPARAMS andBool notBool (ACCT ==Int #precompiledAccount andBool LABEL ==K iele.ecpairing)
+      requires NARGS =/=Int NPARAMS
 
     rule <k> #initFun(LABEL, NARGS, ISCREATE:Bool) => #if EXECMODE ==K VMTESTS #then #end #else #execute #fi ... </k>
          <mode> EXECMODE </mode>
@@ -1272,7 +1272,7 @@ If the function being called is not public, does not exist, or has the wrong num
          <peakMemory> _ => REGISTERS </peakMemory>
          <funcId> LABEL </funcId>
          <nparams> NPARAMS </nparams>
-      requires (LABEL in FUNCS orBool ISCREATE) andBool (NPARAMS ==Int NARGS orBool (ACCT ==Int #precompiledAccount andBool LABEL ==K iele.ecpairing))
+      requires (LABEL in FUNCS orBool ISCREATE) andBool (NPARAMS ==Int NARGS)
 
     syntax KItem ::= "#return" LValues LValue
  // -----------------------------------------
@@ -1582,7 +1582,7 @@ module IELE-PRECOMPILED
              <function> <funcId> iele.id        </funcId> <instructions> ID        .Instructions .LabeledBlocks </instructions> <nparams> 1 </nparams> ... </function>
              <function> <funcId> iele.ecadd     </funcId> <instructions> ECADD     .Instructions .LabeledBlocks </instructions> <nparams> 4 </nparams> ... </function>
              <function> <funcId> iele.ecmul     </funcId> <instructions> ECMUL     .Instructions .LabeledBlocks </instructions> <nparams> 3 </nparams> ... </function>
-             <function> <funcId> iele.ecpairing </funcId> <instructions> ECPAIRING .Instructions .LabeledBlocks </instructions> <nparams> 6 </nparams> ... </function>
+             <function> <funcId> iele.ecpairing </funcId> <instructions> ECPAIRING .Instructions .LabeledBlocks </instructions> <nparams> 3 </nparams> ... </function>
            </functions>
            <funcIds>
              SetItem(iele.ecrec)
@@ -1701,24 +1701,21 @@ module IELE-PRECOMPILED
 
     syntax PrecompiledOp ::= "ECPAIRING"
  // ------------------------------------
-    rule <k> #exec ECPAIRING => #ecpairing(.List, .List, DATA) ... </k>
-         <callData> DATA </callData>
-      requires #sizeRegs(DATA) %Int 6 ==Int 0
-    rule <k> ECPAIRING => #exception FUNC_WRONG_SIG ... </k>
-         <callData> DATA </callData>
-      requires #sizeRegs(DATA) %Int 6 =/=Int 0
+    rule <k> #exec ECPAIRING => #ecpairing(.List, .List, #asUnsignedBytesLE(chop(LEN) *Int 64, G1), #asUnsignedBytesLE(chop(LEN) *Int 128, G2), LEN) ... </k>
+         <callData> LEN, G1, G2, .Ints </callData>
 
-    syntax InternalOp ::= #ecpairing(List, List, Ints)
- // --------------------------------------------------
-    rule (.K => #checkPoint) ~> #ecpairing((.List => ListItem((X, Y)::G1Point)) _, (.List => ListItem((A x B , C x D))) _, (X , Y , A , B , C , D , REGS => REGS))
-    rule <k> #ecpairing(A, B, .Ints) => #end ... </k>
+    syntax InternalOp ::= #ecpairing(List, List, WordStack, WordStack, Int)
+ // -----------------------------------------------------------------------
+    rule (.K => #checkPoint) ~> #ecpairing((.List => ListItem((#asUnsigned(G1 [ 0 .. 32 ]), #asUnsigned(G1 [ 32 .. 32 ]))::G1Point)) _, (.List => ListItem((#asUnsigned(G2 [ 32 .. 32 ]) x #asUnsigned(G2 [ 0 .. 32 ]) , #asUnsigned(G2 [ 96 .. 32 ]) x #asUnsigned(G2 [ 64 .. 32 ])))) _, G1 => #drop(64, G1), G2 => #drop(128, G2), LEN => LEN -Int 1)
+      requires LEN >Int 0
+    rule <k> #ecpairing(A, B, _, _, 0) => #end ... </k>
          <output> _ => bool2Word(BN128AtePairing(A, B)) , .Ints </output>
 
     syntax InternalOp ::= "#checkPoint"
  // -----------------------------------
-    rule (#checkPoint => .) ~> #ecpairing(ListItem(AK::G1Point) _, ListItem(BK::G2Point) _, _)
+    rule (#checkPoint => .) ~> #ecpairing(ListItem(AK::G1Point) _, ListItem(BK::G2Point) _, _, _, _)
       requires isValidPoint(AK) andBool isValidPoint(BK)
-    rule #checkPoint ~> #ecpairing(ListItem(AK::G1Point) _, ListItem(BK::G2Point) _, _) => #exception USER_ERROR
+    rule #checkPoint ~> #ecpairing(ListItem(AK::G1Point) _, ListItem(BK::G2Point) _, _, _, _) => #exception USER_ERROR
       requires notBool isValidPoint(AK) orBool notBool isValidPoint(BK)
 endmodule
 ```
