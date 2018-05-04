@@ -245,10 +245,13 @@ Bitwise Operators
                  | twos ( Int , Int )       [function]
                  | bswap ( Int , Int )      [function]
  // --------------------------------------------------
-    rule signextend(N, W) => twos(N +Int 1, W) -Int (1 <<Byte (N +Int 1))  requires         word2Bool(bit((8 *Int (N +Int 1) -Int 1), twos(N +Int 1, W)))
-    rule signextend(N, W) => twos(N +Int 1, W)                             requires notBool word2Bool(bit((8 *Int (N +Int 1) -Int 1), twos(N +Int 1, W)))
+    rule signextend(N, W) => twos(N, W) -Int (1 <<Byte N)  requires N>Int 0 andBool        word2Bool(bit((8 *Int N -Int 1), twos(N, W)))
+    rule signextend(N, W) => twos(N, W)                    requires N>Int 0 andBool notBool word2Bool(bit((8 *Int N -Int 1), twos(N, W)))
+    rule signextend(0, _) => 0
 
     rule twos(N, W) => W modInt (1 <<Byte N)
+      requires N >Int 0
+    rule twos(0, _) => 0
 
     rule bswap(N, W) => #asUnsigned(#rev(#padToWidth(N, #asUnsignedBytes(twos(N, W))), .WordStack))
 ```
@@ -408,7 +411,7 @@ The local memory of execution is a byte-array (instead of a word-array).
  // -----------------------------------------------------------------------------------------------
     rule #asSigned( WS )                => #asSigned(WS, 0)
     rule #asSigned( .WordStack,     _ ) => 0
-    rule #asSigned( W : .WordStack, N ) => signextend(N, W)
+    rule #asSigned( W : .WordStack, N ) => signextend(N +Int 1, W)
     rule #asSigned( W0 : W1 : WS,   N ) => #asSigned(((W0 *Int 256) +Int W1) : WS, N +Int 1)
 
     syntax Int ::= #asUnsignedLE ( WordStack ) [function]
