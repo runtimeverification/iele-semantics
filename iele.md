@@ -777,7 +777,7 @@ These operations are getters/setters of the local execution memory.
 -   `REG = store VALUE, CELL` stores VALUE into the specified memory CELL, overwriting the previous value of the entire cell.
 
 ```k
-    rule <k> #exec REG = load CELL , OFFSET , WIDTH => #load REG #asSignedLE({LM [ chop(CELL) ]}:>WordStack [ OFFSET .. WIDTH ]) ... </k>
+    rule <k> #exec REG = load CELL , OFFSET , WIDTH => #load REG #asUnsignedLE({LM [ chop(CELL) ]}:>WordStack [ OFFSET .. WIDTH ]) ... </k>
          <localMem> LM </localMem>
 
     rule <k> #exec REG = load CELL => #load REG #asSignedLE({LM [ chop(CELL) ]}:>WordStack) ... </k>
