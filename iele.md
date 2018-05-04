@@ -595,7 +595,7 @@ Some checks if an opcode will throw an exception are relatively quick and done u
 ```k
     syntax InternalOp ::= "#exceptional?" "[" Instruction "]"
  // ---------------------------------------------------------
-    rule <k> #exceptional? [ OP ] => #invalid? [ OP ] ~> #badJumpDest? [ OP ] ~> #static? [ OP ] ~> #negativeCall? [ OP ] ... </k>
+    rule <k> #exceptional? [ OP ] => #invalid? [ OP ] ~> #static? [ OP ] ~> #negativeCall? [ OP ] ... </k>
 ```
 
 -   `#invalid?` checks if it's the designated invalid opcode.
@@ -607,18 +607,7 @@ Some checks if an opcode will throw an exception are relatively quick and done u
     rule #invalid? [ OP ] => . [owise]
 ```
 
--   `#badJumpDest?` determines if the opcode will result in a bad jump destination.
-
 ```k
-    syntax InternalOp ::= "#badJumpDest?" "[" Instruction "]"
- // ---------------------------------------------------------
-    rule <k> #badJumpDest? [ OP           ] => . ... </k> requires notBool isJumpOp(OP)
-    rule <k> #badJumpDest? [ br LABEL     ] => . ... </k> <fid> FUNC </fid> <function>... <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> </function> requires LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ br _ , LABEL ] => . ... </k> <fid> FUNC </fid> <function>... <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> </function> requires LABEL in_keys(JUMPS)
-
-    rule <k> #badJumpDest? [ br LABEL     ] => #exception USER_ERROR ... </k> <fid> FUNC </fid> <function>... <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> </function> requires notBool LABEL in_keys(JUMPS)
-    rule <k> #badJumpDest? [ br _ , LABEL ] => #exception USER_ERROR ... </k> <fid> FUNC </fid> <function>... <funcId> FUNC </funcId> <jumpTable> JUMPS </jumpTable> </function> requires notBool LABEL in_keys(JUMPS)
-
     syntax Bool ::= isJumpOp ( Instruction ) [function]
  // ---------------------------------------------------
     rule isJumpOp(br _) => true
