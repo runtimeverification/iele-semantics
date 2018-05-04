@@ -311,7 +311,7 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
  // ---------------------------------------------------------
     rule #drop(0, WS)         => WS
     rule #drop(N, .WordStack) => .WordStack
-    rule #drop(N, (W : WS))   => #drop(N -Int 1, WS) requires N >Int 0
+    rule #drop(N, (W : WS))   => #drop(N -Int 1, WS) [owise]
 
     syntax WordStack ::= WordStack "[" Int ".." Int "]" [function]
  // --------------------------------------------------------------
