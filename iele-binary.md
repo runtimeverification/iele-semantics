@@ -153,6 +153,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
  // ----------------------------------------------------------------------------------------------------------------------------
     rule #dasmFunctions(103 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS, NAME) => #dasmFunction(false, {FUNCS [ W1 *Int 256 +Int W2 ] orDefault W1 *Int 256 +Int W2}:>IeleName, NAME, W3 *Int 256 +Int W4, WS, NBITS, FUNCS, .Instructions, .K)
     rule #dasmFunctions(104 : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS, NAME) => #dasmFunction(true, {FUNCS [ W1 *Int 256 +Int W2 ] orDefault W1 *Int 256 +Int W2}:>IeleName, NAME, W3 *Int 256 +Int W4, WS, NBITS, FUNCS, .Instructions, .K)
+    rule #dasmFunctions(107 : WS, NBITS, FUNCS, NAME) => .TopLevelDefinitions
     rule #dasmFunctions(.WordStack, NBITS, FUNCS, NAME) => .TopLevelDefinitions
 
     rule #dasmFunction(false, NAME, CNAME, SIG, W : WS, NBITS, FUNCS, INSTRS, .K) => define @ NAME ( SIG ) { #toBlocks(INSTRS) } #dasmFunctions(W : WS, NBITS, FUNCS, CNAME)
@@ -164,7 +165,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
 
     rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, W : WS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, WS, NBITS, FUNCS, INSTRS, #dasmOpCode(W))
       requires (W >=Int 0   andBool W <=Int 96)
-        orBool (W >=Int 107 andBool W <=Int 239)
+        orBool (W >=Int 108 andBool W <=Int 239)
         orBool (W >=Int 251 andBool W <=Int 255)
 
     rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, WS, NBITS, FUNCS, INSTRS, OP:OpCode) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, #drop(#opWidth(OP, NBITS) -Int #opCodeWidth(OP), WS), NBITS, FUNCS, #dasmInstruction(OP, #take(#opWidth(OP, NBITS) -Int #opCodeWidth(OP), WS), NBITS, FUNCS, CNAME) INSTRS, .K)
