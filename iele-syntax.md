@@ -293,7 +293,7 @@ Precompiled contracts are also available as IELE builtins but they should be cal
   | CreateInst
   | SelfdestructInst
 
-  syntax Instructions ::= List{Instruction, ""} [klabel(instructionList)]
+  syntax Instructions ::= List{Instruction, ""} [klabel(instructionList), format(%1%2%n%3)]
 ```
 
 IELE Program Structure
@@ -316,9 +316,9 @@ For more details see below and [here](Design.md#program-structure).
   | GlobalDefinition
   | ContractDeclaration
 
-  syntax TopLevelDefinitions ::= List{TopLevelDefinition, ""} [klabel(topLevelDefinitionList)]
+  syntax TopLevelDefinitions ::= List{TopLevelDefinition, ""} [klabel(topLevelDefinitionList), format(%1%2%n%3)]
 
-  syntax ContractDefinition ::= "contract" IeleName "{" TopLevelDefinitions "}"
+  syntax ContractDefinition ::= "contract" IeleName "{" TopLevelDefinitions "}" [format(%1 %2 %3%n%i%4%d%n%5)]
 
   syntax Contract ::= List{ContractDefinition, ""} [klabel(contractDefinitionList)]
 ```
@@ -349,8 +349,8 @@ Function definitions consist of a function signature (function name and names of
   syntax FunctionParameters ::= LocalNames
 
   syntax FunctionDefinition ::= 
-    "define" FunctionSignature "{" Blocks "}"
-  | "define" "public" FunctionSignature "{" Blocks "}"
+    "define" FunctionSignature "{" Blocks "}"             [format(%1 %2 %3%i%n%4%d%n%5%n)]
+  | "define" "public" FunctionSignature "{" Blocks "}" [format(%1 %2 %3 %4%i%n%5%d%n%6%n)]
 ```
 
 ### Blocks
