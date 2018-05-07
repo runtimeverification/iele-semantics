@@ -1,0 +1,13 @@
+contract test {
+  define public @test(%width, %val, %negate) {
+    br %negate, end
+    %val = sub 0, %val
+  end:
+    %tmp = twos %width, %val
+    %tmp = sext %width, %tmp
+    %cmp = cmp eq %tmp, %val
+    ret %cmp
+  }
+
+  define @init() {}
+}

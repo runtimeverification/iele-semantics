@@ -301,3 +301,4 @@ tests/ethereum-tests/VMTests/vmSystemOperations/return2.json
 tests/ethereum-tests/VMTests/vmSystemOperations/return1.json
 tests/ethereum-tests/VMTests/vmEnvironmentalInfo/calldatacopy1.json
 tests/ethereum-tests/VMTests/vmEnvironmentalInfo/calldatacopy0.json
+tests/ethereum-tests/VMTests/vmIOandFlowOperations/DynamicJumpJD_DependsOnJumps0.json

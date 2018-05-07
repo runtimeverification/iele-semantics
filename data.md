@@ -136,13 +136,21 @@ You could alternatively calculate `I1 %Int I2`, then add one to the normal integ
     syntax Int ::= log2Int ( Int )       [function]
                  | log2Int ( Int , Int ) [function, klabel(log2IntAux)]
  // -------------------------------------------------------------------
-    rule log2Int(I) => log2Int(I, 0)
+    rule log2Int(I) => log2Int(I, 0) requires I >Int 0
     rule log2Int(1, N) => N
-    rule log2Int(W, N) => log2Int(W >>Int 1, N +Int 1) requires W >Int 1
+    rule log2Int(W, N) => log2Int(W >>Int 1, N +Int 1) [owise]
 
     syntax Int ::= log256Int ( Int ) [function]
  // -------------------------------------------
     rule log256Int(N) => log2Int(N) /Int 8
+
+    syntax Int ::= numWords ( Int )       [function]
+                 | numWords ( Int , Int, Bool ) [function, klabel(numWordsAux)]
+ // -------------------------------------------------------------------------------
+    rule numWords(I) => numWords(I, 0, false)
+    rule numWords(0, N, _) => N
+    rule numWords(W, N, false) => numWords(W >>Int 63, N +Int 1, true) [owise]
+    rule numWords(W, N, true) => numWords(W >>Int 64, N +Int 1, true) [owise]
 
 ```
 
@@ -153,7 +161,7 @@ You could alternatively calculate `I1 %Int I2`, then add one to the normal integ
 ```k
     syntax Int ::= intSize ( Int ) [function]
  // -----------------------------------------
-    rule intSize(N) => (log2Int(N) +Int 2) up/Int 64 requires N >Int 0
+    rule intSize(N) => numWords(N) requires N >Int 0
     rule intSize(0) => 1
     rule intSize(N) => intSize(~Int N) requires N <Int 0
 
@@ -237,10 +245,13 @@ Bitwise Operators
                  | twos ( Int , Int )       [function]
                  | bswap ( Int , Int )      [function]
  // --------------------------------------------------
-    rule signextend(N, W) => twos(N +Int 1, W) -Int (1 <<Byte (N +Int 1))  requires         word2Bool(bit((8 *Int (N +Int 1) -Int 1), twos(N +Int 1, W)))
-    rule signextend(N, W) => twos(N +Int 1, W)                             requires notBool word2Bool(bit((8 *Int (N +Int 1) -Int 1), twos(N +Int 1, W)))
+    rule signextend(N, W) => twos(N, W) -Int (1 <<Byte N)  requires N>Int 0 andBool        word2Bool(bit((8 *Int N -Int 1), twos(N, W)))
+    rule signextend(N, W) => twos(N, W)                    requires N>Int 0 andBool notBool word2Bool(bit((8 *Int N -Int 1), twos(N, W)))
+    rule signextend(0, _) => 0
 
     rule twos(N, W) => W modInt (1 <<Byte N)
+      requires N >Int 0
+    rule twos(0, _) => 0
 
     rule bswap(N, W) => #asUnsigned(#rev(#padToWidth(N, #asUnsignedBytes(twos(N, W))), .WordStack))
 ```
@@ -300,7 +311,7 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
  // ---------------------------------------------------------
     rule #drop(0, WS)         => WS
     rule #drop(N, .WordStack) => .WordStack
-    rule #drop(N, (W : WS))   => #drop(N -Int 1, WS) requires N >Int 0
+    rule #drop(N, (W : WS))   => #drop(N -Int 1, WS) [owise]
 
     syntax WordStack ::= WordStack "[" Int ".." Int "]" [function]
  // --------------------------------------------------------------
@@ -400,7 +411,7 @@ The local memory of execution is a byte-array (instead of a word-array).
  // -----------------------------------------------------------------------------------------------
     rule #asSigned( WS )                => #asSigned(WS, 0)
     rule #asSigned( .WordStack,     _ ) => 0
-    rule #asSigned( W : .WordStack, N ) => signextend(N, W)
+    rule #asSigned( W : .WordStack, N ) => signextend(N +Int 1, W)
     rule #asSigned( W0 : W1 : WS,   N ) => #asSigned(((W0 *Int 256) +Int W1) : WS, N +Int 1)
 
     syntax Int ::= #asUnsignedLE ( WordStack ) [function]
