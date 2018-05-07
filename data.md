@@ -136,7 +136,7 @@ You could alternatively calculate `I1 %Int I2`, then add one to the normal integ
     syntax Int ::= log2Int ( Int )       [function]
                  | log2Int ( Int , Int ) [function, klabel(log2IntAux)]
  // -------------------------------------------------------------------
-    rule log2Int(I) => log2Int(I, 0)
+    rule log2Int(I) => log2Int(I, 0) requires I >Int 0
     rule log2Int(1, N) => N
     rule log2Int(W, N) => log2Int(W >>Int 1, N +Int 1) [owise]
 
