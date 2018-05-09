@@ -165,4 +165,9 @@ asm_iele ops = mapM_ (asm_iele_op nregs) ops
   where nregs = case ops of (VoidOp (REGISTERS n) []:_) -> n; _ -> 5
 
 assemble :: [IeleOp] -> B.ByteString
-assemble ops = runPut (asm_iele ops)
+assemble ops = runPut (put_byte_length (B.length bytes) >> putByteString bytes)
+  where bytes = runPut (asm_iele ops)
+        put_byte_length len
+          | len < 2^32 = putWord32be (fromIntegral len)
+          | otherwise = error "Contract byte length does not fit in 4 bytes"
+

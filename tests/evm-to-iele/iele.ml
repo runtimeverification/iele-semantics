@@ -194,4 +194,9 @@ let asm_iele ops =
   in
   let buf = Buffer.create ((List.length ops) * 2) in
   asm_iele_aux ops buf nregs;
-  Buffer.contents buf
+  let bytes_length = Buffer.length buf in
+  if bytes_length = 0 then
+    ""
+  else
+    let size_header = IeleUtil.be_int_width (Z.of_int bytes_length) 32 in
+    size_header ^ Buffer.contents buf
