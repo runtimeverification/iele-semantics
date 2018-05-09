@@ -192,6 +192,18 @@ let asm_iele ops =
   | VoidOp(`REGISTERS n,[]) :: tail -> n
   | _ -> 5
   in
-  let buf = Buffer.create ((List.length ops) * 2) in
-  asm_iele_aux ops buf nregs;
-  Buffer.contents buf
+  let int_to_bytes i =
+    assert(i >= 0 && i < 4294967296);
+    let nth_byte_be n = char_of_int ((i lsr ((3 - n) * 8)) land 0xff) in
+    Bytes.init 4 nth_byte_be
+  in
+  let bytes_buf = Buffer.create ((List.length ops) * 2) in
+  asm_iele_aux ops bytes_buf nregs;
+  let bytes_length = Buffer.length bytes_buf in
+  if bytes_length = 0 then
+    ""
+  else
+    let buf = Buffer.create (bytes_length + 4) in
+    Buffer.add_bytes buf (int_to_bytes bytes_length);
+    Buffer.add_buffer buf bytes_buf;
+    Buffer.contents buf
