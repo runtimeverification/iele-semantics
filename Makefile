@@ -47,6 +47,7 @@ standalone_files:=$(patsubst %,.build/standalone/%,$(k_files))
 node_files:=$(patsubst %,.build/node/%,$(k_files))
 checker_files:=.build/standalone/iele-syntax.k .build/standalone/well-formedness.k .build/standalone/data.k
 defn_files=$(standalone_files) $(node_files)
+source_files=$(patsubst %.k,%.md,$(k_files))
 
 defn: $(defn_files)
 
@@ -151,7 +152,13 @@ tests/ethereum-tests/%.json:
 	@echo "==  git submodule: cloning upstreams test repository"
 	git submodule update --init
 
-KOMPILE=tests/ci/rv-k/k-distribution/target/release/k/bin/kompile
+K_BIN=tests/ci/rv-k/k-distribution/target/release/k/bin/
+KOMPILE=${K_BIN}/kompile
+
+coverage:
+	sed -i 's!.build/node/\(.*\)\.k:!\1.md:!' .build/node/ethereum-kompiled/allRules.txt
+	sed -i 's!.build/standalone/\(.*\)\.k:!\1.md:!' .build/standalone/ethereum-kompiled/allRules.txt .build/check/well-formedness-kompiled/allRules.txt
+	${K_BIN}/kcovr .build/node/ethereum-kompiled .build/standalone/ethereum-kompiled .build/check/well-formedness-kompiled -- $(filter-out krypto.md, $(source_files)) > .build/coverage.xml
 
 deps: k-deps ocaml-deps
 k-deps:
@@ -168,13 +175,13 @@ ocaml-deps:
 	@echo "== kompile: $@"
 	${KOMPILE} --debug --main-module ETHEREUM-SIMULATION \
 					--syntax-module IELE-SYNTAX .build/$*/ethereum.k --directory .build/$* \
-					--hook-namespaces "KRYPTO BLOCKCHAIN" --gen-ml-only -O3 --non-strict
+					--hook-namespaces "KRYPTO BLOCKCHAIN" --gen-ml-only -O3 --non-strict $(COVERAGE)
 	cd .build/$*/ethereum-kompiled && ocamlfind $(OCAMLC) -c -g constants.ml -package gmp -package zarith -safe-string
 
 .build/check/well-formedness-kompiled/interpreter: $(checker_files)
 	${KOMPILE} --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE \
 	                                --syntax-module IELE-SYNTAX .build/standalone/well-formedness.k --directory .build/check \
-	                                --gen-ml-only -O3 --non-strict
+	                                --gen-ml-only -O3 --non-strict $(COVERAGE)
 	cd .build/check/well-formedness-kompiled && ocamlfind $(OCAMLC) -c -g -package gmp -package zarith -package uuidm -safe-string constants.ml prelude.ml plugin.ml parser.mli parser.ml lexer.ml run.ml
 	cd .build/check/well-formedness-kompiled && ocamlfind $(OCAMLC) -c -g -w -11-26 -package gmp -package zarith -package uuidm -safe-string realdef.ml -match-context-rows 2 -thread
 	cd .build/check/well-formedness-kompiled && ocamlfind $(OCAMLC) $(LIBFLAG) -o realdef.$(DLLEXT) realdef.$(EXT)
