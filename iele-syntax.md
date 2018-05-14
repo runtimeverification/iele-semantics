@@ -181,10 +181,8 @@ Instructions for local functions calls to other functions of the same contract, 
 ```k
   syntax LocalCallInst   ::= "call" Operand "(" Operands ")"
                            | LValues "=" "call" Operand "(" Operands ")" [hybrid, strict(2,3)]
-  syntax AccountCallInst ::= "call" Operand "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand
-                           | LValues "=" "call" Operand "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand [hybrid, seqstrict(2,3,4,5,6)]
-  syntax AccountCallInst ::= "staticcall" Operand "at" Operand "(" Operands ")" "gaslimit" Operand
-                           | LValues "=" "staticcall" Operand "at" Operand "(" Operands ")" "gaslimit" Operand [hybrid, seqstrict(2,3,4,5)]
+  syntax AccountCallInst ::= LValues "=" "call" Operand "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand [hybrid, seqstrict(2,3,4,5,6)]
+  syntax AccountCallInst ::= LValues "=" "staticcall" Operand "at" Operand "(" Operands ")" "gaslimit" Operand [hybrid, seqstrict(2,3,4,5)]
 
   syntax CallAddressInst ::= LValue "=" "calladdress" GlobalName "at" Operand [hybrid, strict(3)]
 
@@ -385,8 +383,6 @@ Finally, following are macros for desugaring empty `LValues` and `Operands` list
 
 ```k
   rule call NAME ( ARGS ) => .LValues = call NAME ( ARGS ) [macro]
-  rule call NAME at CONTRACT ( ARGS ) send VALUE , gaslimit GLIMIT => .LValues = call NAME at CONTRACT ( ARGS ) send VALUE , gaslimit GLIMIT [macro]
-  rule staticcall NAME at CONTRACT ( ARGS ) gaslimit GLIMIT => .LValues = staticcall NAME at CONTRACT ( ARGS ) gaslimit GLIMIT [macro]
   rule ret void => ret .NonEmptyOperands [macro]
 endmodule
 ```

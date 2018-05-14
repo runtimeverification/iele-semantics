@@ -266,7 +266,7 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
 ```{.k .standalone}
     syntax Set ::= "#loadKeys" [function]
  // -------------------------------------
-    rule #loadKeys => ( SetItem("env") SetItem("pre") SetItem("blockHeader") SetItem("transactions") SetItem("uncleHeaders") SetItem("network") SetItem("genesisRLP") SetItem("blockhashes") SetItem("checkGas") )
+    rule #loadKeys => ( SetItem("env") SetItem("pre") SetItem("blockHeader") SetItem("transactions") SetItem("uncleHeaders") SetItem("network") SetItem("blockhashes") SetItem("checkGas") )
 
     rule run TESTID : { KEY : (VAL:JSON) , REST } => load KEY : VAL ~> run TESTID : { REST } requires KEY in #loadKeys
 
@@ -483,11 +483,6 @@ The `"blockHeader"` key loads the block information.
 
     rule <k> load "blockHeader" : { "gasUsed" : (HG:String) } => . ...</k> 
          <gasUsed> _ => #asUnsigned(#parseByteStack(HG)) </gasUsed>
-
-    rule load "genesisRLP" : (VAL:String => #rlpDecode(#unparseByteStack(#parseByteStack(VAL))))
- // --------------------------------------------------------------------------------------------
-    rule <k> load "genesisRLP": [ [ HP, HO, HC, HR, HT, HE:String, HB, HD, HI, HL, HG, HS, HX, HM, HN, .JSONList ], _, _, .JSONList ] => .K ... </k>
-         <blockhash> .List => ListItem(#blockHeaderHash(HP, HO, HC, HR, HT, HE, HB, HD, HI, HL, HG, HS, HX, HM, HN)) ListItem(#asUnsigned(#parseByteStackRaw(HP))) ... </blockhash>
 
     rule <k> load "blockhashes" : [ VAL:String , VALS ] => . ...</k>
          <blockhash>... .List => ListItem(#asUnsigned(#parseByteStack(VAL))) </blockhash>
