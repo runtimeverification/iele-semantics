@@ -101,6 +101,7 @@ IELE instruction operands are used at the left- and right-hand side of IELE inst
 
   syntax Operands ::= Ints
 ```
+
 ### Assignment
 
 Simple copy assignment that loads a value into a register.
@@ -250,6 +251,7 @@ Precompiled contracts are also available as IELE builtins but they should be cal
   syntax IeleName ::= "iele.ecmul"     [token]
   syntax IeleName ::= "iele.ecpairing" [token]
 ```
+
 #### Instruction Lists
 
 ```k
