@@ -604,7 +604,7 @@ Some checks if an opcode will throw an exception are relatively quick and done u
     rule #changesState(log _, _) => true
     rule #changesState(log _ , _, _) => true
     rule #changesState(sstore _ , _, _) => true
-    rule #changesState(_ = call _ at _ (_) send VALUE , gaslimit _, REGS) => true requires REGS [ VALUE ] =/=K 0
+    rule #changesState(_ = call _ at _ (_) send % VALUE , gaslimit _, REGS) => true requires REGS [ VALUE ] =/=K 0
     rule #changesState(_ , _ = create _ (_) send _, _) => true
     rule #changesState(_ , _ = copycreate _ (_) send _, _) => true
     rule #changesState(selfdestruct _, _) => true
@@ -1223,7 +1223,9 @@ If the function being called is not public, does not exist, or has the wrong num
 
     rule <k> #initFun(LABEL, _, false) => #exception FUNC_NOT_FOUND ... </k>
          <exported> FUNCS </exported>
+         <funcIds> LABELS </funcIds>
       requires notBool LABEL in FUNCS
+               andBool LABEL in LABELS
 
     rule <k> #initFun(LABEL, _, _) => #exception (#if SIZE ==Int 0 #then CONTRACT_NOT_FOUND #else FUNC_NOT_FOUND #fi) ... </k>
          <funcIds> LABELS </funcIds>
@@ -1280,9 +1282,9 @@ If the function being called is not public, does not exist, or has the wrong num
          <output> OUT </output>
          <gas> GAVAIL </gas>
 
-    syntax InternalOp ::= "#refund" Int
+    syntax InternalOp ::= "#refund" Operand [strict]
  // -----------------------------------
-    rule <k> #refund G => . ... </k> <gas> GAVAIL => GAVAIL +Int G </gas>
+    rule <k> #refund G:Int => . ... </k> <gas> GAVAIL => GAVAIL +Int G </gas>
 ```
 
 For each `call*` operation, we make a corresponding call to `#call` and a state-change to setup the custom parts of the calling environment.
