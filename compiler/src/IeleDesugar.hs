@@ -73,6 +73,7 @@ applyIeleNameMap :: Map String Int -> IeleName -> Int
 applyIeleNameMap _ (IeleNameNumber n) = n
 applyIeleNameMap mapping (IeleNameText t)
   | Just ix <- Map.lookup t mapping = ix
+  | otherwise = error $ "Undefined name "++t
 
 numberBlocks :: FunctionDefinitionD conId funId IeleName reg reg
              -> FunctionDefinitionD conId funId Word16 reg reg

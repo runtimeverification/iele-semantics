@@ -1,0 +1,108 @@
+contract created {
+  define @init(%addr, %overflow) {
+    br %overflow, return
+    %status, %ret = copycreate %addr (%addr, false) send 0
+    revert %status
+  return:
+    ret void
+  }
+}
+
+contract test {
+  external contract created
+
+  define @init() {}
+
+  define public @test1() {
+    %gas = call @iele.gas()
+    %address = call @iele.address()
+    %status = call @func at %address() send 0, gaslimit %gas
+  }
+
+  define public @test2() {
+    %gas = call @iele.gas()
+    %address = call @iele.address()
+    %status, %ret1, %ret2 = call @func at %address() send 0, gaslimit %gas
+  label:
+  }
+
+  define public @test3() {
+    %ret = div 1, 0
+  }
+
+  define public @test4() {
+    %ret = exp 1, -1
+  }
+
+  define public @test5() {
+    %ret = mod 1, 0
+  }
+
+  define public @test6() {
+    %ret = addmod 1, 1, 0
+  }
+
+  define public @test7() {
+    %ret = mulmod 1, 1, 0
+  }
+
+  define public @test8() {
+    %ret = expmod 1, 1, 0
+  }
+
+  define public @test9() {
+    %ret = expmod 2, -1, 2
+  }
+
+  define public @test10() {
+    %ret = sext 1, -1
+  }
+
+  define public @test11() {
+    %ret = bswap 1, -1
+  }
+
+  define public @test12() {
+    %ret = log2 0
+  }
+
+  define public @test13() {
+    %gas = call @iele.gas()
+    %address = call @iele.address()
+    %status, %ret = call @func at %address() send 1, gaslimit %gas
+    revert %status
+  }
+
+  define public @test14() {
+    %gas = call @iele.gas()
+    %address = call @iele.address()
+    %status, %ret = call @test14 at %address() send 0, gaslimit %gas
+    revert %status
+  }
+
+  define public @test15() {
+    %gas = call @iele.gas()
+    %address = call @iele.address()
+    %status = call @func2 at %address() send 0, gaslimit %gas
+    revert %status
+  }
+
+  define public @test17(%foo) {}
+
+  define public @test18() {
+    %status, %ret = create created(0, true) send 1
+    revert %status
+  }
+
+  define public @test19() {
+    %status, %ret = create created(0, true) send 0
+    %status, %ret2 = create created(%ret, false) send 0
+    revert %status
+  }
+
+  define public @func() {
+    ret 0
+  }
+
+  define @func2() {}
+}

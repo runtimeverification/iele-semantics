@@ -56,8 +56,6 @@ IELE is a primarily untyped language, and therefore identifiers have one of two 
  // -------------------------------------
     rule ints(0) => .Types
     rule ints(N) => int , ints(N -Int 1) [owise]
-
-    rule <k> % _ => int ... </k> <typeChecking> true </typeChecking>
 ```
 
 Contracts

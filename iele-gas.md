@@ -688,7 +688,7 @@ Each of the precompiled contracts pays a fixed cost per word of data passed to t
 
     rule #compute [ ECADD, SCHED ] => 500
     rule #compute [ ECMUL, SCHED ] => 40000
-    rule <k> #compute [ ECPAIRING, SCHED ] => 100000 +Int (#sizeRegs(DATA) /Int 6) *Int 80000 ... </k> <callData> DATA </callData>
+    rule <k> #compute [ ECPAIRING, SCHED ] => 100000 +Int LEN *Int 80000 ... </k> <callData> LEN , _ </callData>
 ```
 
 There are several helpers for calculating gas.

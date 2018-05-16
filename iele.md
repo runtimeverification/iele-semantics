@@ -229,15 +229,6 @@ module IELE-INFRASTRUCTURE
     syntax Mode ::= "NORMAL" [klabel(NORMAL)] | "VMTESTS"
 ```
 
--   `#setMode_` sets the mode to the supplied one.
-
-```k
-    syntax Mode ::= "#setMode" Mode
- // -------------------------------
-    rule <k> #setMode EXECMODE => . ... </k> <mode> _ => EXECMODE </mode>
-    rule <k> EX:Exception ~> (#setMode _ => .) ... </k>
-```
-
 Hardware
 --------
 
@@ -245,7 +236,6 @@ The `callStack` cell stores a list of previous VM execution states.
 
 -   `#pushCallStack` saves a copy of VM execution state on the `callStack`.
 -   `#popCallStack` restores the top element of the `callStack`.
--   `#dropCallStack` removes the top element of the `callStack`.
 
 ```k
     syntax InternalOp ::= "#pushCallStack"
@@ -259,10 +249,6 @@ The `callStack` cell stores a list of previous VM execution states.
     rule <k> #popCallStack => . ... </k>
          <callFrame> _ => FRAME </callFrame>
          <callStack> (ListItem(<callFrame> FRAME </callFrame>) => .List) ... </callStack>
-
-    syntax InternalOp ::= "#dropCallStack"
- // --------------------------------------
-    rule <k> #dropCallStack => . ... </k> <callStack> (ListItem(_) => .List) ... </callStack>
 ```
 
 The `interimStates` cell stores a list of previous world states.
@@ -370,8 +356,6 @@ Description of registers.
     syntax KResult ::= Ints
  // -----------------------
     rule isKResult(.Operands) => true
-
-    rule % NAME:NumericIeleName => % String2Int(IeleName2String(NAME)) requires notBool isInt(NAME)
 
     syntax LValues ::= #regRange ( Int ) [function]
                      | #regRange ( Int , Int ) [function, klabel(#regRangeAux)]
@@ -555,7 +539,6 @@ module IELE
     syntax KItem ::= "#execute"
  // ---------------------------
     rule <k> #execute => CODE                      ... </k> <fid> FUNC </fid> <funcId> FUNC </funcId> <instructions> CODE </instructions>
-    rule <k> #execute => #exception FUNC_NOT_FOUND ... </k> <fid> FUNC </fid> <funcIds> FUNCS </funcIds> requires notBool FUNC in FUNCS
 ```
 
 Execution follows a simple cycle where first the state is checked for exceptions, then if no exceptions will be thrown the opcode is run.
@@ -607,14 +590,6 @@ Some checks if an opcode will throw an exception are relatively quick and done u
     rule #invalid? [ OP ] => . [owise]
 ```
 
-```k
-    syntax Bool ::= isJumpOp ( Instruction ) [function]
- // ---------------------------------------------------
-    rule isJumpOp(br _) => true
-    rule isJumpOp(br _ , _) => true
-    rule isJumpOp(...) => false [owise]
-```
-
 -   `#static?` determines if the opcode should throw an exception due to the static flag (i.e., an attempt to change state inside a contract called with `staticcall`)
 
 ```k
@@ -629,7 +604,7 @@ Some checks if an opcode will throw an exception are relatively quick and done u
     rule #changesState(log _, _) => true
     rule #changesState(log _ , _, _) => true
     rule #changesState(sstore _ , _, _) => true
-    rule #changesState(_ = call _ at _ (_) send VALUE , gaslimit _, REGS) => true requires REGS [ VALUE ] =/=K 0
+    rule #changesState(_ = call _ at _ (_) send % VALUE , gaslimit _, REGS) => true requires REGS [ VALUE ] =/=K 0
     rule #changesState(_ , _ = create _ (_) send _, _) => true
     rule #changesState(_ , _ = copycreate _ (_) send _, _) => true
     rule #changesState(selfdestruct _, _) => true
@@ -1248,7 +1223,9 @@ If the function being called is not public, does not exist, or has the wrong num
 
     rule <k> #initFun(LABEL, _, false) => #exception FUNC_NOT_FOUND ... </k>
          <exported> FUNCS </exported>
+         <funcIds> LABELS </funcIds>
       requires notBool LABEL in FUNCS
+               andBool LABEL in LABELS
 
     rule <k> #initFun(LABEL, _, _) => #exception (#if SIZE ==Int 0 #then CONTRACT_NOT_FOUND #else FUNC_NOT_FOUND #fi) ... </k>
          <funcIds> LABELS </funcIds>
@@ -1305,9 +1282,9 @@ If the function being called is not public, does not exist, or has the wrong num
          <output> OUT </output>
          <gas> GAVAIL </gas>
 
-    syntax InternalOp ::= "#refund" Int
+    syntax InternalOp ::= "#refund" Operand [strict]
  // -----------------------------------
-    rule <k> #refund G => . ... </k> <gas> GAVAIL => GAVAIL +Int G </gas>
+    rule <k> #refund G:Int => . ... </k> <gas> GAVAIL => GAVAIL +Int G </gas>
 ```
 
 For each `call*` operation, we make a corresponding call to `#call` and a state-change to setup the custom parts of the calling environment.
@@ -1332,9 +1309,6 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
          <schedule> SCHED </schedule>
          <id> ACCTFROM </id>
          <previousGas> GAVAIL </previousGas>
-
-    rule #exec .LValues = call _ at _ ( _ ) send _ , gaslimit _ => #exception FUNC_WRONG_SIG
-    rule #exec .LValues = staticcall _ at _ ( _ ) gaslimit _ => #exception FUNC_WRONG_SIG
 ```
 
 ### Account Creation/Deletion
