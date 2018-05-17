@@ -316,8 +316,8 @@ Reserved Names
 All identifiers beginning with "iele." are reserved by the language and cannot be written to.
 
 ```k
-    syntax K ::= checkName(IeleName) [function]
- // -------------------------------------------
+    syntax K ::= checkName(IeleName)
+ // --------------------------------
     rule checkName(NAME) => .
       requires lengthString(IeleName2String(NAME)) <Int 5 orBool substrString(IeleName2String(NAME), 0, 5) =/=String "iele."
 
