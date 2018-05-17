@@ -133,17 +133,17 @@ After interpreting the strings representing programs as a `WordStack`, it should
  // ----------------------------------------------------------------------------------------------------------------------------------------------------
     rule #dasmContract( .WordStack, NAME) => #emptyCode
     rule #dasmContract( W1 : W2 : W3 : W4 : 99 : WS, NAME) => #dasmContract(99 : #take( W1 *Int 16777216  +Int W2 *Int 65536 +Int W3 *Int 256 +Int W4 -Int 1, WS), NAME, W1 : W2 : W3 : W4 : .WordStack)
-      requires #isValidContract(W1 : W2 : W3 : W4 : 99 : WS, #sizeWordStack(WS) +Int 5)
-    rule #dasmContract(_, _) => #illFormed [owise]
 
     rule #dasmContract( 99 : NBITS : WS, NAME, W1 : W2 : W3 : W4 : .WordStack ) => #dasmContract(WS, NBITS, 0 |-> init, NAME, .TopLevelDefinitions, 1, #sizeWordStack(WS) +Int 6 , #unparseByteStack(W1 : W2 : W3 : W4 : 99 : NBITS : WS))
     rule #dasmContract( 105 : W1 : W2 : WS, NBITS, FUNCS, NAME, DEFS, N, SIZE, BYTES ) => #dasmContract(#drop(W1 *Int 256 +Int W2, WS), NBITS, N |-> #parseToken("IeleName", #unparseByteStack(#take(W1 *Int 256 +Int W2, WS))) FUNCS, NAME, DEFS, N +Int 1, SIZE, BYTES )
     rule #dasmContract( 106 : W1 : W2 : WS, NBITS, FUNCS, NAME, DEFS, N, SIZE, BYTES ) => #dasmContract(#take(W1 *Int 256 +Int W2, WS), NAME +.+IeleName N) ++Contract #dasmContract(#drop(W1 *Int 256 +Int W2, WS), NBITS, FUNCS, NAME, external contract NAME +.+IeleName N DEFS, N +Int 1, SIZE, BYTES)
     rule #dasmContract( WS, NBITS, FUNCS, NAME, DEFS, N, SIZE, BYTES ) => contract NAME ! SIZE BYTES { DEFS ++TopLevelDefinitions #dasmFunctions(WS, NBITS, FUNCS, NAME) } .Contract [owise]
 
-    syntax Bool ::= #isValidContract(WordStack, Int)         [function]
+    syntax Bool ::= #isValidContract(WordStack)              [function]
+                  | #isValidContract(WordStack, Int)         [function, klabel(isValidContractAux)]
                   | #isValidStringTable(WordStack, Int, Int) [function]
  // -------------------------------------------------------------------
+    rule #isValidContract(CODE) => #isValidContract(CODE, #sizeWordStack(CODE))
     rule #isValidContract(.WordStack, 0) => true
     rule #isValidContract(W1 : W2 : W3 : W4 : 99 : NBITS : WS, SIZE) => #fun(DECLSIZE => SIZE -Int 4 >=Int DECLSIZE andBool #isValidStringTable(#take(DECLSIZE -Int 2, WS), NBITS, DECLSIZE -Int 2))(W1 *Int 16777216 +Int W2 *Int 65536 +Int W3 *Int 256 +Int W4)
     rule #isValidContract(_, _) => false [owise]

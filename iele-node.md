@@ -60,7 +60,7 @@ module IELE-NODE
           => #fun(CODE => #fun(CONTRACT =>
              #checkContract CONTRACT
           ~> #create ACCTFROM #newAddr(ACCTFROM, NONCE -Int 1) GAVAIL VALUE CONTRACT #toInts(ARGS)
-          ~> #codeDeposit #newAddr(ACCTFROM, NONCE -Int 1) #sizeWordStack(CODE) CONTRACT %0 %1 true)(#dasmContract(CODE, Main)))(#parseByteStackRaw(CODESTR))
+          ~> #codeDeposit #newAddr(ACCTFROM, NONCE -Int 1) #sizeWordStack(CODE) CONTRACT %0 %1 true)(#if #isValidContract(CODE) #then #dasmContract(CODE, Main) #else #illFormed #fi))(#parseByteStackRaw(CODESTR))
          ...
          </k>
          <schedule> SCHED </schedule>
