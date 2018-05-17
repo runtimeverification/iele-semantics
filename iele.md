@@ -710,8 +710,9 @@ Note that the syntax used in the following `#emptyCode` macro is desugared IELE 
 
 ```k
     syntax IeleName ::= "Main" [token]
+                      | "iele.Wallet" [token]
  // ----------------------------------
-    rule #emptyCode => contract Main !0 "" { define public @deposit ( 0 ) { ret .NonEmptyOperands .Instructions .LabeledBlocks } } .Contract [macro]
+    rule #emptyCode => contract iele.Wallet !0 "" { define public @deposit ( 0 ) { ret .NonEmptyOperands .Instructions .LabeledBlocks } } .Contract [macro]
 ```
 
 ### Register Manipulations
