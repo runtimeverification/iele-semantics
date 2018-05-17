@@ -1323,9 +1323,9 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
                         | "#checkCreate" Int Int
                         | "#checkContract" Contract
                         | "#finishTypeChecking"
-                        | "#illFormed"
- // -----------------------------------------------
-    rule <k> #checkCreate ACCT VALUE ~> #create _ _ GAVAIL _ _ _ _ => #refund GAVAIL ~> #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception (#if VALUE >Int BAL #then OUT_OF_FUNDS #else CALL_STACK_OVERFLOW #fi) ... </k>
+    syntax Contract ::= "#illFormed"
+ // --------------------------------
+    rule <k> #checkCreate ACCT VALUE ~> #create _ _ GAVAIL _ _ _ => #refund GAVAIL ~> #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception (#if VALUE >Int BAL #then OUT_OF_FUNDS #else CALL_STACK_OVERFLOW #fi) ... </k>
          <callDepth> CD </callDepth>
          <output> _ => .Ints </output>
          <account>
@@ -1362,7 +1362,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
     rule <k> #illFormed ~> (K:KItem => .) ... </k>
       requires K =/=K #finishTypeChecking
 
-    rule <k> #illFormed ~> #finishTypeChecking ~> #create _ _ GAVAIL _ _ _ _ => #refund GAVAIL ~> #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception CONTRACT_INVALID ... </k>
+    rule <k> #illFormed ~> #finishTypeChecking ~> #create _ _ GAVAIL _ _ _ => #refund GAVAIL ~> #pushCallStack ~> #pushWorldState ~> #pushSubstate ~> #exception CONTRACT_INVALID ... </k>
          <typeChecking> true => false </typeChecking>
 
     rule #create ACCTFROM ACCTTO GAVAIL VALUE CODE ARGS
