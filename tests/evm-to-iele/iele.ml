@@ -179,9 +179,9 @@ let asm_iele_op op buf nregs = match op with
   asm_iele_regs (regs1 @ regs2) buf nregs
 | LiOp(opcode,r,payload) ->
   Buffer.add_string buf (asm_iele_opcode opcode);
-  asm_iele_regs [r] buf nregs;
   let payload_be = IeleUtil.be_int payload in
-  Buffer.add_string buf (IeleUtil.rlp_encode_string payload_be)
+  Buffer.add_string buf (IeleUtil.rlp_encode_string payload_be);
+  asm_iele_regs [r] buf nregs
 
 let rec asm_iele_aux ops buf nregs = match ops with
 | [] -> ()

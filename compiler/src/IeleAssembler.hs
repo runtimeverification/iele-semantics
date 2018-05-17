@@ -156,7 +156,7 @@ asm_iele_op nregs op = case op of
   VoidOp opcode regs -> asm_iele_opcode0 opcode >> enc_regs regs
   CallOp opcode regs1 regs2 -> asm_iele_opcode_call opcode >> enc_regs (regs1++regs2)
   LiOp opcode r payload ->
-    do asm_iele_opcode_li opcode; enc_regs [r]; rlp_put_bytes (be_bytes payload)
+    do asm_iele_opcode_li opcode; rlp_put_bytes (be_bytes payload); enc_regs [r]
  where enc_regs all_regs = asm_iele_regs nregs all_regs
 
 asm_iele :: Putter [IeleOp]

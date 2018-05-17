@@ -20,13 +20,13 @@ contains enough information to determine and decode the rest of the operation.
 
 ```k
 
-    syntax NullOp ::= LOADPOS ( Int , Int )
-                    | LOADNEG ( Int , Int )
-                    | BRLABEL ( Int )
+    syntax NullOp ::= BRLABEL ( Int )
                     | BR ( Int )
                     | INVALID ()
 
-    syntax UnOp   ::= BRC ( Int )
+    syntax UnOp   ::= LOADPOS ( Int , Int )
+                    | LOADNEG ( Int , Int )
+                    | BRC ( Int )
                     | GASLIMIT ()
                     | GASPRICE ()
                     | GAS ()
@@ -315,8 +315,6 @@ After interpreting the strings representing programs as a `WordStack`, it should
 
     syntax Int ::= #opWidth ( OpCode , Int ) [function]
  // ---------------------------------------------------
-    rule #opWidth ( LOADPOS(N, _), NBITS ) => 1 +Int N +Int (NBITS up/Int 8)
-    rule #opWidth ( LOADNEG(N, _), NBITS ) => 1 +Int N +Int (NBITS up/Int 8)
     rule #opWidth ( OP, NBITS ) => #opCodeWidth(OP) +Int ((NBITS *Int #numArgs(OP)) up/Int 8) [owise]
 
     syntax Int ::= #opCodeWidth ( OpCode ) [function]
@@ -334,6 +332,8 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #opCodeWidth( CALLADDRESS(_) )     => 3
     rule #opCodeWidth( _:CreateOp )         => 5
     rule #opCodeWidth( _:CopyCreateOp )     => 3
+    rule #opCodeWidth ( LOADPOS(N, _) )     => 1 +Int N
+    rule #opCodeWidth ( LOADNEG(N, _) )     => 1 +Int N
     rule #opCodeWidth( OP )                 => 1 [owise]
 
     syntax Int ::= #numArgs ( OpCode ) [function]
