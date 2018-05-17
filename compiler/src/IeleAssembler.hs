@@ -112,8 +112,8 @@ asm_iele_opcode_call :: IeleOpcodeCall Word16 Word16 -> Put
 asm_iele_opcode_call opCall = case opCall of
   CALL call nargs nreturn -> putWord8 0xf2 >> putWord16be call >> putArgs16 nargs >> putRets16 nreturn
   CALLDYN nargs nreturn -> putWord8 0xf3 >> putArgs16 nargs >> putRets16 nreturn
-  STATICCALL call nargs nreturn -> putWord8 0xf5 >> putWord16be call >> putArgs16 nargs >> putRets16 nreturn
-  STATICCALLDYN nargs nreturn -> putWord8 0xf4 >> putArgs16 nargs >> putRets16 nreturn
+  STATICCALL call nargs nreturn -> putWord8 0xf4 >> putWord16be call >> putArgs16 nargs >> putRets16 nreturn
+  STATICCALLDYN nargs nreturn -> putWord8 0xf5 >> putArgs16 nargs >> putRets16 nreturn
   LOCALCALL call nargs nreturn -> putWord8 0xf8 >> putWord16be call >> putArgs16 nargs >> putRets16 nreturn
   LOCALCALLDYN nargs nreturn -> putWord8 0xf9 >> putArgs16 nargs >> putRets16 nreturn
   CALLADDRESS call -> putWord8 0xfa >> putWord16be call

@@ -152,8 +152,8 @@ let asm_iele_opcode op = match op with
 | `COPYCREATE -> "\xf1\x00\x00\x00\x00"
 | `CALL(call,nargs,nreturn) -> "\xf2" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
 | `CALLCODE(call,nargs,nreturn) -> "\xf3" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
-| `DELEGATECALL(call,nargs,nreturn) -> "\xf4" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
-| `STATICCALL(call,nargs,nreturn) -> "\xf5" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `DELEGATECALL(call,nargs,nreturn) -> "\xf5" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `STATICCALL(call,nargs,nreturn) -> "\xf4" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
 | `RETURN(nreturn) -> "\xf6" ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
 | `REVERT(nreturn) -> "\xf7"
 | `LOCALCALL (call,nargs,nreturn) -> "\xf8" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
