@@ -42,6 +42,7 @@ contains enough information to determine and decode the rest of the operation.
                     | MSIZE ()
                     | SELFDESTRUCT ()
                     | LOG0 ()
+                    | REVERT()
 
     syntax BinOp ::= ISZERO ()
                    | NOT ()
@@ -99,7 +100,6 @@ contains enough information to determine and decode the rest of the operation.
                     | CALLADDRESS ( Int )
 
     syntax ReturnOp ::= RETURN ( Int )
-                      | REVERT ( Int )
 
     syntax LocalCallOp ::= LOCALCALL ( Int , Int , Int )
                          | LOCALCALLDYN ( Int , Int )
@@ -294,7 +294,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmInstruction ( CREATE (LABEL, ARGS), R, W, M, _, NAME ) => %(R, W, M, 0) , %(R, W, M, 1) = create NAME +.+IeleName {#parseToken("IeleName", Int2String(LABEL))}:>IeleName ( %o(R, W, M, 3, ARGS) ) send %(R, W, M, 2)
     rule #dasmInstruction ( COPYCREATE (ARGS), R, W, M, _, _ ) => %(R, W, M, 0) , %(R, W, M, 1) = copycreate %(R, W, M, 3) ( %o(R, W, M, 4, ARGS) ) send %(R, W, M, 2)
 
-    rule #dasmInstruction ( REVERT(1), R, W, M, _, _ ) => revert %(R, W, M, 0)
+    rule #dasmInstruction ( REVERT(), R, W, M, _, _ ) => revert %(R, W, M, 0)
     rule #dasmInstruction ( RETURN(RETS), R, W, M, _, _ ) => ret %o(R, W, M, 0, RETS)
       requires RETS =/=Int 0
     rule #dasmInstruction ( RETURN(0), R, W, M, _, _ ) => ret void
@@ -327,7 +327,6 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #opCodeWidth( LOCALCALL(_,_,_) )   => 7
     rule #opCodeWidth( LOCALCALLDYN(_,_) )  => 5
     rule #opCodeWidth( RETURN(_) )          => 3
-    rule #opCodeWidth( REVERT(_) )          => 3
     rule #opCodeWidth( CALL(_,_,_) )        => 7
     rule #opCodeWidth( CALLDYN(_,_) )       => 5
     rule #opCodeWidth( STATICCALL(_,_,_) )  => 7
@@ -353,7 +352,6 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #numArgs ( LOCALCALLDYN (   ARGS, RETS) ) => 1 +Int ARGS +Int RETS
     rule #numArgs ( CALLADDRESS(_) )               => 2
     rule #numArgs ( RETURN(RETS) )                 => RETS
-    rule #numArgs ( REVERT(RETS) )                 => RETS
     rule #numArgs ( CREATE(_, ARGS) )              => 3 +Int ARGS
     rule #numArgs ( COPYCREATE(ARGS) )             => 4 +Int ARGS
 

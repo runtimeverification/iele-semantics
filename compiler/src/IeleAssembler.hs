@@ -98,10 +98,9 @@ asm_iele_opcode0 op0 = case op0 of
         | otherwise -> error "LOG only takes up to 4 values"
 
   RETURN nargs -> putWord8 0xf6 >> putArgs16 nargs
-  REVERT nargs -> putWord8 0xf7 >> putArgs16 nargs
 
+  REVERT -> putWord8 0xf7
   INVALID -> putWord8 0xfe
-
   SELFDESTRUCT -> putWord8 0xff
 
 asm_iele_opcode_li :: IeleOpcodeLi -> Put

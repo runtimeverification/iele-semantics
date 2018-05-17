@@ -251,9 +251,7 @@ prettyVoidOp op args = case op of
     [reg] -> prettyCondJump reg lbl
     _ -> error "conditional jump takes exactly one register argument"
   RETURN _ -> prettyReturn args
-  REVERT _ -> case args of
-    [arg] -> text "revert" <+> arg
-    _ -> error "revert takes exactly one argument"
+  REVERT -> simple "revert"
   INVALID -> text "call @iele.invalid(" <> commaList args <> char ')'
   SSTORE -> simple "sstore"
   MSTORE -> simple "store"

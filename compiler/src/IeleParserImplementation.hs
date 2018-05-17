@@ -487,7 +487,7 @@ returnInst = skipKeyword "ret" *>
   fmap (\args -> VoidOp (RETURN (argsLength args)) args) argumentsOrVoid
 
 revertInst :: Parser IeleOpP
-revertInst = simpleOp0 "revert" 1 (REVERT (mkArgs 1))
+revertInst = simpleOp0 "revert" 1 (REVERT)
 
 selfDestructInst :: Parser IeleOpP
 selfDestructInst = simpleOp0 "selfdestruct" 1 SELFDESTRUCT
