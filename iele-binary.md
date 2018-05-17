@@ -186,7 +186,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #isValidFunction(W : WS, NBITS, SIZE) => #isValidFunctions(W : WS, NBITS, SIZE)
       requires W ==Int 103 orBool W ==Int 104
     rule #isValidFunction(.WordStack, _, 0) => true
-    rule #isValidFunction(W : WS, NBITS, SIZE) => #isValidLoad(WS, SIZE -Int 1) andBool #isValidInstruction(#dasmOpCode(WS), WS, NBITS, SIZE)
+    rule #isValidFunction(W : WS, NBITS, SIZE) => #isValidLoad(WS, SIZE -Int 1) andBool #isValidInstruction(#dasmOpCode(W : WS), W : WS, NBITS, SIZE)
       requires W ==Int 97 orBool W ==Int 98
     rule #isValidFunction(WS, NBITS, SIZE) => #isValidInstruction(#dasmOpCode(WS), WS, NBITS, SIZE) [owise]
 
