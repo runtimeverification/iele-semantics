@@ -131,7 +131,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
                       | #dasmContract ( WordStack , IeleName , WordStack ) [function, klabel(#dasmContractAux1)]
                       | #dasmContract ( WordStack , Int , Map, IeleName , TopLevelDefinitions, Int , Int , String ) [function, klabel(#dasmContractAux2)]
  // ----------------------------------------------------------------------------------------------------------------------------------------------------
-    rule #dasmContract( .WordStack, NAME) => #emptyCode
+    rule #dasmContract( .WordStack, _) => #emptyCode
     rule #dasmContract( W1 : W2 : W3 : W4 : 99 : WS, NAME) => #dasmContract(99 : #take( W1 *Int 16777216  +Int W2 *Int 65536 +Int W3 *Int 256 +Int W4 -Int 1, WS), NAME, W1 : W2 : W3 : W4 : .WordStack)
 
     rule #dasmContract( 99 : NBITS : WS, NAME, W1 : W2 : W3 : W4 : .WordStack ) => #dasmContract(WS, NBITS, 0 |-> init, NAME, .TopLevelDefinitions, 1, #sizeWordStack(WS) +Int 6 , #unparseByteStack(W1 : W2 : W3 : W4 : 99 : NBITS : WS))
