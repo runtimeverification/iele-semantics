@@ -371,7 +371,7 @@ The body of a function is a list of blocks, where each block is a list of IELE i
 ### Reserved IELE Function Names
 
 -   An account to which code has never been deployed contains an implicit contract with one public function named `@deposit` which takes no arguments, returns no values, and does nothing. This function exists to allow such accounts to receive payments.
--   A special public function named `@init` should be defined for every contract and will be called when an account is created with this contract.
+-   A special private function named `@init` should be defined for every contract and will be called when an account is created with this contract.
 
 ```k
   syntax IeleName ::= "deposit" [token]
