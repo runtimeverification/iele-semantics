@@ -98,10 +98,9 @@ asm_iele_opcode0 op0 = case op0 of
         | otherwise -> error "LOG only takes up to 4 values"
 
   RETURN nargs -> putWord8 0xf6 >> putArgs16 nargs
-  REVERT nargs -> putWord8 0xf7 >> putArgs16 nargs
 
+  REVERT -> putWord8 0xf7
   INVALID -> putWord8 0xfe
-
   SELFDESTRUCT -> putWord8 0xff
 
 asm_iele_opcode_li :: IeleOpcodeLi -> Put
@@ -113,8 +112,8 @@ asm_iele_opcode_call :: IeleOpcodeCall Word16 Word16 -> Put
 asm_iele_opcode_call opCall = case opCall of
   CALL call nargs nreturn -> putWord8 0xf2 >> putWord16be call >> putArgs16 nargs >> putRets16 nreturn
   CALLDYN nargs nreturn -> putWord8 0xf3 >> putArgs16 nargs >> putRets16 nreturn
-  STATICCALL call nargs nreturn -> putWord8 0xf5 >> putWord16be call >> putArgs16 nargs >> putRets16 nreturn
-  STATICCALLDYN nargs nreturn -> putWord8 0xf4 >> putArgs16 nargs >> putRets16 nreturn
+  STATICCALL call nargs nreturn -> putWord8 0xf4 >> putWord16be call >> putArgs16 nargs >> putRets16 nreturn
+  STATICCALLDYN nargs nreturn -> putWord8 0xf5 >> putArgs16 nargs >> putRets16 nreturn
   LOCALCALL call nargs nreturn -> putWord8 0xf8 >> putWord16be call >> putArgs16 nargs >> putRets16 nreturn
   LOCALCALLDYN nargs nreturn -> putWord8 0xf9 >> putArgs16 nargs >> putRets16 nreturn
   CALLADDRESS call -> putWord8 0xfa >> putWord16be call
@@ -157,7 +156,7 @@ asm_iele_op nregs op = case op of
   VoidOp opcode regs -> asm_iele_opcode0 opcode >> enc_regs regs
   CallOp opcode regs1 regs2 -> asm_iele_opcode_call opcode >> enc_regs (regs1++regs2)
   LiOp opcode r payload ->
-    do asm_iele_opcode_li opcode; enc_regs [r]; rlp_put_bytes (be_bytes payload)
+    do asm_iele_opcode_li opcode; rlp_put_bytes (be_bytes payload); enc_regs [r]
  where enc_regs all_regs = asm_iele_regs nregs all_regs
 
 asm_iele :: Putter [IeleOp]
