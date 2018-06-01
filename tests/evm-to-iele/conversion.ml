@@ -814,6 +814,7 @@ let rec postprocess_iele iele label memcells = match iele with
 | VoidOp(`MSTORE, [r1;r2]) :: tl -> VoidOp(`MSTORE, [r2;r1]) :: postprocess_iele tl label memcells
 | VoidOp(`MSTOREN, [r1;r2;r3;r4]) :: tl -> VoidOp(`MSTOREN, [r3;r1;r2;r4]) :: postprocess_iele tl label memcells
 | Op(`SIGNEXTEND, reg, [r1;r2]) :: tl -> LiOp(`LOADPOS, -1, _32) :: Op(`TWOS, r2, [-1;r2]) :: LiOp(`LOADPOS, -1, Z.one) :: Op(`ADD, r1, [-1;r1]) :: Op(`SIGNEXTEND, reg, [r1;r2]) :: postprocess_iele tl label memcells
+| VoidOp((`EXTCODECOPY | `CODECOPY), _) :: tl -> VoidOp(`INVALID, []) :: postprocess_iele tl label memcells
 | hd :: tl -> hd :: postprocess_iele tl label memcells
 | [] -> []
 

@@ -140,8 +140,8 @@ data IeleOpcode0G funId lblId =
  | LOG Word8
 
  | RETURN (Args Word16)
- | REVERT (Args Word16)
 
+ | REVERT
  | INVALID
  | SELFDESTRUCT
   deriving (Show, Eq, Data)
@@ -171,8 +171,8 @@ retypeOpcode0 fun lbl i = case i of
    LOG arity -> pure (LOG arity)
 
    RETURN arity -> pure (RETURN arity)
-   REVERT arity -> pure (REVERT arity)
 
+   REVERT -> pure (REVERT)
    INVALID -> pure (INVALID)
    SELFDESTRUCT -> pure (SELFDESTRUCT)
 
