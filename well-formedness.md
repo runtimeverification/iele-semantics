@@ -336,7 +336,7 @@ In order to correctly check names, we must convert escaped IELE names to their c
       requires IDX <Int lengthString(S) -Int 1 andBool substrString(S, IDX, IDX +Int 1) ==K "\\"
     rule unescape(S, IDX, SB) => StringBuffer2String(SB)
       requires IDX ==Int lengthString(S) -Int 1
-    rule `StringIeleName`(NAME:StringIeleName) => #parseToken("IeleName", unescape(StringIeleName2String(NAME))) [anywhere]
+    rule `StringIeleName`(NAME:StringIeleName) => String2IeleName(unescape(StringIeleName2String(NAME))) [anywhere]
 ```
 
 Checking Operands

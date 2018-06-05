@@ -505,7 +505,7 @@ The `"transactions"` key loads the transactions.
                <txGasPrice> #asUnsigned(#parseByteStack(TP))     </txGasPrice>
                <txGasLimit> #asUnsigned(#parseByteStack(TG))     </txGasLimit>
                <sendto>     #asAccount(#parseByteStack(TT))      </sendto>
-               <func>       {#parseToken("IeleName", FUNC)}:>IeleName        </func>
+               <func>       String2IeleName(FUNC)                </func>
                <value>      #asUnsigned(#parseByteStack(TV))     </value>
                <from>       #asUnsigned(#parseByteStack(FROM))   </from>
                <data>       #parseByteStack(TI)                  </data>
