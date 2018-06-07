@@ -81,7 +81,7 @@ module IELE-NODE
       requires ACCTFROM in ACCTS
 
     rule <k> runVM(false, ACCTTO, ACCTFROM, _, ARGS, VALUE, GPRICE, GAVAIL, CB, DIFF, NUMB, GLIMIT, TS, FUNC)
-          => #call ACCTFROM ACCTTO @ {#parseToken("IeleName", FUNC)}:>IeleName GAVAIL VALUE #toInts(ARGS) false
+          => #call ACCTFROM ACCTTO @ String2IeleName(FUNC) GAVAIL VALUE #toInts(ARGS) false
           ~> #endVM
          ...
          </k>

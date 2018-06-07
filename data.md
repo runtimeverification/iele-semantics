@@ -105,6 +105,7 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to IELE'
     rule #sizeLVals(.LValues, N) => N
 
     syntax String ::= IeleName2String ( IeleName ) [function, hook(STRING.token2string)]
+    syntax IeleName ::= String2IeleName ( String ) [function, hook(STRING.string2token)]
  // ------------------------------------------------------------------------------------
     syntax String ::= StringIeleName2String ( StringIeleName ) [function, hook(STRING.token2string)]
  // ------------------------------------------------------------------------------------------------
