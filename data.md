@@ -123,25 +123,6 @@ You could alternatively calculate `I1 %Int I2`, then add one to the normal integ
     syntax Int ::= Int "up/Int" Int [function, klabel(ceilDiv)]
  // -----------------------------------------------------------
     rule I1 up/Int I2 => (I1 +Int (I2 -Int 1)) /Int I2 requires I2 >Int 0
-```
-
--   `logNInt` returns the log base N (floored) of an integer.
-
-```k
-    syntax Int ::= log2Int ( Int )       [function]
-                 | log2Int ( Int , Int ) [function, klabel(log2IntAux)]
- // -------------------------------------------------------------------
-    rule log2Int(I) => log2Int(I, 0) requires I >Int 0
-    rule log2Int(1, N) => N
-    rule log2Int(W, N) => log2Int(W >>Int 1, N +Int 1) [owise]
-
-    syntax Int ::= numWords ( Int )       [function]
-                 | numWords ( Int , Int, Bool ) [function, klabel(numWordsAux)]
- // -------------------------------------------------------------------------------
-    rule numWords(I) => numWords(I, 0, false)
-    rule numWords(0, N, _) => N
-    rule numWords(W, N, false) => numWords(W >>Int 63, N +Int 1, true) [owise]
-    rule numWords(W, N, true) => numWords(W >>Int 64, N +Int 1, true) [owise]
 
 ```
 
@@ -152,7 +133,7 @@ You could alternatively calculate `I1 %Int I2`, then add one to the normal integ
 ```k
     syntax Int ::= intSize ( Int ) [function]
  // -----------------------------------------
-    rule intSize(N) => numWords(N) requires N >Int 0
+    rule intSize(N) => (log2Int(N) +Int 2) up/Int 64 requires N >Int 0
     rule intSize(0) => 1
     rule intSize(N) => intSize(~Int N) requires N <Int 0
 
