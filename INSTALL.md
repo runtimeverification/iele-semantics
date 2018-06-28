@@ -7,6 +7,8 @@ In a nutshell, to install IELE on an Ubuntu 16.04 machine, run:
 
 sudo apt-get update
 sudo apt-get install make gcc maven curl openjdk-8-jdk flex opam pkg-config libmpfr-dev autoconf libtool pandoc build-essential libffi-dev
+git clone git@github.com:runtimeverification/iele-semantics.git
+cd iele-semantics
 git submodule update --init --recursive # Initialize submodules
 curl -sSL https://get.haskellstack.org/ | sh # Install stack
 cd .build/secp256k1 && ./autogen.sh && ./configure --enable-module-recovery --enable-module-ecdh --enable-experimental && make && sudo make install # install secp256k1 from bitcoin-core
@@ -22,7 +24,7 @@ To install on MacOS, after installing the command line tools package:
 
 ```
 
-brew tap caskroom/cask caskroom/version
+brew tap homebrew/homebrew-cask homebrew-cask-versions
 brew cask install java8
 brew install maven opam pkg-config gmp mpfr automake libtool pandoc
 export LDFLAGS="-L$(brew --prefix openssl)/lib" # needed by pyethereum
