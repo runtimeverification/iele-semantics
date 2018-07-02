@@ -43,7 +43,7 @@ For verification purposes, it's much easier to specify a program in terms of its
 To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a "pretti-fication" to the nicer input form.
 
 ```{.k .standalone}
-    syntax JSON ::= Int | WordStack | Map | SubstateLogEntry | Account
+    syntax JSON ::= Int | WordStack | Bytes | Map | SubstateLogEntry | Account
  // ------------------------------------------------------------------
 
     syntax JSONList ::= #sortJSONList ( JSONList )            [function]
@@ -429,7 +429,7 @@ Here we load the environmental information.
     rule <k> load "exec" : { "code"     : ((CODE:String)   => #parseByteStack(CODE)) } ... </k>
 
     rule load "exec" : { "data" : ((DATA:String) => #parseByteStack(DATA)) }
-    rule load "exec" : { "data" : ((DATA:WordStack) => [#asUnsigned(DATA), #sizeWordStack(DATA)]) } 
+    rule load "exec" : { "data" : ((DATA:WordStack) => [#asUnsigned(DATA), #sizeWordStack(DATA)]) }
  // -----------------------------------------------------------------------------------------------
     rule <k> load "exec" : { "data" : [DATA:Int, LEN:Int] } => . ... </k> <callData> _ => LEN , DATA , .Ints </callData>
     rule <k> load "exec" : { "code" : (CODE:WordStack) } => . ... </k>
@@ -467,25 +467,25 @@ The `"blockHeader"` key loads the block information.
     rule load "blockHeader" : { "bloom" : (HB:String) } => .
 
     rule <k> load "blockHeader" : { "gasLimit" : (HL:String) } => . ...</k> 
-         <gasLimit> _ => #asUnsigned(#parseByteStack(HL)) </gasLimit>
+         <gasLimit> _ => #parseHexWord(HL) </gasLimit>
 
     rule <k> load "blockHeader" : { "number" : (HI:String) } => . ...</k> 
-         <number> _ => #asUnsigned(#parseByteStack(HI)) </number>
+         <number> _ => #parseHexWord(HI) </number>
 
     rule <k> load "blockHeader" : { "difficulty" : (HD:String) } => . ...</k> 
-         <difficulty> _ => #asUnsigned(#parseByteStack(HD)) </difficulty>
+         <difficulty> _ => #parseHexWord(HD) </difficulty>
 
     rule <k> load "blockHeader" : { "timestamp" : (HS:String) } => . ...</k> 
-         <timestamp> _ => #asUnsigned(#parseByteStack(HS)) </timestamp>
+         <timestamp> _ => #parseHexWord(HS) </timestamp>
 
     rule <k> load "blockHeader" : { "coinbase" : (HC:String) } => . ...</k> 
-         <beneficiary> _ => #asUnsigned(#parseByteStack(HC)) </beneficiary>
+         <beneficiary> _ => #parseHexWord(HC) </beneficiary>
 
     rule <k> load "blockHeader" : { "gasUsed" : (HG:String) } => . ...</k> 
-         <gasUsed> _ => #asUnsigned(#parseByteStack(HG)) </gasUsed>
+         <gasUsed> _ => #parseHexWord(HG) </gasUsed>
 
     rule <k> load "blockhashes" : [ VAL:String , VALS ] => . ...</k>
-         <blockhash>... .List => ListItem(#asUnsigned(#parseByteStack(VAL))) </blockhash>
+         <blockhash>... .List => ListItem(#parseHexWord(VAL)) </blockhash>
 ```
 
 The `"transactions"` key loads the transactions.
@@ -500,16 +500,16 @@ The `"transactions"` key loads the transactions.
          <messages>
            ( .Bag
           => <message>
-               <msgID>      !ID:Int                              </msgID>
-               <txNonce>    #asUnsigned(#parseByteStack(TN))     </txNonce>
-               <txGasPrice> #asUnsigned(#parseByteStack(TP))     </txGasPrice>
-               <txGasLimit> #asUnsigned(#parseByteStack(TG))     </txGasLimit>
-               <sendto>     #asAccount(#parseByteStack(TT))      </sendto>
-               <func>       String2IeleName(FUNC)                </func>
-               <value>      #asUnsigned(#parseByteStack(TV))     </value>
-               <from>       #asUnsigned(#parseByteStack(FROM))   </from>
-               <data>       #parseByteStack(TI)                  </data>
-               <args>       #toInts(ARGS)                        </args>
+               <msgID>      !ID:Int               </msgID>
+               <txNonce>    #parseHexWord(TN)     </txNonce>
+               <txGasPrice> #parseHexWord(TP)     </txGasPrice>
+               <txGasLimit> #parseHexWord(TG)     </txGasLimit>
+               <sendto>     #asAccount(TT)        </sendto>
+               <func>       String2IeleName(FUNC) </func>
+               <value>      #parseHexWord(TV)     </value>
+               <from>       #parseHexWord(FROM)   </from>
+               <data>       #parseByteStack(TI)   </data>
+               <args>       #toInts(ARGS)         </args>
              </message>
            )
            ...
@@ -600,7 +600,7 @@ Here we check the other post-conditions associated with an EVM test.
 
     rule check TESTID : { "logs" : LOGS } => check "logs" : LOGS ~> failure TESTID
  // ------------------------------------------------------------------------------
-    rule <k> check "logs" : HASH:String => . ... </k> <logData> SL </logData> requires #parseHexBytes(Keccak256(#rlpEncodeLogs(SL))) ==K #parseByteStack(HASH)
+    rule <k> check "logs" : HASH:String => . ... </k> <logData> SL </logData> requires #parseByteStack(Keccak256(#rlpEncodeLogs(SL))) ==K #parseByteStack(HASH)
 
     rule check TESTID : { "status" : STATUS } => check "status" : STATUS ~> failure TESTID
  // --------------------------------------------------------------------------------------
@@ -617,7 +617,7 @@ Here we check the other post-conditions associated with an EVM test.
                     | #rlpEncodeTopics(List) [function]
  // --------------------------------------------------------
     rule #rlpEncodeLogs(SL) => #rlpEncodeLength(#rlpEncodeLogsAux(SL), 192)
-    rule #rlpEncodeLogsAux(ListItem({ ACCT | TOPICS | DATA }) SL) => #rlpEncodeLength(#rlpEncodeBytes(ACCT, 20) +String #rlpEncodeLength(#rlpEncodeTopics(TOPICS), 192) +String #rlpEncodeString(#unparseByteStack(DATA)), 192) +String #rlpEncodeLogsAux(SL)
+    rule #rlpEncodeLogsAux(ListItem({ ACCT | TOPICS | DATA }) SL) => #rlpEncodeLength(#rlpEncodeBytes(ACCT, 20) +String #rlpEncodeLength(#rlpEncodeTopics(TOPICS), 192) +String #rlpEncodeString(Bytes2String(DATA)), 192) +String #rlpEncodeLogsAux(SL)
     rule #rlpEncodeLogsAux(.List) => ""
     rule #rlpEncodeTopics(ListItem(TOPIC) TOPICS) => #rlpEncodeBytes(chop(TOPIC), 32) +String #rlpEncodeTopics(TOPICS)
     rule #rlpEncodeTopics(.List) => ""
@@ -638,7 +638,7 @@ Here we check the other post-conditions associated with an EVM test.
     rule check "genesisBlockHeader" : { KEY : VALUE , REST } => check "genesisBlockHeader" : { KEY : VALUE } ~> check "genesisBlockHeader" : { REST } requires REST =/=K .JSONList
     rule check "genesisBlockHeader" : { KEY : VALUE } => .K requires KEY =/=String "hash"
 
-    rule check "genesisBlockHeader" : { "hash": (HASH:String => #asUnsigned(#parseByteStack(HASH))) }
+    rule check "genesisBlockHeader" : { "hash": (HASH:String => #parseHexWord(HASH)) }
     rule <k> check "genesisBlockHeader" : { "hash": HASH } => . ... </k>
          <blockhash> ... ListItem(HASH) ListItem(_) </blockhash>
 ```

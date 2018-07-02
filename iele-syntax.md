@@ -93,7 +93,7 @@ IELE instruction operands are used at the left- and right-hand side of IELE inst
 
   syntax Operand ::= LValue | Constant
 
-  syntax Operands ::= List{Operand, ","} [klabel(operandList), hybrid, strict]
+  syntax Operands ::= List{Operand, ","} [klabel(operandList)]
 
   syntax NonEmptyOperands ::= NeList{Operand, ","} [klabel(operandList)]
 
