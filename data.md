@@ -13,6 +13,7 @@ module IELE-DATA
     imports KRYPTO
     imports STRING-BUFFER
     imports ARRAY
+    imports BYTES
     imports IELE-COMMON
     imports DOMAINS
 
@@ -55,7 +56,7 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to IELE'
 ```k
     syntax Int ::= chop ( Int ) [function]
  // --------------------------------------
-    rule chop ( I:Int ) => I modInt pow256 requires I <Int 0  orBool I >=Int pow256
+    rule chop ( I:Int ) => bitRangeInt(I, 0, 256) requires I <Int 0  orBool I >=Int pow256
     rule chop ( I:Int ) => I               requires I >=Int 0 andBool I <Int pow256
 ```
 
@@ -181,16 +182,12 @@ Here we provide simple syntactic sugar over our power-modulus operator.
 Bitwise Operators
 -----------------
 
--   `bit` gets bit $N$ (0 being LSB).
 -   `byte` gets byte $N$ (0 being the LSB).
 
 ```k
-    syntax Int ::= bit  ( Int , Int ) [function]
-                 | byte ( Int , Int ) [function]
+    syntax Int ::= byte ( Int , Int ) [function]
  // --------------------------------------------
-    rule bit(N, W)  => (W >>Int (N)) %Int 2
-    rule byte(N, W) => (W >>Int (N *Int 8)) %Int 256 requires W >=Int 0
-    rule byte(N, W) => 255 -Int (absInt(W +Int 1) >>Int (N *Int 8)) %Int 256 requires W <Int 0
+    rule byte(N, W) => bitRangeInt(W, N <<Int 3, 8)
 ```
 
 -   `_<<Byte_` shifts an integer 8 bits to the left.
@@ -210,23 +207,19 @@ Bitwise Operators
                  | twos ( Int , Int )       [function]
                  | bswap ( Int , Int )      [function]
  // --------------------------------------------------
-    rule signextend(N, W) => twos(N, W) -Int (1 <<Byte N)  requires N>Int 0 andBool        word2Bool(bit((8 *Int N -Int 1), twos(N, W)))
-    rule signextend(N, W) => twos(N, W)                    requires N>Int 0 andBool notBool word2Bool(bit((8 *Int N -Int 1), twos(N, W)))
-    rule signextend(0, _) => 0
+    rule signextend(N, W) => signExtendBitRangeInt(W, 0, N <<Int 3)
 
-    rule twos(N, W) => W modInt (1 <<Byte N)
-      requires N >Int 0
-    rule twos(0, _) => 0
+    rule twos(N, W) => bitRangeInt(W, 0, N <<Int 3)
 
-    rule bswap(N, W) => #asUnsigned(#rev(#padToWidth(N, #asUnsignedBytes(twos(N, W))), .WordStack))
+    rule bswap(N, W) => Bytes2Int(Int2Bytes(N, twos(N, W), BE), LE, Unsigned)
 ```
 
 -   `keccak` serves as a wrapper around the `Keccak256` in `KRYPTO`.
 
 ```k
-    syntax Int ::= keccak ( WordStack ) [function]
+    syntax Int ::= keccak ( Bytes ) [function]
  // ----------------------------------------------
-    rule keccak(WS) => #parseHexWord(Keccak256(#unparseByteStack(WS)))
+    rule keccak(WS) => #parseHexWord(Keccak256(Bytes2String(WS)))
 ```
 
 Data Structures
@@ -280,7 +273,7 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
 
     syntax WordStack ::= WordStack "[" Int ".." Int "]" [function]
  // --------------------------------------------------------------
-    rule WS [ START .. WIDTH ] => #take(chop(WIDTH), #drop(chop(START), WS))
+    rule WS::WordStack [ START .. WIDTH ] => #take(chop(WIDTH), #drop(chop(START), WS))
 ```
 
 -   `WS [ N := WS' ]` sets elements starting at $N$ of $WS$ to $WS'$ (padding with zeros as needed).
@@ -288,7 +281,7 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
 ```k
     syntax WordStack ::= WordStack "[" Int ":=" WordStack "]" [function, klabel(assignWordStackRange)]
  // --------------------------------------------------------------------------------------------------
-    rule WS1 [ N := WS2 ] => #take(N, WS1) ++ WS2 ++ #drop(N +Int #sizeWordStack(WS2), WS1)
+    rule WS1::WordStack [ N := WS2::WordStack ] => #take(N, WS1) ++ WS2 ++ #drop(N +Int #sizeWordStack(WS2), WS1)
 ```
 
 -   `#sizeWordStack` calculates the size of a `WordStack`.
@@ -325,10 +318,8 @@ we call this function.
 ```k
 
     syntax Array ::= ".Array" [function, impure]
-                   | ".Memory" [function, impure]
  // ---------------------------------------------
     rule .Array => makeArray(pow30, 0)
-    rule .Memory => makeArray(pow30, .WordStack)
 ```
 
 Byte Arrays
@@ -336,78 +327,34 @@ Byte Arrays
 
 The local memory of execution is a byte-array (instead of a word-array).
 
--   `#asSignedLE` will interperet a stack of bytes as a single signed arbitrary-precision integer (with LSB first).
--   `#asSigned` will interperet a stack of bytes as a single signed arbitrary-precision integer (with MSB first).
--   `#asUnsignedLE` will interperet a stack of bytes as a single unsigned arbitrary-precision integer (with LSB first).
--   `#asUnsigned` will interperet a stack of bytes as a single unsigned arbitrary-precision integer (with MSB first).
--   `#asAccount` will interpret a stack of bytes as a single account id (with MSB first).
-    Differs from `#asUnsigned` only in that an empty stack represents the empty account, not account zero.
--   `#asSignedBytesLE` will split a single signed integer up into a `WordStack` where each word is a byte wide, following a little-endian convention.
--   `#asSignedBytes` will split a single signed integer up into a `WordStack` where each word is a byte wide, following a big-endian convention.
--   `#asUnsignedBytesLE` will split a single unsigned integer up into a `WordStack` where each word is a byte wide, following a little-endian convention.
--   `#asUnsignedBytes` will split a single unsigned integer up into a `WordStack` where each word is a byte wide, following a big-endian convention.
+-   `#asUnsigned` will interpret a WordStack as a single unsigned integer (with MSB first).
+-   `#asAccount` will interpret a Bytes as a single account id (with MSB first).
+    Differs from `Bytes2Int` only in that an empty stack represents the empty account, not account zero.
+-   `B [ N .. W ]` access the range of `B` beginning with `N` of width `W` (padding with zeros as needed).
+-   `B [ N := B' ]` sets elements starting at $N$ of $B$ to $B'$ (padding with zeros as needed).
 
 ```k
-    syntax Int ::= #asSignedLE ( WordStack ) [function]
- // ---------------------------------------------------
-    rule #asSignedLE( WS ) => #asSigned(#rev(WS, .WordStack))
-
-    syntax Int ::= #asSigned ( WordStack )       [function]
-                 | #asSigned ( WordStack , Int ) [function, klabel(#asSignedAux), smtlib(asSigned)]
- // -----------------------------------------------------------------------------------------------
-    rule #asSigned( WS )                => #asSigned(WS, 0)
-    rule #asSigned( .WordStack,     _ ) => 0
-    rule #asSigned( W : .WordStack, N ) => signextend(N +Int 1, W)
-    rule #asSigned( W0 : W1 : WS,   N ) => #asSigned(((W0 *Int 256) +Int W1) : WS, N +Int 1)
-
-    syntax Int ::= #asUnsignedLE ( WordStack ) [function]
- // -----------------------------------------------------
-    rule #asUnsignedLE( WS ) => #asUnsigned(#rev(WS, .WordStack))
-
     syntax Int ::= #asUnsigned ( WordStack ) [function]
  // ---------------------------------------------------
     rule #asUnsigned( .WordStack )    => 0
     rule #asUnsigned( W : .WordStack) => W
-    rule #asUnsigned( W0 : W1 : WS )  => #asUnsigned(((W0 *Int 256) +Int W1) : WS)
+    rule #asUnsigned( W0 : W1 : WS )  => #asUnsigned(((W0 <<Int 8) |Int W1) : WS)
 
-    syntax Account ::= #asAccount ( WordStack ) [function]
+    syntax Account ::= #asAccount ( String ) [function]
  // ------------------------------------------------------
-    rule #asAccount( .WordStack ) => .Account
-    rule #asAccount( W : WS )     => #asUnsigned(W : WS)
+    rule #asAccount("") => .Account
+    rule #asAccount("0x") => .Account
+    rule #asAccount(S::String) => #parseHexWord(S) [owise]
 
-    syntax Int ::= #numBytes ( Int )       [function]
-                 | #numBytes ( Int , Int ) [function, klabel(#numBytesAux)]
- // -----------------------------------------------------------------------
-    rule #numBytes(W) => #numBytes(W, 0)
-    rule #numBytes(0, N) => N
-    rule #numBytes(W, N) => #numBytes(W >>Int 8, N +Int 1) [owise]
+    syntax Bytes ::= Bytes "[" Int ".." Int "]" [function, klabel(bytesRange)]
+ // --------------------------------------------------------------------------
+    rule B::Bytes [ I .. J ] => padRightBytes(substrBytes(B, I, minInt(lengthBytes(B), I +Int J)), J, 0)
+      requires I <Int lengthBytes(B)
+    rule B::Bytes [ I .. J ] => padRightBytes(.Bytes, J, 0) [owise]
 
-    syntax WordStack ::= #asSignedBytesLE ( Int ) [function]
- // --------------------------------------------------------
-    rule #asSignedBytesLE( W ) => #rev(#asSignedBytes(W), .WordStack)
-
-    syntax WordStack ::= #asSignedBytes ( Int )                    [function]
-                       | #asSignedBytes ( Int , WordStack , Bool ) [function, klabel(#asSignedBytesAux), smtlib(asSignedBytes)]
- // ---------------------------------------------------------------------------------------------------------------------------
-    rule #asSignedBytes( W ) => #asSignedBytes( W ,                                          .WordStack , true  ) requires W >=Int 0
-    rule #asSignedBytes( W ) => #asSignedBytes( twos(#numBytes(0 -Int W *Int 2 -Int 1), W) , .WordStack , false ) requires W  <Int 0
-    rule #asSignedBytes( 0 , WS         , false ) => WS
-    rule #asSignedBytes( 0 , .WordStack , true  ) => 0 : .WordStack
-    rule #asSignedBytes( 0 , W : WS     , true  ) => W : WS requires W <Int 128
-    rule #asSignedBytes( 0 , W : WS     , true  ) => 0 : W : WS requires W >=Int 128
-    rule #asSignedBytes( W , WS , POS ) => #asSignedBytes( W /Int 256 , W %Int 256 : WS , POS ) requires W =/=K 0
-
-    syntax WordStack ::= #asUnsignedBytesLE ( Int , Int ) [function]
- // ----------------------------------------------------------------
-    rule #asUnsignedBytesLE( WIDTH , W ) => #rev(#padToWidth(WIDTH, #asUnsignedBytes(W)), .WordStack)
-
-    syntax WordStack ::= #asUnsignedBytes ( Int )             [function]
-                       | #asUnsignedBytes ( Int , WordStack ) [function, klabel(#asUnsignedBytesAux), smtlib(asUnsignedBytes)]
- // --------------------------------------------------------------------------------------------------------------------------
-    rule #asUnsignedBytes( W ) => #asUnsignedBytes( W , .WordStack )
-    rule #asUnsignedBytes( 0 , WS ) => WS
-    rule #asUnsignedBytes( W , WS ) => #asUnsignedBytes( W /Int 256 , W %Int 256 : WS ) requires W =/=K 0
-
+    syntax Bytes ::= Bytes "[" Int ":=" Bytes "]" [function, klabel(assignBytesRange)]
+ // ----------------------------------------------------------------------------------
+    rule B::Bytes [ I := B'::Bytes ] => replaceAtBytes(padRightBytes(B, I +Int lengthBytes(B'), 0), I, B')
 ```
 
 Addresses
@@ -463,7 +410,6 @@ Parsing
 These parsers can interperet hex-encoded strings as `Int`s, `WordStack`s, and `Map`s.
 
 -   `#parseHexWord` interperets a string as a single hex-encoded `Word`.
--   `#parseHexBytes` interperets a string as a hex-encoded stack of bytes.
 -   `#parseByteStack` interperets a string as a hex-encoded stack of bytes, but makes sure to remove the leading "0x".
 -   `#parseByteStackRaw` inteprets a string as a stack of bytes.
 -   `#parseMap` interperets a JSON key/value object as a map from `Word` to `Word`.
@@ -481,14 +427,13 @@ These parsers can interperet hex-encoded strings as `Int`s, `WordStack`s, and `M
     rule #parseWord(S)  => #parseHexWord(S) requires lengthString(S) >=Int 2 andBool substrString(S, 0, 2) ==String "0x"
     rule #parseWord(S)  => String2Int(S) [owise]
 
-    syntax WordStack ::= #parseHexBytes  ( String )    [function]
-                       | #parseByteStack ( String )    [function]
+    syntax WordStack ::= #parseByteStack ( String )    [function]
+                       | #parseByteStack ( String , WordStack , Int , Int ) [function, klabel(#parseByteStackAux)]
                        | #parseByteStackRaw ( String ) [function]
  // -------------------------------------------------------------
-    rule #parseByteStack(S) => #parseHexBytes(replaceAll(S, "0x", ""))
-    rule #parseHexBytes("") => .WordStack
-    rule #parseHexBytes(S)  => #parseHexWord(substrString(S, 0, 2)) : #parseHexBytes(substrString(S, 2, lengthString(S))) requires lengthString(S) >=Int 2
-
+    rule #parseByteStack(S) => #fun(STR => #parseByteStack(STR, .WordStack, 0, lengthString(STR)))(replaceAll(S, "0x", ""))
+    rule #parseByteStack(_, WS, LEN, LEN) => #rev(WS, .WordStack)
+    rule #parseByteStack(S, WS, I, LEN)  => #parseByteStack(S, #parseHexWord(substrString(S, I, I +Int 2)) : WS, I +Int 2, LEN) requires I <Int LEN
     rule #parseByteStackRaw(S) => ordChar(substrString(S, 0, 1)) : #parseByteStackRaw(substrString(S, 1, lengthString(S))) requires lengthString(S) >=Int 1
     rule #parseByteStackRaw("") => .WordStack
 
@@ -517,7 +462,7 @@ We need to interperet a `WordStack` as a `String` again so that we can call `Kec
     rule #unparseByteStack ( WS ) => #unparseByteStack(WS, .StringBuffer)
 
     rule #unparseByteStack( .WordStack, BUFFER ) => StringBuffer2String(BUFFER)
-    rule #unparseByteStack( W : WS, BUFFER )     => #unparseByteStack(WS, BUFFER +String chrChar(W %Int (2 ^Int 8)))
+    rule #unparseByteStack( W : WS, BUFFER )     => #unparseByteStack(WS, BUFFER +String chrChar(W))
 ```
 
 Recursive Length Prefix (RLP)
@@ -543,22 +488,23 @@ Encoding
  // ---------------------------------------------------------------------------------------------
     rule #rlpEncodeWord(0) => "\x80"
     rule #rlpEncodeWord(WORD) => chrChar(WORD) requires WORD >Int 0 andBool WORD <Int 128
-    rule #rlpEncodeWord(WORD) => #rlpEncodeLength(#unparseByteStack(#asUnsignedBytes(WORD)), 128) requires WORD >=Int 128
+    rule #rlpEncodeWord(WORD) => #rlpEncodeLength(Bytes2String(Int2Bytes(WORD, BE, Unsigned)), 128) requires WORD >=Int 128
 
-    rule #rlpEncodeBytes(WORD, LEN) => #rlpEncodeString(#unparseByteStack(#padToWidth(LEN, #asUnsignedBytes(WORD))))
+    rule #rlpEncodeBytes(WORD, LEN) => #rlpEncodeString(Bytes2String(Int2Bytes(LEN, WORD, BE)))
 
     rule #rlpEncodeString(STR) => STR                        requires lengthString(STR) ==Int 1 andBool ordChar(STR) <Int 128
     rule #rlpEncodeString(STR) => #rlpEncodeLength(STR, 128) [owise]
 
     rule #rlpEncodeInts(INTS) => #rlpEncodeInts(.StringBuffer, INTS)
-    rule #rlpEncodeInts(BUF => BUF +String #rlpEncodeString(#unparseByteStack(#asSignedBytes(I))), (I , INTS) => INTS)
+    rule #rlpEncodeInts(BUF => BUF +String #rlpEncodeString(Bytes2String(Int2Bytes(I, BE, Signed))), (I , INTS) => INTS) requires I =/=Int 0
+    rule #rlpEncodeInts(BUF => BUF +String #rlpEncodeString("\x00"), (0, INTS) => INTS)
     rule #rlpEncodeInts(BUF, .Ints) => #rlpEncodeLength(StringBuffer2String(BUF), 192)
 
     syntax String ::= #rlpEncodeLength ( String , Int )          [function]
                     | #rlpEncodeLength ( String , Int , String ) [function, klabel(#rlpEncodeLengthAux)]
  // ----------------------------------------------------------------------------------------------------
     rule #rlpEncodeLength(STR, OFFSET) => chrChar(lengthString(STR) +Int OFFSET) +String STR requires lengthString(STR) <Int 56
-    rule #rlpEncodeLength(STR, OFFSET) => #rlpEncodeLength(STR, OFFSET, #unparseByteStack(#asUnsignedBytes(lengthString(STR)))) requires lengthString(STR) >=Int 56
+    rule #rlpEncodeLength(STR, OFFSET) => #rlpEncodeLength(STR, OFFSET, Bytes2String(Int2Bytes(lengthString(STR), BE, Unsigned))) requires lengthString(STR) >=Int 56
     rule #rlpEncodeLength(STR, OFFSET, BL) => chrChar(lengthString(BL) +Int OFFSET +Int 55) +String BL +String STR
 ```
 

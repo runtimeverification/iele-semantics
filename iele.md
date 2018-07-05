@@ -82,7 +82,7 @@ In the comments next to each cell, we explain the purpose of the cell.
 
                       // \mu_*
                       <regs>          .Array  </regs>                 // Current values of registers
-                      <localMem>      .Memory </localMem>             // Current values of local memory
+                      <localMem>      .Map    </localMem>             // Current values of local memory
                       <peakMemory>    0       </peakMemory>           // Maximum memory used so far in call frame
                       <currentMemory> 0       </currentMemory>        // Current memory used in call frame
                       <fid>           deposit </fid>                  // Name of currently executing function
@@ -357,6 +357,12 @@ Description of registers.
  // -----------------------
     rule isKResult(.Operands) => true
 
+    syntax Ints ::= lookupRegisters(Operands, Array) [function]
+ // -----------------------------------------------------------
+    rule <k> % REG:Int , OPS => lookupRegisters(% REG, OPS, REGS) ... </k> <regs> REGS </regs> <typeChecking> false </typeChecking>
+    rule lookupRegisters(% REG:Int, OPS, REGS) => {REGS [ REG ]}:>Int , lookupRegisters(OPS, REGS)
+    rule lookupRegisters(.Operands, _) => .Ints
+
     syntax LValues ::= #regRange ( Int ) [function]
                      | #regRange ( Int , Int ) [function, klabel(#regRangeAux)]
  // ---------------------------------------------------------------------------
@@ -384,7 +390,7 @@ The following types of instructions do not require any register heating.
     syntax KResult ::= JumpInst
 ```
 
-Some instructions require an argument to be interpreted as an address (modulo 160 bits), so the `#addr?` function performs that check.
+Some instructions require an argument to be interpreted as an address (modulo 160 bits) or a memory cell (modulo 256 bits), so the `#addr?` function performs that check.
 
 ```k
     syntax Instruction ::= "#addr?" "(" Instruction ")" [function]
@@ -396,6 +402,13 @@ Some instructions require an argument to be interpreted as an address (modulo 16
     rule #addr?(REGS1 = call LABEL at W0 (REGS2) send W1 , gaslimit W2)     => REGS1 = call LABEL at #addr(W0) (REGS2) send W1 , gaslimit W2
     rule #addr?(REGS1 = staticcall LABEL at W0 (REGS2) gaslimit W1)         => REGS1 = staticcall LABEL at #addr(W0) (REGS2) gaslimit W1
     rule #addr?(REG = calladdress LABEL at W0)                              => REG = calladdress LABEL at #addr(W0)
+    rule #addr?(REG = load CELL, OFFSET, WIDTH)                             => REG = load chop(CELL), OFFSET, WIDTH
+    rule #addr?(REG = load CELL)                                            => REG = load chop(CELL)
+    rule #addr?(store VALUE, CELL, OFFSET, WIDTH)                           => store VALUE, chop(CELL), OFFSET, WIDTH
+    rule #addr?(store VALUE, CELL)                                          => store VALUE, chop(CELL)
+    rule #addr?(REG = sha3 CELL)                                            => REG = sha3 chop(CELL)
+    rule #addr?(log CELL)                                                   => log chop(CELL)
+    rule #addr?(log CELL, ARGS)                                             => log chop(CELL), ARGS
     rule #addr?(OP)                                                         => OP [owise]
 ```
 
@@ -753,17 +766,25 @@ These operations are getters/setters of the local execution memory.
 -   `REG = store VALUE, CELL` stores VALUE into the specified memory CELL, overwriting the previous value of the entire cell.
 
 ```k
-    rule <k> #exec REG = load CELL , OFFSET , WIDTH => #load REG #asUnsignedLE({LM [ chop(CELL) ]}:>WordStack [ OFFSET .. WIDTH ]) ... </k>
-         <localMem> LM </localMem>
+    rule <k> #exec REG = load CELL , OFFSET , WIDTH => #load REG Bytes2Int(LM [ OFFSET .. WIDTH ], LE, Unsigned) ... </k>
+         <localMem>... CELL |-> LM ...</localMem>
 
-    rule <k> #exec REG = load CELL => #load REG #asSignedLE({LM [ chop(CELL) ]}:>WordStack) ... </k>
-         <localMem> LM </localMem>
+    rule <k> #exec _ = load CELL , _ , _ ... </k>
+         <localMem> LM (.Map => CELL |-> .Bytes) </localMem>
+      requires notBool CELL in_keys(LM)
+
+    rule <k> #exec REG = load CELL => #load REG Bytes2Int(LM, LE, Signed) ... </k>
+         <localMem>... CELL |-> LM ...</localMem>
 
     rule <k> #exec store VALUE , CELL , OFFSET , WIDTH => . ... </k>
-         <localMem> LM => LM [ chop(CELL) <- {LM [ chop(CELL) ]}:>WordStack [ OFFSET := #asUnsignedBytesLE(chop(WIDTH), VALUE modInt (2 ^Int (chop(WIDTH) *Int 8))) ] ] </localMem>
+         <localMem>... CELL |-> (LM => LM [ OFFSET := Int2Bytes(chop(WIDTH), VALUE modInt (1 <<Int (chop(WIDTH) <<Int 3)), LE) ]) </localMem>
+
+    rule <k> #exec store _ , CELL , _ , _ ... </k>
+         <localMem> LM (.Map => CELL |-> .Bytes) </localMem>
+      requires notBool CELL in_keys(LM)
 
     rule <k> #exec store VALUE , CELL => . ... </k>
-         <localMem> LM => LM [ chop(CELL) <- #asSignedBytesLE(VALUE) ] </localMem>
+         <localMem> LM => LM [ CELL <- Int2Bytes(VALUE, LE, Signed) ] </localMem>
 ```
 
 ### Expressions
@@ -856,8 +877,8 @@ The sha3 instruction computes the keccak256 hash of an entire memory cell.
 
 ```k
 
-    rule <k> #exec REG = sha3 MEMINDEX => #load REG keccak({LM [ chop(MEMINDEX) ]}:>WordStack) ... </k>
-         <localMem> LM </localMem>
+    rule <k> #exec REG = sha3 MEMINDEX => #load REG keccak(LM) ... </k>
+         <localMem>... MEMINDEX |-> LM ...</localMem>
 ```
 
 ### Local State
@@ -894,8 +915,8 @@ These operators make queries about the current execution state.
     rule <k> #exec REG = call @iele.caller    ( .Ints )  => #load REG CL   ... </k> <caller> CL </caller>
     rule <k> #exec REG = call @iele.callvalue ( .Ints )  => #load REG CV   ... </k> <callValue> CV </callValue>
 
-    rule <k> #exec REG = call @iele.msize    ( .Ints ) => #load REG 8 *Int MU ... </k> <peakMemory> MU </peakMemory>
-    rule <k> #exec REG = call @iele.codesize ( .Ints ) => #load REG SIZE      ... </k> <programSize> SIZE </programSize>
+    rule <k> #exec REG = call @iele.msize    ( .Ints ) => #load REG (MU <<Int 3) ... </k> <peakMemory> MU </peakMemory>
+    rule <k> #exec REG = call @iele.codesize ( .Ints ) => #load REG SIZE         ... </k> <programSize> SIZE </programSize>
 ```
 
 ```{.k .standalone}
@@ -1011,7 +1032,7 @@ This is a right cons-list of `SubstateLogEntry` (which contains the account ID a
 The `log` instruction logs an entire memory cell to the substate log with zero to four log topics.
 
 ```k
-    syntax SubstateLogEntry ::= "{" Int "|" List "|" WordStack "}" [klabel(logEntry)]
+    syntax SubstateLogEntry ::= "{" Int "|" List "|" Bytes "}" [klabel(logEntry)]
  // ---------------------------------------------------------------------------------
 ```
 
@@ -1026,8 +1047,8 @@ The `log` instruction logs an entire memory cell to the substate log with zero t
  // -------------------------------------
     rule <k> #log MEMINDEX TOPICS => . ... </k>
          <id> ACCT </id>
-         <localMem> LM </localMem>
-         <logData> ... (.List => ListItem({ ACCT | TOPICS | {LM [ chop(MEMINDEX) ]}:>WordStack })) </logData>
+         <localMem>... MEMINDEX |-> LM ...</localMem>
+         <logData> ... (.List => ListItem({ ACCT | TOPICS | LM })) </logData>
 ```
 
 Network Ops
@@ -1215,12 +1236,12 @@ If the function being called is not public, does not exist, or has the wrong num
                    | #initFun ( IeleName , Int , Bool )
  // ---------------------------------------------------
     rule <k> #initVM(ARGS) => #loads #regRange(#sizeRegs(ARGS)) ARGS ... </k>
-         <currentMemory> _ => 0       </currentMemory>
-         <peakMemory>    _ => 0       </peakMemory>
-         <output>        _ => .Ints   </output>
-         <regs>          _ => .Array  </regs>
-         <localMem>      _ => .Memory </localMem>
-         <localCalls>    _ => .List   </localCalls>
+         <currentMemory> _ => 0      </currentMemory>
+         <peakMemory>    _ => 0      </peakMemory>
+         <output>        _ => .Ints  </output>
+         <regs>          _ => .Array </regs>
+         <localMem>      _ => .Map   </localMem>
+         <localCalls>    _ => .List  </localCalls>
 
     rule <k> #initFun(LABEL, _, false) => #exception FUNC_NOT_FOUND ... </k>
          <exported> FUNCS </exported>
@@ -1606,7 +1627,7 @@ module IELE-PRECOMPILED
  // --------------------------------
     rule <k> #exec ECREC => #end ... </k>
          <callData> HASH , V , R , S , .Ints </callData>
-         <output> _ => #ecrec(#sender(#unparseByteStack(#padToWidth(32, #asUnsignedBytes(HASH))), V, #unparseByteStack(#padToWidth(32, #asUnsignedBytes(R))), #unparseByteStack(#padToWidth(32, #asUnsignedBytes(S))))) </output>
+         <output> _ => #ecrec(#sender(Bytes2String(Int2Bytes(32, HASH, BE)), V, Bytes2String(Int2Bytes(32, R, BE)), Bytes2String(Int2Bytes(32, S, BE)))) </output>
          requires HASH >=Int 0 andBool V >=Int 0 andBool R >=Int 0 andBool S >=Int 0
 
     rule <k> #exec ECREC => #exception USER_ERROR ... </k>
@@ -1622,7 +1643,7 @@ module IELE-PRECOMPILED
  // ---------------------------------
     rule <k> #exec SHA256 => #end ... </k>
          <callData> LEN , DATA , .Ints </callData>
-         <output> _ => #parseHexWord(Sha256(#unparseByteStack(#padToWidth(LEN, #asUnsignedBytes(DATA))))) , .Ints </output>
+         <output> _ => #parseHexWord(Sha256(Bytes2String(Int2Bytes(LEN, DATA, BE)))), .Ints </output>
          requires LEN >=Int 0 andBool DATA >=Int 0
 
     rule <k> #exec SHA256 => #exception USER_ERROR ... </k>
@@ -1633,7 +1654,7 @@ module IELE-PRECOMPILED
  // ---------------------------------
     rule <k> #exec RIP160 => #end ... </k>
          <callData> LEN , DATA , .Ints </callData>
-         <output> _ => #parseHexWord(RipEmd160(#unparseByteStack(#padToWidth(LEN, #asUnsignedBytes(DATA))))) , .Ints </output>
+         <output> _ => #parseHexWord(RipEmd160(Bytes2String(Int2Bytes(LEN, DATA, BE)))), .Ints </output>
          requires LEN >=Int 0 andBool DATA >=Int 0
 
     rule <k> #exec RIP160 => #exception USER_ERROR ... </k>
@@ -1676,12 +1697,12 @@ module IELE-PRECOMPILED
 
     syntax PrecompiledOp ::= "ECPAIRING"
  // ------------------------------------
-    rule <k> #exec ECPAIRING => #ecpairing(.List, .List, #asUnsignedBytesLE(chop(LEN) *Int 64, G1), #asUnsignedBytesLE(chop(LEN) *Int 128, G2), LEN) ... </k>
+    rule <k> #exec ECPAIRING => #ecpairing(.List, .List, Int2Bytes(chop(LEN) *Int 64, G1, LE), Int2Bytes(chop(LEN) *Int 128, G2, LE), LEN) ... </k>
          <callData> LEN, G1, G2, .Ints </callData>
 
-    syntax InternalOp ::= #ecpairing(List, List, WordStack, WordStack, Int)
+    syntax InternalOp ::= #ecpairing(List, List, Bytes, Bytes, Int)
  // -----------------------------------------------------------------------
-    rule (.K => #checkPoint) ~> #ecpairing((.List => ListItem((#asUnsigned(G1 [ 0 .. 32 ]), #asUnsigned(G1 [ 32 .. 32 ]))::G1Point)) _, (.List => ListItem((#asUnsigned(G2 [ 32 .. 32 ]) x #asUnsigned(G2 [ 0 .. 32 ]) , #asUnsigned(G2 [ 96 .. 32 ]) x #asUnsigned(G2 [ 64 .. 32 ])))) _, G1 => #drop(64, G1), G2 => #drop(128, G2), LEN => LEN -Int 1)
+    rule (.K => #checkPoint) ~> #ecpairing((.List => ListItem((Bytes2Int(G1 [ 0 .. 32 ], BE, Unsigned), Bytes2Int(G1 [ 32 .. 32 ], BE, Unsigned))::G1Point)) _, (.List => ListItem((Bytes2Int(G2 [ 32 .. 32 ], BE, Unsigned) x Bytes2Int(G2 [ 0 .. 32 ], BE, Unsigned) , Bytes2Int(G2 [ 96 .. 32 ], BE, Unsigned) x Bytes2Int(G2 [ 64 .. 32 ], BE, Unsigned)))) _, G1 => G1 [ 64 .. lengthBytes(G1) ], G2 => G2 [ 128 .. lengthBytes(G2) ], LEN => LEN -Int 1)
       requires LEN >Int 0
     rule <k> #ecpairing(A, B, _, _, 0) => #end ... </k>
          <output> _ => bool2Word(BN128AtePairing(A, B)) , .Ints </output>
