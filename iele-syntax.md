@@ -384,8 +384,8 @@ The body of a function is a list of blocks, where each block is a list of IELE i
 Finally, following are macros for desugaring empty `LValues` and `Operands` lists in calls and returns.
 
 ```k
-  rule call NAME ( ARGS ) => .LValues = call NAME ( ARGS ) [macro]
-  rule ret void => ret .NonEmptyOperands [macro]
+  rule call NAME ( ARGS ) => .LValues = call NAME ( ARGS ) [alias]
+  rule ret void => ret .NonEmptyOperands [alias]
 endmodule
 ```
 
