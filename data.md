@@ -430,12 +430,14 @@ These parsers can interperet hex-encoded strings as `Int`s, `WordStack`s, and `M
     syntax WordStack ::= #parseByteStack ( String )    [function]
                        | #parseByteStack ( String , WordStack , Int , Int ) [function, klabel(#parseByteStackAux)]
                        | #parseByteStackRaw ( String ) [function]
- // -------------------------------------------------------------
+                       | #parseByteStackRaw ( String , WordStack , Int , Int ) [function, klabel(#parseByteStackRawAux)]
+ // --------------------------------------------------------------------------------------------------------------------
     rule #parseByteStack(S) => #fun(STR => #parseByteStack(STR, .WordStack, 0, lengthString(STR)))(replaceAll(S, "0x", ""))
     rule #parseByteStack(_, WS, LEN, LEN) => #rev(WS, .WordStack)
-    rule #parseByteStack(S, WS, I, LEN)  => #parseByteStack(S, #parseHexWord(substrString(S, I, I +Int 2)) : WS, I +Int 2, LEN) requires I <Int LEN
-    rule #parseByteStackRaw(S) => ordChar(substrString(S, 0, 1)) : #parseByteStackRaw(substrString(S, 1, lengthString(S))) requires lengthString(S) >=Int 1
-    rule #parseByteStackRaw("") => .WordStack
+    rule #parseByteStack(S, WS, I, LEN)  => #parseByteStack(S, #parseHexWord(substrString(S, I, I +Int 2)) : WS, I +Int 2, LEN) [owise]
+    rule #parseByteStackRaw(S) => #parseByteStackRaw(S, .WordStack, 0, lengthString(S))
+    rule #parseByteStackRaw(S, WS, LEN, LEN) => #rev(WS, .WordStack)
+    rule #parseByteStackRaw(S, WS, I, LEN) => #parseByteStackRaw(S, ordChar(substrString(S, I, I +Int 1)) : WS, I +Int 1, LEN) [owise]
 
     syntax Map ::= #parseMap ( JSON ) [function]
  // --------------------------------------------
