@@ -889,8 +889,7 @@ which is used to compute a more accurate approximation of the length of the resu
     rule #adjustedBitLength(LEX, EX) => maxInt(1, #if LEX <=Int 1 #then 0 #else 64 *Int (LEX -Int 1) #fi +Int #adjustedBitLength(twos(8, EX)))
 
     rule #adjustedBitLength(0) => 0
-    rule #adjustedBitLength(1) => 0
-    rule #adjustedBitLength(N) => 1 +Int #adjustedBitLength(N /Int 2) requires N >Int 1
+    rule #adjustedBitLength(N) => log2Int(N) [owise]
 
 ```
 
