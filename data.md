@@ -355,6 +355,9 @@ The local memory of execution is a byte-array (instead of a word-array).
     syntax Bytes ::= Bytes "[" Int ":=" Bytes "]" [function, klabel(assignBytesRange)]
  // ----------------------------------------------------------------------------------
     rule B::Bytes [ I := B'::Bytes ] => replaceAtBytes(padRightBytes(B, I +Int lengthBytes(B'), 0), I, B')
+      requires B' =/=K .Bytes
+    rule B::Bytes [ I := B'::Bytes ] => B
+      requires B' ==K .Bytes
 ```
 
 Addresses

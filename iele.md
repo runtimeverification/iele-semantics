@@ -777,7 +777,7 @@ These operations are getters/setters of the local execution memory.
          <localMem>... CELL |-> LM ...</localMem>
 
     rule <k> #exec store VALUE , CELL , OFFSET , WIDTH => . ... </k>
-         <localMem>... CELL |-> (LM => LM [ OFFSET := Int2Bytes(chop(WIDTH), VALUE modInt (1 <<Int (chop(WIDTH) <<Int 3)), LE) ]) </localMem>
+         <localMem>... CELL |-> (LM => LM [ OFFSET := Int2Bytes(chop(WIDTH), twos(chop(WIDTH), VALUE), LE) ]) </localMem>
 
     rule <k> #exec store _ , CELL , _ , _ ... </k>
          <localMem> LM (.Map => CELL |-> .Bytes) </localMem>
