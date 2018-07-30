@@ -27,8 +27,6 @@ To install on MacOS, after installing the command line tools package:
 brew tap homebrew/homebrew-cask homebrew-cask-versions
 brew cask install java8
 brew install maven opam pkg-config gmp mpfr automake libtool pandoc
-export LDFLAGS="-L$(brew --prefix openssl)/lib" # needed by pyethereum
-export CFLAGS="-I$(brew --prefix openssl)/include" # needed by pyethereum
 ```
 
 Followed by the Ubuntu instructions beginning at `git submodule update --init`
