@@ -45,7 +45,7 @@ module IELE-COMMON
   syntax NumericIeleName ::= Int
   syntax StringIeleName
   syntax IeleName ::= NumericIeleName
-  syntax IeleName ::= StringIeleName [klabel(StringIeleName), avoid]
+  syntax IeleName ::= StringIeleName [klabel(StringIeleName), avoid, symbol]
 ```
 
 ### Identifiers
