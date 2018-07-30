@@ -24,18 +24,20 @@ endif
 
 export PATH:=$(shell cd compiler && stack path --local-install-root)/bin:${PATH}
 
-.PHONY: all clean distclean build tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode install
+.PHONY: all clean distclean build tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode install kore
 .SECONDARY:
 
 all: build split-vm-tests testnode
 
 clean:
-	rm -rf .build/standalone .build/node .build/check .build/plugin-node .build/plugin-standalone .build/vm compiler/.stack-work
+	rm -rf .build/standalone .build/kore .build/node .build/check .build/plugin-node .build/plugin-standalone .build/vm compiler/.stack-work
 
 distclean: clean
 	cd tests/ci/rv-k && mvn clean
 
 build: tangle .build/standalone/iele-testing-kompiled/interpreter .build/vm/iele-vm assembler .build/check/well-formedness-kompiled/interpreter
+
+kore: tangle .build/kore/iele-testing.kore
 
 assembler:
 	cd compiler && stack build --install-ghc
@@ -177,6 +179,11 @@ ocaml-deps:
 	opam update
 	opam switch 4.03.0+k
 	eval `opam config env` && opam install -y mlgmp zarith uuidm cryptokit secp256k1.0.3.2 bn128 hex ocaml-protoc rlp yojson ocp-ocamlres bisect_ppx
+
+.build/kore/iele-testing.kore: $(defn_files)
+	@echo "== kompile: $@"
+	${KOMPILE} --debug --main-module IELE-TESTING --backend kore \
+					--syntax-module IELE-SYNTAX .build/standalone/iele-testing.k --directory .build/kore
 
 .build/%/iele-testing-kompiled/constants.$(EXT): $(defn_files)
 	@echo "== kompile: $@"
