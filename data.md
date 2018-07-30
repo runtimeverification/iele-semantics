@@ -311,13 +311,9 @@ Memory
 -   `.Array` is an arbitrary length array of zeroes.
 -   `.Memory` is an arbitrary length array of byte buffers.
 
-We use the impure attribute on the function definitions because the Array sort in a
-fast backend is mutable, so we need to ensure we do not cache identical arrays for each time
-we call this function.
-
 ```k
 
-    syntax Array ::= ".Array" [function, impure]
+    syntax Array ::= ".Array" [function]
  // ---------------------------------------------
     rule .Array => makeArray(pow30, 0)
 ```
