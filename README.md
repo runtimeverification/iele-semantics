@@ -18,11 +18,11 @@ Finally, the file [Design.md](Design.md) discusses the design rationale of IELE.
 
 ### Testing
 
-[ethereum.md](ethereum.md) loads test-files from the [Ethereum Test Set](https://github.com/ethereum/tests) and executes them, checking that the output is correct.
+[iele-testing.md](iele-testing.md) loads test-files from the [Ethereum Test Set](https://github.com/ethereum/tests) and executes them, checking that the output is correct.
 If the output is correct, the entire configuration is cleared.
 If any check fails, the configuration retains the failed check at the top of the `<k>` cell.
 
-[ethereum.md](ethereum.md) is also capable of executing tests of arbitrary IELE transactions (subject to the fact that this first release of IELE is still
+[iele-testing.md](iele-testing.md) is also capable of executing tests of arbitrary IELE transactions (subject to the fact that this first release of IELE is still
 built on top of an ethereum-like network layer). The test format is based off of, but slightly different from, the ethereum BlockchainTest json test format.
 
 The structure of the json files is as follows:
@@ -104,13 +104,13 @@ loadTx(#token("966588469268559010541288244128342317224451555083","Int"))
 In this example, either a transaction was signed incorrectly, or the sender of the transaction as specified by its signature does not exist.
 
 ```
-`check__ETHEREUM-SIMULATION`(`_:__IELE-DATA`(#token("\"account\"","String"),`{_}_IELE-DATA`(`_,__IELE-DATA`(`_:__IELE-DATA`(#token("91343852333181432387730302044767688728495783936","Int"),`{_}_IELE-DATA`(`_,__IELE-DATA`(`_:__IELE-DATA`(#token("\"storage\"","String"),`_Map_`(`_|->_`(#token("0","Int"),#token("10001","Int")),`_|->_`(#token("2428090106599461928744973076844625336880384098059","Int"),#token("10000","Int")))),`.List{"_,__IELE-DATA"}`(.KList)))),`.List{"_,__IELE-DATA"}`(.KList)))))
+`check__IELE-TESTING`(`_:__IELE-DATA`(#token("\"account\"","String"),`{_}_IELE-DATA`(`_,__IELE-DATA`(`_:__IELE-DATA`(#token("91343852333181432387730302044767688728495783936","Int"),`{_}_IELE-DATA`(`_,__IELE-DATA`(`_:__IELE-DATA`(#token("\"storage\"","String"),`_Map_`(`_|->_`(#token("0","Int"),#token("10001","Int")),`_|->_`(#token("2428090106599461928744973076844625336880384098059","Int"),#token("10000","Int")))),`.List{"_,__IELE-DATA"}`(.KList)))),`.List{"_,__IELE-DATA"}`(.KList)))))
 ```
 
 Here account 91343852333181432387730302044767688728495783936 (in decimal) has different values for storage than expected by the test. Similar errors exist for the nonce, balance, and code of an account. You can refer to the `<storage>` cell in the dumped state for information on their actual values. The correct storage cell is nested within an `<account>` cell whose `<acctID>` is the address of the account in decimal.
 
 ```
-`check__ETHEREUM-SIMULATION`(`_:__IELE-DATA`(#token("\"out\"","String"),`[_]_IELE-DATA`(`_,__IELE-DATA`(#token("\"0x01\"","String"),`.List{"_,__IELE-DATA"}`(.KList)))))
+`check__IELE-TESTING`(`_:__IELE-DATA`(#token("\"out\"","String"),`[_]_IELE-DATA`(`_,__IELE-DATA`(#token("\"0x01\"","String"),`.List{"_,__IELE-DATA"}`(.KList)))))
 ```
 
 Here is a similar error, but the error states that the transaction returned an incorrect list of values. The actual return value can be found in the `<output>` cell.

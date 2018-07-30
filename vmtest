@@ -1,5 +1,5 @@
 #!/bin/sh
-interpreter="$(dirname "$0")/.build/standalone/ethereum-kompiled/interpreter"
+interpreter="$(dirname "$0")/.build/standalone/iele-testing-kompiled/interpreter"
 assembled="$(mktemp)"
 kast="$(mktemp)"
 output="$(mktemp)"
@@ -8,7 +8,7 @@ trap "rm -rf $kast $output $kast_output $assembled" INT TERM EXIT
 "$(dirname "$0")/assemble-iele-test" "$1" > "$assembled"
 "$(dirname "$0")/kast-json.py" "$assembled" > "$kast"
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
-$interpreter "$(dirname "$0")/.build/standalone/ethereum-kompiled/realdef.cma" -c PGM "$kast" textfile -c SCHEDULE '`DEFAULT_IELE-GAS`(.KList)' text -c MODE '`VMTESTS_IELE-INFRASTRUCTURE`(.KList)' text --output-file "$output"
+$interpreter "$(dirname "$0")/.build/standalone/iele-testing-kompiled/realdef.cma" -c PGM "$kast" textfile -c SCHEDULE '`DEFAULT_IELE-GAS`(.KList)' text -c MODE '`VMTESTS_IELE-INFRASTRUCTURE`(.KList)' text --output-file "$output"
 exit=$?
 if [ $exit -eq 0 ]; then
   exit 0

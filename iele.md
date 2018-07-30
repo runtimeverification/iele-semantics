@@ -118,7 +118,6 @@ In the comments next to each cell, we explain the purpose of the cell.
 
                   // IELE Network Layer
                   // ==================
-                  // Currently still integrated only with Ethereum Network for backwards-compatibility testing.
 
                   <network>
 
