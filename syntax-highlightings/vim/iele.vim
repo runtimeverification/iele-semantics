@@ -21,11 +21,11 @@ syn keyword ieleVoid       void
 syn match ieleLabel          "[a-zA-Z0-9\\_\\-\\$\\.]\+\s*\:\{0,1\}"
 
 " Call function
-syn match ieleFunctionName '@\([a-zA-Z0-9\\_\\-\\$\\.]\+\|\".\+\"\)'
+syn match ieleFunctionName contained '@\([a-zA-Z0-9\\_\\-\\$\\.]\+\|\".\+\"\)' " nextgroup=ieleFunctionParameters skipwhite
 
 " Variables (Identifiers)
-syn match ieleGlobalVariable "@[a-zA-Z0-9\\_\\-\\$\\.]\+"
-syn match ieleLocalVariable  "%[a-zA-Z0-9\\_\\-\\$\\.]\+" 
+syn match ieleGlobalVariable '@\([a-zA-Z0-9\\_\\-\\$\\.]\+\|\".\+\"\)'
+syn match ieleLocalVariable  '%\([a-zA-Z0-9\\_\\-\\$\\.]\+\|\".\+\"\)'
 
 " Keywords
 " syn `keyword` doesn't work well, so use `match` instead
@@ -53,7 +53,7 @@ hi def link ieleNumber           Number
 hi def link ieleFloat            Float
 hi def link ieleVoid             Constant
 hi def link ieleLabel            Label
-hi def link ieleCallFunction     Keyword
+hi def link ieleFunctionName     Function
 hi def link ieleKeywordMatch     Keyword 
 hi def link ieleContractName     Type 
 hi def link ieleContract         Keyword
