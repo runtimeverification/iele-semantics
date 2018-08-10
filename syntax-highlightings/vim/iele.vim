@@ -15,16 +15,13 @@ syn region  ieleComment start="/\*" end="\*/" contains=ieleTodo,@Spell
 syn keyword ieleBoolean    true false
 syn match   ieleNumber     "\<\(0\o\+\|0[xX]\x\+\|\d\+\)[lL]\=\>"
 syn match   ieleFloat      "\(\<\d\+\.\d*\|\.\d\+\)\([eE][-+]\=\d\+\)\=[fFdD]\="
-syn region  ieleString     start=+"+ skip=+\\\\\|\\"+ end=+"+ end=+$+ contains=@Spell
 syn keyword ieleVoid       void
 
 " Label
 syn match ieleLabel          "[a-zA-Z0-9\\_\\-\\$\\.]\+\s*\:\{0,1\}"
 
 " Call function
-syn match ieleFunctionName "@[a-zA-Z0-9\\_\\-\\$\\.]\+"
-syn match ieleCallFunction "\(call\|staticall\)" nextgroup=ieleFunctionName skipwhite
-" staticall
+syn match ieleFunctionName '@\([a-zA-Z0-9\\_\\-\\$\\.]\+\|\".\+\"\)'
 
 " Variables (Identifiers)
 syn match ieleGlobalVariable "@[a-zA-Z0-9\\_\\-\\$\\.]\+"
@@ -40,7 +37,7 @@ syn match ieleKeywordMatch "\s*\(at\|load\|store\|sload\|sstore\|log\|create\|co
 syn match ieleKeywordMatch "\s*\(iszero\|not\|add\|sub\|mul\|div\|exp\|mod\|addmod\|mulmod\|expmod\|byte\|sext\|twos\|and\|or\|xor\|shift\|cmp\|lt\|le\|gt\|ge\|eq\|ne\|sha3\)\s\+"  
 
 " Contract
-syn match ieleContractName   contained "[a-zA-Z0-9\\_\\-\\$\\.]\+"
+syn match ieleContractName   contained '\([a-zA-Z0-9\\_\\-\\$\\.]\+\|\".\+\"\)'
 syn match ieleContract       "\(external\s\+\)\{0,1\}contract\s\+" nextgroup=ieleContractName skipwhite 
 
 " Function
@@ -54,14 +51,10 @@ hi def link ieleComment          Comment
 hi def link ieleBoolean          Boolean
 hi def link ieleNumber           Number 
 hi def link ieleFloat            Float
-hi def link ieleString           String
 hi def link ieleVoid             Constant
 hi def link ieleLabel            Label
 hi def link ieleFunctionName     Function
 hi def link ieleCallFunction     Keyword
-hi def link ieleGlobalVariable   Identifier 
-hi def link ieleLocalVariable    Identifier
-" hi def link ieleKeyword          Keyword 
 hi def link ieleKeywordMatch     Keyword 
 hi def link ieleContractName     Type 
 hi def link ieleContract         Keyword
