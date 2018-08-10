@@ -10,6 +10,6 @@ Add the code below to your .emacs file:
 
 ## Development
 
-Open `iele.el` in emacs.  
-After modifying `iele.el`, `M-x` then run `eval-current-buffer` command.  
+Open `iele-mode.el` in emacs.  
+After modifying `iele-mode.el`, `M-x` then run `eval-current-buffer` command.  
 Next, open a `.iele` file, `M-x` then run `iele-mode` command to see the update.  

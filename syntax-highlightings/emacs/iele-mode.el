@@ -39,9 +39,9 @@
    ;; Void constant
    `(,(regexp-opt '("true" "false" "void") 'symbols) . font-lock-constant-face)
    ;; Contract declaration
-   '("\\b\\(contract\\)\s+\\([-a-zA-Z$\._][-a-zA-Z$\._0-9]*\\)\\b" (1 font-lock-keyword-face) (2 font-lock-function-name-face))
+   '("\\(contract\\)\s+\\([-a-zA-Z$\.0-9_]+\\|\".+?\"\\)" (1 font-lock-keyword-face) (2 font-lock-function-name-face))  
    ;; Function declaration
-   '("\\b\\(define\\)\s+\\(?:public\s+\\)?\\([%@][-a-zA-Z$\._][-a-zA-Z$\._0-9]*\\)\\b" (1 font-lock-keyword-face) (2 font-lock-function-name-face))
+   '("\\(define\\)\s+\\(?:public\s+\\)?\\([%@]\\([-a-zA-Z$\.0-9_]+\\|\".+?\"\\)\\)" (1 font-lock-keyword-face) (2 font-lock-function-name-face))
    ;; Keywords
    `(,(regexp-opt '("ret" "revert" "br" "at" "load" "store" "sload" "sstore"
                     "log" "create" "copycreate" "selfdestruct" "deposit" "init" "send" "gaslimit"
@@ -54,6 +54,8 @@
 
 (define-derived-mode iele-mode fundamental-mode "iele mode"
   "Major mode for editing IELE"
+
+  (setq font-lock-keywords-only t) ;; turn off "..." double quotes
 
   ;; code for syntax highlighting
   (setq font-lock-defaults '((iele-font-lock-keywords))))
