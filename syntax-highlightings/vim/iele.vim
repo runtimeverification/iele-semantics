@@ -53,7 +53,6 @@ hi def link ieleNumber           Number
 hi def link ieleFloat            Float
 hi def link ieleVoid             Constant
 hi def link ieleLabel            Label
-hi def link ieleFunctionName     Function
 hi def link ieleCallFunction     Keyword
 hi def link ieleKeywordMatch     Keyword 
 hi def link ieleContractName     Type 
