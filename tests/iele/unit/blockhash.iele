@@ -1,8 +1,7 @@
 contract blockhash_test {
-  @idx = 0
-  define public @test_blockhash(%offset) {
+  define public @test_blockhash(%offset, %idx) {
     %hash = call @iele.blockhash(%offset)
-    sstore %hash, @idx
+    sstore %hash, %idx
   }
 
   define @init() {}

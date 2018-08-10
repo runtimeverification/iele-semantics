@@ -152,10 +152,10 @@ let asm_iele_opcode op = match op with
 | `COPYCREATE -> "\xf1\x00\x00\x00\x00"
 | `CALL(call,nargs,nreturn) -> "\xf2" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
 | `CALLCODE(call,nargs,nreturn) -> "\xf3" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
-| `DELEGATECALL(call,nargs,nreturn) -> "\xf4" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
-| `STATICCALL(call,nargs,nreturn) -> "\xf5" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `DELEGATECALL(call,nargs,nreturn) -> "\xf5" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `STATICCALL(call,nargs,nreturn) -> "\xf4" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
 | `RETURN(nreturn) -> "\xf6" ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
-| `REVERT(nreturn) -> "\xf7" ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
+| `REVERT(nreturn) -> "\xf7"
 | `LOCALCALL (call,nargs,nreturn) -> "\xf8" ^ (IeleUtil.be_int_width (Z.of_int call) 16) ^ (IeleUtil.be_int_width (Z.of_int nargs) 16) ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
 | `LOCALRETURN(nreturn) -> "\xf6" ^ (IeleUtil.be_int_width (Z.of_int nreturn) 16)
 | `INVALID -> "\xfe"
@@ -179,9 +179,9 @@ let asm_iele_op op buf nregs = match op with
   asm_iele_regs (regs1 @ regs2) buf nregs
 | LiOp(opcode,r,payload) ->
   Buffer.add_string buf (asm_iele_opcode opcode);
-  asm_iele_regs [r] buf nregs;
   let payload_be = IeleUtil.be_int payload in
-  Buffer.add_string buf (IeleUtil.rlp_encode_string payload_be)
+  Buffer.add_string buf (IeleUtil.rlp_encode_string payload_be);
+  asm_iele_regs [r] buf nregs
 
 let rec asm_iele_aux ops buf nregs = match ops with
 | [] -> ()
@@ -194,4 +194,9 @@ let asm_iele ops =
   in
   let buf = Buffer.create ((List.length ops) * 2) in
   asm_iele_aux ops buf nregs;
-  Buffer.contents buf
+  let bytes_length = Buffer.length buf in
+  if bytes_length = 0 then
+    ""
+  else
+    let size_header = IeleUtil.be_int_width (Z.of_int bytes_length) 32 in
+    size_header ^ Buffer.contents buf

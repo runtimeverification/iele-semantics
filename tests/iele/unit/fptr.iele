@@ -1,0 +1,59 @@
+contract test {
+  define public @test() {
+    %func = @test2
+    store %func, 0
+    %func = load 0
+    %ret = call %func()
+    br %ret, throw
+    %addr = call @iele.address()
+    %gas = call @iele.gas()
+    %status, %ret = call %func at %addr() send 0, gaslimit %gas
+    br %status, throw
+    br %ret, throw
+    %status, %ret = staticcall %func at %addr() gaslimit %gas
+    br %status, throw
+    br %ret, throw
+
+    %gas = 10000
+    %status = call @testfail at %addr() send 0, gaslimit %gas
+    %cmp = cmp ne %status, 1
+    br %cmp, throw
+
+    %status = call @testfail2 at %addr() send 0, gaslimit %gas
+    %cmp = cmp ne %status, 2
+    br %cmp, throw
+    ret void
+  throw:
+    revert -1
+  }
+
+  @unused = 13
+
+  define @init () {}
+
+  define public @test2() {
+    ret 0
+  }
+
+  define public @testfail() {
+    %func = 15
+    %addr = call @iele.address()
+    %gas = 1000
+    %status, %ret = call %func at %addr() send 0, gaslimit %gas
+    %cmp = cmp ne %status, 1
+    br %cmp, throw
+    br %ret, throw
+    %status, %ret = staticcall %func at %addr() gaslimit %gas
+    %cmp = cmp ne %status, 1
+    br %cmp, throw
+    br %ret, throw
+    %ret = call %func()
+  throw:
+    revert -1
+  }
+
+  define public @testfail2() {
+    %func = @test2
+    %ret = call %func(0)
+  }
+}

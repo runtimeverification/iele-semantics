@@ -31,6 +31,7 @@ asm_iele_opcode1 op1 = case op1 of
 
   SIGNEXTEND -> putWord8 0x0b
   TWOS -> putWord8 0x0c
+  BSWAP -> putWord8 0x0d
 
   NE -> putWord8 0x0f
   LT -> putWord8 0x10
@@ -44,6 +45,7 @@ asm_iele_opcode1 op1 = case op1 of
   OR -> putWord8 0x17
   XOR -> putWord8 0x18
   NOT -> putWord8 0x19
+  LOG2 -> putWord8 0x1c
 
   BYTE -> putWord8 0x1a
   SHIFT -> putWord8 0x1b
@@ -96,10 +98,9 @@ asm_iele_opcode0 op0 = case op0 of
         | otherwise -> error "LOG only takes up to 4 values"
 
   RETURN nargs -> putWord8 0xf6 >> putArgs16 nargs
-  REVERT nargs -> putWord8 0xf7 >> putArgs16 nargs
 
+  REVERT -> putWord8 0xf7
   INVALID -> putWord8 0xfe
-
   SELFDESTRUCT -> putWord8 0xff
 
 asm_iele_opcode_li :: IeleOpcodeLi -> Put
@@ -110,8 +111,12 @@ asm_iele_opcode_li opLi = case opLi of
 asm_iele_opcode_call :: IeleOpcodeCall Word16 Word16 -> Put
 asm_iele_opcode_call opCall = case opCall of
   CALL call nargs nreturn -> putWord8 0xf2 >> putWord16be call >> putArgs16 nargs >> putRets16 nreturn
-  STATICCALL call nargs nreturn -> putWord8 0xf5 >> putWord16be call >> putArgs16 nargs >> putRets16 nreturn
+  CALLDYN nargs nreturn -> putWord8 0xf3 >> putArgs16 nargs >> putRets16 nreturn
+  STATICCALL call nargs nreturn -> putWord8 0xf4 >> putWord16be call >> putArgs16 nargs >> putRets16 nreturn
+  STATICCALLDYN nargs nreturn -> putWord8 0xf5 >> putArgs16 nargs >> putRets16 nreturn
   LOCALCALL call nargs nreturn -> putWord8 0xf8 >> putWord16be call >> putArgs16 nargs >> putRets16 nreturn
+  LOCALCALLDYN nargs nreturn -> putWord8 0xf9 >> putArgs16 nargs >> putRets16 nreturn
+  CALLADDRESS call -> putWord8 0xfa >> putWord16be call
 
   CREATE contract nargs -> putWord8 0xf0 >> putWord16be contract >> putArgs16 nargs
   COPYCREATE nargs -> putWord8 0xf1 >> putArgs16 nargs
@@ -151,7 +156,7 @@ asm_iele_op nregs op = case op of
   VoidOp opcode regs -> asm_iele_opcode0 opcode >> enc_regs regs
   CallOp opcode regs1 regs2 -> asm_iele_opcode_call opcode >> enc_regs (regs1++regs2)
   LiOp opcode r payload ->
-    do asm_iele_opcode_li opcode; enc_regs [r]; rlp_put_bytes (be_bytes payload)
+    do asm_iele_opcode_li opcode; rlp_put_bytes (be_bytes payload); enc_regs [r]
  where enc_regs all_regs = asm_iele_regs nregs all_regs
 
 asm_iele :: Putter [IeleOp]
@@ -159,4 +164,9 @@ asm_iele ops = mapM_ (asm_iele_op nregs) ops
   where nregs = case ops of (VoidOp (REGISTERS n) []:_) -> n; _ -> 5
 
 assemble :: [IeleOp] -> B.ByteString
-assemble ops = runPut (asm_iele ops)
+assemble ops = runPut (put_byte_length (B.length bytes) >> putByteString bytes)
+  where bytes = runPut (asm_iele ops)
+        put_byte_length len
+          | len < 2^32 = putWord32be (fromIntegral len)
+          | otherwise = error "Contract byte length does not fit in 4 bytes"
+

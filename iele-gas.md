@@ -77,6 +77,9 @@ as follows:
     size of the result is the maximum of the sizes of W0 and W1
 -   `REG = shift W0, W1`
     size of the result is the size of the variable modified by the shift amount (positive for left shift, negative for right shift)
+-   `REG = log2 W` size of logarithm base 2 is equal to at most 8 * the size in bytes of the number,
+    which must be less than 2^64 to fit in memory on a 64-bit processor. We can compute this as a linear cost
+    on the word size because it is a floored logarithm and can be computed using bit counting.
 
 ```k
     rule #memory [ REG = not   W       ] => #registerDelta(REG, intSize(W))
@@ -84,6 +87,7 @@ as follows:
     rule #memory [ REG = or    W0 , W1 ] => #registerDelta(REG, maxInt(intSize(W0), intSize(W1)))
     rule #memory [ REG = xor   W0 , W1 ] => #registerDelta(REG, maxInt(intSize(W0), intSize(W1)))
     rule #memory [ REG = shift W0 , W1 ] => #registerDelta(REG, maxInt(1, intSize(W0) +Int bitsInWords(W1)))
+    rule #memory [ REG = log2  W       ] => #registerDelta(REG, 2)
 ```
 
 #### Comparison operators
@@ -140,13 +144,14 @@ Result size of SHA3 is 256 bits, i.e., 4 words.
 #### Byte access
 
 -   `REG = byte INDEX, W`  the result size is one byte, fitting in one word
--   `REG = sext WIDTH , W` and `REG = twos WIDTH , W`
+-   `REG = sext WIDTH , W`, `REG = twos WIDTH , W`, and `REG = bswap WIDTH , W`
     the result size is WIDTH bytes, i.e., WIDTH / 8 words.
 
 ```k
-    rule #memory [ REG = byte INDEX , _ ] => #registerDelta(REG, bytesInWords(1))
-    rule #memory [ REG = sext WIDTH , _ ] => #registerDelta(REG, bytesInWords(chop(WIDTH)))
-    rule #memory [ REG = twos WIDTH , _ ] => #registerDelta(REG, bytesInWords(chop(WIDTH)))
+    rule #memory [ REG = byte  INDEX , _ ] => #registerDelta(REG, bytesInWords(1))
+    rule #memory [ REG = sext  WIDTH , _ ] => #registerDelta(REG, bytesInWords(chop(WIDTH)))
+    rule #memory [ REG = twos  WIDTH , _ ] => #registerDelta(REG, bytesInWords(chop(WIDTH)))
+    rule #memory [ REG = bswap WIDTH , _ ] => #registerDelta(REG, bytesInWords(chop(WIDTH)))
 ```
 
 #### Local state operations
@@ -161,6 +166,7 @@ Operations whose result should fit into a word.
     rule #memory [ REG = call @iele.msize       ( .Ints ) ] => #registerDelta(REG, 1)
     rule #memory [ REG = call @iele.codesize    ( .Ints ) ] => #registerDelta(REG, 1)
     rule #memory [ REG = call @iele.extcodesize ( _     ) ] => #registerDelta(REG, 1)
+    rule #memory [ REG = calladdress _ at _               ] => #registerDelta(REG, 1)
 ```
 
 Operations whose result is an address:
@@ -205,6 +211,13 @@ to the function, which consume as much as the size of their arguments.
          <schedule> SCHED </schedule>
          <funcId> NAME </funcId>
          <nregs> REGISTERS </nregs>
+
+    rule <k> #memory [ _ = call (IDX:Int => @ FUNC) ( _ ) ] ... </k>
+         <funcLabels> ... IDX |-> FUNC ... </funcLabels>
+    // this will throw an exception, so the gas cost doesn't really matter
+    rule <k> #memory [ _ = call IDX:Int ( _ ) ] => . ... </k>
+         <funcLabels> LABELS </funcLabels>
+      requires notBool IDX in_keys(LABELS)
 ```
 
 The memory cost of returning to a function is negative. Instead of charging a gas cost, memory is reclaimed according to the
@@ -240,8 +253,11 @@ caller's registers, but that is handled in `iele.md`.
     rule #memory [ store _ ,  INDEX1 , INDEX2 , WIDTH ] => #memoryExpand(INDEX1, bytesInWords(chop(INDEX2) +Int chop(WIDTH))) requires chop(WIDTH) >Int 0
     rule #memory [ store _ ,  INDEX1 , INDEX2 , WIDTH ] => .K requires chop(WIDTH) ==Int 0
 
-    rule <k> #memory [ REG = load INDEX ] => #registerDelta(REG, bytesInWords(#sizeWordStack({LM [ INDEX]}:>WordStack))) ... </k>
-         <localMem> LM </localMem>
+    rule <k> #memory [ REG = load INDEX ] => #registerDelta(REG, bytesInWords(lengthBytes(LM))) ... </k>
+         <localMem>... INDEX |-> LM ...</localMem>
+    rule <k> #memory [ REG = load INDEX ] ... </k>
+         <localMem> LM (.Map => INDEX |-> .Bytes) </localMem>
+      requires notBool INDEX in_keys(LM)
     rule #memory [ store VALUE ,  INDEX ] => #memoryDelta(INDEX, intSize(VALUE))
 ```
 
@@ -353,14 +369,22 @@ which is maintained by the next rules.
                         | #memoryDelta   ( Int ) [klabel(memoryDirectDelta)]
  // ------------------------------------------------------------------------
     rule <k> #memoryExpand(INDEX, NEWSIZE) => #deductMemory(PEAK) ... </k>
-         <localMem> LM </localMem>
-         <currentMemory> CURR => CURR +Int maxInt(0, NEWSIZE -Int bytesInWords((#sizeWordStack({LM [ INDEX ]}:>WordStack)))) </currentMemory>
-         <peakMemory> PEAK => maxInt(PEAK, CURR +Int maxInt(0, NEWSIZE -Int bytesInWords((#sizeWordStack({LM [ INDEX ]}:>WordStack))))) </peakMemory>
+         <localMem>... INDEX |-> LM ...</localMem>
+         <currentMemory> CURR => CURR +Int maxInt(0, NEWSIZE -Int bytesInWords((lengthBytes(LM)))) </currentMemory>
+         <peakMemory> PEAK => maxInt(PEAK, CURR +Int maxInt(0, NEWSIZE -Int bytesInWords((lengthBytes(LM))))) </peakMemory>
+
+    rule <k> #memoryExpand(INDEX, _) ... </k>
+         <localMem> LM (.Map => INDEX |-> .Bytes) </localMem>
+      requires notBool INDEX in_keys(LM)
 
     rule <k> #memoryDelta(INDEX, NEWSIZE) => #deductMemory(PEAK) ... </k>
-         <localMem> LM </localMem>
-         <currentMemory> CURR => CURR +Int NEWSIZE -Int bytesInWords((#sizeWordStack({LM [ INDEX ]}:>WordStack))) </currentMemory>
-         <peakMemory> PEAK => maxInt(PEAK, CURR +Int NEWSIZE -Int bytesInWords((#sizeWordStack({LM [ INDEX ]}:>WordStack)))) </peakMemory>
+         <localMem>... INDEX |-> LM ...</localMem>
+         <currentMemory> CURR => CURR +Int NEWSIZE -Int bytesInWords((lengthBytes(LM))) </currentMemory>
+         <peakMemory> PEAK => maxInt(PEAK, CURR +Int NEWSIZE -Int bytesInWords((lengthBytes(LM)))) </peakMemory>
+
+    rule <k> #memoryDelta(INDEX, _) ... </k>
+         <localMem> LM (.Map => INDEX |-> .Bytes) </localMem>
+      requires notBool INDEX in_keys(LM)
 
     rule <k> #memoryDelta(DELTA) => #deductMemory(PEAK) ... </k>
          <currentMemory> CURR => CURR +Int DELTA </currentMemory>
@@ -412,6 +436,7 @@ The bitwise expressions have a constant cost plus a linear factor in the number 
     rule #compute [ _ = or    W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gbitwiseword < SCHED >
     rule #compute [ _ = xor   W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gbitwiseword < SCHED >
     rule #compute [ _ = shift W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(1, intSize(W0) +Int bitsInWords(W1)) *Int Gbitwiseword < SCHED >
+    rule #compute [ _ = log2 W,        SCHED ] => Gbitwise < SCHED > +Int intSize(W) *Int Gbitwiseword < SCHED >
 ```
 
 #### Comparison operators
@@ -447,7 +472,7 @@ The bitwise expressions have a constant cost plus a linear factor in the number 
 
 ```k
     rule #compute [ _ = addmod W0 , W1 , W2, SCHED ] => Gadd < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gaddword < SCHED > +Int Cdiv(SCHED, maxInt(intSize(W0), intSize(W1)) +Int 1, intSize(W2))
-    rule #compute [ _ = mulmod W0 , W1 , W2, SCHED ] => Cmul(SCHED, intSize(W0), intSize(W1)) +Int Cdiv(SCHED, intSize(W0) +Int intSize(W1), intSize(W2)) +Int Gmulmod < SCHED >
+    rule #compute [ _ = mulmod W0 , W1 , W2, SCHED ] => Cmul(SCHED, intSize(W0), intSize(W1)) +Int Cdiv(SCHED, intSize(W0) +Int intSize(W1), intSize(W2))
     rule #compute [ _ = expmod W0 , W1 , W2, SCHED ] => Cexpmod(SCHED, intSize(W0), intSize(W1), intSize(W2), W2)
 ```
 
@@ -456,19 +481,24 @@ The bitwise expressions have a constant cost plus a linear factor in the number 
 The cost of hashing a memory cell is equal to a constant plus the size of the cell in words.
 
 ```k
-    rule <k> #compute [ _ = sha3 W0, SCHED ] => Gsha3 < SCHED > +Int bytesInWords(#sizeWordStack({LM [ W0 ]}:>WordStack)) *Int Gsha3word < SCHED > ... </k>
-         <localMem> LM </localMem>
+    rule <k> #compute [ _ = sha3 W0, SCHED ] => Gsha3 < SCHED > +Int bytesInWords(lengthBytes(LM)) *Int Gsha3word < SCHED > ... </k>
+         <localMem>... W0 |-> LM ...</localMem>
+
+    rule <k> #compute [ _ = sha3 W0, SCHED ] ... </k>
+         <localMem> LM (.Map => W0 |-> .Bytes) </localMem>
+      requires notBool W0 in_keys(LM)
 ```
 
 #### Byte access
 
 -   `byte` has a constant cost.
--   `twos` and `sign` have a constant cost plus a linear factor in the `WIDTH` parameter.
+-   `twos`, `sext`, and `bswap` have a constant cost plus a linear factor in the `WIDTH` parameter.
 
 ```k
     rule #compute [ _ = byte _ , _, SCHED ] => Gbyte < SCHED >
-    rule #compute [ _ = twos WIDTH, _, SCHED ] => Gsign < SCHED > +Int maxInt(1, bytesInWords(chop(WIDTH))) *Int Gsignword < SCHED >
-    rule #compute [ _ = sext WIDTH, _, SCHED ] => Gsign < SCHED > +Int maxInt(1, bytesInWords(chop(WIDTH))) *Int Gsignword < SCHED >
+    rule #compute [ _ = twos  WIDTH, _, SCHED ] => Gsign < SCHED > +Int maxInt(1, bytesInWords(chop(WIDTH))) *Int Gsignword < SCHED >
+    rule #compute [ _ = sext  WIDTH, _, SCHED ] => Gsign < SCHED > +Int maxInt(1, bytesInWords(chop(WIDTH))) *Int Gsignword < SCHED >
+    rule #compute [ _ = bswap WIDTH, _, SCHED ] => Gsign < SCHED > +Int maxInt(1, bytesInWords(chop(WIDTH))) *Int Gsignword < SCHED >
 ```
 
 #### Local state operations
@@ -504,6 +534,7 @@ Each of these operations pays a constant cost to look up information about an ac
 ```k
     rule #compute [ _ = call @iele.balance     ( _ ), SCHED ] => Gbalance     < SCHED >
     rule #compute [ _ = call @iele.extcodesize ( _ ), SCHED ] => Gextcodesize < SCHED >
+    rule #compute [ _ = calladdress _ at _,           SCHED ] => Gcalladdress < SCHED >
 ```
 
 #### Assignment operations
@@ -536,6 +567,12 @@ constant cost to perform the jump and store the return address.
     rule <k> #compute [ _ = call @ NAME ( ARGS ), SCHED ] => Gcallreg < SCHED > *Int REGISTERS +Int intSizes(ARGS) *Int Gcopy < SCHED > +Int Glocalcall < SCHED > ... </k>
          <funcId> NAME </funcId>
          <nregs> REGISTERS </nregs>
+    rule <k> #compute [ _ = call (IDX:Int => @ FUNC) ( _ ), _ ] ... </k>
+         <funcLabels> ... IDX |-> FUNC ... </funcLabels>
+    // this will throw an exception, so the gas cost doesn't really matter
+    rule <k> #compute [ _ = call IDX:Int ( _ ), _ ] => 0 ... </k>
+         <funcLabels> LABELS </funcLabels>
+      requires notBool IDX in_keys(LABELS)
 ```
 
 The cost to return from an intra-contract call is the cost to move the return values into the result registers plus the cost to
@@ -575,11 +612,18 @@ The cost to call another contract is very similar to the cost in EVM:
 The cost of logging is similar to the cost in EVM: a constant ccost plus a cost per byte of unindexed data plus a cost per indexed log topic.
 
 ```k
-    rule <k> #compute [ log IDX, SCHED ]                                 => (Glog < SCHED > +Int (Glogdata < SCHED > *Int bytesInWords(#sizeWordStack({LM [ IDX ]}:>WordStack))) +Int (0 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
-    rule <k> #compute [ log IDX , _:Int, SCHED ]                         => (Glog < SCHED > +Int (Glogdata < SCHED > *Int bytesInWords(#sizeWordStack({LM [ IDX ]}:>WordStack))) +Int (1 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
-    rule <k> #compute [ log IDX , _:Int , _:Int, SCHED ]                 => (Glog < SCHED > +Int (Glogdata < SCHED > *Int bytesInWords(#sizeWordStack({LM [ IDX ]}:>WordStack))) +Int (2 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
-    rule <k> #compute [ log IDX , _:Int , _:Int , _:Int, SCHED ]         => (Glog < SCHED > +Int (Glogdata < SCHED > *Int bytesInWords(#sizeWordStack({LM [ IDX ]}:>WordStack))) +Int (3 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
-    rule <k> #compute [ log IDX , _:Int , _:Int , _:Int,  _:Int, SCHED ] => (Glog < SCHED > +Int (Glogdata < SCHED > *Int bytesInWords(#sizeWordStack({LM [ IDX ]}:>WordStack))) +Int (4 *Int Glogtopic < SCHED >)) ... </k> <localMem> LM </localMem>
+    rule <k> #compute [ log IDX, SCHED ]                                 => (Glog < SCHED > +Int (Glogdata < SCHED > *Int bytesInWords(lengthBytes(LM))) +Int (0 *Int Glogtopic < SCHED >)) ... </k> <localMem>... IDX |-> LM ...</localMem>
+    rule <k> #compute [ log IDX , _:Int, SCHED ]                         => (Glog < SCHED > +Int (Glogdata < SCHED > *Int bytesInWords(lengthBytes(LM))) +Int (1 *Int Glogtopic < SCHED >)) ... </k> <localMem>... IDX |-> LM ...</localMem>
+    rule <k> #compute [ log IDX , _:Int , _:Int, SCHED ]                 => (Glog < SCHED > +Int (Glogdata < SCHED > *Int bytesInWords(lengthBytes(LM))) +Int (2 *Int Glogtopic < SCHED >)) ... </k> <localMem>... IDX |-> LM ...</localMem>
+    rule <k> #compute [ log IDX , _:Int , _:Int , _:Int, SCHED ]         => (Glog < SCHED > +Int (Glogdata < SCHED > *Int bytesInWords(lengthBytes(LM))) +Int (3 *Int Glogtopic < SCHED >)) ... </k> <localMem>... IDX |-> LM ...</localMem>
+    rule <k> #compute [ log IDX , _:Int , _:Int , _:Int,  _:Int, SCHED ] => (Glog < SCHED > +Int (Glogdata < SCHED > *Int bytesInWords(lengthBytes(LM))) +Int (4 *Int Glogtopic < SCHED >)) ... </k> <localMem>... IDX |-> LM ...</localMem>
+
+    rule <k> #compute [ log IDX, SCHED ] ... </k>
+         <localMem> LM (.Map => IDX |-> .Bytes) </localMem>
+      requires notBool IDX in_keys(LM)
+    rule <k> #compute [ log IDX, _, SCHED ] ... </k>
+         <localMem> LM (.Map => IDX |-> .Bytes) </localMem>
+      requires notBool IDX in_keys(LM)
 ```
 
 ### Local Memory
@@ -588,8 +632,8 @@ The cost of logging is similar to the cost in EVM: a constant ccost plus a cost 
 -   `store` pays a constant cost plus a cost per word stored. The constant cost is higher if we must compute the width to be stored dynamically.
 
 ```k
-    rule <k> #compute [ _ = load INDEX, SCHED ] => Gloadcell < SCHED > +Int bytesInWords(#sizeWordStack({LM [ INDEX ]}:>WordStack)) *Int Gloadword < SCHED > ... </k>
-         <localMem> LM </localMem>
+    rule <k> #compute [ _ = load INDEX, SCHED ] => Gloadcell < SCHED > +Int bytesInWords(lengthBytes(LM)) *Int Gloadword < SCHED > ... </k>
+         <localMem>... INDEX |-> LM ...</localMem>
 
     rule #compute [ _ = load INDEX , OFFSET , WIDTH, SCHED ] => Gload < SCHED > +Int bytesInWords(WIDTH) *Int Gloadword < SCHED >
 
@@ -666,7 +710,7 @@ Each of the precompiled contracts pays a fixed cost per word of data passed to t
 
     rule #compute [ ECADD, SCHED ] => 500
     rule #compute [ ECMUL, SCHED ] => 40000
-    rule <k> #compute [ ECPAIRING, SCHED ] => 100000 +Int (#sizeRegs(DATA) /Int 6) *Int 80000 ... </k> <callData> DATA </callData>
+    rule <k> #compute [ ECPAIRING, SCHED ] => 100000 +Int LEN *Int 80000 ... </k> <callData> LEN , _ </callData>
 ```
 
 There are several helpers for calculating gas.
@@ -783,13 +827,13 @@ Note: These are all functions as the operator `#compute` has already loaded all 
       requires L1 >=Int L2
     
     rule Cdiv(SCHED, L1, L2) =>
-        Gdivword < SCHED > *Int L1 +Int
+        Gdivword < SCHED > *Int L1 +Int //TODO(remove this term)
         Gdiv < SCHED >
       [owise]
 
     rule Cexp(SCHED, L1, W1, W2) =>
         Gexpkara < SCHED > *Int #overApproxKara(#adjustedBitLength(L1, W1) *Int W2 /Int 64) +Int
-        Gexpword < SCHED > *Int L1 +Int
+        Gexpword < SCHED > *Int L1 +Int // TODO(adjustedBitLength)
         Gexp < SCHED >
 
     rule Cexpmod(SCHED, LB, LEX, LM, EX) =>
@@ -845,8 +889,7 @@ which is used to compute a more accurate approximation of the length of the resu
     rule #adjustedBitLength(LEX, EX) => maxInt(1, #if LEX <=Int 1 #then 0 #else 64 *Int (LEX -Int 1) #fi +Int #adjustedBitLength(twos(8, EX)))
 
     rule #adjustedBitLength(0) => 0
-    rule #adjustedBitLength(1) => 0
-    rule #adjustedBitLength(N) => 1 +Int #adjustedBitLength(N /Int 2) requires N >Int 1
+    rule #adjustedBitLength(N) => log2Int(N) [owise]
 
 ```
 
@@ -876,7 +919,7 @@ A `ScheduleConst` is a constant determined by the fee schedule; applying a `Sche
  // --------------------------------------------------------
  
     syntax ScheduleConst ::= "Gcopy"      | "Gmove"        | "Greadstate" | "Gadd"          | "Gaddword"       | "Gmul"          | "Gmulword"     | "Gmulkara"
-                           | "Gdiv"       | "Gdivword"     | "Gdivkara"   | "Gexpkara"      | "Gexpword"       | "Gexp"          | "Gmulmod"      | "Gexpmodkara"
+                           | "Gdiv"       | "Gdivword"     | "Gdivkara"   | "Gexpkara"      | "Gexpword"       | "Gexp"          | "Gexpmodkara"  | "Gcalladdress"
                            | "Gexpmod"    | "Gnot"         | "Gnotword"   | "Gbitwise"      | "Gbitwiseword"   | "Gbyte"         | "Gsign"        | "Gsignword"
                            | "Giszero"    | "Gcmp"         | "Gcmpword"   | "Gbr"           | "Gbrcond"        | "Gblockhash"    | "Gsha3"        | "Gsha3word"
                            | "Gloadcell"  | "Gload"        | "Gloadword"  | "Gstorecell"    | "Gstore"         | "Gstoreword"    | "Gbalance"     | "Gextcodesize" 
@@ -908,7 +951,6 @@ This schedule is used to execute the EVM VM tests, and contains minor variations
     rule Gexpkara       < DEFAULT > => 50
     rule Gexpword       < DEFAULT > => 10
     rule Gexp           < DEFAULT > => 0
-    rule Gmulmod        < DEFAULT > => 0
     rule Gexpmodkara    < DEFAULT > => 4
     rule Gexpmod        < DEFAULT > => 0
     rule Gnot           < DEFAULT > => 0
@@ -934,6 +976,7 @@ This schedule is used to execute the EVM VM tests, and contains minor variations
     rule Gstoreword     < DEFAULT > => 3
     rule Gbalance       < DEFAULT > => 400
     rule Gextcodesize   < DEFAULT > => 700
+    rule Gcalladdress   < DEFAULT > => 700
     rule Glog           < DEFAULT > => 375
     rule Glogdata       < DEFAULT > => 8
     rule Glogtopic      < DEFAULT > => 375

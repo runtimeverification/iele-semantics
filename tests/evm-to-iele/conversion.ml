@@ -17,7 +17,7 @@ let rec preprocess_evm (evm: evm_op list) : intermediate_op list = match evm wit
 | `SDIV :: tl -> `DIV :: preprocess_evm tl
 | `SMOD :: tl -> `MOD :: preprocess_evm tl
 | (`DIV | `MOD | `GT | `LT as op) :: tl when compatibility -> `PUSH(_32) :: `TWOS :: `SWAP(1) :: `PUSH(_32) :: `TWOS :: `SWAP(1) :: op :: preprocess_evm tl
-| (`ADDMOD | `MULMOD as op) :: tl when compatibility -> `PUSH(_32) :: `TWOS :: `SWAP(1) :: `PUSH(_32) :: `TWOS :: `SWAP(1) :: `SWAP(2) :: `PUSH(_32) :: `TWOS :: `SWAP(2) :: op :: `PUSH(_31) :: `SIGNEXTEND :: preprocess_evm tl
+| (`ADDMOD | `MULMOD as op) :: tl when compatibility -> `PUSH(_32) :: `TWOS :: `SWAP(1) :: `PUSH(_32) :: `TWOS :: `SWAP(1) :: `SWAP(2) :: `PUSH(_32) :: `TWOS :: `SWAP(2) :: op :: `PUSH(_32) :: `SIGNEXTEND :: preprocess_evm tl
 | `SLT :: tl -> `LT :: preprocess_evm tl
 | `SGT :: tl -> `GT :: preprocess_evm tl
 | `MLOAD :: tl -> `PUSH(_32) :: `SWAP(1) :: `PUSH(Z.zero) :: `MLOADN :: preprocess_evm tl
@@ -813,7 +813,8 @@ let rec postprocess_iele iele label memcells = match iele with
 | VoidOp(`SSTORE, [r1;r2]) :: tl -> LiOp(`LOADPOS, -1, _32) :: Op(`TWOS, r2, [-1; r2]) :: VoidOp(`SSTORE, [r2;r1]) :: postprocess_iele tl label memcells
 | VoidOp(`MSTORE, [r1;r2]) :: tl -> VoidOp(`MSTORE, [r2;r1]) :: postprocess_iele tl label memcells
 | VoidOp(`MSTOREN, [r1;r2;r3;r4]) :: tl -> VoidOp(`MSTOREN, [r3;r1;r2;r4]) :: postprocess_iele tl label memcells
-| Op(`SIGNEXTEND, reg, [r1;r2]) :: tl -> LiOp(`LOADPOS, -1, _32) :: Op(`TWOS, r2, [-1;r2]) :: Op(`SIGNEXTEND, reg, [r1;r2]) :: postprocess_iele tl label memcells
+| Op(`SIGNEXTEND, reg, [r1;r2]) :: tl -> LiOp(`LOADPOS, -1, _32) :: Op(`TWOS, r2, [-1;r2]) :: LiOp(`LOADPOS, -1, Z.one) :: Op(`ADD, r1, [-1;r1]) :: Op(`SIGNEXTEND, reg, [r1;r2]) :: postprocess_iele tl label memcells
+| VoidOp((`EXTCODECOPY | `CODECOPY), _) :: tl -> VoidOp(`INVALID, []) :: postprocess_iele tl label memcells
 | hd :: tl -> hd :: postprocess_iele tl label memcells
 | [] -> []
 

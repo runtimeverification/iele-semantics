@@ -24,6 +24,7 @@ module IeleParserImplementation
     , instructions
     , intToken
     , isZeroInst
+    , log2Inst
     , jumpInst
     , labeledBlock
     , labeledBlocks
@@ -144,8 +145,8 @@ positiveInt :: Parser Int
 positiveInt = lexeme (read <$> many1 digit <* notFollowedBy ieleNameNonFirstChar)
   <?> "number"
 
-ieleNameTokenNotNumber :: Parser IeleName
-ieleNameTokenNotNumber =
+ieleNameTokenNormal :: Parser IeleName
+ieleNameTokenNormal =
   lexeme $ IeleNameText <$> ((:) <$> ieleNameFirstChar <*> many ieleNameNonFirstChar)
 
 ieleNameTokenNumber :: Parser IeleName
@@ -173,8 +174,11 @@ ieleNameTokenString =
     char '"'
     return (IeleNameText chars)
 
+ieleNameTokenNormalOrString :: Parser IeleName
+ieleNameTokenNormalOrString = ieleNameTokenNormal <|> ieleNameTokenString
+
 ieleNameToken :: Parser IeleName
-ieleNameToken = ieleNameTokenNotNumber <|> ieleNameTokenNumber <|> ieleNameTokenString
+ieleNameToken = ieleNameTokenNormalOrString <|> ieleNameTokenNumber
 
 positiveDecIntToken :: Parser IntToken
 positiveDecIntToken = lexeme $ IntToken . read <$>
@@ -237,6 +241,11 @@ operand = RegOperand <$> lValue
       <|> ImmOperand <$> intToken
       <|> GlobalOperand <$> globalName
 
+operandInclReserved :: Parser Operand
+operandInclReserved = RegOperand <$> lValue
+      <|> ImmOperand <$> intToken
+      <|> GlobalOperand <$> globalNameInclReserved
+
 operands :: Parser [Operand]
 operands = commaSep0 operand
 
@@ -253,6 +262,7 @@ callInsts :: Parser IeleOpP
 callInsts = try localCallInst
         <|> try accountCallInst
         <|> try staticCallInst
+        <|> try callAddressInst
 
 ieleOp1 :: Parser Instruction
 ieleOp1 = do
@@ -264,6 +274,7 @@ ieleOp1 = do
     , loadInst
     , sloadInst
     , isZeroInst
+    , log2Inst
     , notInst
     , shaInst
     , binaryInst
@@ -323,6 +334,9 @@ jumpInst = do
 isZeroInst :: LValue -> Parser IeleOpP
 isZeroInst = simpleOp1 "iszero" 1 ISZERO
 
+log2Inst :: LValue -> Parser IeleOpP
+log2Inst = simpleOp1 "log2" 1 LOG2
+
 notInst :: LValue -> Parser IeleOpP
 notInst = simpleOp1 "not" 1 NOT
 
@@ -348,6 +362,7 @@ binaryOperations =
   ,("shift",SHIFT)
   ,("sext",SIGNEXTEND)
   ,("twos",TWOS)
+  ,("bswap",BSWAP)
   ]
 
 binaryInst :: LValue -> Parser IeleOpP
@@ -408,41 +423,61 @@ builtins = Map.fromList
 localCallInst :: Parser IeleOpP
 localCallInst = do
   results <- callResult
-  name <- skipKeyword "call" *> globalNameInclReserved
+  name <- skipKeyword "call" *> operandInclReserved
   args <- parens operands
-  let call = CallOp (LOCALCALL name (argsLength args) (retsLength results)) results args
-  case Map.lookup name builtins of
-    Nothing | name /= GlobalName (IeleNameText "iele.invalid") -> pure call
-            | not (null results) -> fail $ "builtin iele.invalid returns no results"
-            | not (null args) -> fail $ "builtin iele.invalid takes no arguments"
-            | otherwise -> pure $ VoidOp INVALID []
-    Just (op,arity)
-      | length results /= 1 -> fail $ "builtin "++show name++" returns exactly one result"
-      | arity == length args -> pure $ Op (IeleOpcodesQuery op) (head results) args
-      | otherwise -> fail $ "builtin "++show name++" expects "++show arity++" arguments"
+  case name of
+    GlobalOperand globalName ->
+      let call = CallOp (LOCALCALL globalName (argsLength args) (retsLength results)) results args in
+      case Map.lookup globalName builtins of
+        Nothing | globalName /= GlobalName (IeleNameText "iele.invalid") -> pure call
+                | not (null results) -> fail $ "builtin iele.invalid returns no results"
+                | not (null args) -> fail $ "builtin iele.invalid takes no arguments"
+                | otherwise -> pure $ VoidOp INVALID []
+        Just (op,arity)
+          | length results /= 1 -> fail $ "builtin "++show globalName++" returns exactly one result"
+          | arity == length args -> pure $ Op (IeleOpcodesQuery op) (head results) args
+          | otherwise -> fail $ "builtin "++show name++" expects "++show arity++" arguments"
+    _ -> 
+      pure $ CallOp (LOCALCALLDYN (argsLength args) (retsLength results)) results (name : args)
 
 
 accountCallInst :: Parser IeleOpP
 accountCallInst = do
   results <- nonEmptyLValues <* equal
-  name <- skipKeyword "call" *> globalNameInclReserved
+  name <- skipKeyword "call" *> operandInclReserved
   tgt <- skipKeyword "at" *> operand
   args <- parens operands
   value <- skipKeyword "send" *> operand
   gas <- comma *> skipKeyword "gaslimit" *> operand
-  let op = CALL name (argsLength args) (fmap (subtract 1) (retsLength results))
-  pure (CallOp op results ([gas,tgt,value]++args))
+  case name of
+    GlobalOperand globalName ->
+      let op = CALL globalName (argsLength args) (fmap (subtract 1) (retsLength results)) in
+      pure (CallOp op results ([gas,tgt,value]++args))
+    _ ->
+      let op = CALLDYN (argsLength args) (fmap (subtract 1) (retsLength results)) in
+      pure (CallOp op results ([name,gas,tgt,value]++args))
 
 staticCallInst :: Parser IeleOpP
 staticCallInst = do
   results <- nonEmptyLValues <* equal
-  name <- skipKeyword "staticcall" *> globalNameInclReserved
+  name <- skipKeyword "staticcall" *> operandInclReserved
   tgt <- skipKeyword "at" *> operand
   args <- parens operands
   gas <- skipKeyword "gaslimit" *> operand
-  let op = STATICCALL name (argsLength args) (fmap (subtract 1) (retsLength results))
-  pure (CallOp op results ([gas,tgt]++args))
+  case name of
+    GlobalOperand globalName ->
+      let op = STATICCALL globalName (argsLength args) (fmap (subtract 1) (retsLength results)) in
+      pure (CallOp op results ([gas,tgt]++args))
+    _ ->
+      let op = STATICCALLDYN (argsLength args) (fmap (subtract 1) (retsLength results)) in
+      pure (CallOp op results ([name,gas,tgt]++args))
 
+callAddressInst :: Parser IeleOpP
+callAddressInst = do
+  result <- lValue <* equal
+  name <- skipKeyword "calladdress" *> globalName
+  tgt <- skipKeyword "at" *> operand
+  pure (CallOp (CALLADDRESS name) [result] [tgt])
 
 argumentsOrVoid :: Parser [Operand]
 argumentsOrVoid = commaSep1 operand <|> [] <$ skipKeyword "void"
@@ -452,7 +487,7 @@ returnInst = skipKeyword "ret" *>
   fmap (\args -> VoidOp (RETURN (argsLength args)) args) argumentsOrVoid
 
 revertInst :: Parser IeleOpP
-revertInst = simpleOp0 "revert" 1 (REVERT (mkArgs 1))
+revertInst = simpleOp0 "revert" 1 (REVERT)
 
 selfDestructInst :: Parser IeleOpP
 selfDestructInst = simpleOp0 "selfdestruct" 1 SELFDESTRUCT
@@ -526,14 +561,14 @@ functionDefinition = do
 topLevelDefinition :: Parser TopLevelDefinition
 topLevelDefinition =
       TopLevelDefinitionContract <$ skipKeyword "external" <* skipKeyword "contract"
-        <*> ieleNameTokenNotNumber
+        <*> ieleNameTokenNormalOrString
   <|> TopLevelDefinitionFunction <$> functionDefinition
   <|> TopLevelDefinitionGlobal <$> globalName <* equal <*> int
  where
   int = fmap (\(IntToken i) -> i) intToken
 
 contract :: Parser ContractP
-contract = ContractP <$ skipKeyword "contract" <*> ieleNameToken
+contract = ContractP <$ skipKeyword "contract" <*> ieleNameTokenNormalOrString
                      <*> (Just <$ char '!' <*> positiveInt <|> pure Nothing)
                      <*> braces (many topLevelDefinition)
                      <?> "contract"

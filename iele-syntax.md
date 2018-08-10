@@ -25,11 +25,14 @@ module IELE-SYNTAX
                    | "exp"  | "mod"   | "addmod" | "mulmod" | "expmod" | "byte" | "sext" | "twos" | "and" | "or"
                    | "xor"  | "shift" | "lt"     | "le"     | "gt"     | "ge"   | "eq"   | "ne"   | "cmp" | "sha3"
   
-  syntax Keyword ::= "br"  | "call"   | "staticcall" | "at" | "send"  | "gaslimit" | "ret"      | "void"   | "revert"
-                   | "log" | "create" | "copycreate" | "selfdestruct" | "contract" | "external" | "define" | "public"
+  syntax Keyword ::= "br"   | "call"   | "staticcall" | "at" | "send"  | "gaslimit" | "ret"      | "void"   | "revert"
+                   | "log"  | "create" | "copycreate" | "selfdestruct" | "contract" | "external" | "define" | "public"
+                   | "log2" | "bswap"  | "calladdress"
   syntax IeleName ::= Keyword [token]
 
   syntax NumericIeleName ::= r"[0-9]+" [token]
+
+  syntax StringIeleName ::= r"\\\"(([^\\\"\\\\])|(\\\\[0-9a-fA-F]{2}))*\\\"" [token]
 endmodule
 ```
 
@@ -40,7 +43,9 @@ module IELE-COMMON
   imports DOMAINS-SYNTAX
   imports INT-SYNTAX
   syntax NumericIeleName ::= Int
+  syntax StringIeleName
   syntax IeleName ::= NumericIeleName
+  syntax IeleName ::= StringIeleName [klabel(StringIeleName), avoid]
 ```
 
 ### Identifiers
@@ -88,7 +93,7 @@ IELE instruction operands are used at the left- and right-hand side of IELE inst
 
   syntax Operand ::= LValue | Constant
 
-  syntax Operands ::= List{Operand, ","} [klabel(operandList), hybrid, strict]
+  syntax Operands ::= List{Operand, ","} [klabel(operandList)]
 
   syntax NonEmptyOperands ::= NeList{Operand, ","} [klabel(operandList)]
 
@@ -96,6 +101,7 @@ IELE instruction operands are used at the left- and right-hand side of IELE inst
 
   syntax Operands ::= Ints
 ```
+
 ### Assignment
 
 Simple copy assignment that loads a value into a register.
@@ -143,9 +149,11 @@ Various expressions over unbounded signed integers. For more details see [here](
   syntax MulModInst ::= LValue "=" "mulmod" Operand "," Operand "," Operand [hybrid, seqstrict(2,3,4)]
   syntax ExpModInst ::= LValue "=" "expmod" Operand "," Operand "," Operand [hybrid, seqstrict(2,3,4)]
 
-  syntax ByteInst ::= LValue "=" "byte" /* byte index, 0 being the LSB */ Operand "," Operand [hybrid, seqstrict(2,3)]
-  syntax SExtInst ::= LValue "=" "sext" /* width in bytes */              Operand "," Operand [hybrid, seqstrict(2,3)]
-  syntax TwosInst ::= LValue "=" "twos" /* width in bytes */              Operand "," Operand [hybrid, seqstrict(2,3)]
+  syntax LogInst   ::= LValue "=" "log2"                                    Operand             [hybrid, strict(2)]
+  syntax ByteInst  ::= LValue "=" "byte"  /* byte index, 0 being the LSB */ Operand "," Operand [hybrid, seqstrict(2,3)]
+  syntax SExtInst  ::= LValue "=" "sext"  /* width in bytes */              Operand "," Operand [hybrid, seqstrict(2,3)]
+  syntax TwosInst  ::= LValue "=" "twos"  /* width in bytes */              Operand "," Operand [hybrid, seqstrict(2,3)]
+  syntax BswapInst ::= LValue "=" "bswap" /* width in bytes */              Operand "," Operand [hybrid, seqstrict(2,3)]
 
   syntax AndInst   ::= LValue "=" "and"   Operand "," Operand [hybrid, seqstrict(2,3)]
   syntax OrInst    ::= LValue "=" "or"    Operand "," Operand [hybrid, seqstrict(2,3)]
@@ -172,12 +180,12 @@ Instructions for conditional and unconditional jumps within the function's body.
 Instructions for local functions calls to other functions of the same contract, as well as contract function calls to public functions of contracts deployed in other accounts. For more details see [here](Design.md#function-callreturn).
 
 ```k
-  syntax LocalCallInst   ::= "call" GlobalName "(" Operands ")"
-                           | LValues "=" "call" GlobalName "(" Operands ")" [hybrid, strict(3)]
-  syntax AccountCallInst ::= "call" GlobalName "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand
-                           | LValues "=" "call" GlobalName "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand [hybrid, seqstrict(3,4,5,6)]
-  syntax AccountCallInst ::= "staticcall" GlobalName "at" Operand "(" Operands ")" "gaslimit" Operand
-                           | LValues "=" "staticcall" GlobalName "at" Operand "(" Operands ")" "gaslimit" Operand [hybrid, seqstrict(3,4,5)]
+  syntax LocalCallInst   ::= "call" Operand "(" Operands ")"
+                           | LValues "=" "call" Operand "(" Operands ")" [hybrid, strict(2,3)]
+  syntax AccountCallInst ::= LValues "=" "call" Operand "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand [hybrid, seqstrict(2,3,4,5,6)]
+  syntax AccountCallInst ::= LValues "=" "staticcall" Operand "at" Operand "(" Operands ")" "gaslimit" Operand [hybrid, seqstrict(2,3,4,5)]
+
+  syntax CallAddressInst ::= LValue "=" "calladdress" GlobalName "at" Operand [hybrid, strict(3)]
 
   syntax ReturnInst ::= "ret" NonEmptyOperands [hybrid, strict(1)]
                       | "ret" "void"
@@ -243,6 +251,7 @@ Precompiled contracts are also available as IELE builtins but they should be cal
   syntax IeleName ::= "iele.ecmul"     [token]
   syntax IeleName ::= "iele.ecpairing" [token]
 ```
+
 #### Instruction Lists
 
 ```k
@@ -266,6 +275,7 @@ Precompiled contracts are also available as IELE builtins but they should be cal
   | ByteInst
   | SExtInst
   | TwosInst
+  | BswapInst
   | AndInst
   | OrInst
   | XorInst
@@ -276,13 +286,14 @@ Precompiled contracts are also available as IELE builtins but they should be cal
   | CondJumpInst
   | LocalCallInst
   | AccountCallInst
+  | CallAddressInst
   | ReturnInst
   | RevertInst
   | LogInst
   | CreateInst
   | SelfdestructInst
 
-  syntax Instructions ::= List{Instruction, ""} [klabel(instructionList)]
+  syntax Instructions ::= List{Instruction, ""} [klabel(instructionList), format(%1%2%n%3)]
 ```
 
 IELE Program Structure
@@ -305,9 +316,9 @@ For more details see below and [here](Design.md#program-structure).
   | GlobalDefinition
   | ContractDeclaration
 
-  syntax TopLevelDefinitions ::= List{TopLevelDefinition, ""} [klabel(topLevelDefinitionList)]
+  syntax TopLevelDefinitions ::= List{TopLevelDefinition, ""} [klabel(topLevelDefinitionList), format(%1%2%n%3)]
 
-  syntax ContractDefinition ::= "contract" IeleName "{" TopLevelDefinitions "}"
+  syntax ContractDefinition ::= "contract" IeleName "{" TopLevelDefinitions "}" [format(%1 %2 %3%n%i%4%d%n%5)]
 
   syntax Contract ::= List{ContractDefinition, ""} [klabel(contractDefinitionList)]
 ```
@@ -338,8 +349,8 @@ Function definitions consist of a function signature (function name and names of
   syntax FunctionParameters ::= LocalNames
 
   syntax FunctionDefinition ::= 
-    "define" FunctionSignature "{" Blocks "}"
-  | "define" "public" FunctionSignature "{" Blocks "}"
+    "define" FunctionSignature "{" Blocks "}"             [format(%1 %2 %3%i%n%4%d%n%5%n)]
+  | "define" "public" FunctionSignature "{" Blocks "}" [format(%1 %2 %3 %4%i%n%5%d%n%6%n)]
 ```
 
 ### Blocks
@@ -360,7 +371,7 @@ The body of a function is a list of blocks, where each block is a list of IELE i
 ### Reserved IELE Function Names
 
 -   An account to which code has never been deployed contains an implicit contract with one public function named `@deposit` which takes no arguments, returns no values, and does nothing. This function exists to allow such accounts to receive payments.
--   A special public function named `@init` should be defined for every contract and will be called when an account is created with this contract.
+-   A special private function named `@init` should be defined for every contract and will be called when an account is created with this contract.
 
 ```k
   syntax IeleName ::= "deposit" [token]
@@ -373,10 +384,8 @@ The body of a function is a list of blocks, where each block is a list of IELE i
 Finally, following are macros for desugaring empty `LValues` and `Operands` lists in calls and returns.
 
 ```k
-  rule call NAME ( ARGS ) => .LValues = call NAME ( ARGS ) [macro]
-  rule call NAME at CONTRACT ( ARGS ) send VALUE , gaslimit GLIMIT => .LValues = call NAME at CONTRACT ( ARGS ) send VALUE , gaslimit GLIMIT [macro]
-  rule staticcall NAME at CONTRACT ( ARGS ) gaslimit GLIMIT => .LValues = staticcall NAME at CONTRACT ( ARGS ) gaslimit GLIMIT [macro]
-  rule ret void => ret .NonEmptyOperands [macro]
+  rule call NAME ( ARGS ) => .LValues = call NAME ( ARGS ) [alias]
+  rule ret void => ret .NonEmptyOperands [alias]
 endmodule
 ```
 

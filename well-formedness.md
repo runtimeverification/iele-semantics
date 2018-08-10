@@ -56,8 +56,6 @@ IELE is a primarily untyped language, and therefore identifiers have one of two 
  // -------------------------------------
     rule ints(0) => .Types
     rule ints(N) => int , ints(N -Int 1) [owise]
-
-    rule <k> % _ => int ... </k> <typeChecking> true </typeChecking>
 ```
 
 Contracts
@@ -202,9 +200,12 @@ Each of these instructions takes some number of immediates, globals, or register
     rule check ~> LVAL = mulmod OP1, OP2, OP3 => checkLVal(LVAL) ~> checkOperands(OP1, OP2, OP3)
     rule check ~> LVAL = expmod OP1, OP2, OP3 => checkLVal(LVAL) ~> checkOperands(OP1, OP2, OP3)
 
-    rule check ~> LVAL = byte OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
-    rule check ~> LVAL = sext OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
-    rule check ~> LVAL = twos OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
+    rule check ~> LVAL = byte  OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
+    rule check ~> LVAL = sext  OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
+    rule check ~> LVAL = twos  OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
+    rule check ~> LVAL = bswap OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
+
+    rule check ~> LVAL = log2 OP1 => checkLVal(LVAL) ~> checkOperands(OP1)
 
     rule check ~> LVAL = and   OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
     rule check ~> LVAL = or    OP1, OP2 => checkLVal(LVAL) ~> checkOperands(OP1, OP2)
@@ -249,8 +250,12 @@ Checking these instructions requires checking the types of local function calls 
          <types> ... NAME |-> ARGTYPES -> (unknown => ints(#sizeLVals(RETS))) </types>
       requires ints(#sizeRegs(ARGS)) ==K ARGTYPES
 
-    rule check ~> STATUS, RETS = call @ NAME at OP1 ( ARGS ) send OP2 , gaslimit OP3 => checkLVals(STATUS, RETS) ~> checkOperands(OP1 , OP2 , OP3 , ARGS)
-    rule check ~> STATUS, RETS = staticcall @ NAME at OP1 ( ARGS ) gaslimit OP2 => checkLVals(STATUS, RETS) ~> checkOperands(OP1 , OP2 , ARGS)
+    rule <k> check ~> RETS = call % NAME ( ARGS ) => checkLVals(RETS) ~> checkOperands(ARGS) ... </k>
+
+    rule check ~> STATUS, RETS = call NAME at OP1 ( ARGS ) send OP2 , gaslimit OP3 => checkLVals(STATUS, RETS) ~> checkOperands(OP1 , OP2 , OP3 , ARGS)
+    rule check ~> STATUS, RETS = staticcall NAME at OP1 ( ARGS ) gaslimit OP2 => checkLVals(STATUS, RETS) ~> checkOperands(OP1 , OP2 , ARGS)
+
+    rule check ~> RET = calladdress NAME at OP => checkLVal(RET) ~> checkOperand(OP)
 
     rule <k> check ~> ret OPS => checkOperands(OPS) ... </k>
          <functionName> NAME </functionName>
@@ -311,11 +316,27 @@ Reserved Names
 All identifiers beginning with "iele." are reserved by the language and cannot be written to.
 
 ```k
-    syntax K ::= checkName(IeleName) [function]
- // -------------------------------------------
+    syntax K ::= checkName(IeleName)
+ // --------------------------------
     rule checkName(NAME) => .
       requires lengthString(IeleName2String(NAME)) <Int 5 orBool substrString(IeleName2String(NAME), 0, 5) =/=String "iele."
 
+```
+
+In order to correctly check names, we must convert escaped IELE names to their correct token representation.
+
+```k
+    syntax String ::= unescape(String) [function]
+                    | unescape(String, Int, StringBuffer) [function, klabel(unescapeAux)]
+ // -------------------------------------------------------------------------------------
+    rule unescape(S) => unescape(S, 1, .StringBuffer)
+    rule unescape(S, IDX, SB) => unescape(S, IDX +Int 1, SB +String substrString(S, IDX, IDX +Int 1))
+      requires IDX <Int lengthString(S) -Int 1 andBool substrString(S, IDX, IDX +Int 1) =/=K "\\"
+    rule unescape(S, IDX, SB) => unescape(S, IDX +Int 3, SB +String chrChar(String2Base(substrString(S, IDX +Int 1, IDX +Int 3), 16)))
+      requires IDX <Int lengthString(S) -Int 1 andBool substrString(S, IDX, IDX +Int 1) ==K "\\"
+    rule unescape(S, IDX, SB) => StringBuffer2String(SB)
+      requires IDX ==Int lengthString(S) -Int 1
+    rule `StringIeleName`(NAME:StringIeleName) => String2IeleName(unescape(StringIeleName2String(NAME))) [anywhere]
 ```
 
 Checking Operands
@@ -330,8 +351,7 @@ Checking Operands
 
     rule checkOperand(% NAME) => .
     rule checkOperand(_:IntConstant) => .
-    rule <k> checkOperand(@ NAME) => . ... </k>
-         <types> ... NAME |-> int </types>
+    rule checkOperand(@ NAME) => .
 ```
 
 Checking LValues
