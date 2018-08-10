@@ -14,6 +14,7 @@
 
 !/.build/secp256k1
 !/.build/pyethereum
+!/.build/tangle
 
 /tests/proofs
 
@@ -26,9 +27,3 @@
 /tmp
 
 # TODO: The RVK make recipie should be putting these in .build
-/KRYPTO.cmi
-/KRYPTO.cmx
-/KRYPTO.o
-/semantics.a
-/semantics.cmxa
-

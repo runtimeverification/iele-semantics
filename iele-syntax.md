@@ -13,25 +13,39 @@ Names and Literals
 
 ### IELE Names
 
-IELE uses alphanumeric names for identifying registers, labels, functions, and contracts.
+IELE uses alphanumeric names for identifying registers, labels, functions, and contracts. IELE "keywords" are also valid identifiers.
 
-```{.k .uiuck .rvk}
+```k
 module IELE-SYNTAX
   imports IELE-COMMON
 
-  syntax IeleName ::= r"(?<![A-Za-z0-9\\_\\.\\-\\$])[a-zA-Z\\.\\_\\-\\$][0-9a-zA-Z\\.\\_\\-\\$]*" [token, notInRules, prec(3)]
+  syntax IeleName ::= r"(?<![A-Za-z0-9\\_\\.\\-\\$])[a-zA-Z\\.\\_\\$][0-9a-zA-Z\\.\\_\\-\\$]*" [token, notInRules, prec(3)]
+
+  syntax Keyword ::= "load" | "store" | "sload"  | "sstore" | "iszero" | "not"  | "add"  | "mul"  | "sub" | "div"
+                   | "exp"  | "mod"   | "addmod" | "mulmod" | "expmod" | "byte" | "sext" | "twos" | "and" | "or"
+                   | "xor"  | "shift" | "lt"     | "le"     | "gt"     | "ge"   | "eq"   | "ne"   | "cmp" | "sha3"
+  
+  syntax Keyword ::= "br"   | "call"   | "staticcall" | "at" | "send"  | "gaslimit" | "ret"      | "void"   | "revert"
+                   | "log"  | "create" | "copycreate" | "selfdestruct" | "contract" | "external" | "define" | "public"
+                   | "log2" | "bswap"  | "calladdress"
+  syntax IeleName ::= Keyword [token]
 
   syntax NumericIeleName ::= r"[0-9]+" [token]
+
+  syntax StringIeleName ::= r"\\\"(([^\\\"\\\\])|(\\\\[0-9a-fA-F]{2}))*\\\"" [token]
 endmodule
 ```
 
 Local register names are desugared to integers when assembling an IELE program
 
-```{.k .uiuck .rvk}
+```k
 module IELE-COMMON
   imports DOMAINS-SYNTAX
+  imports INT-SYNTAX
   syntax NumericIeleName ::= Int
+  syntax StringIeleName
   syntax IeleName ::= NumericIeleName
+  syntax IeleName ::= StringIeleName [klabel(StringIeleName), avoid]
 ```
 
 ### Identifiers
@@ -41,7 +55,7 @@ IELE has two categories of identifiers: local and global names.
 -   Local names have function-wide scope, are used for naming registers, and begin with `%`.
 -   Global names have contract-wide scope, are used for naming globals and functions, and begin with `@`.
 
-```{.k .uiuck .rvk}
+```k
   syntax GlobalName ::= "@" IeleName
 
   syntax LocalName ::= "%" IeleName
@@ -54,8 +68,10 @@ IELE has two categories of identifiers: local and global names.
 -   IELE constants include unbounded signed integer literals and globals.
 -   IELE globals serve as names with contract-wide scope that hold a constant value (cannot be modified).
 
-```{.k .uiuck .rvk}
-  syntax Constant ::= Int | GlobalName
+```k
+  syntax Constant ::= IntConstant | GlobalName
+  syntax IntConstant ::= Int | Bool | HexConstant
+  syntax HexConstant ::= r"0x[0-9a-fA-F]+" [token]
 ```
 
 Instructions
@@ -70,14 +86,14 @@ IELE instruction operands are used at the left- and right-hand side of IELE inst
 -   Constants can only be used as right-hand side operands, while registers can be used as both left- and right-hand side operands.
 -   Each right-hand side operand will be heated to an unbounded signed integer value during execution.
 
-```{.k .uiuck .rvk}
+```k
   syntax LValue ::= LocalName
   
   syntax LValues ::= NeList{LValue, ","} [klabel(lvalueList)]
 
   syntax Operand ::= LValue | Constant
 
-  syntax Operands ::= List{Operand, ","} [klabel(operandList), hybrid, strict]
+  syntax Operands ::= List{Operand, ","} [klabel(operandList)]
 
   syntax NonEmptyOperands ::= NeList{Operand, ","} [klabel(operandList)]
 
@@ -85,11 +101,12 @@ IELE instruction operands are used at the left- and right-hand side of IELE inst
 
   syntax Operands ::= Ints
 ```
+
 ### Assignment
 
 Simple copy assignment that loads a value into a register.
 
-```{.k .uiuck .rvk}
+```k
   syntax AssignInst ::= LValue "=" Operand
 ```
 
@@ -97,7 +114,7 @@ Simple copy assignment that loads a value into a register.
 
 Instructions that provide access to the local execution memory. For more details see [here](Design.md#local-execution-memory).
 
-```{.k .uiuck .rvk}
+```k
   syntax LoadInst ::= LValue "=" "load" /* cell */ Operand [hybrid, strict(2)]
   syntax LoadInst ::= LValue "=" "load" /* cell */ Operand "," /* offset in bytes */ Operand "," /* width in bytes */ Operand [hybrid, seqstrict(2,3,4)]
   syntax StoreInst ::= "store" /* value */ Operand "," /* cell */ Operand [hybrid, seqstrict(1,2)]
@@ -108,7 +125,7 @@ Instructions that provide access to the local execution memory. For more details
 
 Instructions that provide access to the account storage. For more details see [here](Design.md#account-storage).
 
-```{.k .uiuck .rvk}
+```k
   syntax SLoadInst ::= LValue "=" "sload" /* index */ Operand [hybrid, strict(2)]
   syntax SStoreInst ::= "sstore" /* value */ Operand "," /* index */ Operand [hybrid, seqstrict(1,2)]
 ```
@@ -117,7 +134,7 @@ Instructions that provide access to the account storage. For more details see [h
 
 Various expressions over unbounded signed integers. For more details see [here](Design.md#arbitrary-precision-words).
 
-```{.k .uiuck .rvk}
+```k
   syntax IsZeroInst ::= LValue "=" "iszero" Operand [hybrid, strict(2)]
   syntax NotInst    ::= LValue "=" "not"    Operand [hybrid, strict(2)]
 
@@ -132,9 +149,11 @@ Various expressions over unbounded signed integers. For more details see [here](
   syntax MulModInst ::= LValue "=" "mulmod" Operand "," Operand "," Operand [hybrid, seqstrict(2,3,4)]
   syntax ExpModInst ::= LValue "=" "expmod" Operand "," Operand "," Operand [hybrid, seqstrict(2,3,4)]
 
-  syntax ByteInst ::= LValue "=" "byte" /* byte index, 0 being the LSB */ Operand "," Operand [hybrid, seqstrict(2,3)]
-  syntax SExtInst ::= LValue "=" "sext" /* width in bytes */              Operand "," Operand [hybrid, seqstrict(2,3)]
-  syntax TwosInst ::= LValue "=" "twos" /* width in bytes */              Operand "," Operand [hybrid, seqstrict(2,3)]
+  syntax LogInst   ::= LValue "=" "log2"                                    Operand             [hybrid, strict(2)]
+  syntax ByteInst  ::= LValue "=" "byte"  /* byte index, 0 being the LSB */ Operand "," Operand [hybrid, seqstrict(2,3)]
+  syntax SExtInst  ::= LValue "=" "sext"  /* width in bytes */              Operand "," Operand [hybrid, seqstrict(2,3)]
+  syntax TwosInst  ::= LValue "=" "twos"  /* width in bytes */              Operand "," Operand [hybrid, seqstrict(2,3)]
+  syntax BswapInst ::= LValue "=" "bswap" /* width in bytes */              Operand "," Operand [hybrid, seqstrict(2,3)]
 
   syntax AndInst   ::= LValue "=" "and"   Operand "," Operand [hybrid, seqstrict(2,3)]
   syntax OrInst    ::= LValue "=" "or"    Operand "," Operand [hybrid, seqstrict(2,3)]
@@ -151,7 +170,7 @@ Various expressions over unbounded signed integers. For more details see [here](
 
 Instructions for conditional and unconditional jumps within the function's body. For more details see [here](Design.md#static-jumps).
 
-```{.k .uiuck .rvk}
+```k
   syntax JumpInst     ::= "br" IeleName
   syntax CondJumpInst ::= "br" Operand "," IeleName [hybrid, strict(1)]
 ```
@@ -160,13 +179,13 @@ Instructions for conditional and unconditional jumps within the function's body.
 
 Instructions for local functions calls to other functions of the same contract, as well as contract function calls to public functions of contracts deployed in other accounts. For more details see [here](Design.md#function-callreturn).
 
-```{.k .uiuck .rvk}
-  syntax LocalCallInst   ::= "call" GlobalName "(" Operands ")"
-                           | LValues "=" "call" GlobalName "(" Operands ")" [hybrid, strict(3)]
-  syntax AccountCallInst ::= "call" GlobalName "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand
-                           | LValues "=" "call" GlobalName "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand [hybrid, seqstrict(3,4,5,6)]
-  syntax AccountCallInst ::= "staticcall" GlobalName "at" Operand "(" Operands ")" "gaslimit" Operand
-                           | LValues "=" "staticcall" GlobalName "at" Operand "(" Operands ")" "gaslimit" Operand [hybrid, seqstrict(3,4,5)]
+```k
+  syntax LocalCallInst   ::= "call" Operand "(" Operands ")"
+                           | LValues "=" "call" Operand "(" Operands ")" [hybrid, strict(2,3)]
+  syntax AccountCallInst ::= LValues "=" "call" Operand "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand [hybrid, seqstrict(2,3,4,5,6)]
+  syntax AccountCallInst ::= LValues "=" "staticcall" Operand "at" Operand "(" Operands ")" "gaslimit" Operand [hybrid, seqstrict(2,3,4,5)]
+
+  syntax CallAddressInst ::= LValue "=" "calladdress" GlobalName "at" Operand [hybrid, strict(3)]
 
   syntax ReturnInst ::= "ret" NonEmptyOperands [hybrid, strict(1)]
                       | "ret" "void"
@@ -177,7 +196,7 @@ Instructions for local functions calls to other functions of the same contract, 
 
 Instructions to append information to the substate log. These variations append the entire content of a local execution memory cell to the log along with zero to four log topics.
 
-```{.k .uiuck .rvk}
+```k
   syntax LogInst ::= "log" /* cell */ Operand [hybrid, strict(1)]
                    | "log" /* cell */ Operand "," NonEmptyOperands [hybrid, seqstrict(1,2)]
 ```
@@ -186,7 +205,7 @@ Instructions to append information to the substate log. These variations append 
 
 Instructions to create and/or delete a new account with a contract deployed with it. For more details see [here](Design.md#contract-creation).
 
-```{.k .uiuck .rvk}
+```k
   syntax CreateInst ::= /* exit status */ LValue "," /* new account address */ LValue "=" "create"     /* contract name */    IeleName "(" Operands ")" "send" Operand [hybrid, seqstrict(4,5)]
   syntax CreateInst ::= /* exit status */ LValue "," /* new account address */ LValue "=" "copycreate" /* contract address */ Operand  "(" Operands ")" "send" Operand [hybrid, seqstrict(3,4,5)]
 
@@ -197,7 +216,7 @@ Instructions to create and/or delete a new account with a contract deployed with
 
 These accessors are implemented as builtins that can be called using the same syntax as in a local call, e.g. `%pc = call @iele.pc()` or `%balance = call @iele.balance(%bank.account)`. The names of the builtins follow the IELE convention for intrinsics: Their name is a valid global name that starts with the prefix `iele.`. This means that no user-defined global name can start with the prefix `iele.`.
 
-```{.k .uiuck .rvk}
+```k
   syntax IeleName ::= "iele.invalid"     [token]
   // local state queries
   syntax IeleName ::= "iele.gas"         [token]
@@ -223,7 +242,7 @@ These accessors are implemented as builtins that can be called using the same sy
 
 Precompiled contracts are also available as IELE builtins but they should be called using the syntax for an account call targeting the account with address `1` (e.g. `%res  = call @iele.sha256 at 1 ( %len, %data ) send %val, gaslimit %gas`).
 
-```{.k .uiuck .rvk}
+```k
   syntax IeleName ::= "iele.ecrec"     [token]
   syntax IeleName ::= "iele.sha256"    [token]
   syntax IeleName ::= "iele.rip160"    [token]
@@ -232,9 +251,10 @@ Precompiled contracts are also available as IELE builtins but they should be cal
   syntax IeleName ::= "iele.ecmul"     [token]
   syntax IeleName ::= "iele.ecpairing" [token]
 ```
+
 #### Instruction Lists
 
-```{.k .uiuck .rvk}
+```k
   syntax Instruction ::=
     AssignInst
   | LoadInst
@@ -255,6 +275,7 @@ Precompiled contracts are also available as IELE builtins but they should be cal
   | ByteInst
   | SExtInst
   | TwosInst
+  | BswapInst
   | AndInst
   | OrInst
   | XorInst
@@ -265,13 +286,14 @@ Precompiled contracts are also available as IELE builtins but they should be cal
   | CondJumpInst
   | LocalCallInst
   | AccountCallInst
+  | CallAddressInst
   | ReturnInst
   | RevertInst
   | LogInst
   | CreateInst
   | SelfdestructInst
 
-  syntax Instructions ::= List{Instruction, ""} [klabel(instructionList)]
+  syntax Instructions ::= List{Instruction, ""} [klabel(instructionList), format(%1%2%n%3)]
 ```
 
 IELE Program Structure
@@ -288,15 +310,15 @@ A contract is a compilation unit of code to be deployed with an account in the b
 
 For more details see below and [here](Design.md#program-structure).
 
-```{.k .uiuck .rvk}
+```k
   syntax TopLevelDefinition ::=
     FunctionDefinition
   | GlobalDefinition
   | ContractDeclaration
 
-  syntax TopLevelDefinitions ::= List{TopLevelDefinition, ""} [klabel(topLevelDefinitionList)]
+  syntax TopLevelDefinitions ::= List{TopLevelDefinition, ""} [klabel(topLevelDefinitionList), format(%1%2%n%3)]
 
-  syntax ContractDefinition ::= "contract" IeleName "{" TopLevelDefinitions "}"
+  syntax ContractDefinition ::= "contract" IeleName "{" TopLevelDefinitions "}" [format(%1 %2 %3%n%i%4%d%n%5)]
 
   syntax Contract ::= List{ContractDefinition, ""} [klabel(contractDefinitionList)]
 ```
@@ -305,7 +327,7 @@ For more details see below and [here](Design.md#program-structure).
 
 A contract can only create accounts with deployed contracts that have been externaly declared within its top-level. A corresponding contract definition for each external contract declaration should precede this contract definition. This design decision ensures that a contract can only create new accounts with deployed contracts for which the code is available to it.
 
-```{.k .uiuck .rvk}
+```k
   syntax ContractDeclaration ::= "external" "contract" IeleName
 ```
 
@@ -313,29 +335,29 @@ A contract can only create accounts with deployed contracts that have been exter
 
 Definition of globals and their constant values. Globals are accessible from within any function of the contract and their value cannot be modified.
 
-```{.k .uiuck .rvk}
-  syntax GlobalDefinition ::= GlobalName "=" Int
+```k
+  syntax GlobalDefinition ::= GlobalName "=" IntConstant  [klabel(globalDefinition)]
 ```
 
 ### Functions
 
 Function definitions consist of a function signature (function name and names of formal arguments) and a function body (a list of blocks containing the code of the function). Functions can be defined as `public` meaning that they can be called from a contract deployed with another account. Non-`public` functions can only be called locally within the contract.
 
-```{.k .uiuck .rvk}
+```k
   syntax FunctionSignature ::= GlobalName "(" FunctionParameters ")"
 
   syntax FunctionParameters ::= LocalNames
 
   syntax FunctionDefinition ::= 
-    "define" FunctionSignature "{" Blocks "}"
-  | "define" "public" FunctionSignature "{" Blocks "}"
+    "define" FunctionSignature "{" Blocks "}"             [format(%1 %2 %3%i%n%4%d%n%5%n)]
+  | "define" "public" FunctionSignature "{" Blocks "}" [format(%1 %2 %3 %4%i%n%5%d%n%6%n)]
 ```
 
 ### Blocks
 
 The body of a function is a list of blocks, where each block is a list of IELE instructions. Each block except the first one has to be preceded by a label, making the first instruction of the block a valid target of a local jump. The first block can also be optionally labeled.
 
-```{.k .uiuck .rvk}
+```k
   syntax LabeledBlock ::= IeleName ":" Instructions
 
   syntax LabeledBlocks ::= List{LabeledBlock, ""} [klabel(labeledBlockList)]
@@ -343,15 +365,15 @@ The body of a function is a list of blocks, where each block is a list of IELE i
   syntax UnlabeledBlock ::= Instructions
 
   syntax Blocks [flatPredicate]
-  syntax Blocks ::= UnlabeledBlock LabeledBlocks | LabeledBlocks
+  syntax Blocks ::= UnlabeledBlock LabeledBlocks [avoid] | LabeledBlocks
 ```
 
 ### Reserved IELE Function Names
 
 -   An account to which code has never been deployed contains an implicit contract with one public function named `@deposit` which takes no arguments, returns no values, and does nothing. This function exists to allow such accounts to receive payments.
--   A special public function named `@init` should be defined for every contract and will be called when an account is created with this contract.
+-   A special private function named `@init` should be defined for every contract and will be called when an account is created with this contract.
 
-```{.k .uiuck .rvk}
+```k
   syntax IeleName ::= "deposit" [token]
 
   syntax IeleName ::= "init" [token]
@@ -361,11 +383,9 @@ The body of a function is a list of blocks, where each block is a list of IELE i
 
 Finally, following are macros for desugaring empty `LValues` and `Operands` lists in calls and returns.
 
-```{.k .uiuck .rvk}
-  rule call NAME ( ARGS ) => .LValues = call NAME ( ARGS ) [macro]
-  rule call NAME at CONTRACT ( ARGS ) send VALUE , gaslimit GLIMIT => .LValues = call NAME at CONTRACT ( ARGS ) send VALUE , gaslimit GLIMIT [macro]
-  rule staticcall NAME at CONTRACT ( ARGS ) gaslimit GLIMIT => .LValues = staticcall NAME at CONTRACT ( ARGS ) gaslimit GLIMIT [macro]
-  rule ret void => ret .NonEmptyOperands [macro]
+```k
+  rule call NAME ( ARGS ) => .LValues = call NAME ( ARGS ) [alias]
+  rule ret void => ret .NonEmptyOperands [alias]
 endmodule
 ```
 

@@ -1,36 +1,80 @@
-K_VERSION=rvk
-
 # Common to all versions of K
 # ===========================
 
-.PHONY: all clean build tangle defn proofs split-tests test vm-test blockchain-test deps assembler
+ifeq ($(BYTE),yes)
+EXT=cmo
+LIBEXT=cma
+DLLEXT=cma
+OCAMLC=c
+LIBFLAG=-a
+else
+EXT=cmx
+LIBEXT=cmxa
+DLLEXT=cmxs
+OCAMLC=opt -O3 -cclib -Wl,-rpath=/usr/local/lib
+LIBFLAG=-shared
+endif
 
-all: build split-vm-tests
+ifeq ($(COVERAGE),k)
+KOMPILE_FLAGS=--coverage
+else ifeq ($(COVERAGE),ocaml)
+BISECT=-package bisect_ppx
+PREDICATES=-predicates coverage
+endif
+
+export PATH:=$(shell cd compiler && stack path --local-install-root)/bin:${PATH}
+
+.PHONY: all clean distclean build tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode install
+.SECONDARY:
+
+all: build split-vm-tests testnode
 
 clean:
-	rm -rf .build/rvk
+	rm -rf .build/standalone .build/node .build/check .build/plugin-node .build/plugin-standalone .build/vm compiler/.stack-work
 
-build: tangle .build/${K_VERSION}/ethereum-kompiled/extras/timestamp assembler
+distclean: clean
+	cd tests/ci/rv-k && mvn clean
+
+build: tangle .build/standalone/ethereum-kompiled/interpreter .build/vm/iele-vm assembler .build/check/well-formedness-kompiled/interpreter
 
 assembler:
 	cd compiler && stack build --install-ghc
+
+install: assembler
+	cd compiler && stack install
+	cp .build/vm/iele-vm .build/vm/iele-test-client .build/vm/iele-test-vm ~/.local/bin
 
 # Tangle from *.md files
 # ----------------------
 
 tangle: defn proofs
 
-defn_dir=.build/${K_VERSION}
-defn_files=${defn_dir}/ethereum.k ${defn_dir}/data.k ${defn_dir}/iele.k ${defn_dir}/iele-gas.k ${defn_dir}/iele-binary.k ${defn_dir}/krypto.k ${defn_dir}/iele-syntax.k
+k_files:=ethereum.k data.k iele.k iele-gas.k iele-binary.k krypto.k iele-syntax.k iele-node.k well-formedness.k
+standalone_files:=$(patsubst %,.build/standalone/%,$(k_files))
+node_files:=$(patsubst %,.build/node/%,$(k_files))
+checker_files:=.build/standalone/iele-syntax.k .build/standalone/well-formedness.k .build/standalone/data.k
+defn_files=$(standalone_files) $(node_files)
+source_files=$(patsubst %.k,%.md,$(k_files))
+
 defn: $(defn_files)
 
-.build/${K_VERSION}/%.k: %.md
+export LUA_PATH=$(shell pwd)/.build/tangle/?.lua;;
+
+
+.build/node/%.k: %.md
 	@echo "==  tangle: $@"
 	mkdir -p $(dir $@)
-	pandoc --from markdown --to tangle.lua --metadata=code:"k $(K_VERSION)" $< > $@
+	pandoc --from markdown --to .build/tangle/tangle.lua --metadata=code:".k:not(.standalone),.node" $< > $@
+.build/standalone/%.k: %.md
+	@echo "==  tangle: $@"
+	mkdir -p $(dir $@)
+	pandoc --from markdown --to .build/tangle/tangle.lua --metadata=code:".k:not(.node),.standalone" $< > $@
+
+node: .build/vm/iele-vm
+testnode : .build/vm/iele-test-vm .build/vm/iele-test-client
 
 proof_dir=tests/proofs
-proof_files= 
+proof_files=
 proofs: $(proof_files)
 
 # Tests
@@ -70,18 +114,37 @@ passing_blockchain_targets=${passing_blockchain_tests:=.test}
 
 iele_tests=$(wildcard tests/iele/*/*.iele.json)
 iele_targets=${iele_tests:=.test}
+iele_node_targets=${iele_tests:=.nodetest}
 
-test: $(passing_targets) ${iele_targets}
+iele_contracts=$(wildcard iele-examples/*.iele tests/iele/*/*.iele)
+well_formed_contracts=$(filter-out $(wildcard tests/iele/ill-formed/*.iele), ${iele_contracts})
+well_formedness_targets=${well_formed_contracts:=.test}
+
+test: $(passing_targets) ${iele_targets} ${iele_node_targets} ${well_formedness_targets} test-bad-packet
 vm-test: $(passing_vm_targets)
 blockchain-test: $(passing_blockchain_targets)
 iele-test: ${iele_targets}
+iele-test-node: ${iele_node_targets}
+well-formed-test: ${well_formedness_targets}
 
-tests/VMTests/%.test: tests/VMTests/% | build
+test-bad-packet:
+	netcat 127.0.0.1 $(PORT) < tests/bad-packet
+	netcat 127.0.0.1 $(PORT) < tests/bad-packet-2
+	.build/vm/iele-test-vm tests/iele/sum/sum_zero.iele.json $(PORT)
+
+tests/VMTests/%.json.test: tests/VMTests/%.json | build
 	./vmtest $<
-tests/BlockchainTests/%.test: tests/BlockchainTests/% | build
+tests/BlockchainTests/%.json.test: tests/BlockchainTests/%.json | build
 	./blockchaintest $<
-tests/iele/%.test: tests/iele/% | build
+tests/iele/%.json.test: tests/iele/%.json | build
 	./blockchaintest $<
+
+%.iele.test: %.iele | build
+	./check-iele $<
+
+PORT?=10000
+tests/iele/%.nodetest: tests/iele/% | testnode
+	.build/vm/iele-test-vm $< $(PORT)
 
 tests/%/make.timestamp: tests/ethereum-tests/%.json tests/evm-to-iele/evm-to-iele tests/evm-to-iele/evm-test-to-iele
 	@echo "==   split: $@"
@@ -90,36 +153,78 @@ tests/%/make.timestamp: tests/ethereum-tests/%.json tests/evm-to-iele/evm-to-iel
 	touch $@
 
 tests/evm-to-iele/evm-to-iele: $(wildcard tests/evm-to-iele/*.ml tests/evm-to-iele/*.mli)
-	cd tests/evm-to-iele && ocamlfind opt -g ieleUtil.mli ieleUtil.ml evm.mli evm.ml iele.mli iele.ml conversion.mli conversion.ml main.ml -package zarith -package hex -linkpkg -o evm-to-iele
+	cd tests/evm-to-iele && ocamlfind $(OCAMLC) -g ieleUtil.mli ieleUtil.ml evm.mli evm.ml iele.mli iele.ml conversion.mli conversion.ml main.ml -package zarith -package hex -linkpkg -o evm-to-iele
 
 tests/ethereum-tests/%.json:
 	@echo "==  git submodule: cloning upstreams test repository"
 	git submodule update --init
 
-KOMPILE=tests/ci/rv-k/k-distribution/target/release/k/bin/kompile
+K_BIN=tests/ci/rv-k/k-distribution/target/release/k/bin/
+KOMPILE=${K_BIN}/kompile
 
-deps:
+coverage:
+	sed -i 's!.build/node/\(.*\)\.k:!\1.md:!' .build/node/ethereum-kompiled/allRules.txt
+	sed -i 's!.build/standalone/\(.*\)\.k:!\1.md:!' .build/standalone/ethereum-kompiled/allRules.txt .build/check/well-formedness-kompiled/allRules.txt
+	${K_BIN}/kcovr .build/node/ethereum-kompiled .build/standalone/ethereum-kompiled .build/check/well-formedness-kompiled -- $(filter-out krypto.md, $(source_files)) > .build/coverage.xml
+
+deps: k-deps ocaml-deps
+k-deps:
 	cd tests/ci/rv-k && mvn package
+
+ocaml-deps:
 	opam init
 	opam repository add k "tests/ci/rv-k/k-distribution/target/release/k/lib/opam" || opam repository set-url k "tests/ci/rv-k/k-distribution/target/release/k/lib/opam"
 	opam update
 	opam switch 4.03.0+k
-	opam install mlgmp zarith uuidm cryptokit secp256k1 bn128 hex
+	eval `opam config env` && opam install -y mlgmp zarith uuidm cryptokit secp256k1.0.3.2 bn128 hex ocaml-protoc rlp yojson ocp-ocamlres bisect_ppx
 
-.build/rvk/ethereum-kompiled/extras/timestamp: .build/rvk/ethereum-kompiled/interpreter
-.build/rvk/ethereum-kompiled/interpreter: $(defn_files) KRYPTO.ml
+.build/%/ethereum-kompiled/constants.$(EXT): $(defn_files)
 	@echo "== kompile: $@"
 	${KOMPILE} --debug --main-module ETHEREUM-SIMULATION \
-					--syntax-module IELE-SYNTAX $< --directory .build/rvk \
-					--hook-namespaces KRYPTO --gen-ml-only -O3 --non-strict
-	ocamlfind opt -O3 -c .build/rvk/ethereum-kompiled/constants.ml -package gmp -package zarith -safe-string
-	ocamlfind opt -O3 -c -I .build/rvk/ethereum-kompiled KRYPTO.ml -package cryptokit -package secp256k1 -package bn128 -safe-string
-	ocamlfind opt -a -o semantics.cmxa KRYPTO.cmx
-	ocamlfind remove iele-semantics-plugin
-	ocamlfind install iele-semantics-plugin META semantics.cmxa semantics.a KRYPTO.cmi KRYPTO.cmx
-	ocamllex .build/rvk/ethereum-kompiled/lexer.mll
-	ocamlyacc .build/rvk/ethereum-kompiled/parser.mly
-	cd .build/rvk/ethereum-kompiled && ocamlfind opt -O3 -c -package gmp -package zarith -package uuidm -safe-string -inline 20 -nodynlink prelude.ml plugin.ml parser.mli parser.ml lexer.ml run.ml
-	cd .build/rvk/ethereum-kompiled && ocamlfind opt -O3 -c -w -11-26 -package gmp -package zarith -package uuidm -package iele-semantics-plugin -safe-string realdef.ml -match-context-rows 2
-	cd .build/rvk/ethereum-kompiled && ocamlfind opt -O3 -shared -o realdef.cmxs realdef.cmx
-	cd .build/rvk/ethereum-kompiled && ocamlfind opt -o interpreter constants.cmx prelude.cmx plugin.cmx parser.cmx lexer.cmx run.cmx interpreter.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin -linkpkg -inline 20 -nodynlink -O3 -linkall
+					--syntax-module IELE-SYNTAX .build/$*/ethereum.k --directory .build/$* \
+					--hook-namespaces "KRYPTO BLOCKCHAIN" --gen-ml-only -O3 --non-strict $(KOMPILE_FLAGS)
+	cd .build/$*/ethereum-kompiled && ocamlfind $(OCAMLC) -c -g constants.ml -package gmp -package zarith -safe-string
+
+.build/check/well-formedness-kompiled/interpreter: $(checker_files)
+	${KOMPILE} --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE \
+	                                --syntax-module IELE-SYNTAX .build/standalone/well-formedness.k --directory .build/check \
+	                                --gen-ml-only -O3 --non-strict $(KOMPILE_FLAGS)
+	cd .build/check/well-formedness-kompiled && ocamlfind $(OCAMLC) -c -g -package gmp -package zarith -package uuidm -safe-string constants.ml prelude.ml plugin.ml parser.mli parser.ml lexer.ml run.ml
+	cd .build/check/well-formedness-kompiled && ocamlfind $(OCAMLC) -c -g -w -11-26 -package gmp -package zarith -package uuidm -safe-string realdef.ml -match-context-rows 2 -thread
+	cd .build/check/well-formedness-kompiled && ocamlfind $(OCAMLC) $(LIBFLAG) -o realdef.$(DLLEXT) realdef.$(EXT)
+	cd .build/check/well-formedness-kompiled && ocamlfind $(OCAMLC) -g -o interpreter constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) run.$(EXT) interpreter.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -linkpkg -linkall -safe-string
+
+.build/plugin-%/semantics.$(LIBEXT): $(wildcard plugin/plugin/*.ml plugin/plugin/*.mli) .build/%/ethereum-kompiled/constants.$(EXT)
+	mkdir -p .build/plugin-$*
+	cp plugin/plugin/*.ml plugin/plugin/*.mli .build/plugin-$*
+	ocp-ocamlres -format ocaml plugin/plugin/proto/VERSION -o .build/plugin-$*/apiVersion.ml
+	ocaml-protoc plugin/plugin/proto/*.proto -ml_out .build/plugin-$*
+	cd .build/plugin-$* && ocamlfind $(OCAMLC) -c -g -I ../$*/ethereum-kompiled msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml apiVersion.ml world.mli world.ml caching.mli caching.ml BLOCKCHAIN.ml KRYPTO.ml -package cryptokit -package secp256k1 -package bn128 -package ocaml-protoc $(BISECT) -safe-string -thread
+	cd .build/plugin-$* && ocamlfind $(OCAMLC) -a -o semantics.$(LIBEXT) KRYPTO.$(EXT) msg_types.$(EXT) msg_pb.$(EXT) apiVersion.$(EXT) world.$(EXT) caching.$(EXT) BLOCKCHAIN.$(EXT) -thread
+	ocamlfind remove iele-semantics-plugin-$*
+	ocamlfind install iele-semantics-plugin-$* plugin/plugin/META .build/plugin-$*/semantics.* .build/plugin-$*/*.cmi .build/plugin-$*/*.$(EXT)
+
+.build/%/ethereum-kompiled/interpreter: .build/plugin-%/semantics.$(LIBEXT)
+	cd .build/$*/ethereum-kompiled && ocamllex lexer.mll
+	cd .build/$*/ethereum-kompiled && ocamlyacc parser.mly
+	cd .build/$*/ethereum-kompiled && ocamlfind $(OCAMLC) -c -g -package gmp -package zarith -package uuidm -safe-string prelude.ml plugin.ml parser.mli parser.ml lexer.ml run.ml -thread
+	cd .build/$*/ethereum-kompiled && ocamlfind $(OCAMLC) -c -g -w -11-26 -package gmp -package zarith -package uuidm -package iele-semantics-plugin-$* -safe-string realdef.ml -match-context-rows 2 -thread
+	cd .build/$*/ethereum-kompiled && ocamlfind $(OCAMLC) $(LIBFLAG) -o realdef.$(DLLEXT) realdef.$(EXT)
+	cd .build/$*/ethereum-kompiled && ocamlfind $(OCAMLC) -g -o interpreter constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) run.$(EXT) interpreter.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin-$* -linkpkg -linkall -thread -safe-string $(PREDICATES)
+
+.build/vm/iele-test-vm: .build/node/ethereum-kompiled/interpreter $(wildcard plugin/vm/*.ml plugin/vm/*.mli)
+	mkdir -p .build/vm
+	cp plugin/vm/*.ml plugin/vm/*.mli .build/vm
+	cd .build/vm && ocamlfind $(OCAMLC) -g -I ../node/ethereum-kompiled -o iele-test-vm constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) realdef.$(EXT) run.$(EXT) VM.mli VM.ml ieleClientUtils.ml ieleVmTest.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin-node -package rlp -package yojson -package hex -linkpkg -linkall -thread -safe-string $(PREDICATES)
+
+.build/vm/iele-vm: .build/node/ethereum-kompiled/interpreter $(wildcard plugin/vm/*.ml plugin/vm/*.mli)
+	mkdir -p .build/vm
+	cp plugin/vm/*.ml plugin/vm/*.mli .build/vm
+	cd .build/vm && ocamlfind $(OCAMLC) -g -I ../node/ethereum-kompiled -o iele-vm constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) realdef.$(EXT) run.$(EXT) VM.mli VM.ml vmNetworkServer.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin-node -package rlp -package yojson -package hex $(BISECT) -linkpkg -linkall -thread -safe-string $(PREDICATES)
+
+.build/vm/iele-test-client: .build/node/ethereum-kompiled/interpreter $(wildcard plugin/vm/*.ml plugin/vm/*.mli)
+	mkdir -p .build/vm
+	cp plugin/vm/*.ml plugin/vm/*.mli .build/vm
+	cd .build/vm && ocamlfind $(OCAMLC) -g -I ../node/ethereum-kompiled -o iele-test-client constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) realdef.$(EXT) run.$(EXT) VM.mli VM.ml ieleClientUtils.ml ieleApi.mli ieleApi.ml ieleApiClient.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin-node -package rlp -package yojson -package hex -linkpkg -linkall -thread -safe-string $(PREDICATES)
+
+

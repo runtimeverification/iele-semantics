@@ -1,0 +1,8 @@
+contract blockhash_test {
+  define public @test_blockhash(%offset, %idx) {
+    %hash = call @iele.blockhash(%offset)
+    sstore %hash, %idx
+  }
+
+  define @init() {}
+}

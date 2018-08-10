@@ -70,6 +70,7 @@ data IeleOpcode1 =
 
  | SIGNEXTEND
  | TWOS
+ | BSWAP
 
  | NE
  | LT
@@ -79,6 +80,7 @@ data IeleOpcode1 =
  | EQ
 
  | ISZERO
+ | LOG2
  | AND
  | OR
  | XOR
@@ -138,8 +140,8 @@ data IeleOpcode0G funId lblId =
  | LOG Word8
 
  | RETURN (Args Word16)
- | REVERT (Args Word16)
 
+ | REVERT
  | INVALID
  | SELFDESTRUCT
   deriving (Show, Eq, Data)
@@ -169,8 +171,8 @@ retypeOpcode0 fun lbl i = case i of
    LOG arity -> pure (LOG arity)
 
    RETURN arity -> pure (RETURN arity)
-   REVERT arity -> pure (REVERT arity)
 
+   REVERT -> pure (REVERT)
    INVALID -> pure (INVALID)
    SELFDESTRUCT -> pure (SELFDESTRUCT)
 
@@ -180,9 +182,13 @@ data IeleOpcodeLi =
   deriving (Show, Eq, Data)
 
 data IeleOpcodeCall contractId funId =
-   CALL funId (Args Word16) (Rets  Word16)
+   CALL funId (Args Word16) (Rets Word16)
+ | CALLDYN (Args Word16) (Rets Word16)
  | STATICCALL funId (Args Word16) (Rets Word16)
+ | STATICCALLDYN (Args Word16) (Rets Word16)
  | LOCALCALL funId (Args Word16) (Rets Word16)
+ | LOCALCALLDYN (Args Word16) (Rets Word16)
+ | CALLADDRESS funId
 
  | CREATE contractId (Args Word16) -- contract Id
  | COPYCREATE (Args Word16)
@@ -195,8 +201,12 @@ retypeOpcodeCall :: (Applicative f)
                  -> f (IeleOpcodeCall contractId' funId')
 retypeOpcodeCall contract fun i = case i of
     CALL f nargs nrets -> (\f -> CALL f nargs nrets) <$> fun f
+    CALLDYN nargs nrets -> pure (CALLDYN nargs nrets)
     STATICCALL f nargs nrets -> (\f -> STATICCALL f nargs nrets) <$> fun f
+    STATICCALLDYN nargs nrets -> pure (STATICCALLDYN nargs nrets)
     LOCALCALL f nargs nrets -> (\f -> LOCALCALL f nargs nrets) <$> fun f
+    LOCALCALLDYN nargs nrets -> pure (LOCALCALLDYN nargs nrets)
+    CALLADDRESS f -> CALLADDRESS <$> fun f
     CREATE c nargs -> (\c -> CREATE c nargs) <$> contract c
     COPYCREATE nargs -> pure (COPYCREATE nargs)
 

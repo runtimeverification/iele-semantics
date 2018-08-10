@@ -89,12 +89,18 @@ stringToParse = "\n\
 \}\n\
 \"
 
+readFileArg :: FilePath -> IO String
+readFileArg file =
+  case file of
+    "-" -> hGetContents stdin
+    _ -> readFile file
+
 main :: IO ()
 main = do
   args <- getArgs
   case args of
     ["--parse",file] -> do
-      contents <- readFile file
+      contents <- readFileArg file
       case parse ieleParser file contents of
         Left err  -> do
           hPrint stderr err
@@ -102,7 +108,7 @@ main = do
         Right cs  -> do
           putStr (show (prettyContractsP cs))
     ["--desugar",file] -> do
-      contents <- readFile file
+      contents <- readFileArg file
       case parse ieleParser file contents of
         Left err  -> do
           hPrint stderr err
@@ -110,7 +116,7 @@ main = do
         Right cs  -> do
           putStr (show (prettyContractsD (map processContract cs)))
     [file] -> do
-      contents <- readFile file
+      contents <- readFileArg file
       case parse ieleParser file contents of
         Left err  -> do
           hPrint stderr err

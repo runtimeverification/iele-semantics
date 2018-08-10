@@ -64,7 +64,7 @@ prettyContractD (cname, ContractD functionNames externalContracts functionDefini
   ++intersperse blank (map (prettyFunDef . formatDef) functionDefinitions)
  where
   numToLValue n = LValueLocalName (LocalName (IeleNameNumber n))
-  formatDef :: FunctionDefinitionD Word16 Word16 Word16 Int
+  formatDef :: FunctionDefinitionD Word16 Word16 Word16 Int Int
             -> FunctionDefinition GlobalName IeleName LValue Doc
   formatDef def = def & name %~ GlobalName . IeleNameNumber . fromIntegral
                       & parameters . traverse %~ numToLValue
@@ -123,6 +123,9 @@ prettyIeleInst (LiOp LOADNEG tgt i) = inst [tgt] empty [integer (negate i)]
 prettyIeleInst (CallOp (LOCALCALL name _ _) results args) =
   prettyResults results <+> text "call" <+> prettyName name
     <> char '(' <> commaList args <> char ')'
+prettyIeleInst (CallOp (LOCALCALLDYN  _ _) results (name : args)) =
+  prettyResults results <+> text "call" <+> name
+    <> char '(' <> commaList args <> char ')'
 prettyIeleInst (CallOp (CALL name _ _) results allArgs) = case results of
   [] -> error "external call instruction must have at least one result"
   _ -> case allArgs of
@@ -132,15 +135,40 @@ prettyIeleInst (CallOp (CALL name _ _) results allArgs) = case results of
              <> char '(' <> commaList args <> char ')'
              <+> text "send" <+> val <> comma <+> text "gaslimit" <+> gas
          _ -> error "external call instruction must encode at least target, gaslimit, and value arguments"
-prettyIeleInst (CallOp (STATICCALL name _ _) results allArgs) = case results of
+prettyIeleInst (CallOp (CALLDYN _ _) results allArgs) = case results of
   [] -> error "external call instruction must have at least one result"
   _ -> case allArgs of
-         (gas:acct:val:args) ->
-           prettyResults results <+> text "staticcall" <+> prettyName name
+         (name:gas:acct:val:args) ->
+           prettyResults results <+> text "call" <+> name
              <+> text "at" <+> acct
              <> char '(' <> commaList args <> char ')'
              <+> text "send" <+> val <> comma <+> text "gaslimit" <+> gas
-         _ -> error "external staticcall instruction must encode at least target, gaslimit, and value arguments"
+         _ -> error "external call instruction must encode at least target, gaslimit, and value arguments"
+prettyIeleInst (CallOp (STATICCALL name _ _) results allArgs) = case results of
+  [] -> error "external call instruction must have at least one result"
+  _ -> case allArgs of
+         (gas:acct:args) ->
+           prettyResults results <+> text "staticcall" <+> prettyName name
+             <+> text "at" <+> acct
+             <> char '(' <> commaList args <> char ')'
+             <+> text "gaslimit" <+> gas
+         _ -> error "external staticcall instruction must encode at least target and gaslimit arguments"
+prettyIeleInst (CallOp (STATICCALLDYN _ _) results allArgs) = case results of
+  [] -> error "external call instruction must have at least one result"
+  _ -> case allArgs of
+         (name:gas:acct:args) ->
+           prettyResults results <+> text "staticcall" <+> name
+             <+> text "at" <+> acct
+             <> char '(' <> commaList args <> char ')'
+             <+> text "gaslimit" <+> gas
+         _ -> error "external staticcall instruction must encode at least target and gaslimit arguments"
+prettyIeleInst (CallOp (CALLADDRESS name) results allArgs) = case results of
+  _:[] -> case allArgs of
+         (acct:[]) ->
+           prettyResults results <+> text "calladdress" <+> prettyName name
+             <+> text "at" <+> acct
+         _ -> error "external calladdress instruction must encode exactly one target argument"
+  _ -> error "external calladdress instruction must have exactly one result"
 prettyIeleInst (CallOp (CREATE name _) results (val:args)) = case results of
   [status,addr] ->
     prettyResults [status,addr] <+> text "create"
@@ -175,6 +203,8 @@ prettyOp1 op args = case op of
   EXPMOD -> simple "expmod"
   SIGNEXTEND -> simple "sext"
   TWOS -> simple "twos"
+  BSWAP -> simple "bswap"
+  LOG2 -> simple "log2"
   NE -> simple "cmp ne"
   LT -> simple "cmp lt"
   GT -> simple "cmp gt"
@@ -221,9 +251,7 @@ prettyVoidOp op args = case op of
     [reg] -> prettyCondJump reg lbl
     _ -> error "conditional jump takes exactly one register argument"
   RETURN _ -> prettyReturn args
-  REVERT _ -> case args of
-    [arg] -> text "revert" <+> arg
-    _ -> error "revert takes exactly one argument"
+  REVERT -> simple "revert"
   INVALID -> text "call @iele.invalid(" <> commaList args <> char ')'
   SSTORE -> simple "sstore"
   MSTORE -> simple "store"

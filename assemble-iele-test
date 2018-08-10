@@ -28,26 +28,10 @@ def convertToBinaryIele(json):
       if json["to"] == "":
         isCreateTx = True
     for key, value in json.iteritems():
-      if key == "code" or (key == "data" and isCreateTx):
+      if key == "code" or (key == "contractCode" and isCreateTx):
         res[key] = assembleIele(value)
       else:
         res[key] = convertToBinaryIele(value)
-    if "to" in json.keys() and "secretKey" in json.keys():
-      try:
-        from ethereum.transactions import Transaction
-      except ImportError as e:
-        sys.stderr.write('ImportError: %s\n'
-          'Please install pyethereum as described in INSTALL.md\n'
-          % e)
-        sys.exit(1)
-      data = res["data"]
-      binary = data.decode("hex")
-      t = Transaction(int(res["nonce"], 16), int(res["gasPrice"], 16), int(res["gasLimit"], 16), res["to"], int(res["value"], 16), binary)
-      t.sign(res["secretKey"])
-      del res["secretKey"]
-      res["v"] = hex(t.v)
-      res["r"] = format(t.r, "#066x")
-      res["s"] = format(t.s, "#066x")
     return res
   elif isinstance(json, list):
     res = []

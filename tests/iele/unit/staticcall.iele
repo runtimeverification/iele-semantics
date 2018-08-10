@@ -1,0 +1,80 @@
+contract created {
+  define @init() {}
+}
+
+contract staticcall_test {
+  external contract created
+
+  define public @test_staticcall() {
+    %address = call @iele.address()
+    %gas = call @iele.gas()
+    %status, %ret = staticcall @static1 at %address () gaslimit %gas
+    br %status, throw
+    br %ret, throw
+    %status, %ret = staticcall @nonstatic1 at %address () gaslimit 20000
+    %cmp = cmp ne %status, 4
+    br %cmp, throw
+    %status, %ret = staticcall @nonstatic2 at %address () gaslimit 1000
+    %cmp = cmp ne %status, 4
+    br %cmp, throw
+    %status, %ret = staticcall @nonstatic3 at %address () gaslimit 1000
+    %cmp = cmp ne %status, 4
+    br %cmp, throw
+    %status, %ret = staticcall @nonstatic4 at %address () gaslimit 2000
+    %cmp = cmp ne %status, 4
+    br %cmp, throw
+    %status, %ret = staticcall @nonstatic5 at %address () gaslimit 40000
+    %cmp = cmp ne %status, 4
+    br %cmp, throw
+    %status, %ret = staticcall @nonstatic6 at %address () gaslimit 40000
+    %cmp = cmp ne %status, 4
+    br %cmp, throw
+    %status, %ret = staticcall @nonstatic7 at %address () gaslimit 10000
+    %cmp = cmp ne %status, 4
+    br %cmp, throw
+    ret 0
+  throw:
+    revert -1
+  }
+
+  define public @static2() {
+    ret void
+  }
+
+  define public @static1() {
+    %address = call @iele.address()
+    %gas = call @iele.gas()
+    %status = call @static2 at %address () send 0, gaslimit %gas
+    br %status, throw
+    ret 0
+  throw:
+    revert -1
+  }
+
+  define public @nonstatic1() {
+    sstore 0, 0
+  }
+  define public @nonstatic2() {
+    log 0
+  }
+  define public @nonstatic3() {
+    log 0, 0
+  }
+  define public @nonstatic4() {
+    %address = call @iele.address()
+    %gas = call @iele.gas()
+    %status = call @static2 at %address () send 1, gaslimit %gas
+  }
+  define public @nonstatic5() {
+    %status, %ret = create created () send 0
+  }
+  define public @nonstatic6() {
+    %address = call @iele.address()
+    %status, %ret = copycreate %address () send 0
+  }
+  define public @nonstatic7() {
+    selfdestruct 0
+  }
+
+  define @init() {}
+}
