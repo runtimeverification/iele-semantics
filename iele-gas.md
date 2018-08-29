@@ -435,9 +435,9 @@ The bitwise expressions have a constant cost plus a linear factor in the number 
     rule #compute [ _ = not   W,       SCHED ] => Gnot < SCHED > +Int intSize(W) *Int Gnotword < SCHED >
     rule #compute [ _ = and   W0 , W1, SCHED ] => Gbitwise < SCHED > +Int minInt(intSize(W0), intSize(W1)) *Int Gbitwiseword < SCHED >
     rule #compute [ _ = or    W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gbitwiseword < SCHED >
-    rule #compute [ _ = xor   W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gbitwiseword < SCHED >
+    rule #compute [ _ = xor   W0 , W1, SCHED ] => Gnot < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gnotword < SCHED >
     rule #compute [ _ = shift W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(1, intSize(W0) +Int bitsInWords(W1)) *Int Gbitwiseword < SCHED >
-    rule #compute [ _ = log2 W,        SCHED ] => Gbitwise < SCHED > +Int intSize(W) *Int Gbitwiseword < SCHED >
+    rule #compute [ _ = log2 W,        SCHED ] => Glogarithm < SCHED > +Int intSize(W) *Int Glogarithmword < SCHED >
 ```
 
 #### Comparison operators
@@ -497,9 +497,9 @@ The cost of hashing a memory cell is equal to a constant plus the size of the ce
 
 ```k
     rule #compute [ _ = byte _ , _, SCHED ] => Gbyte < SCHED >
-    rule #compute [ _ = twos  WIDTH, _, SCHED ] => Gsign < SCHED > +Int maxInt(1, bytesInWords(chop(WIDTH))) *Int Gsignword < SCHED >
-    rule #compute [ _ = sext  WIDTH, _, SCHED ] => Gsign < SCHED > +Int maxInt(1, bytesInWords(chop(WIDTH))) *Int Gsignword < SCHED >
-    rule #compute [ _ = bswap WIDTH, _, SCHED ] => Gsign < SCHED > +Int maxInt(1, bytesInWords(chop(WIDTH))) *Int Gsignword < SCHED >
+    rule #compute [ _ = twos  WIDTH, _, SCHED ] => Gtwos  < SCHED > +Int maxInt(1, bytesInWords(chop(WIDTH))) *Int Gtwosword  < SCHED >
+    rule #compute [ _ = sext  WIDTH, _, SCHED ] => Gsext  < SCHED > +Int maxInt(1, bytesInWords(chop(WIDTH))) *Int Gsextword  < SCHED >
+    rule #compute [ _ = bswap WIDTH, _, SCHED ] => Gbswap < SCHED > +Int maxInt(1, bytesInWords(chop(WIDTH))) *Int Gbswapword < SCHED >
 ```
 
 #### Local state operations
@@ -704,14 +704,14 @@ The cost of logging is similar to the cost in EVM: a constant ccost plus a cost 
 Each of the precompiled contracts pays a fixed cost per word of data passed to the contract plus a constant.
 
 ```k
-    rule <k> #compute [ ECREC, SCHED ]  => 3000 ... </k>
-    rule <k> #compute [ SHA256, SCHED ] =>  60 +Int  3 *Int bytesInWords(maxInt(LEN, intSize(DATA))) ... </k> <callData> LEN , DATA , .Ints </callData>
-    rule <k> #compute [ RIP160, SCHED ] => 600 +Int 30 *Int bytesInWords(maxInt(LEN, intSize(DATA))) ... </k> <callData> LEN , DATA , .Ints </callData>
-    rule <k> #compute [ ID, SCHED ]     =>  0 ... </k>
+    rule <k> #compute [ ECREC, SCHED ]  => Gecrec < SCHED > ... </k>
+    rule <k> #compute [ SHA256, SCHED ] => Gsha256 < SCHED > +Int Gsha256word < SCHED > *Int bytesInWords(maxInt(LEN, intSize(DATA))) ... </k> <callData> LEN , DATA , .Ints </callData>
+    rule <k> #compute [ RIP160, SCHED ] => Grip160 < SCHED > +Int Grip160word < SCHED > *Int bytesInWords(maxInt(LEN, intSize(DATA))) ... </k> <callData> LEN , DATA , .Ints </callData>
+    rule <k> #compute [ ID, SCHED ]     => 0 ... </k>
 
-    rule #compute [ ECADD, SCHED ] => 500
-    rule #compute [ ECMUL, SCHED ] => 40000
-    rule <k> #compute [ ECPAIRING, SCHED ] => 100000 +Int LEN *Int 80000 ... </k> <callData> LEN , _ </callData>
+    rule #compute [ ECADD, SCHED ] => Gecadd < SCHED >
+    rule #compute [ ECMUL, SCHED ] => Gecmul < SCHED >
+    rule <k> #compute [ ECPAIRING, SCHED ] => Gecpairing < SCHED > +Int LEN *Int Gecpairingpair < SCHED > ... </k> <callData> LEN , _ </callData>
 ```
 
 There are several helpers for calculating gas.
@@ -910,7 +910,8 @@ A `ScheduleFlag` is a boolean determined by the fee schedule; applying a `Schedu
  // ----------------------------------------------------------
 
     syntax ScheduleFlag ::= "Gselfdestructnewaccount" | "Gstaticcalldepth"
- // ----------------------------------------------------------------------
+                          | "Gnewmove"                | "Gnewarith"
+ // ---------------------------------------------------------------
 ```
 
 A `ScheduleConst` is a constant determined by the fee schedule; applying a `ScheduleConst` to a `Schedule` yields the correct constant for that schedule.
@@ -919,15 +920,18 @@ A `ScheduleConst` is a constant determined by the fee schedule; applying a `Sche
     syntax Int ::= ScheduleConst "<" Schedule ">" [function]
  // --------------------------------------------------------
  
-    syntax ScheduleConst ::= "Gcopy"      | "Gmove"        | "Greadstate" | "Gadd"          | "Gaddword"       | "Gmul"          | "Gmulword"     | "Gmulkara"
-                           | "Gdiv"       | "Gdivword"     | "Gdivkara"   | "Gexpkara"      | "Gexpword"       | "Gexp"          | "Gexpmodkara"  | "Gcalladdress"
-                           | "Gexpmod"    | "Gnot"         | "Gnotword"   | "Gbitwise"      | "Gbitwiseword"   | "Gbyte"         | "Gsign"        | "Gsignword"
-                           | "Giszero"    | "Gcmp"         | "Gcmpword"   | "Gbr"           | "Gbrcond"        | "Gblockhash"    | "Gsha3"        | "Gsha3word"
-                           | "Gloadcell"  | "Gload"        | "Gloadword"  | "Gstorecell"    | "Gstore"         | "Gstoreword"    | "Gbalance"     | "Gextcodesize" 
-                           | "Glog"       | "Glogdata"     | "Glogtopic"  | "Gsstore"       | "Gsstoreword"    | "Gsstorekey"    | "Gsstoreset"   | "Gsstoresetkey"
-                           | "Gsload"     | "Gsloadkey"    | "Gsloadword" | "Gselfdestruct" | "Gcallmemory"    | "Gcallreg"      | "Glocalcall"   | "Gret"
-                           | "Gcall"      | "Gcallstipend" | "Gcallvalue" | "Gnewaccount"   | "Gcreate"        | "Gcopycreate"   | "Gcodedeposit" | "Gmemory"
-                           | "Gquadcoeff" | "Gtransaction" | "Gtxcreate"  | "Gtxdatazero"   | "Gtxdatanonzero" | "Rselfdestruct" | "Rb"           | "Smemallowance"
+    syntax ScheduleConst ::= "Gmove"       | "Greadstate"  | "Gadd"        | "Gaddword"       | "Gmul"        | "Gmulword"     | "Gmulkara"
+                           | "Gdiv"        | "Gdivword"    | "Gdivkara"    | "Gexpkara"       | "Gexpword"    | "Gexp"         | "Gexpmodkara"    | "Gexpmodmod"
+                           | "Gexpmodexp"  | "Gexpmod"     | "Gnot"        | "Gnotword"       | "Gbitwise"    | "Gbitwiseword" | "Glogarithm"     | "Glogarithmword"
+                           | "Gbyte"       | "Gtwos"       | "Gtwosword"   | "Gsext"          | "Gsextword"   | "Gbswap"       | "Gbswapword"     | "Giszero"
+                           | "Gcmp"        | "Gcmpword"    | "Gbr"         | "Gbrcond"        | "Gblockhash"  | "Gsha3"        | "Gsha3word"      | "Gloadcell"
+                           | "Gload"       | "Gloadword"   | "Gstorecell"  | "Gstore"         | "Gstoreword"  | "Gbalance"     | "Gextcodesize"   | "Gcalladdress"
+                           | "Glog"        | "Glogdata"    | "Glogtopic"   | "Gsstore"        | "Gsstoreword" | "Gsstorekey"   | "Gsstoreset"     | "Gsstoresetkey"
+                           | "Gsload"      | "Gsloadkey"   | "Gsloadword"  | "Gselfdestruct"  | "Gcallmemory" | "Gcallreg"     | "Glocalcall"     | "Gcallstipend" 
+                           | "Gcall"       | "Gcallvalue"  | "Gnewaccount" | "Gcreate"        | "Gcopycreate" | "Gcodedeposit" | "Gecrec"         | "Gsha256word"
+                           | "Gsha256"     | "Grip160word" | "Grip160"     | "Gecadd"         | "Gecmul"      | "Gecpairing"   | "Gecpairingpair" | "Gtransaction"
+                           | "Gtxcreate"   | "Gmemory"     | "Gquadcoeff"  | "Gtxdatanonzero" | "Gtxdatazero" | "Rsstoreset"   | "Rselfdestruct"  | "Rb"
+                           | "Sgasdivisor" | "Smemallowance"
  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------
 ```
 
@@ -958,9 +962,15 @@ This schedule is used to execute the EVM VM tests, and contains minor variations
     rule Gnotword       < DEFAULT > => 3
     rule Gbitwise       < DEFAULT > => 0
     rule Gbitwiseword   < DEFAULT > => 3
+    rule Glogarithm     < DEFAULT > => 0
+    rule Glogarithmword < DEFAULT > => 3
     rule Gbyte          < DEFAULT > => 3
-    rule Gsign          < DEFAULT > => 0
-    rule Gsignword      < DEFAULT > => 5
+    rule Gtwos          < DEFAULT > => 0
+    rule Gtwosword      < DEFAULT > => 5
+    rule Gsext          < DEFAULT > => 0
+    rule Gsextword      < DEFAULT > => 5
+    rule Gbswap         < DEFAULT > => 0
+    rule Gbswapword     < DEFAULT > => 5
     rule Giszero        < DEFAULT > => 3
     rule Gcmp           < DEFAULT > => 0
     rule Gcmpword       < DEFAULT > => 3
@@ -985,6 +995,7 @@ This schedule is used to execute the EVM VM tests, and contains minor variations
     rule Gsstoreword    < DEFAULT > => 500
     rule Gsstorekey     < DEFAULT > => 500
     rule Gsstoreset     < DEFAULT > => 1875
+    rule Rsstoreset     < DEFAULT > => 1875
     rule Gsstoresetkey  < DEFAULT > => 1875
     rule Gsload         < DEFAULT > => 50
     rule Gsloadkey      < DEFAULT > => 100
@@ -1001,6 +1012,15 @@ This schedule is used to execute the EVM VM tests, and contains minor variations
     rule Gcreate        < DEFAULT > => 32000
     rule Gcopycreate    < DEFAULT > => 33000
     rule Gcodedeposit   < DEFAULT > => 200
+    rule Gecrec         < DEFAULT > => 3000
+    rule Gsha256        < DEFAULT > => 60
+    rule Gsha256word    < DEAFULT > => 3
+    rule Grip160        < DEAFULT > => 600
+    rule Grip160word    < DEFAULT > => 30
+    rule Gecadd         < DEFAULT > => 500
+    rule Gecmul         < DEFAULT > => 40000
+    rule Gecpairing     < DEFAULT > => 100000
+    rule Gecpairingpair < DEFAULT > => 80000
     rule Gmemory        < DEFAULT > => 1
     rule Gquadcoeff     < DEFAULT > => 8192
     rule Gtransaction   < DEFAULT > => 21000

@@ -1143,7 +1143,7 @@ These operations interact with the account storage.
            <storage> ... (INDEX |-> (OLD => VALUE)) ... </storage>
            ...
          </account>
-         <refund> R => R +Int Gsstoreset < SCHED > *Int maxInt(0, intSize(OLD) -Int intSize(VALUE)) </refund>
+         <refund> R => R +Int Rsstoreset < SCHED > *Int maxInt(0, intSize(OLD) -Int intSize(VALUE)) </refund>
          <schedule> SCHED </schedule>
 ```
 
