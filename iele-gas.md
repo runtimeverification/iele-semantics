@@ -543,10 +543,19 @@ Each of these operations pays a constant cost to look up information about an ac
 The cost to load a value into a register is simply the cost to copy its value.
 
 ```k
-    rule <k> #compute [ DEST = % SRC:Int, SCHED ] => Gcopy < SCHED > *Int intSize(getInt(REGS [ SRC ])) ... </k>
+    rule <k> #compute [ DEST = % SRC:Int, SCHED ] => Gmove < SCHED > *Int intSize(getInt(REGS [ SRC ])) ... </k>
          <regs> REGS </regs>
+      requires notBool Gnewmove << SCHED >>
 
-    rule #compute [ DEST = SRC:Int, SCHED ] => Gcopy < SCHED > *Int intSize(SRC)
+    rule <k> #compute [ DEST = % SRC:Int, SCHED ] => Gmove < SCHED > ... </k>
+         <regs> REGS </regs>
+      requires Gnewmove << SCHED >>
+
+    rule <k> #compute [ DEST = SRC:Int, SCHED ] => Gmove < SCHED > *Int intSize(SRC) ... </k>
+      requires notBool Gnewmove << SCHED >>
+
+    rule <k> #compute [ DEST = SRC:Int, SCHED ] => Gmove < SCHED > ... </k>
+      requires Gnewmove << SCHED >>
 ```
 
 ### Jump statements
@@ -565,9 +574,15 @@ The cost of an intra-contract call is the cost to initialize the new set of regi
 constant cost to perform the jump and store the return address.
 
 ```k
-    rule <k> #compute [ _ = call @ NAME ( ARGS ), SCHED ] => Gcallreg < SCHED > *Int REGISTERS +Int intSizes(ARGS) *Int Gcopy < SCHED > +Int Glocalcall < SCHED > ... </k>
+    rule <k> #compute [ _ = call @ NAME ( ARGS ), SCHED ] => Gcallreg < SCHED > *Int REGISTERS +Int intSizes(ARGS) *Int Gmove < SCHED > +Int Glocalcall < SCHED > ... </k>
          <funcId> NAME </funcId>
          <nregs> REGISTERS </nregs>
+      requires notBool Gnewmove << SCHED >>
+    rule <k> #compute [ _ = call @ NAME ( ARGS ), SCHED ] => Gcallreg < SCHED > *Int REGISTERS +Int Glocalcall < SCHED > ... </k>
+         <funcId> NAME </funcId>
+         <nregs> REGISTERS </nregs>
+      requires Gnewmove << SCHED >>
+
     rule <k> #compute [ _ = call (IDX:Int => @ FUNC) ( _ ), _ ] ... </k>
          <funcLabels> ... IDX |-> FUNC ... </funcLabels>
     // this will throw an exception, so the gas cost doesn't really matter
@@ -576,19 +591,18 @@ constant cost to perform the jump and store the return address.
       requires notBool IDX in_keys(LABELS)
 ```
 
-The cost to return from an intra-contract call is the cost to move the return values into the result registers plus the cost to
-jump to the return address.
+The cost to return is folded into the cost of the call instruction.
 
 ```k
-    rule <k> #compute [ ret ARGS::Ints, SCHED ] => Gmove < SCHED > *Int #sizeRegs(ARGS) +Int Gret < SCHED > ... </k>
+    rule <k> #compute [ ret ARGS::Ints, SCHED ] => Gmove < SCHED > *Int #sizeRegs(ARGS) +Int 8 ... </k>
          <localCalls> ListItem(_) ... </localCalls>
-```
-
-The cost to return from a contract call is zero; this cost is paid by the calling frame as part of the call instruction.
-
-```k
+      requires notBool Gnewmove << SCHED >>
     rule <k> #compute [ ret _::Ints, SCHED ] => 0 ... </k>
          <localCalls> .List </localCalls>
+      requires notBool Gnewmove << SCHED >>
+
+    rule <k> #compute [ ret _::Ints, SCHED ] => 0 ... </k>
+      requires Gnewmove << SCHED >>
     rule #compute [ revert _, SCHED ] => 0
 ```
 
@@ -601,10 +615,10 @@ The cost to call another contract is very similar to the cost in EVM:
 -   The gas stipend paid to the callee to execute its code.
 
 ```k
-    rule <k> #compute [ _, RETS::LValues = call _ at ACCTTO ( ARGS ) send VALUE , gaslimit GCAP, SCHED ] => Ccall(SCHED, #accountEmpty(ACCTTO), GCAP, GAVAIL, VALUE, #sizeLVals(RETS), intSizes(ARGS)) ... </k>
+    rule <k> #compute [ _, RETS::LValues = call _ at ACCTTO ( ARGS ) send VALUE , gaslimit GCAP, SCHED ] => Ccall(SCHED, #accountEmpty(ACCTTO), GCAP, GAVAIL, VALUE, #sizeLVals(RETS), Ccallarg(SCHED, ARGS)) ... </k>
          <gas> GAVAIL </gas>
 
-    rule <k> #compute [ _, RETS::LValues = staticcall _ at ACCTTO ( ARGS ) gaslimit GCAP, SCHED ] => Ccall(SCHED, #accountEmpty(ACCTTO), GCAP, GAVAIL, 0, #sizeLVals(RETS), intSizes(ARGS)) ... </k>
+    rule <k> #compute [ _, RETS::LValues = staticcall _ at ACCTTO ( ARGS ) gaslimit GCAP, SCHED ] => Ccall(SCHED, #accountEmpty(ACCTTO), GCAP, GAVAIL, 0, #sizeLVals(RETS), Ccallarg(SCHED, ARGS)) ... </k>
          <gas> GAVAIL </gas>
 ```
 
@@ -683,8 +697,8 @@ The cost of logging is similar to the cost in EVM: a constant ccost plus a cost 
 -   `copycreate` pays a very similar cost to `create` but with a slightly higher constant because the account code must be looked up on the blockchain.
 
 ```k
-    rule #compute [ _ , _ = create _ ( ARGS ) send _, SCHED ] => Gcreate < SCHED > +Int Gcopy < SCHED > *Int intSizes(ARGS)
-    rule #compute [ _ , _ = copycreate _ ( ARGS ) send _, SCHED ] => Gcopycreate < SCHED > +Int Gcopy < SCHED > *Int intSizes(ARGS)
+    rule #compute [ _ , _ = create _ ( ARGS ) send _, SCHED ] => Gcreate < SCHED > +Int Gmove < SCHED > *Int Ccallarg(SCHED, ARGS)
+    rule #compute [ _ , _ = copycreate _ ( ARGS ) send _, SCHED ] => Gcopycreate < SCHED > +Int Gmove < SCHED > *Int Ccallarg(SCHED, ARGS)
 ```
 
 -   `selfdestruct` costs a fixed amount plus a cost if the account the funds are transferred to must be created.
@@ -723,14 +737,14 @@ Note: These are all functions as the operator `#compute` has already loaded all 
  // ----------------------------------------------------------
     rule Csstore(SCHED, INDEX, VALUE, OLDVALUE) => Gsstore < SCHED > +Int Gsstorekey < SCHED > *Int intSize(INDEX) +Int Gsstoreword < SCHED > *Int intSize(VALUE) +Int #if VALUE =/=Int 0 andBool OLDVALUE ==Int 0 #then Gsstoresetkey < SCHED > *Int intSize(INDEX) +Int Gsstoreset < SCHED > *Int intSize(VALUE) #else maxInt(0, Gsstoreset < SCHED > *Int (intSize(VALUE) -Int intSize(OLDVALUE))) #fi
 
-    syntax Operand ::= Ccall    ( Schedule , BExp , Int , Int , Int , Int , Int )  [strict(2)]
-                     | Ccallgas ( Schedule , BExp , Int , Int , Int , Int , Int )  [strict(2)]
-    syntax Int ::= Cgascap  ( Schedule , Int , Int , Int )                         [function]
-                 | Cextra   ( Schedule , Bool , Int , Int , Int )                  [function]
-                 | Cxfer    ( Schedule , Int )                                     [function]
-                 | Cnew     ( Schedule , Bool , Int )                              [function]
-                 | Ccallmem ( Schedule , Int , Int )                               [function]
- // -----------------------------------------------------------------------------------------
+    syntax Operand ::= Ccall    ( Schedule , BExp , Int , Int , Int , Int , Int ) [strict(2)]
+                     | Ccallgas ( Schedule , BExp , Int , Int , Int , Int , Int ) [strict(2)]
+    syntax Int ::= Cgascap  ( Schedule , Int , Int , Int )                        [function]
+                 | Cextra   ( Schedule , Bool , Int , Int , Int )                 [function]
+                 | Cxfer    ( Schedule , Int )                                    [function]
+                 | Cnew     ( Schedule , Bool , Int )                             [function]
+                 | Ccallarg ( Schedule , Operands )                               [function]
+ // ----------------------------------------------------------------------------------------
     rule Ccall(SCHED, ISEMPTY:Bool, GCAP, GAVAIL, VALUE, RETS, ARGS) => Cextra(SCHED, ISEMPTY, VALUE, RETS, ARGS) +Int Cgascap(SCHED, GCAP, GAVAIL, Cextra(SCHED, ISEMPTY, VALUE, RETS, ARGS))
 
     rule Ccallgas(SCHED, ISEMPTY:Bool, GCAP, GAVAIL, 0, RETS, ARGS)     => Cgascap(SCHED, GCAP, GAVAIL, Cextra(SCHED, ISEMPTY,     0, RETS, ARGS))
@@ -739,7 +753,7 @@ Note: These are all functions as the operator `#compute` has already loaded all 
     rule Cgascap(SCHED, GCAP, GAVAIL, GEXTRA) => minInt(#allBut64th(GAVAIL -Int GEXTRA), GCAP) requires GAVAIL >=Int GEXTRA andBool notBool Gstaticcalldepth << SCHED >>
     rule Cgascap(SCHED, GCAP, GAVAIL, GEXTRA) => GCAP                                          requires GAVAIL <Int  GEXTRA orBool Gstaticcalldepth << SCHED >>
 
-    rule Cextra(SCHED, ISEMPTY, VALUE, RETS, ARGS) => Gcall < SCHED > +Int Cnew(SCHED, ISEMPTY, VALUE) +Int Cxfer(SCHED, VALUE) +Int Ccallmem(SCHED, RETS, ARGS)
+    rule Cextra(SCHED, ISEMPTY, VALUE, RETS, ARGS) => Gcall < SCHED > +Int Cnew(SCHED, ISEMPTY, VALUE) +Int Cxfer(SCHED, VALUE) +Int Gcallreg < SCHED > *Int (RETS +Int ARGS)
 
     rule Cxfer(SCHED, 0) => 0
     rule Cxfer(SCHED, N) => Gcallvalue < SCHED > requires N =/=K 0
@@ -749,7 +763,10 @@ Note: These are all functions as the operator `#compute` has already loaded all 
     rule Cnew(SCHED, ISEMPTY:Bool, VALUE) => 0
       requires notBool ISEMPTY orBool  VALUE  ==Int 0
 
-    rule Ccallmem(SCHED, RETS, ARGS) => Gmove < SCHED > *Int RETS +Int Gcopy < SCHED > *Int ARGS
+    rule Ccallarg(SCHED, ARGS) => intSizes(ARGS)
+      requires notBool Gnewmove << SCHED >>
+    rule Ccallarg(SCHED, ARGS) => #sizeRegs(ARGS)
+      requires Gnewmove << SCHED >>
 
     syntax Operand ::= Cselfdestruct ( Schedule , BExp , Int ) [strict(2)]
  // ----------------------------------------------------------------------
@@ -942,7 +959,6 @@ This schedule is used to execute the EVM VM tests, and contains minor variations
 ```k
     syntax Schedule ::= "DEFAULT"
  // -----------------------------
-    rule Gcopy          < DEFAULT > => 3
     rule Gmove          < DEFAULT > => 3
     rule Greadstate     < DEFAULT > => 2
     rule Gadd           < DEFAULT > => 0
@@ -1004,7 +1020,6 @@ This schedule is used to execute the EVM VM tests, and contains minor variations
     rule Gcallmemory    < DEFAULT > => 2
     rule Gcallreg       < DEFAULT > => 3
     rule Glocalcall     < DEFAULT > => 11
-    rule Gret           < DEFAULT > => 8
     rule Gcall          < DEFAULT > => 40
     rule Gcallstipend   < DEFAULT > => 2300
     rule Gcallvalue     < DEFAULT > => 9000

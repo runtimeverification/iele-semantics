@@ -1321,7 +1321,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
 ```k
     rule <k> #exec REG , REGS = call LABEL at ACCTTO ( ARGS ) send VALUE , gaslimit GCAP
           => #checkCall ACCTFROM VALUE GCAP
-          ~> #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, #accountEmpty(ACCTTO), GCAP, GAVAIL, VALUE, #sizeLVals(REGS), intSizes(ARGS)) VALUE ARGS false
+          ~> #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, #accountEmpty(ACCTTO), GCAP, GAVAIL, VALUE, #sizeLVals(REGS), Ccallarg(SCHED, ARGS)) VALUE ARGS false
           ~> #return REGS REG
          ...
          </k>
@@ -1331,7 +1331,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
 
     rule <k> #exec REG , REGS = staticcall LABEL at ACCTTO ( ARGS ) gaslimit GCAP
           => #checkCall ACCTFROM 0 GCAP
-          ~> #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, #accountEmpty(ACCTTO), GCAP, GAVAIL, 0, #sizeLVals(REGS), intSizes(ARGS)) 0 ARGS true
+          ~> #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, #accountEmpty(ACCTTO), GCAP, GAVAIL, 0, #sizeLVals(REGS), Ccallarg(SCHED, ARGS)) 0 ARGS true
           ~> #return REGS REG
          ...
          </k>
