@@ -24,7 +24,7 @@ let be_int_width i width =
   let byte_width = (width + 7) / 8 in
   let unpadded_byte_width = String.length be in
   let padded = Bytes.make byte_width '\000' in
-  Bytes.blit be 0 padded (byte_width - unpadded_byte_width) unpadded_byte_width;
+  Bytes.blit_string be 0 padded (byte_width - unpadded_byte_width) unpadded_byte_width;
   Bytes.to_string padded
 
 let string_of_char ch = String.make 1 ch
