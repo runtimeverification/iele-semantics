@@ -1066,6 +1066,8 @@ This schedule is used to execute the EVM VM tests, and contains minor variations
 
     rule Gselfdestructnewaccount << DEFAULT >> => false
     rule Gstaticcalldepth        << DEFAULT >> => true
+    rule Gnewmove                << DEFAULT >> => false
+    rule Gnewarith               << DEFAULT >> => false
 
     rule Smemallowance  < DEFAULT > => 4096
     rule Sgasdivisor    < DEFAULT > => 1
@@ -1085,6 +1087,96 @@ This is the initial schedule of IELE.
     rule Gselfdestructnewaccount << ALBE >> => true
     rule Gstaticcalldepth        << ALBE >> => false
     rule SCHEDCONST              << ALBE >> => SCHEDCONST << DEFAULT >> [owise]
+
+    syntax Schedule ::= "DANSE"
+ // ---------------------------
+    rule Gmove          < DANSE > => 2000
+    rule Greadstate     < DANSE > => 2000
+    rule Gadd           < DANSE > => 2800
+    rule Gaddword       < DANSE > => 1
+    rule Gmul           < DANSE > => 4900
+    rule Gmulword       < DANSE > => 4
+    rule Gmulkara       < DANSE > => 4
+    rule Gdiv           < DANSE > => 4900
+    rule Gdivword       < DANSE > => 5
+    rule Gdivkara       < DANSE > => 8
+    rule Gexpkara       < DANSE > => 2
+    rule Gexpword       < DANSE > => 80
+    rule Gexp           < DANSE > => 5300
+    rule Gexpmodkara    < DANSE > => 15
+    rule Gexpmodmod     < DANSE > => 180
+    rule Gexpmodexp     < DANSE > => 8
+    rule Gexpmod        < DANSE > => 6000
+    rule Gnot           < DANSE > => 2700
+    rule Gnotword       < DANSE > => 3
+    rule Gbitwise       < DANSE > => 2900
+    rule Gbitwiseword   < DANSE > => 1
+    rule Glogarithm     < DANSE > => 2300
+    rule Glogarithmword < DANSE > => 1
+    rule Gbyte          < DANSE > => 2500
+    rule Gtwos          < DANSE > => 3100
+    rule Gtwosword      < DANSE > => 1
+    rule Gsext          < DANSE > => 3300
+    rule Gsextword      < DANSE > => 5
+    rule Gbswap         < DANSE > => 3300
+    rule Gbswapword     < DANSE > => 10
+    rule Giszero        < DANSE > => 1800
+    rule Gcmp           < DANSE > => 2500
+    rule Gcmpword       < DANSE > => 1
+    rule Gbr            < DANSE > => 5000
+    rule Gbrcond        < DANSE > => 5000
+    rule Gblockhash     < DANSE > => 20000
+    rule Gsha3          < DANSE > => 8300
+    rule Gsha3word      < DANSE > => 20
+    rule Gloadcell      < DANSE > => 2900
+    rule Gload          < DANSE > => 3300
+    rule Gloadword      < DANSE > => 3
+    rule Gstorecell     < DANSE > => 2800
+    rule Gstore         < DANSE > => 3900
+    rule Gstoreword     < DANSE > => 4
+    rule Gbalance       < DANSE > => 400000
+    rule Gextcodesize   < DANSE > => 700000
+    rule Gcalladdress   < DANSE > => 700000
+    rule Glog           < DANSE > => 375000
+    rule Glogdata       < DANSE > => 8000
+    rule Glogtopic      < DANSE > => 375000
+    rule Gsstore        < DANSE > => 4950000
+    rule Gsstoreword    < DANSE > => 300
+    rule Gsstorekey     < DANSE > => 400
+    rule Gsstoreset     < DANSE > => 1875000
+    rule Gsstoresetkey  < DANSE > => 1875000
+    rule Gsload         < DANSE > => 190000
+    rule Gsloadkey      < DANSE > => 8000
+    rule Gsloadword     < DANSE > => 2000
+    rule Gselfdestruct  < DANSE > => 0
+    rule Gcallmemory    < DANSE > => 2
+    rule Gcallreg       < DANSE > => 1000
+    rule Glocalcall     < DANSE > => 6800
+    rule Gcall          < DANSE > => 40000
+    rule Gcallstipend   < DANSE > => 2300000
+    rule Gcallvalue     < DANSE > => 9000000
+    rule Gnewaccount    < DANSE > => 25000000
+    rule Gcreate        < DANSE > => 32000000
+    rule Gcopycreate    < DANSE > => 33000000
+    rule Gcodedeposit   < DANSE > => 200000
+    rule Gecrec         < DANSE > => 3000000
+    rule Gsha256        < DANSE > => 25000
+    rule Gsha256word    < DEAFULT > => 30
+    rule Grip160        < DEAFULT > => 25000
+    rule Grip160word    < DANSE > => 30
+    rule Gecadd         < DANSE > => 35000
+    rule Gecmul         < DANSE > => 1700000
+    rule Gecpairing     < DANSE > => 100000000
+    rule Gecpairingpair < DANSE > => 26000000
+    rule Gmemory        < DANSE > => 750
+ 
+    rule Sgasdivisor < DANSE > => 1000
+    rule SCHEDCONST  < DANSE > => SCHEDCONST < ALBE > [owise]
+
+    rule Gnewmove      << DANSE >> => true
+    rule Gnewarith     << DANSE >> => true
+    rule SCHEDCONST    << DANSE >> => SCHEDCONST << ALBE >> [owise]
+    
 endmodule
 ```
 
