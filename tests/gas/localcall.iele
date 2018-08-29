@@ -1,0 +1,422 @@
+contract Test {
+  define @init() {}
+
+  define public @test() {
+    %i = 10000
+    %addr = call @iele.address()
+    %gas = call @iele.gas()
+    %value = 0
+  loop:
+    %not = iszero %i
+    br %not, end
+    %status = call @public at %addr () send %value, gaslimit %gas
+    %i = sub %i, 1
+    br loop
+  end:
+    ret void
+  }
+
+  define public @public() {
+    call @test1($op)
+  }
+
+  define @test1($op) {
+    call @test2($op)
+  }
+
+  define @test2($op) {
+    call @test3($op)
+  }
+
+  define @test3($op) {
+    call @test4($op)
+  }
+
+  define @test4($op) {
+    call @test5($op)
+  }
+
+  define @test5($op) {
+    call @test6($op)
+  }
+
+  define @test6($op) {
+    call @test7($op)
+  }
+
+  define @test7($op) {
+    call @test8($op)
+  }
+
+  define @test8($op) {
+    call @test9($op)
+  }
+
+  define @test9($op) {
+    call @test10($op)
+  }
+
+  define @test10($op) {
+    call @test11($op)
+  }
+
+  define @test11($op) {
+    call @test12($op)
+  }
+
+  define @test12($op) {
+    call @test13($op)
+  }
+
+  define @test13($op) {
+    call @test14($op)
+  }
+
+  define @test14($op) {
+    call @test15($op)
+  }
+
+  define @test15($op) {
+    call @test16($op)
+  }
+
+  define @test16($op) {
+    call @test17($op)
+  }
+
+  define @test17($op) {
+    call @test18($op)
+  }
+
+  define @test18($op) {
+    call @test19($op)
+  }
+
+  define @test19($op) {
+    call @test20($op)
+  }
+
+  define @test20($op) {
+    call @test21($op)
+  }
+
+  define @test21($op) {
+    call @test22($op)
+  }
+
+  define @test22($op) {
+    call @test23($op)
+  }
+
+  define @test23($op) {
+    call @test24($op)
+  }
+
+  define @test24($op) {
+    call @test25($op)
+  }
+
+  define @test25($op) {
+    call @test26($op)
+  }
+
+  define @test26($op) {
+    call @test27($op)
+  }
+
+  define @test27($op) {
+    call @test28($op)
+  }
+
+  define @test28($op) {
+    call @test29($op)
+  }
+
+  define @test29($op) {
+    call @test30($op)
+  }
+
+  define @test30($op) {
+    call @test31($op)
+  }
+
+  define @test31($op) {
+    call @test32($op)
+  }
+
+  define @test32($op) {
+    call @test33($op)
+  }
+
+  define @test33($op) {
+    call @test34($op)
+  }
+
+  define @test34($op) {
+    call @test35($op)
+  }
+
+  define @test35($op) {
+    call @test36($op)
+  }
+
+  define @test36($op) {
+    call @test37($op)
+  }
+
+  define @test37($op) {
+    call @test38($op)
+  }
+
+  define @test38($op) {
+    call @test39($op)
+  }
+
+  define @test39($op) {
+    call @test40($op)
+  }
+
+  define @test40($op) {
+    call @test41($op)
+  }
+
+  define @test41($op) {
+    call @test42($op)
+  }
+
+  define @test42($op) {
+    call @test43($op)
+  }
+
+  define @test43($op) {
+    call @test44($op)
+  }
+
+  define @test44($op) {
+    call @test45($op)
+  }
+
+  define @test45($op) {
+    call @test46($op)
+  }
+
+  define @test46($op) {
+    call @test47($op)
+  }
+
+  define @test47($op) {
+    call @test48($op)
+  }
+
+  define @test48($op) {
+    call @test49($op)
+  }
+
+  define @test49($op) {
+    call @test50($op)
+  }
+
+  define @test50($op) {
+    call @test51($op)
+  }
+
+  define @test51($op) {
+    call @test52($op)
+  }
+
+  define @test52($op) {
+    call @test53($op)
+  }
+
+  define @test53($op) {
+    call @test54($op)
+  }
+
+  define @test54($op) {
+    call @test55($op)
+  }
+
+  define @test55($op) {
+    call @test56($op)
+  }
+
+  define @test56($op) {
+    call @test57($op)
+  }
+
+  define @test57($op) {
+    call @test58($op)
+  }
+
+  define @test58($op) {
+    call @test59($op)
+  }
+
+  define @test59($op) {
+    call @test60($op)
+  }
+
+  define @test60($op) {
+    call @test61($op)
+  }
+
+  define @test61($op) {
+    call @test62($op)
+  }
+
+  define @test62($op) {
+    call @test63($op)
+  }
+
+  define @test63($op) {
+    call @test64($op)
+  }
+
+  define @test64($op) {
+    call @test65($op)
+  }
+
+  define @test65($op) {
+    call @test66($op)
+  }
+
+  define @test66($op) {
+    call @test67($op)
+  }
+
+  define @test67($op) {
+    call @test68($op)
+  }
+
+  define @test68($op) {
+    call @test69($op)
+  }
+
+  define @test69($op) {
+    call @test70($op)
+  }
+
+  define @test70($op) {
+    call @test71($op)
+  }
+
+  define @test71($op) {
+    call @test72($op)
+  }
+
+  define @test72($op) {
+    call @test73($op)
+  }
+
+  define @test73($op) {
+    call @test74($op)
+  }
+
+  define @test74($op) {
+    call @test75($op)
+  }
+
+  define @test75($op) {
+    call @test76($op)
+  }
+
+  define @test76($op) {
+    call @test77($op)
+  }
+
+  define @test77($op) {
+    call @test78($op)
+  }
+
+  define @test78($op) {
+    call @test79($op)
+  }
+
+  define @test79($op) {
+    call @test80($op)
+  }
+
+  define @test80($op) {
+    call @test81($op)
+  }
+
+  define @test81($op) {
+    call @test82($op)
+  }
+
+  define @test82($op) {
+    call @test83($op)
+  }
+
+  define @test83($op) {
+    call @test84($op)
+  }
+
+  define @test84($op) {
+    call @test85($op)
+  }
+
+  define @test85($op) {
+    call @test86($op)
+  }
+
+  define @test86($op) {
+    call @test87($op)
+  }
+
+  define @test87($op) {
+    call @test88($op)
+  }
+
+  define @test88($op) {
+    call @test89($op)
+  }
+
+  define @test89($op) {
+    call @test90($op)
+  }
+
+  define @test90($op) {
+    call @test91($op)
+  }
+
+  define @test91($op) {
+    call @test92($op)
+  }
+
+  define @test92($op) {
+    call @test93($op)
+  }
+
+  define @test93($op) {
+    call @test94($op)
+  }
+
+  define @test94($op) {
+    call @test95($op)
+  }
+
+  define @test95($op) {
+    call @test96($op)
+  }
+
+  define @test96($op) {
+    call @test97($op)
+  }
+
+  define @test97($op) {
+    call @test98($op)
+  }
+
+  define @test98($op) {
+    call @test99($op)
+  }
+
+  define @test99($op) {
+    call @test100($op)
+  }
+
+  define @test100($op) {
+    revert 0
+  }
+}

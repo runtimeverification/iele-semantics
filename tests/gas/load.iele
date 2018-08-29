@@ -1,0 +1,115 @@
+contract Test {
+  define @init() {}
+
+  define public @test() {
+    %i = 10000
+    %val2 = $val2
+  loop:
+    %not = iszero %i
+    br %not, end
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %res = $val
+    %i = sub %i, 1
+    br loop
+  end:
+    ret void
+  }
+}

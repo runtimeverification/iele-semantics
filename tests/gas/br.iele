@@ -1,0 +1,119 @@
+contract Test {
+  define @init() {}
+
+  define public @test() {
+    %i = 10000
+    %one = 1
+    %zero = 0
+    %alt = 0
+    %large = $val
+  loop:
+    %not = iszero %i
+    br %not, end
+lbl1: $op lbl2
+lbl2: $op lbl3
+lbl3: $op lbl4
+lbl4: $op lbl5
+lbl5: $op lbl6
+lbl6: $op lbl7
+lbl7: $op lbl8
+lbl8: $op lbl9
+lbl9: $op lbl10
+lbl10: $op lbl11
+lbl11: $op lbl12
+lbl12: $op lbl13
+lbl13: $op lbl14
+lbl14: $op lbl15
+lbl15: $op lbl16
+lbl16: $op lbl17
+lbl17: $op lbl18
+lbl18: $op lbl19
+lbl19: $op lbl20
+lbl20: $op lbl21
+lbl21: $op lbl22
+lbl22: $op lbl23
+lbl23: $op lbl24
+lbl24: $op lbl25
+lbl25: $op lbl26
+lbl26: $op lbl27
+lbl27: $op lbl28
+lbl28: $op lbl29
+lbl29: $op lbl30
+lbl30: $op lbl31
+lbl31: $op lbl32
+lbl32: $op lbl33
+lbl33: $op lbl34
+lbl34: $op lbl35
+lbl35: $op lbl36
+lbl36: $op lbl37
+lbl37: $op lbl38
+lbl38: $op lbl39
+lbl39: $op lbl40
+lbl40: $op lbl41
+lbl41: $op lbl42
+lbl42: $op lbl43
+lbl43: $op lbl44
+lbl44: $op lbl45
+lbl45: $op lbl46
+lbl46: $op lbl47
+lbl47: $op lbl48
+lbl48: $op lbl49
+lbl49: $op lbl50
+lbl50: $op lbl51
+lbl51: $op lbl52
+lbl52: $op lbl53
+lbl53: $op lbl54
+lbl54: $op lbl55
+lbl55: $op lbl56
+lbl56: $op lbl57
+lbl57: $op lbl58
+lbl58: $op lbl59
+lbl59: $op lbl60
+lbl60: $op lbl61
+lbl61: $op lbl62
+lbl62: $op lbl63
+lbl63: $op lbl64
+lbl64: $op lbl65
+lbl65: $op lbl66
+lbl66: $op lbl67
+lbl67: $op lbl68
+lbl68: $op lbl69
+lbl69: $op lbl70
+lbl70: $op lbl71
+lbl71: $op lbl72
+lbl72: $op lbl73
+lbl73: $op lbl74
+lbl74: $op lbl75
+lbl75: $op lbl76
+lbl76: $op lbl77
+lbl77: $op lbl78
+lbl78: $op lbl79
+lbl79: $op lbl80
+lbl80: $op lbl81
+lbl81: $op lbl82
+lbl82: $op lbl83
+lbl83: $op lbl84
+lbl84: $op lbl85
+lbl85: $op lbl86
+lbl86: $op lbl87
+lbl87: $op lbl88
+lbl88: $op lbl89
+lbl89: $op lbl90
+lbl90: $op lbl91
+lbl91: $op lbl92
+lbl92: $op lbl93
+lbl93: $op lbl94
+lbl94: $op lbl95
+lbl95: $op lbl96
+lbl96: $op lbl97
+lbl97: $op lbl98
+lbl98: $op lbl99
+lbl99: $op lbl100
+lbl100: $op lbl101
+lbl101: %i = sub %i, 1
+    %alt = addmod %alt, 1, 2
+    br loop
+  end:
+    ret void
+  }
+}

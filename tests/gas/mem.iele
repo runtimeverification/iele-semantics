@@ -1,0 +1,119 @@
+contract Test {
+  define @init() {}
+
+  define public @test() {
+    %i = 10000
+    %val = $val
+    %zero = 0
+    %off = mul 1024, 1024
+    %width = $val2
+    store %val, %zero, %off, %width
+  loop:
+    %not = iszero %i
+    br %not, end
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    $op %zero, %off, %width
+    %i = sub %i, 1
+    br loop
+  end:
+    ret void
+  }
+}
