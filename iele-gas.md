@@ -845,22 +845,39 @@ Note: These are all functions as the operator `#compute` has already loaded all 
       requires L1 >=Int L2
     
     rule Cdiv(SCHED, L1, L2) =>
-        Gdivword < SCHED > *Int L1 +Int //TODO(remove this term)
+        Gdivword < SCHED > *Int L1 +Int
         Gdiv < SCHED >
+      requires notBool Gnewarith << SCHED >>
+      [owise]
+
+    rule Cdiv(SCHED, L1, L2) =>
+        Gdiv < SCHED >
+      requires Gnewarith << SCHED >>
       [owise]
 
     rule Cexp(SCHED, L1, W1, W2) =>
         Gexpkara < SCHED > *Int #overApproxKara(#adjustedBitLength(L1, W1) *Int W2 /Int 64) +Int
-        Gexpword < SCHED > *Int L1 +Int // TODO(adjustedBitLength)
+        Gexpword < SCHED > *Int L1 +Int
         Gexp < SCHED >
+      requires notBool Gnewarith << SCHED >>
+
+    rule Cexp(SCHED, L1, W1, W2) =>
+        Gexpkara < SCHED > *Int #overApproxKara(#adjustedBitLength(L1, W1) *Int W2 /Int 64) +Int
+        Gexpword < SCHED > *Int #adjustedBitLength(L1, W1) +Int
+        Gexp < SCHED >
+      requires Gnewarith << SCHED >>
 
     rule Cexpmod(SCHED, LB, LEX, LM, EX) =>
-        Gexpmodkara < SCHED > *Int #overApproxKara(LM) *Int #adjustedBitLength(LEX, EX) +Int
+        ((Gexpmodkara < SCHED > *Int #overApproxKara(LM) *Int #adjustedBitLength(LEX, EX)) up/Int 10) +Int
+        Gexpmodmod < SCHED > *Int LM +Int
+        Gexpmodexp < SCHED > *Int #adjustedBitLength(LEX, EX) +Int
         Gexpmod < SCHED >
       requires LB <=Int LM
 
     rule Cexpmod(SCHED, LB, LEX, LM, EX) =>
-        Gexpmodkara < SCHED > *Int #overApproxKara(LM) *Int #adjustedBitLength(LEX, EX) +Int
+        ((Gexpmodkara < SCHED > *Int #overApproxKara(LM) *Int #adjustedBitLength(LEX, EX)) up/Int 10) +Int
+        Gexpmodmod < SCHED > *Int LM +Int
+        Gexpmodexp < SCHED > *Int #adjustedBitLength(LEX, EX) +Int
         Cdiv(SCHED, LB, LM) +Int
         Gexpmod < SCHED >
       [owise]
@@ -972,7 +989,9 @@ This schedule is used to execute the EVM VM tests, and contains minor variations
     rule Gexpkara       < DEFAULT > => 50
     rule Gexpword       < DEFAULT > => 10
     rule Gexp           < DEFAULT > => 0
-    rule Gexpmodkara    < DEFAULT > => 4
+    rule Gexpmodkara    < DEFAULT > => 40
+    rule Gexpmodmod     < DEFAULT > => 0
+    rule Gexpmodexp     < DEFAULT > => 0
     rule Gexpmod        < DEFAULT > => 0
     rule Gnot           < DEFAULT > => 0
     rule Gnotword       < DEFAULT > => 3
