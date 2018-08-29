@@ -118,7 +118,6 @@ In the comments next to each cell, we explain the purpose of the cell.
 
                   // IELE Network Layer
                   // ==================
-                  // Currently still integrated only with Ethereum Network for backwards-compatibility testing.
 
                   <network>
 
@@ -1807,7 +1806,6 @@ module IELE-PROGRAM-LOADING
 
     syntax Int ::= #registers ( Instruction ) [function]
                  | #registers ( LValues ) [function, klabel(registersLValues)]
-                 | #registers ( Operands ) [function, klabel(registersOperands)]
                  | #registers ( NonEmptyOperands ) [function, klabel(registersOperands)]
     syntax Int ::= #computeNRegs ( Blocks )       [function]
                  | #computeNRegs ( Blocks , Int ) [function, klabel(#computeNRegsAux)]

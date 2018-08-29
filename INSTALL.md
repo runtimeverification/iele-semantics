@@ -27,15 +27,13 @@ To install on MacOS, after installing the command line tools package:
 brew tap homebrew/homebrew-cask homebrew-cask-versions
 brew cask install java8
 brew install maven opam pkg-config gmp mpfr automake libtool pandoc
-export LDFLAGS="-L$(brew --prefix openssl)/lib" # needed by pyethereum
-export CFLAGS="-I$(brew --prefix openssl)/include" # needed by pyethereum
 ```
 
 Followed by the Ubuntu instructions beginning at `git submodule update --init`
 
 --------------
 
-To test against a fragment of the ethereum test suite, run `make test`. For more details, see [here](https://github.com/runtimeverification/iele-semantics#testing-1).
+To test against our test suite, run `make test`. For more details, see [here](https://github.com/runtimeverification/iele-semantics#testing-1).
 
 Other Linux distros can install by installing the list of dependencies in the `apt-get install` command above and then following the rest of the instructions.
 

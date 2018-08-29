@@ -1,7 +1,7 @@
-Ethereum Backwards-Compatibility Testing
-========================================
+IELE Testing
+============
 
-Here we test the Ethereum test suite against the new IELE VM.
+Here we define a test harness for the new IELE VM.
 Actual execution of IELE is defined in [the IELE file](iele.md).
 
 ```k
@@ -14,7 +14,7 @@ requires "iele-node.k"
 ```
 
 ```k
-module ETHEREUM-SIMULATION
+module IELE-TESTING
     imports IELE
     imports IELE-BINARY
     imports K-REFLECTION
@@ -241,7 +241,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
 
 ### Running Tests
 
--   `run` runs a given set of Ethereum tests (from the test-set).
+-   `run` runs a given set of IELE tests (from the test-set).
 
 Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`.
 

@@ -311,13 +311,9 @@ Memory
 -   `.Array` is an arbitrary length array of zeroes.
 -   `.Memory` is an arbitrary length array of byte buffers.
 
-We use the impure attribute on the function definitions because the Array sort in a
-fast backend is mutable, so we need to ensure we do not cache identical arrays for each time
-we call this function.
-
 ```k
 
-    syntax Array ::= ".Array" [function, impure]
+    syntax Array ::= ".Array" [function]
  // ---------------------------------------------
     rule .Array => makeArray(pow30, 0)
 ```
@@ -379,8 +375,8 @@ Addresses
  // ------------------------------------------------
     rule #newAddr(ACCT, NONCE) => #addr(#parseHexWord(Keccak256(#rlpEncodeLength(#rlpEncodeBytes(ACCT, 20) +String #rlpEncodeWord(NONCE), 192))))
 
-    syntax Int ::= #sender ( String , Int , String , String )                                         [function, klabel(#senderAux)]
-                 | #sender ( String )                                                                 [function, klabel(#senderAux2)]
+    syntax Account ::= #sender ( String , Int , String , String )                                         [function, klabel(#senderAux)]
+                     | #sender ( String )                                                                 [function, klabel(#senderAux2)]
  // ---------------------------------------------------------------------------------------------------------------------------------
     rule #sender(HT, TW, TR, TS) => #sender(ECDSARecover(HT, TW, TR, TS))
 
