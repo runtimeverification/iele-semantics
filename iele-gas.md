@@ -1068,6 +1068,7 @@ This schedule is used to execute the EVM VM tests, and contains minor variations
     rule Gstaticcalldepth        << DEFAULT >> => true
 
     rule Smemallowance  < DEFAULT > => 4096
+    rule Sgasdivisor    < DEFAULT > => 1
 ```
 
 ### Albe Schedule

@@ -114,7 +114,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
     rule <k> loadTx(ACCTFROM)
           => #fun(CONTRACT =>
              #checkContract CONTRACT
-          ~> #create ACCTFROM #newAddr(ACCTFROM, NONCE) (GLIMIT -Int G0(SCHED, CODE, ARGS)) VALUE CONTRACT ARGS
+          ~> #create ACCTFROM #newAddr(ACCTFROM, NONCE) ((GLIMIT -Int G0(SCHED, CODE, ARGS))*Int Sgasdivisor < SCHED >) VALUE CONTRACT ARGS
           ~> #codeDeposit #newAddr(ACCTFROM, NONCE) #sizeWordStack(CODE) CONTRACT %0 %1 true ~> #adjustGas ~> #finalizeTx(false) ~> startTx)(#if #isValidContract(CODE) #then #dasmContract(CODE, Main) #else #illFormed #fi)
          ...
          </k>
@@ -144,7 +144,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
          </account>
 
     rule <k> loadTx(ACCTFROM)
-          => #call ACCTFROM ACCTTO @ FUNC (GLIMIT -Int G0(SCHED, IeleName2String(FUNC), ARGS)) VALUE ARGS false
+          => #call ACCTFROM ACCTTO @ FUNC ((GLIMIT -Int G0(SCHED, IeleName2String(FUNC), ARGS))*Int Sgasdivisor < SCHED >) VALUE ARGS false
           ~> #finishTx ~> #adjustGas ~> #finalizeTx(false) ~> startTx
          ...
          </k>
@@ -188,7 +188,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            ...
          </message>
 
-    rule <k> #adjustGas => . ... </k> <checkGas> true </checkGas>
+    rule <k> #adjustGas => . ... </k> <checkGas> true </checkGas> <gas> GAVAIL => GAVAIL up/Int Sgasdivisor < SCHED > </gas> <schedule> SCHED </schedule>
     rule STATUS:Int ~> #adjustGas => #load %0 STATUS ~> #adjustGas
 
     syntax IELECommand ::= "#finishTx"
