@@ -794,6 +794,7 @@ Expression calculations are simple and don't require anything but the arguments 
 -   `REG = not W` performs bitwise negation on W.
 
 -   `REG = add W0, W1` performs arbitrary-precision addition on W0 and W1.
+-   `REG = sub W0, W1` performs arbitrary-precision subtraction on W0 and W1.
 -   `REG = mul W0, W1` performs arbitrary-precision multiplication on W0 and W1.
 -   `REG = div W0, W1` performs arbitrary-precision t-division on W0 and W1. It is an exception to divide by zero.
 -   `REG = mod W0, W1` performs arbitrary-precision t-modulus on W0 and W1. It is an exception to modulus by zero.
