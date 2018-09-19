@@ -794,13 +794,15 @@ Expression calculations are simple and don't require anything but the arguments 
 -   `REG = not W` performs bitwise negation on W.
 
 -   `REG = add W0, W1` performs arbitrary-precision addition on W0 and W1.
+-   `REG = sub W0, W1` performs arbitrary-precision subtraction on W0 and W1.
 -   `REG = mul W0, W1` performs arbitrary-precision multiplication on W0 and W1.
 -   `REG = div W0, W1` performs arbitrary-precision t-division on W0 and W1. It is an exception to divide by zero.
 -   `REG = mod W0, W1` performs arbitrary-precision t-modulus on W0 and W1. It is an exception to modulus by zero.
+-   `REG = exp W0, W1` performs arbitrary-precision exponentiation on W0 and W1. It is an exception to exponentiate by a negative number.
 
 -   `REG = addmod W0, W1, W2` performs addition of W0 and W1 modulo W2. It is an exception to modulus by zero.
 -   `REG = mulmod W0, W1, W2` performs multiplication of W0 and W1 modulo W2. It is an exception to modulus by zero.
--   `REG = expmod W0, W1, W2` performs exponentiation of W0 and W1 modulo W2. It is an exception to modulus by zero.
+-   `REG = expmod W0, W1, W2` performs exponentiation of W0 and W1 modulo W2. It is an exception to exponentiate by a negative number or modulus by zero.
 
 -   `REG = log2 W` performs the floored logarithm base 2 of W. It is an exception to compute the logarithm of 0 or of a negative number.
 
