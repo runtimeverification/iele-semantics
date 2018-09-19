@@ -750,8 +750,8 @@ Note: These are all functions as the operator `#compute` has already loaded all 
 
     rule Ccallmem(SCHED, RETS, ARGS) => Gmove < SCHED > *Int RETS +Int Gcopy < SCHED > *Int ARGS
 
-    syntax Int ::= Cselfdestruct ( Schedule , BExp , Int ) [strict(2)]
- // ------------------------------------------------------------------
+    syntax Operand ::= Cselfdestruct ( Schedule , BExp , Int ) [strict(2)]
+ // ----------------------------------------------------------------------
     rule Cselfdestruct(SCHED, ISEMPTY:Bool, BAL) => Gselfdestruct < SCHED > +Int Gnewaccount < SCHED >
       requires ISEMPTY andBool (        Gselfdestructnewaccount << SCHED >>) andBool BAL =/=Int 0
     rule Cselfdestruct(SCHED, ISEMPTY:Bool, BAL) => Gselfdestruct < SCHED >
