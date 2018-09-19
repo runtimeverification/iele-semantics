@@ -359,7 +359,7 @@ Description of registers.
     syntax Ints ::= lookupRegisters(Operands, Array) [function]
  // -----------------------------------------------------------
     rule <k> % REG:Int , OPS => lookupRegisters(% REG, OPS, REGS) ... </k> <regs> REGS </regs> <typeChecking> false </typeChecking>
-    rule lookupRegisters(% REG:Int, OPS, REGS) => {REGS [ REG ]}:>Int , lookupRegisters(OPS, REGS)
+    rule lookupRegisters(% REG:Int, OPS, REGS) => getInt(REGS [ REG ]) , lookupRegisters(OPS, REGS)
     rule lookupRegisters(.Operands, _) => .Ints
 
     syntax LValues ::= #regRange ( Int ) [function]
@@ -630,11 +630,11 @@ Some checks if an opcode will throw an exception are relatively quick and done u
  // ----------------------------------------------------------
     rule <k> #negativeCall? [ OP ] => . ... </k> requires notBool isAccountCallInst(OP) andBool notBool isCreateInst(OP)
 
-    rule <k> #negativeCall? [ _     = call       _ at _ ( _ ) send % REG1 , gaslimit % REG2 ] => #if {REGS [ REG1 ]}:>Int <Int 0 orBool {REGS [ REG2 ]}:>Int <Int 0 #then #exception USER_ERROR #else . #fi ... </k> <regs> REGS </regs>
+    rule <k> #negativeCall? [ _     = call       _ at _ ( _ ) send % REG1 , gaslimit % REG2 ] => #if getInt(REGS [ REG1 ]) <Int 0 orBool getInt(REGS [ REG2 ]) <Int 0 #then #exception USER_ERROR #else . #fi ... </k> <regs> REGS </regs>
 
-    rule <k> #negativeCall? [ _     = staticcall _ at _ ( _ ) gaslimit % REG ] => #if {REGS [ REG ]}:>Int <Int 0 #then #exception USER_ERROR #else . #fi ... </k> <regs> REGS </regs>
-    rule <k> #negativeCall? [ _ , _ = create     _ ( _ ) send % REG ]          => #if {REGS [ REG ]}:>Int <Int 0 #then #exception USER_ERROR #else . #fi ... </k> <regs> REGS </regs>
-    rule <k> #negativeCall? [ _ , _ = copycreate _ ( _ ) send % REG ]          => #if {REGS [ REG ]}:>Int <Int 0 #then #exception USER_ERROR #else . #fi ... </k> <regs> REGS </regs>
+    rule <k> #negativeCall? [ _     = staticcall _ at _ ( _ ) gaslimit % REG ] => #if getInt(REGS [ REG ]) <Int 0 #then #exception USER_ERROR #else . #fi ... </k> <regs> REGS </regs>
+    rule <k> #negativeCall? [ _ , _ = create     _ ( _ ) send % REG ]          => #if getInt(REGS [ REG ]) <Int 0 #then #exception USER_ERROR #else . #fi ... </k> <regs> REGS </regs>
+    rule <k> #negativeCall? [ _ , _ = copycreate _ ( _ ) send % REG ]          => #if getInt(REGS [ REG ]) <Int 0 #then #exception USER_ERROR #else . #fi ... </k> <regs> REGS </regs>
 ```
 
 ### Substate Log
@@ -739,12 +739,12 @@ Some operators don't calculate anything, they just manipulate the state of regis
 ```k
     rule <k> #exec REG = W:Int => #load REG W ... </k>
 
-    rule <k> #exec REG1 = % REG2 => #load REG1 { REGS [ REG2 ] }:>Int ... </k> <regs> REGS </regs>
+    rule <k> #exec REG1 = % REG2 => #load REG1 getInt( REGS [ REG2 ] ) ... </k> <regs> REGS </regs>
 
     syntax InternalOp ::= "#load" LValue Int
                         | "#load" Int Int Int [klabel(#loadAux)]
  // ------------------------------------------------------------
-    rule <k> #load % REG VALUE => #load REG VALUE {REGS [ REG ]}:>Int ... </k> <regs> REGS </regs>
+    rule <k> #load % REG VALUE => #load REG VALUE getInt(REGS [ REG ]) ... </k> <regs> REGS </regs>
     rule <k> #load REG VALUE OLD => . ... </k> <regs> REGS => REGS [ REG <- VALUE ] </regs> <currentMemory> CURR => CURR -Int intSize(OLD) +Int intSize(VALUE) </currentMemory>
 
     syntax InternalOp ::= "#loads" LValues Ints
