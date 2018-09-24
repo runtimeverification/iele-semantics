@@ -110,6 +110,13 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to IELE'
  // ------------------------------------------------------------------------------------
     syntax String ::= StringIeleName2String ( StringIeleName ) [function, hook(STRING.token2string)]
  // ------------------------------------------------------------------------------------------------
+
+    syntax Int ::= getInt(K) [function]
+    syntax IeleName ::= getIeleName(K) [function]
+ // ---------------------------------------------
+    rule getInt(I:Int) => I
+    rule getIeleName(X:IeleName) => X
+
 ```
 
 Arithmetic
@@ -148,7 +155,7 @@ You could alternatively calculate `I1 %Int I2`, then add one to the normal integ
  // -----------------------------------------------------------------------------
     rule intSizes(ARR::Array, I) => intSizes(ARR, I, 0)
     rule intSizes(ARR::Array, I, I) => 0
-    rule intSizes(ARR, I, J) => {ARR [ J ]}:>Int +Int intSizes(ARR, I, J +Int 1) [owise]
+    rule intSizes(ARR, I, J) => getInt(ARR [ J ]) +Int intSizes(ARR, I, J +Int 1) [owise]
 
     syntax Int ::= bitsInWords ( Int ) [function]
  // ---------------------------------------------

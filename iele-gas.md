@@ -194,7 +194,7 @@ The memory cost of assigning a register or immediate to a register is the cost a
 resizing the register to equal the value being assigned.
 
 ```k
-    rule <k> #memory [ DEST = % SRC:Int ] => #registerDelta(DEST, intSize({REGS [ SRC ]}:>Int)) ... </k>
+    rule <k> #memory [ DEST = % SRC:Int ] => #registerDelta(DEST, intSize(getInt(REGS [ SRC ]))) ... </k>
          <regs> REGS </regs>
     rule <k> #memory [ DEST = SRC:Int ] => #registerDelta(DEST, intSize(SRC)) ... </k>
 ```
@@ -341,7 +341,7 @@ which is maintained by the next rules.
     rule <k> #registerDelta(% REG, NEWSIZE) => #deductMemory(PEAK) ... </k>
          <currentMemory> CURR </currentMemory>
          <regs> REGS </regs>
-         <peakMemory> PEAK => maxInt(PEAK, CURR +Int NEWSIZE -Int intSize({REGS [ REG ]}:>Int)) </peakMemory>
+         <peakMemory> PEAK => maxInt(PEAK, CURR +Int NEWSIZE -Int intSize(getInt(REGS [ REG ]))) </peakMemory>
 ```
 
 -   `#registerDeltas` invokes `#registerDelta` on a sequence of registers and values, using their exact size. This form is invoked when
@@ -542,7 +542,7 @@ Each of these operations pays a constant cost to look up information about an ac
 The cost to load a value into a register is simply the cost to copy its value.
 
 ```k
-    rule <k> #compute [ DEST = % SRC:Int, SCHED ] => Gcopy < SCHED > *Int intSize({REGS [ SRC ]}:>Int) ... </k>
+    rule <k> #compute [ DEST = % SRC:Int, SCHED ] => Gcopy < SCHED > *Int intSize(getInt(REGS [ SRC ])) ... </k>
          <regs> REGS </regs>
 
     rule #compute [ DEST = SRC:Int, SCHED ] => Gcopy < SCHED > *Int intSize(SRC)
@@ -750,8 +750,8 @@ Note: These are all functions as the operator `#compute` has already loaded all 
 
     rule Ccallmem(SCHED, RETS, ARGS) => Gmove < SCHED > *Int RETS +Int Gcopy < SCHED > *Int ARGS
 
-    syntax Int ::= Cselfdestruct ( Schedule , BExp , Int ) [strict(2)]
- // ------------------------------------------------------------------
+    syntax Operand ::= Cselfdestruct ( Schedule , BExp , Int ) [strict(2)]
+ // ----------------------------------------------------------------------
     rule Cselfdestruct(SCHED, ISEMPTY:Bool, BAL) => Gselfdestruct < SCHED > +Int Gnewaccount < SCHED >
       requires ISEMPTY andBool (        Gselfdestructnewaccount << SCHED >>) andBool BAL =/=Int 0
     rule Cselfdestruct(SCHED, ISEMPTY:Bool, BAL) => Gselfdestruct < SCHED >
