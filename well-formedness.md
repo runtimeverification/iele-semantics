@@ -247,12 +247,12 @@ Checking these instructions requires checking the types of local function calls 
 ```k
     rule <k> check ~> RETS = call @ NAME ( ARGS ) => checkLVals(RETS) ~> checkOperands(ARGS) ... </k>
          <types> ... NAME |-> ARGTYPES -> RETTYPES:Types </types>
-         <well-formedness-schedule> SCHED </well-formdness-schedule>
+         <well-formedness-schedule> SCHED </well-formedness-schedule>
       requires ints(#sizeRegs(ARGS)) ==K ARGTYPES andBool ints(#sizeLVals(RETS)) ==K RETTYPES andBool checkInit(NAME, SCHED)
 
     rule <k> check ~> RETS = call @ NAME ( ARGS ) => checkLVals(RETS) ~> checkOperands(ARGS) ... </k>
          <types> ... NAME |-> ARGTYPES -> (unknown => ints(#sizeLVals(RETS))) </types>
-         <well-formedness-schedule> SCHED </well-formdness-schedule>
+         <well-formedness-schedule> SCHED </well-formedness-schedule>
       requires ints(#sizeRegs(ARGS)) ==K ARGTYPES andBool checkInit(NAME, SCHED)
 
     rule <k> check ~> RETS = call % NAME ( ARGS ) => checkLVals(RETS) ~> checkOperands(ARGS) ... </k>
