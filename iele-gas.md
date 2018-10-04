@@ -1078,7 +1078,7 @@ This schedule is used to execute the EVM VM tests, and contains minor variations
 This is the initial schedule of IELE.
 
 ```k
-    syntax Schedule ::= "ALBE"
+ // Albe
  // --------------------------
     rule Gcall         < ALBE > => 700
     rule Gselfdestruct < ALBE > => 5000
@@ -1088,7 +1088,7 @@ This is the initial schedule of IELE.
     rule Gstaticcalldepth        << ALBE >> => false
     rule SCHEDCONST              << ALBE >> => SCHEDCONST << DEFAULT >> [owise]
 
-    syntax Schedule ::= "DANSE"
+ // Danse
  // ---------------------------
     rule Gmove          < DANSE > => 2000
     rule Greadstate     < DANSE > => 2000

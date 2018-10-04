@@ -224,8 +224,14 @@ Our semantics is modal, with the initial mode being set on the command line via 
 ```k
 module IELE-INFRASTRUCTURE
     imports IELE-CONFIGURATION
+    imports IELE-CONSTANTS
+endmodule
 
+module IELE-CONSTANTS
     syntax Mode ::= "NORMAL" [klabel(NORMAL)] | "VMTESTS"
+    syntax Schedule ::= "ALBE"
+                      | "DANSE"
+endmodule
 ```
 
 Hardware
