@@ -975,11 +975,12 @@ When execution of the callee reaches a `ret` instruction, control returns to the
          <funcLabels> LBLS </funcLabels>
       requires notBool IDX in_keys(LBLS)
 
-    rule <k> #exec _ = call IDX:Int ( ARGS ) => #exception FUNC_WRONG_SIG ... </k>
+    rule <k> #exec _ = call IDX:Int ( ARGS ) => #if LABEL ==K init andBool SCHED =/=K ALBE #then FUNC_NOT_FOUND #else #exception FUNC_WRONG_SIG #fi ... </k>
          <funcLabels> ... IDX |-> LABEL ... </funcLabels>
          <funcId> LABEL </funcId>
          <nparams> NPARAMS </nparams>
-      requires #sizeRegs(ARGS) =/=Int NPARAMS
+         <schedule> SCHED </schedule>
+      requires #sizeRegs(ARGS) =/=Int NPARAMS orBool (LABEL ==K init andBool SCHED =/=K ALBE)
 
     syntax Bool ::= isIeleBuiltin(IeleName) [function]
  // --------------------------------------------------
@@ -1379,8 +1380,10 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
          (_:WellFormednessCell => 
          <well-formedness>
            <typeChecking> true </typeChecking>
+           <well-formedness-schedule> SCHED </well-formedness-schedule>
            ...
-         </well-formedness>)
+         </well-formedness>
+         <schedule> SCHED </schedule>)
     rule <k> #finishTypeChecking => . ... </k>
          <typeChecking> _ => false </typeChecking>
 

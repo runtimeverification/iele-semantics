@@ -23,9 +23,11 @@ The semantic checker for IELE has its own configuration separate from the config
 
 ```k
     syntax IeleName ::= "Main" [token]
+    syntax Schedule
 
     configuration <well-formedness>
                     <typeChecking> false </typeChecking>
+                    <well-formedness-schedule> $SCHEDULE:Schedule </well-formedness-schedule>
                     <contracts> .Set </contracts>
                     <currentContract>
                       <types> intrinsicTypes </types>
@@ -244,11 +246,13 @@ Checking these instructions requires checking the types of local function calls 
 ```k
     rule <k> check ~> RETS = call @ NAME ( ARGS ) => checkLVals(RETS) ~> checkOperands(ARGS) ... </k>
          <types> ... NAME |-> ARGTYPES -> RETTYPES:Types </types>
-      requires ints(#sizeRegs(ARGS)) ==K ARGTYPES andBool ints(#sizeLVals(RETS)) ==K RETTYPES
+         <well-formedness-schedule> SCHED </well-formdness-schedule>
+      requires ints(#sizeRegs(ARGS)) ==K ARGTYPES andBool ints(#sizeLVals(RETS)) ==K RETTYPES andBool checkInit(NAME, SCHED)
 
     rule <k> check ~> RETS = call @ NAME ( ARGS ) => checkLVals(RETS) ~> checkOperands(ARGS) ... </k>
          <types> ... NAME |-> ARGTYPES -> (unknown => ints(#sizeLVals(RETS))) </types>
-      requires ints(#sizeRegs(ARGS)) ==K ARGTYPES
+         <well-formedness-schedule> SCHED </well-formdness-schedule>
+      requires ints(#sizeRegs(ARGS)) ==K ARGTYPES andBool checkInit(NAME, SCHED)
 
     rule <k> check ~> RETS = call % NAME ( ARGS ) => checkLVals(RETS) ~> checkOperands(ARGS) ... </k>
 
@@ -321,6 +325,10 @@ All identifiers beginning with "iele." are reserved by the language and cannot b
     rule checkName(NAME) => .
       requires lengthString(IeleName2String(NAME)) <Int 5 orBool substrString(IeleName2String(NAME), 0, 5) =/=String "iele."
 
+    syntax Bool ::= checkInit(IeleName, Schedule) [function]
+ // --------------------------------------------------------
+    rule checkInit(init, SCHED) => SCHED =/=K ALBE
+    rule checkInit(...) => true [owise]
 ```
 
 In order to correctly check names, we must convert escaped IELE names to their correct token representation.
