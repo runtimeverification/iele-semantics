@@ -1387,8 +1387,8 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
            <typeChecking> true </typeChecking>
            <well-formedness-schedule> SCHED </well-formedness-schedule>
            ...
-         </well-formedness>
-         <schedule> SCHED </schedule>)
+         </well-formedness>)
+         <schedule> SCHED </schedule>
     rule <k> #finishTypeChecking => . ... </k>
          <typeChecking> _ => false </typeChecking>
 
