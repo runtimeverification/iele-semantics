@@ -1087,7 +1087,13 @@ This is the initial schedule of IELE.
     rule Gselfdestructnewaccount << ALBE >> => true
     rule Gstaticcalldepth        << ALBE >> => false
     rule SCHEDCONST              << ALBE >> => SCHEDCONST << DEFAULT >> [owise]
+```
 
+### Danse Schedule
+
+This is the first major revision of IELE.
+
+```k
  // Danse
  // ---------------------------
     rule Gmove          < DANSE > => 2000

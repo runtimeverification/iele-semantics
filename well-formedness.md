@@ -8,7 +8,22 @@ require "iele-syntax.k"
 require "data.k"
 ```
 
+Modal Semantics
+---------------
+
+Our semantics is modal, with the initial mode being set on the command line via `-cMODE=EXECMODE`.
+
+-   `NORMAL` executes as a client on the network would.
+-   `VMTESTS` skips `call*` and `create*` operations.
+
 ```k
+module IELE-CONSTANTS
+    syntax Mode ::= "NORMAL" [klabel(NORMAL)] | "VMTESTS"
+    syntax Schedule ::= "ALBE"
+                      | "DANSE"
+endmodule
+
+
 module IELE-WELL-FORMEDNESS
     imports IELE-COMMON
     imports IELE-DATA

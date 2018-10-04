@@ -213,21 +213,7 @@ This is a bit unfortunate but it doesn't compromise the
 security guarantee that a smart contract account never exists at
 an address for which anybody knows a private key.
 
-Modal Semantics
----------------
-
-Our semantics is modal, with the initial mode being set on the command line via `-cMODE=EXECMODE`.
-
--   `NORMAL` executes as a client on the network would.
--   `VMTESTS` skips `call*` and `create*` operations.
-
 ```k
-module IELE-CONSTANTS
-    syntax Mode ::= "NORMAL" [klabel(NORMAL)] | "VMTESTS"
-    syntax Schedule ::= "ALBE"
-                      | "DANSE"
-endmodule
-
 module IELE-INFRASTRUCTURE
     imports IELE-CONFIGURATION
     imports IELE-CONSTANTS
