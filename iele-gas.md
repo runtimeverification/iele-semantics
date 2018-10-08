@@ -232,6 +232,7 @@ caller's registers, but that is handled in `iele.md`.
          <schedule> SCHED </schedule>
          <fid> NAME </fid>
          <regs> REGS </regs>
+         <funcId> NAME </funcId>
          <nregs> NREGS </nregs>
 ```
 

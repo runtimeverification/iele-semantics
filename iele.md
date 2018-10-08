@@ -645,7 +645,8 @@ After executing a transaction, it's necessary to have the effect of the substate
 
 ```k
     syntax InternalOp ::= #finalizeTx ( Bool )
- // ------------------------------------------
+                        | #deleteAccounts ( List )
+ // ----------------------------------------------
     rule <k> #finalizeTx(true) => . ... </k>
          <selfDestruct> .Set </selfDestruct>
 
@@ -681,8 +682,11 @@ After executing a transaction, it's necessary to have the effect of the substate
          <mode> NORMAL </mode>
          <txPending> ListItem(_) => .List ... </txPending>
 
-    rule <k> #finalizeTx(true) ... </k>
-         <selfDestruct> ... (SetItem(ACCT) => .Set) </selfDestruct>
+    rule <k> (. => #deleteAccounts(Set2List(ACCTS))) ~> #finalizeTx(true) ... </k>
+         <selfDestruct> ACCTS => .Set </selfDestruct>
+      requires size(ACCTS) >Int 0
+
+    rule <k> #deleteAccounts(ListItem(ACCT) ACCTS) => #deleteAccounts(ACCTS) ... </k>
          <activeAccounts> ... (SetItem(ACCT) => .Set) </activeAccounts>
          <accounts>
            ( <account>
@@ -693,6 +697,8 @@ After executing a transaction, it's necessary to have the effect of the substate
            )
            ...
          </accounts>
+
+    rule #deleteAccounts(.List) => .
 ```
 
 IELE Programs
