@@ -1009,7 +1009,7 @@ When execution of the callee reaches a `ret` instruction, control returns to the
 -   `ret` returns the values contained in the specified list of registers to the caller.
     If we are executing inside a previous local call, the contract call frame persists unchanged, and only the instruction position and local register are affected.
     If we are executing at the top-level local call of a contract call frame, we return to the contract call's caller.
--   `revert` returns the values contained in the specified list of registers to the contract call's caller, but signifies that the contract has failed, which rolls back state changes and returns an error code to the caller.
+-   `revert` returns the value of the single specified register to the contract call's caller, but signifies that the contract has failed, which rolls back state changes and returns an error code to the caller.
 
 ```k
     rule <k> #exec ret VALUES => #end ... </k>
