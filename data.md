@@ -16,6 +16,7 @@ module IELE-DATA
     imports BYTES
     imports IELE-COMMON
     imports DOMAINS
+    imports COLLECTIONS
 
     syntax KResult ::= Int
 ```
@@ -398,10 +399,12 @@ Word Map
 
 ```k
     syntax Map ::= #removeZeros ( Map ) [function]
- // ----------------------------------------------
-    rule #removeZeros( .Map )               => .Map
-    rule #removeZeros( KEY |-> 0     REST ) => #removeZeros(REST)
-    rule #removeZeros( KEY |-> VALUE REST ) => KEY |-> VALUE #removeZeros(REST) requires VALUE =/=K 0
+                 | #removeZeros ( List , Map ) [function, klabel(#removeZerosAux)]
+ // ------------------------------------------------------------------------------
+    rule #removeZeros( M )                                   => #removeZeros(Set2List(keys(M)), M)
+    rule #removeZeros( .List, .Map )                         => .Map
+    rule #removeZeros( ListItem(KEY) L, KEY |-> 0 REST )     => #removeZeros(L, REST)
+    rule #removeZeros( ListItem(KEY) L, KEY |-> VALUE REST ) => KEY |-> VALUE #removeZeros(L, REST) requires VALUE =/=K 0
 ```
 
 Parsing/Unparsing
