@@ -160,7 +160,7 @@ You could alternatively calculate `I1 %Int I2`, then add one to the normal integ
 
     syntax Int ::= bitsInWords ( Int ) [function]
  // ---------------------------------------------
-    rule bitsInWords(I) => I up/Int 256
+    rule bitsInWords(I) => I up/Int 64
 
     syntax Int ::= bytesInWords ( Int ) [function]
  // ----------------------------------------------
