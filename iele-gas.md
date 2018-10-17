@@ -1048,8 +1048,8 @@ This schedule is used to execute the EVM VM tests, and contains minor variations
     rule Gcodedeposit   < DEFAULT > => 200
     rule Gecrec         < DEFAULT > => 3000
     rule Gsha256        < DEFAULT > => 60
-    rule Gsha256word    < DEAFULT > => 3
-    rule Grip160        < DEAFULT > => 600
+    rule Gsha256word    < DEFAULT > => 3
+    rule Grip160        < DEFAULT > => 600
     rule Grip160word    < DEFAULT > => 30
     rule Gecadd         < DEFAULT > => 500
     rule Gecmul         < DEFAULT > => 40000
@@ -1167,8 +1167,8 @@ This is the first major revision of IELE.
     rule Gcodedeposit   < DANSE > => 200000
     rule Gecrec         < DANSE > => 3000000
     rule Gsha256        < DANSE > => 25000
-    rule Gsha256word    < DEAFULT > => 30
-    rule Grip160        < DEAFULT > => 25000
+    rule Gsha256word    < DANSE > => 30
+    rule Grip160        < DANSE > => 25000
     rule Grip160word    < DANSE > => 30
     rule Gecadd         < DANSE > => 35000
     rule Gecmul         < DANSE > => 1700000
