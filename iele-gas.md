@@ -86,7 +86,7 @@ as follows:
     rule #memory [ REG = and   W0 , W1 ] => #registerDelta(REG, minInt(intSize(W0), intSize(W1)))
     rule #memory [ REG = or    W0 , W1 ] => #registerDelta(REG, maxInt(intSize(W0), intSize(W1)))
     rule #memory [ REG = xor   W0 , W1 ] => #registerDelta(REG, maxInt(intSize(W0), intSize(W1)))
-    rule #memory [ REG = shift W0 , W1 ] => #registerDelta(REG, maxInt(1, intSize(W0) +Int bitsInWords(W1)))
+    rule <k> #memory [ REG = shift W0 , W1 ] => #registerDelta(REG, maxInt(1, intSize(W0) +Int bitsInWords(W1, SCHED))) ... </k> <schedule> SCHED </schedule>
     rule #memory [ REG = log2  W       ] => #registerDelta(REG, 2)
 ```
 
@@ -138,7 +138,7 @@ of the modulo operand (W2).
 Result size of SHA3 is 256 bits, i.e., 4 words.
 
 ```k
-    rule #memory [ REG = sha3 _ ] => #registerDelta(REG, bitsInWords(256))
+    rule <k> #memory [ REG = sha3 _ ] => #registerDelta(REG, bitsInWords(256, SCHED)) ... </k> <schedule> SCHED </schedule>
 ```
 
 #### Byte access
@@ -181,11 +181,11 @@ Operations whose result is an address:
 Operations whose result should fit into 256 bits.
 
 ```k
-    rule #memory [ REG = call @iele.timestamp   ( .Ints ) ] => #registerDelta(REG, bitsInWords(256))
-    rule #memory [ REG = call @iele.difficulty  ( .Ints ) ] => #registerDelta(REG, bitsInWords(256))
-    rule #memory [ REG = call @iele.callvalue   ( .Ints ) ] => #registerDelta(REG, bitsInWords(256))
-    rule #memory [ REG = call @iele.blockhash   ( _     ) ] => #registerDelta(REG, bitsInWords(256))
-    rule #memory [ REG = call @iele.balance     ( _     ) ] => #registerDelta(REG, bitsInWords(256))
+    rule <k> #memory [ REG = call @iele.timestamp   ( .Ints ) ] => #registerDelta(REG, bitsInWords(256, SCHED)) ... </k> <schedule> SCHED </schedule>
+    rule <k> #memory [ REG = call @iele.difficulty  ( .Ints ) ] => #registerDelta(REG, bitsInWords(256, SCHED)) ... </k> <schedule> SCHED </schedule>
+    rule <k> #memory [ REG = call @iele.callvalue   ( .Ints ) ] => #registerDelta(REG, bitsInWords(256, SCHED)) ... </k> <schedule> SCHED </schedule>
+    rule <k> #memory [ REG = call @iele.blockhash   ( _     ) ] => #registerDelta(REG, bitsInWords(256, SCHED)) ... </k> <schedule> SCHED </schedule>
+    rule <k> #memory [ REG = call @iele.balance     ( _     ) ] => #registerDelta(REG, bitsInWords(256, SCHED)) ... </k> <schedule> SCHED </schedule>
 ```
 
 #### Assignment operations
@@ -436,7 +436,7 @@ The bitwise expressions have a constant cost plus a linear factor in the number 
     rule #compute [ _ = and   W0 , W1, SCHED ] => Gbitwise < SCHED > +Int minInt(intSize(W0), intSize(W1)) *Int Gbitwiseword < SCHED >
     rule #compute [ _ = or    W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gbitwiseword < SCHED >
     rule #compute [ _ = xor   W0 , W1, SCHED ] => Gnot < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gnotword < SCHED >
-    rule #compute [ _ = shift W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(1, intSize(W0) +Int bitsInWords(W1)) *Int Gbitwiseword < SCHED >
+    rule #compute [ _ = shift W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(1, intSize(W0) +Int bitsInWords(W1, SCHED)) *Int Gbitwiseword < SCHED >
     rule #compute [ _ = log2 W,        SCHED ] => Glogarithm < SCHED > +Int intSize(W) *Int Glogarithmword < SCHED >
 ```
 
