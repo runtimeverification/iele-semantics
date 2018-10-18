@@ -615,10 +615,10 @@ The cost to call another contract is very similar to the cost in EVM:
 -   The gas stipend paid to the callee to execute its code.
 
 ```k
-    rule <k> #compute [ _, RETS::LValues = call _ at ACCTTO ( ARGS ) send VALUE , gaslimit GCAP, SCHED ] => Ccall(SCHED, #accountEmpty(ACCTTO), GCAP, GAVAIL, VALUE, #sizeLVals(RETS), Ccallarg(SCHED, ARGS)) ... </k>
+    rule <k> #compute [ _, RETS::LValues = call _ at ACCTTO ( ARGS ) send VALUE , gaslimit GCAP, SCHED ] => Ccall(SCHED, #accountEmpty(ACCTTO), GCAP *Int Sgasdivisor < SCHED >, GAVAIL, VALUE, #sizeLVals(RETS), Ccallarg(SCHED, ARGS)) ... </k>
          <gas> GAVAIL </gas>
 
-    rule <k> #compute [ _, RETS::LValues = staticcall _ at ACCTTO ( ARGS ) gaslimit GCAP, SCHED ] => Ccall(SCHED, #accountEmpty(ACCTTO), GCAP, GAVAIL, 0, #sizeLVals(RETS), Ccallarg(SCHED, ARGS)) ... </k>
+    rule <k> #compute [ _, RETS::LValues = staticcall _ at ACCTTO ( ARGS ) gaslimit GCAP, SCHED ] => Ccall(SCHED, #accountEmpty(ACCTTO), GCAP *Int Sgasdivisor < SCHED >, GAVAIL, 0, #sizeLVals(RETS), Ccallarg(SCHED, ARGS)) ... </k>
          <gas> GAVAIL </gas>
 ```
 
