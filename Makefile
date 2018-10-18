@@ -114,12 +114,12 @@ passing_targets=${passing_tests:=.test}
 passing_vm_targets=${passing_vm_tests:=.test}
 passing_blockchain_targets=${passing_blockchain_tests:=.test}
 
-iele_tests=$(wildcard tests/iele/*/*.iele.json)
+iele_tests=$(wildcard tests/iele/*/*/*.iele.json)
 iele_targets=${iele_tests:=.test}
 iele_node_targets=${iele_tests:=.nodetest}
 
-iele_contracts=$(wildcard iele-examples/*.iele tests/iele/*/*.iele)
-well_formed_contracts=$(filter-out $(wildcard tests/iele/ill-formed/*.iele), ${iele_contracts})
+iele_contracts=$(wildcard iele-examples/*.iele tests/iele/*/*/*.iele)
+well_formed_contracts=$(filter-out $(wildcard tests/iele/*/ill-formed/*.iele), ${iele_contracts})
 well_formedness_targets=${well_formed_contracts:=.test}
 
 test: $(passing_targets) ${iele_targets} ${iele_node_targets} ${well_formedness_targets} test-bad-packet
@@ -132,7 +132,7 @@ well-formed-test: ${well_formedness_targets}
 test-bad-packet:
 	netcat 127.0.0.1 $(PORT) < tests/bad-packet
 	netcat 127.0.0.1 $(PORT) < tests/bad-packet-2
-	.build/vm/iele-test-vm tests/iele/sum/sum_zero.iele.json $(PORT)
+	.build/vm/iele-test-vm tests/iele/albe/sum/sum_zero.iele.json $(PORT)
 
 tests/VMTests/%.json.test: tests/VMTests/%.json | build
 	./vmtest $<

@@ -1,0 +1,14 @@
+contract shift_test {
+  @x = 0x0100
+  @y = 0x0101
+  define public @test_shift(%a,%b) {
+    %2 = sload @x
+    %2 = shift %2, %a
+    sstore %2, @x
+    %2 = sload @y
+    %2 = shift %2, %b
+    sstore %2, @y
+  }
+
+  define @init() {}
+}

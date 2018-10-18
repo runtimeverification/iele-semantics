@@ -1,0 +1,13 @@
+contract test {
+  define public @test() {
+    %ret = twos 0, 5
+    br %ret, throw
+    %ret = sext 0, 5
+    br %ret, throw
+    ret void
+  throw:
+    revert -1
+  }
+
+  define @init() {}
+}
