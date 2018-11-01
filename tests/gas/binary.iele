@@ -1,0 +1,116 @@
+contract Test {
+  define @init() {}
+
+  define public @test() {
+    %i = 10000
+    %val = $val
+    %val2 = $val2
+  loop:
+    %not = iszero %i
+    br %not, end
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %res = $op %val, %val2
+    %i = sub %i, 1
+    br loop
+  end:
+    ret void
+  }
+}

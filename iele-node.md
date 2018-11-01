@@ -59,7 +59,7 @@ module IELE-NODE
     rule <k> runVM(true, _, ACCTFROM, CODESTR, ARGS, VALUE, GPRICE, GAVAIL, CB, DIFF, NUMB, GLIMIT, TS, _)
           => #fun(CODE => #fun(CONTRACT =>
              #checkContract CONTRACT
-          ~> #create ACCTFROM #newAddr(ACCTFROM, NONCE -Int 1) GAVAIL VALUE CONTRACT #toInts(ARGS)
+          ~> #create ACCTFROM #newAddr(ACCTFROM, NONCE -Int 1) (GAVAIL *Int Sgasdivisor < SCHED >) VALUE CONTRACT #toInts(ARGS)
           ~> #codeDeposit #newAddr(ACCTFROM, NONCE -Int 1) #sizeWordStack(CODE) CONTRACT %0 %1 true)(#if #isValidContract(CODE) #then #dasmContract(CODE, Main) #else #illFormed #fi))(#parseByteStackRaw(CODESTR))
          ...
          </k>
@@ -81,7 +81,7 @@ module IELE-NODE
       requires ACCTFROM in ACCTS
 
     rule <k> runVM(false, ACCTTO, ACCTFROM, _, ARGS, VALUE, GPRICE, GAVAIL, CB, DIFF, NUMB, GLIMIT, TS, FUNC)
-          => #call ACCTFROM ACCTTO @ String2IeleName(FUNC) GAVAIL VALUE #toInts(ARGS) false
+          => #call ACCTFROM ACCTTO @ String2IeleName(FUNC) (GAVAIL *Int Sgasdivisor < SCHED >) VALUE #toInts(ARGS) false
           ~> #endVM
          ...
          </k>
@@ -130,7 +130,7 @@ module IELE-NODE
     syntax KItem ::= vmResult(return: List,gas: Int,refund: Int,status: Int,selfdestruct: List,logs: List,AccountsCell, touched: List)
     syntax KItem ::= extractConfig(GeneratedTopCell) [function]
  // ----------------------------------------------------------
-    rule extractConfig(<generatedTop>... <output> OUT </output> <gas> GAVAIL </gas> <refund> REFUND </refund> <k> STATUS:Int </k> <selfDestruct> SD </selfDestruct> <logData> LOGS </logData> <accounts> ACCTS </accounts> ... </generatedTop>) => vmResult(#toList(OUT),GAVAIL,REFUND,STATUS,Set2List(SD),LOGS,<accounts> ACCTS </accounts>, .List)
+    rule extractConfig(<generatedTop>... <schedule> SCHED </schedule> <output> OUT </output> <gas> GAVAIL </gas> <refund> REFUND </refund> <k> STATUS:Int </k> <selfDestruct> SD </selfDestruct> <logData> LOGS </logData> <accounts> ACCTS </accounts> ... </generatedTop>) => vmResult(#toList(OUT),GAVAIL up/Int Sgasdivisor < SCHED >,REFUND,STATUS,Set2List(SD),LOGS,<accounts> ACCTS </accounts>, .List)
 
 endmodule
 ```

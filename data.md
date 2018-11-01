@@ -14,6 +14,7 @@ module IELE-DATA
     imports STRING-BUFFER
     imports ARRAY
     imports BYTES
+    imports IELE-CONSTANTS
     imports IELE-COMMON
     imports DOMAINS
     imports COLLECTIONS
@@ -158,9 +159,10 @@ You could alternatively calculate `I1 %Int I2`, then add one to the normal integ
     rule intSizes(ARR::Array, I, I) => 0
     rule intSizes(ARR, I, J) => getInt(ARR [ J ]) +Int intSizes(ARR, I, J +Int 1) [owise]
 
-    syntax Int ::= bitsInWords ( Int ) [function]
+    syntax Int ::= bitsInWords ( Int , Schedule ) [function]
  // ---------------------------------------------
-    rule bitsInWords(I) => I up/Int 256
+    rule bitsInWords(I, ALBE) => I up/Int 256
+    rule bitsInWords(I, _) => I up/Int 64 [owise]
 
     syntax Int ::= bytesInWords ( Int ) [function]
  // ----------------------------------------------

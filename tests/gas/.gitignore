@@ -1,0 +1,6 @@
+tmp
+tmp2
+asm
+*.tmp
+perf.data*
+config

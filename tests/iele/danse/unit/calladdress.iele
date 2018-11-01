@@ -1,0 +1,16 @@
+contract Bar {
+  define @init () {}
+  
+  define public @bar(%acct) {
+    %f = calladdress @test2 at %acct
+    %gas = call @iele.gas()
+    %status, %ret = call %f at %acct () send 0, gaslimit %gas
+    br %status, throw
+    br %ret, throw
+    %nonexistent = calladdress @baz at %acct
+    br %nonexistent, throw
+    ret void
+  throw: 
+    revert -1
+  }
+}

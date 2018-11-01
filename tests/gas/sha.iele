@@ -1,0 +1,117 @@
+contract Test {
+  define @init() {}
+
+  define public @test() {
+    %i = 10000
+    %val = $val
+    %zero = 0
+    store %val, %zero
+  loop:
+    %not = iszero %i
+    br %not, end
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %res = $op %zero
+    %i = sub %i, 1
+    br loop
+  end:
+    ret void
+  }
+}

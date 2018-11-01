@@ -213,19 +213,10 @@ This is a bit unfortunate but it doesn't compromise the
 security guarantee that a smart contract account never exists at
 an address for which anybody knows a private key.
 
-Modal Semantics
----------------
-
-Our semantics is modal, with the initial mode being set on the command line via `-cMODE=EXECMODE`.
-
--   `NORMAL` executes as a client on the network would.
--   `VMTESTS` skips `call*` and `create*` operations.
-
 ```k
 module IELE-INFRASTRUCTURE
     imports IELE-CONFIGURATION
-
-    syntax Mode ::= "NORMAL" [klabel(NORMAL)] | "VMTESTS"
+    imports IELE-CONSTANTS
 ```
 
 Hardware
@@ -908,7 +899,7 @@ These operators make queries about the current execution state.
 -   `REG = call @iele.blockhash(N)` returns the hash of the block header of the Nth previous block.
 
 ```k
-    rule <k> #exec REG = call @iele.gas      ( .Ints )  => #load REG GAVAIL ... </k> <gas> GAVAIL </gas>
+    rule <k> #exec REG = call @iele.gas      ( .Ints )  => #load REG (GAVAIL /Int Sgasdivisor < SCHED >) ... </k> <gas> GAVAIL </gas> <schedule> SCHED </schedule>
     rule <k> #exec REG = call @iele.gasprice ( .Ints )  => #load REG GPRICE ... </k> <gasPrice> GPRICE </gasPrice>
     rule <k> #exec REG = call @iele.gaslimit ( .Ints )  => #load REG GLIMIT ... </k> <gasLimit> GLIMIT </gasLimit>
 
@@ -975,11 +966,12 @@ When execution of the callee reaches a `ret` instruction, control returns to the
          <funcLabels> LBLS </funcLabels>
       requires notBool IDX in_keys(LBLS)
 
-    rule <k> #exec _ = call IDX:Int ( ARGS ) => #exception FUNC_WRONG_SIG ... </k>
+    rule <k> #exec _ = call IDX:Int ( ARGS ) => #if LABEL ==K init andBool SCHED =/=K ALBE #then FUNC_NOT_FOUND #else #exception FUNC_WRONG_SIG #fi ... </k>
          <funcLabels> ... IDX |-> LABEL ... </funcLabels>
          <funcId> LABEL </funcId>
          <nparams> NPARAMS </nparams>
-      requires #sizeRegs(ARGS) =/=Int NPARAMS
+         <schedule> SCHED </schedule>
+      requires #sizeRegs(ARGS) =/=Int NPARAMS orBool (LABEL ==K init andBool SCHED =/=K ALBE)
 
     syntax Bool ::= isIeleBuiltin(IeleName) [function]
  // --------------------------------------------------
@@ -1143,7 +1135,7 @@ These operations interact with the account storage.
            <storage> ... (INDEX |-> (OLD => VALUE)) ... </storage>
            ...
          </account>
-         <refund> R => R +Int Gsstoreset < SCHED > *Int maxInt(0, intSize(OLD) -Int intSize(VALUE)) </refund>
+         <refund> R => R +Int Rsstoreset < SCHED > *Int maxInt(0, intSize(OLD) -Int intSize(VALUE)) </refund>
          <schedule> SCHED </schedule>
 ```
 
@@ -1321,7 +1313,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
 ```k
     rule <k> #exec REG , REGS = call LABEL at ACCTTO ( ARGS ) send VALUE , gaslimit GCAP
           => #checkCall ACCTFROM VALUE GCAP
-          ~> #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, #accountEmpty(ACCTTO), GCAP, GAVAIL, VALUE, #sizeLVals(REGS), intSizes(ARGS)) VALUE ARGS false
+          ~> #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, #accountEmpty(ACCTTO), GCAP *Int Sgasdivisor < SCHED >, GAVAIL, VALUE, #sizeLVals(REGS), Ccallarg(SCHED, ARGS)) VALUE ARGS false
           ~> #return REGS REG
          ...
          </k>
@@ -1331,7 +1323,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
 
     rule <k> #exec REG , REGS = staticcall LABEL at ACCTTO ( ARGS ) gaslimit GCAP
           => #checkCall ACCTFROM 0 GCAP
-          ~> #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, #accountEmpty(ACCTTO), GCAP, GAVAIL, 0, #sizeLVals(REGS), intSizes(ARGS)) 0 ARGS true
+          ~> #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, #accountEmpty(ACCTTO), GCAP *Int Sgasdivisor < SCHED >, GAVAIL, 0, #sizeLVals(REGS), Ccallarg(SCHED, ARGS)) 0 ARGS true
           ~> #return REGS REG
          ...
          </k>
@@ -1379,8 +1371,10 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
          (_:WellFormednessCell => 
          <well-formedness>
            <typeChecking> true </typeChecking>
+           <well-formedness-schedule> SCHED </well-formedness-schedule>
            ...
          </well-formedness>)
+         <schedule> SCHED </schedule>
     rule <k> #finishTypeChecking => . ... </k>
          <typeChecking> _ => false </typeChecking>
 

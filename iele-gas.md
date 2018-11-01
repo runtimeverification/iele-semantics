@@ -86,7 +86,7 @@ as follows:
     rule #memory [ REG = and   W0 , W1 ] => #registerDelta(REG, minInt(intSize(W0), intSize(W1)))
     rule #memory [ REG = or    W0 , W1 ] => #registerDelta(REG, maxInt(intSize(W0), intSize(W1)))
     rule #memory [ REG = xor   W0 , W1 ] => #registerDelta(REG, maxInt(intSize(W0), intSize(W1)))
-    rule #memory [ REG = shift W0 , W1 ] => #registerDelta(REG, maxInt(1, intSize(W0) +Int bitsInWords(W1)))
+    rule <k> #memory [ REG = shift W0 , W1 ] => #registerDelta(REG, maxInt(1, intSize(W0) +Int bitsInWords(W1, SCHED))) ... </k> <schedule> SCHED </schedule>
     rule #memory [ REG = log2  W       ] => #registerDelta(REG, 2)
 ```
 
@@ -138,7 +138,7 @@ of the modulo operand (W2).
 Result size of SHA3 is 256 bits, i.e., 4 words.
 
 ```k
-    rule #memory [ REG = sha3 _ ] => #registerDelta(REG, bitsInWords(256))
+    rule <k> #memory [ REG = sha3 _ ] => #registerDelta(REG, bitsInWords(256, SCHED)) ... </k> <schedule> SCHED </schedule>
 ```
 
 #### Byte access
@@ -181,11 +181,11 @@ Operations whose result is an address:
 Operations whose result should fit into 256 bits.
 
 ```k
-    rule #memory [ REG = call @iele.timestamp   ( .Ints ) ] => #registerDelta(REG, bitsInWords(256))
-    rule #memory [ REG = call @iele.difficulty  ( .Ints ) ] => #registerDelta(REG, bitsInWords(256))
-    rule #memory [ REG = call @iele.callvalue   ( .Ints ) ] => #registerDelta(REG, bitsInWords(256))
-    rule #memory [ REG = call @iele.blockhash   ( _     ) ] => #registerDelta(REG, bitsInWords(256))
-    rule #memory [ REG = call @iele.balance     ( _     ) ] => #registerDelta(REG, bitsInWords(256))
+    rule <k> #memory [ REG = call @iele.timestamp   ( .Ints ) ] => #registerDelta(REG, bitsInWords(256, SCHED)) ... </k> <schedule> SCHED </schedule>
+    rule <k> #memory [ REG = call @iele.difficulty  ( .Ints ) ] => #registerDelta(REG, bitsInWords(256, SCHED)) ... </k> <schedule> SCHED </schedule>
+    rule <k> #memory [ REG = call @iele.callvalue   ( .Ints ) ] => #registerDelta(REG, bitsInWords(256, SCHED)) ... </k> <schedule> SCHED </schedule>
+    rule <k> #memory [ REG = call @iele.blockhash   ( _     ) ] => #registerDelta(REG, bitsInWords(256, SCHED)) ... </k> <schedule> SCHED </schedule>
+    rule <k> #memory [ REG = call @iele.balance     ( _     ) ] => #registerDelta(REG, bitsInWords(256, SCHED)) ... </k> <schedule> SCHED </schedule>
 ```
 
 #### Assignment operations
@@ -435,9 +435,9 @@ The bitwise expressions have a constant cost plus a linear factor in the number 
     rule #compute [ _ = not   W,       SCHED ] => Gnot < SCHED > +Int intSize(W) *Int Gnotword < SCHED >
     rule #compute [ _ = and   W0 , W1, SCHED ] => Gbitwise < SCHED > +Int minInt(intSize(W0), intSize(W1)) *Int Gbitwiseword < SCHED >
     rule #compute [ _ = or    W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gbitwiseword < SCHED >
-    rule #compute [ _ = xor   W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gbitwiseword < SCHED >
-    rule #compute [ _ = shift W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(1, intSize(W0) +Int bitsInWords(W1)) *Int Gbitwiseword < SCHED >
-    rule #compute [ _ = log2 W,        SCHED ] => Gbitwise < SCHED > +Int intSize(W) *Int Gbitwiseword < SCHED >
+    rule #compute [ _ = xor   W0 , W1, SCHED ] => Gnot < SCHED > +Int maxInt(intSize(W0), intSize(W1)) *Int Gnotword < SCHED >
+    rule #compute [ _ = shift W0 , W1, SCHED ] => Gbitwise < SCHED > +Int maxInt(1, intSize(W0) +Int bitsInWords(W1, SCHED)) *Int Gbitwiseword < SCHED >
+    rule #compute [ _ = log2 W,        SCHED ] => Glogarithm < SCHED > +Int intSize(W) *Int Glogarithmword < SCHED >
 ```
 
 #### Comparison operators
@@ -497,9 +497,9 @@ The cost of hashing a memory cell is equal to a constant plus the size of the ce
 
 ```k
     rule #compute [ _ = byte _ , _, SCHED ] => Gbyte < SCHED >
-    rule #compute [ _ = twos  WIDTH, _, SCHED ] => Gsign < SCHED > +Int maxInt(1, bytesInWords(chop(WIDTH))) *Int Gsignword < SCHED >
-    rule #compute [ _ = sext  WIDTH, _, SCHED ] => Gsign < SCHED > +Int maxInt(1, bytesInWords(chop(WIDTH))) *Int Gsignword < SCHED >
-    rule #compute [ _ = bswap WIDTH, _, SCHED ] => Gsign < SCHED > +Int maxInt(1, bytesInWords(chop(WIDTH))) *Int Gsignword < SCHED >
+    rule #compute [ _ = twos  WIDTH, _, SCHED ] => Gtwos  < SCHED > +Int maxInt(1, bytesInWords(chop(WIDTH))) *Int Gtwosword  < SCHED >
+    rule #compute [ _ = sext  WIDTH, _, SCHED ] => Gsext  < SCHED > +Int maxInt(1, bytesInWords(chop(WIDTH))) *Int Gsextword  < SCHED >
+    rule #compute [ _ = bswap WIDTH, _, SCHED ] => Gbswap < SCHED > +Int maxInt(1, bytesInWords(chop(WIDTH))) *Int Gbswapword < SCHED >
 ```
 
 #### Local state operations
@@ -543,10 +543,19 @@ Each of these operations pays a constant cost to look up information about an ac
 The cost to load a value into a register is simply the cost to copy its value.
 
 ```k
-    rule <k> #compute [ DEST = % SRC:Int, SCHED ] => Gcopy < SCHED > *Int intSize(getInt(REGS [ SRC ])) ... </k>
+    rule <k> #compute [ DEST = % SRC:Int, SCHED ] => Gmove < SCHED > *Int intSize(getInt(REGS [ SRC ])) ... </k>
          <regs> REGS </regs>
+      requires notBool Gnewmove << SCHED >>
 
-    rule #compute [ DEST = SRC:Int, SCHED ] => Gcopy < SCHED > *Int intSize(SRC)
+    rule <k> #compute [ DEST = % SRC:Int, SCHED ] => Gmove < SCHED > ... </k>
+         <regs> REGS </regs>
+      requires Gnewmove << SCHED >>
+
+    rule <k> #compute [ DEST = SRC:Int, SCHED ] => Gmove < SCHED > *Int intSize(SRC) ... </k>
+      requires notBool Gnewmove << SCHED >>
+
+    rule <k> #compute [ DEST = SRC:Int, SCHED ] => Gmove < SCHED > ... </k>
+      requires Gnewmove << SCHED >>
 ```
 
 ### Jump statements
@@ -565,9 +574,15 @@ The cost of an intra-contract call is the cost to initialize the new set of regi
 constant cost to perform the jump and store the return address.
 
 ```k
-    rule <k> #compute [ _ = call @ NAME ( ARGS ), SCHED ] => Gcallreg < SCHED > *Int REGISTERS +Int intSizes(ARGS) *Int Gcopy < SCHED > +Int Glocalcall < SCHED > ... </k>
+    rule <k> #compute [ _ = call @ NAME ( ARGS ), SCHED ] => Gcallreg < SCHED > *Int REGISTERS +Int intSizes(ARGS) *Int Gmove < SCHED > +Int Glocalcall < SCHED > ... </k>
          <funcId> NAME </funcId>
          <nregs> REGISTERS </nregs>
+      requires notBool Gnewmove << SCHED >>
+    rule <k> #compute [ _ = call @ NAME ( ARGS ), SCHED ] => Gcallreg < SCHED > *Int REGISTERS +Int Glocalcall < SCHED > ... </k>
+         <funcId> NAME </funcId>
+         <nregs> REGISTERS </nregs>
+      requires Gnewmove << SCHED >>
+
     rule <k> #compute [ _ = call (IDX:Int => @ FUNC) ( _ ), _ ] ... </k>
          <funcLabels> ... IDX |-> FUNC ... </funcLabels>
     // this will throw an exception, so the gas cost doesn't really matter
@@ -576,19 +591,18 @@ constant cost to perform the jump and store the return address.
       requires notBool IDX in_keys(LABELS)
 ```
 
-The cost to return from an intra-contract call is the cost to move the return values into the result registers plus the cost to
-jump to the return address.
+The cost to return is folded into the cost of the call instruction.
 
 ```k
-    rule <k> #compute [ ret ARGS::Ints, SCHED ] => Gmove < SCHED > *Int #sizeRegs(ARGS) +Int Gret < SCHED > ... </k>
+    rule <k> #compute [ ret ARGS::Ints, SCHED ] => Gmove < SCHED > *Int #sizeRegs(ARGS) +Int 8 ... </k>
          <localCalls> ListItem(_) ... </localCalls>
-```
-
-The cost to return from a contract call is zero; this cost is paid by the calling frame as part of the call instruction.
-
-```k
+      requires notBool Gnewmove << SCHED >>
     rule <k> #compute [ ret _::Ints, SCHED ] => 0 ... </k>
          <localCalls> .List </localCalls>
+      requires notBool Gnewmove << SCHED >>
+
+    rule <k> #compute [ ret _::Ints, SCHED ] => 0 ... </k>
+      requires Gnewmove << SCHED >>
     rule #compute [ revert _, SCHED ] => 0
 ```
 
@@ -601,10 +615,10 @@ The cost to call another contract is very similar to the cost in EVM:
 -   The gas stipend paid to the callee to execute its code.
 
 ```k
-    rule <k> #compute [ _, RETS::LValues = call _ at ACCTTO ( ARGS ) send VALUE , gaslimit GCAP, SCHED ] => Ccall(SCHED, #accountEmpty(ACCTTO), GCAP, GAVAIL, VALUE, #sizeLVals(RETS), intSizes(ARGS)) ... </k>
+    rule <k> #compute [ _, RETS::LValues = call _ at ACCTTO ( ARGS ) send VALUE , gaslimit GCAP, SCHED ] => Ccall(SCHED, #accountEmpty(ACCTTO), GCAP *Int Sgasdivisor < SCHED >, GAVAIL, VALUE, #sizeLVals(RETS), Ccallarg(SCHED, ARGS)) ... </k>
          <gas> GAVAIL </gas>
 
-    rule <k> #compute [ _, RETS::LValues = staticcall _ at ACCTTO ( ARGS ) gaslimit GCAP, SCHED ] => Ccall(SCHED, #accountEmpty(ACCTTO), GCAP, GAVAIL, 0, #sizeLVals(RETS), intSizes(ARGS)) ... </k>
+    rule <k> #compute [ _, RETS::LValues = staticcall _ at ACCTTO ( ARGS ) gaslimit GCAP, SCHED ] => Ccall(SCHED, #accountEmpty(ACCTTO), GCAP *Int Sgasdivisor < SCHED >, GAVAIL, 0, #sizeLVals(RETS), Ccallarg(SCHED, ARGS)) ... </k>
          <gas> GAVAIL </gas>
 ```
 
@@ -683,8 +697,8 @@ The cost of logging is similar to the cost in EVM: a constant ccost plus a cost 
 -   `copycreate` pays a very similar cost to `create` but with a slightly higher constant because the account code must be looked up on the blockchain.
 
 ```k
-    rule #compute [ _ , _ = create _ ( ARGS ) send _, SCHED ] => Gcreate < SCHED > +Int Gcopy < SCHED > *Int intSizes(ARGS)
-    rule #compute [ _ , _ = copycreate _ ( ARGS ) send _, SCHED ] => Gcopycreate < SCHED > +Int Gcopy < SCHED > *Int intSizes(ARGS)
+    rule #compute [ _ , _ = create _ ( ARGS ) send _, SCHED ] => Gcreate < SCHED > +Int Gmove < SCHED > *Int Ccallarg(SCHED, ARGS)
+    rule #compute [ _ , _ = copycreate _ ( ARGS ) send _, SCHED ] => Gcopycreate < SCHED > +Int Gmove < SCHED > *Int Ccallarg(SCHED, ARGS)
 ```
 
 -   `selfdestruct` costs a fixed amount plus a cost if the account the funds are transferred to must be created.
@@ -704,14 +718,14 @@ The cost of logging is similar to the cost in EVM: a constant ccost plus a cost 
 Each of the precompiled contracts pays a fixed cost per word of data passed to the contract plus a constant.
 
 ```k
-    rule <k> #compute [ ECREC, SCHED ]  => 3000 ... </k>
-    rule <k> #compute [ SHA256, SCHED ] =>  60 +Int  3 *Int bytesInWords(maxInt(LEN, intSize(DATA))) ... </k> <callData> LEN , DATA , .Ints </callData>
-    rule <k> #compute [ RIP160, SCHED ] => 600 +Int 30 *Int bytesInWords(maxInt(LEN, intSize(DATA))) ... </k> <callData> LEN , DATA , .Ints </callData>
-    rule <k> #compute [ ID, SCHED ]     =>  0 ... </k>
+    rule <k> #compute [ ECREC, SCHED ]  => Gecrec < SCHED > ... </k>
+    rule <k> #compute [ SHA256, SCHED ] => Gsha256 < SCHED > +Int Gsha256word < SCHED > *Int bytesInWords(maxInt(LEN, intSize(DATA))) ... </k> <callData> LEN , DATA , .Ints </callData>
+    rule <k> #compute [ RIP160, SCHED ] => Grip160 < SCHED > +Int Grip160word < SCHED > *Int bytesInWords(maxInt(LEN, intSize(DATA))) ... </k> <callData> LEN , DATA , .Ints </callData>
+    rule <k> #compute [ ID, SCHED ]     => 0 ... </k>
 
-    rule #compute [ ECADD, SCHED ] => 500
-    rule #compute [ ECMUL, SCHED ] => 40000
-    rule <k> #compute [ ECPAIRING, SCHED ] => 100000 +Int LEN *Int 80000 ... </k> <callData> LEN , _ </callData>
+    rule #compute [ ECADD, SCHED ] => Gecadd < SCHED >
+    rule #compute [ ECMUL, SCHED ] => Gecmul < SCHED >
+    rule <k> #compute [ ECPAIRING, SCHED ] => Gecpairing < SCHED > +Int LEN *Int Gecpairingpair < SCHED > ... </k> <callData> LEN , _ </callData>
 ```
 
 There are several helpers for calculating gas.
@@ -723,14 +737,14 @@ Note: These are all functions as the operator `#compute` has already loaded all 
  // ----------------------------------------------------------
     rule Csstore(SCHED, INDEX, VALUE, OLDVALUE) => Gsstore < SCHED > +Int Gsstorekey < SCHED > *Int intSize(INDEX) +Int Gsstoreword < SCHED > *Int intSize(VALUE) +Int #if VALUE =/=Int 0 andBool OLDVALUE ==Int 0 #then Gsstoresetkey < SCHED > *Int intSize(INDEX) +Int Gsstoreset < SCHED > *Int intSize(VALUE) #else maxInt(0, Gsstoreset < SCHED > *Int (intSize(VALUE) -Int intSize(OLDVALUE))) #fi
 
-    syntax Operand ::= Ccall    ( Schedule , BExp , Int , Int , Int , Int , Int )  [strict(2)]
-                     | Ccallgas ( Schedule , BExp , Int , Int , Int , Int , Int )  [strict(2)]
-    syntax Int ::= Cgascap  ( Schedule , Int , Int , Int )                         [function]
-                 | Cextra   ( Schedule , Bool , Int , Int , Int )                  [function]
-                 | Cxfer    ( Schedule , Int )                                     [function]
-                 | Cnew     ( Schedule , Bool , Int )                              [function]
-                 | Ccallmem ( Schedule , Int , Int )                               [function]
- // -----------------------------------------------------------------------------------------
+    syntax Operand ::= Ccall    ( Schedule , BExp , Int , Int , Int , Int , Int ) [strict(2)]
+                     | Ccallgas ( Schedule , BExp , Int , Int , Int , Int , Int ) [strict(2)]
+    syntax Int ::= Cgascap  ( Schedule , Int , Int , Int )                        [function]
+                 | Cextra   ( Schedule , Bool , Int , Int , Int )                 [function]
+                 | Cxfer    ( Schedule , Int )                                    [function]
+                 | Cnew     ( Schedule , Bool , Int )                             [function]
+                 | Ccallarg ( Schedule , Operands )                               [function]
+ // ----------------------------------------------------------------------------------------
     rule Ccall(SCHED, ISEMPTY:Bool, GCAP, GAVAIL, VALUE, RETS, ARGS) => Cextra(SCHED, ISEMPTY, VALUE, RETS, ARGS) +Int Cgascap(SCHED, GCAP, GAVAIL, Cextra(SCHED, ISEMPTY, VALUE, RETS, ARGS))
 
     rule Ccallgas(SCHED, ISEMPTY:Bool, GCAP, GAVAIL, 0, RETS, ARGS)     => Cgascap(SCHED, GCAP, GAVAIL, Cextra(SCHED, ISEMPTY,     0, RETS, ARGS))
@@ -739,7 +753,7 @@ Note: These are all functions as the operator `#compute` has already loaded all 
     rule Cgascap(SCHED, GCAP, GAVAIL, GEXTRA) => minInt(#allBut64th(GAVAIL -Int GEXTRA), GCAP) requires GAVAIL >=Int GEXTRA andBool notBool Gstaticcalldepth << SCHED >>
     rule Cgascap(SCHED, GCAP, GAVAIL, GEXTRA) => GCAP                                          requires GAVAIL <Int  GEXTRA orBool Gstaticcalldepth << SCHED >>
 
-    rule Cextra(SCHED, ISEMPTY, VALUE, RETS, ARGS) => Gcall < SCHED > +Int Cnew(SCHED, ISEMPTY, VALUE) +Int Cxfer(SCHED, VALUE) +Int Ccallmem(SCHED, RETS, ARGS)
+    rule Cextra(SCHED, ISEMPTY, VALUE, RETS, ARGS) => Gcall < SCHED > +Int Cnew(SCHED, ISEMPTY, VALUE) +Int Cxfer(SCHED, VALUE) +Int Gcallreg < SCHED > *Int (RETS +Int ARGS)
 
     rule Cxfer(SCHED, 0) => 0
     rule Cxfer(SCHED, N) => Gcallvalue < SCHED > requires N =/=K 0
@@ -749,7 +763,10 @@ Note: These are all functions as the operator `#compute` has already loaded all 
     rule Cnew(SCHED, ISEMPTY:Bool, VALUE) => 0
       requires notBool ISEMPTY orBool  VALUE  ==Int 0
 
-    rule Ccallmem(SCHED, RETS, ARGS) => Gmove < SCHED > *Int RETS +Int Gcopy < SCHED > *Int ARGS
+    rule Ccallarg(SCHED, ARGS) => intSizes(ARGS)
+      requires notBool Gnewmove << SCHED >>
+    rule Ccallarg(SCHED, ARGS) => #sizeRegs(ARGS)
+      requires Gnewmove << SCHED >>
 
     syntax Operand ::= Cselfdestruct ( Schedule , BExp , Int ) [strict(2)]
  // ----------------------------------------------------------------------
@@ -828,22 +845,39 @@ Note: These are all functions as the operator `#compute` has already loaded all 
       requires L1 >=Int L2
     
     rule Cdiv(SCHED, L1, L2) =>
-        Gdivword < SCHED > *Int L1 +Int //TODO(remove this term)
+        Gdivword < SCHED > *Int L1 +Int
         Gdiv < SCHED >
+      requires notBool Gnewarith << SCHED >>
+      [owise]
+
+    rule Cdiv(SCHED, L1, L2) =>
+        Gdiv < SCHED >
+      requires Gnewarith << SCHED >>
       [owise]
 
     rule Cexp(SCHED, L1, W1, W2) =>
         Gexpkara < SCHED > *Int #overApproxKara(#adjustedBitLength(L1, W1) *Int W2 /Int 64) +Int
-        Gexpword < SCHED > *Int L1 +Int // TODO(adjustedBitLength)
+        Gexpword < SCHED > *Int L1 +Int
         Gexp < SCHED >
+      requires notBool Gnewarith << SCHED >>
+
+    rule Cexp(SCHED, L1, W1, W2) =>
+        Gexpkara < SCHED > *Int #overApproxKara(#adjustedBitLength(L1, W1) *Int W2 /Int 64) +Int
+        Gexpword < SCHED > *Int #adjustedBitLength(L1, W1) +Int
+        Gexp < SCHED >
+      requires Gnewarith << SCHED >>
 
     rule Cexpmod(SCHED, LB, LEX, LM, EX) =>
-        Gexpmodkara < SCHED > *Int #overApproxKara(LM) *Int #adjustedBitLength(LEX, EX) +Int
+        ((Gexpmodkara < SCHED > *Int #overApproxKara(LM) *Int #adjustedBitLength(LEX, EX)) up/Int 10) +Int
+        Gexpmodmod < SCHED > *Int LM +Int
+        Gexpmodexp < SCHED > *Int #adjustedBitLength(LEX, EX) +Int
         Gexpmod < SCHED >
       requires LB <=Int LM
 
     rule Cexpmod(SCHED, LB, LEX, LM, EX) =>
-        Gexpmodkara < SCHED > *Int #overApproxKara(LM) *Int #adjustedBitLength(LEX, EX) +Int
+        ((Gexpmodkara < SCHED > *Int #overApproxKara(LM) *Int #adjustedBitLength(LEX, EX)) up/Int 10) +Int
+        Gexpmodmod < SCHED > *Int LM +Int
+        Gexpmodexp < SCHED > *Int #adjustedBitLength(LEX, EX) +Int
         Cdiv(SCHED, LB, LM) +Int
         Gexpmod < SCHED >
       [owise]
@@ -910,7 +944,8 @@ A `ScheduleFlag` is a boolean determined by the fee schedule; applying a `Schedu
  // ----------------------------------------------------------
 
     syntax ScheduleFlag ::= "Gselfdestructnewaccount" | "Gstaticcalldepth"
- // ----------------------------------------------------------------------
+                          | "Gnewmove"                | "Gnewarith"
+ // ---------------------------------------------------------------
 ```
 
 A `ScheduleConst` is a constant determined by the fee schedule; applying a `ScheduleConst` to a `Schedule` yields the correct constant for that schedule.
@@ -919,15 +954,18 @@ A `ScheduleConst` is a constant determined by the fee schedule; applying a `Sche
     syntax Int ::= ScheduleConst "<" Schedule ">" [function]
  // --------------------------------------------------------
  
-    syntax ScheduleConst ::= "Gcopy"      | "Gmove"        | "Greadstate" | "Gadd"          | "Gaddword"       | "Gmul"          | "Gmulword"     | "Gmulkara"
-                           | "Gdiv"       | "Gdivword"     | "Gdivkara"   | "Gexpkara"      | "Gexpword"       | "Gexp"          | "Gexpmodkara"  | "Gcalladdress"
-                           | "Gexpmod"    | "Gnot"         | "Gnotword"   | "Gbitwise"      | "Gbitwiseword"   | "Gbyte"         | "Gsign"        | "Gsignword"
-                           | "Giszero"    | "Gcmp"         | "Gcmpword"   | "Gbr"           | "Gbrcond"        | "Gblockhash"    | "Gsha3"        | "Gsha3word"
-                           | "Gloadcell"  | "Gload"        | "Gloadword"  | "Gstorecell"    | "Gstore"         | "Gstoreword"    | "Gbalance"     | "Gextcodesize" 
-                           | "Glog"       | "Glogdata"     | "Glogtopic"  | "Gsstore"       | "Gsstoreword"    | "Gsstorekey"    | "Gsstoreset"   | "Gsstoresetkey"
-                           | "Gsload"     | "Gsloadkey"    | "Gsloadword" | "Gselfdestruct" | "Gcallmemory"    | "Gcallreg"      | "Glocalcall"   | "Gret"
-                           | "Gcall"      | "Gcallstipend" | "Gcallvalue" | "Gnewaccount"   | "Gcreate"        | "Gcopycreate"   | "Gcodedeposit" | "Gmemory"
-                           | "Gquadcoeff" | "Gtransaction" | "Gtxcreate"  | "Gtxdatazero"   | "Gtxdatanonzero" | "Rselfdestruct" | "Rb"           | "Smemallowance"
+    syntax ScheduleConst ::= "Gmove"       | "Greadstate"  | "Gadd"        | "Gaddword"       | "Gmul"        | "Gmulword"     | "Gmulkara"
+                           | "Gdiv"        | "Gdivword"    | "Gdivkara"    | "Gexpkara"       | "Gexpword"    | "Gexp"         | "Gexpmodkara"    | "Gexpmodmod"
+                           | "Gexpmodexp"  | "Gexpmod"     | "Gnot"        | "Gnotword"       | "Gbitwise"    | "Gbitwiseword" | "Glogarithm"     | "Glogarithmword"
+                           | "Gbyte"       | "Gtwos"       | "Gtwosword"   | "Gsext"          | "Gsextword"   | "Gbswap"       | "Gbswapword"     | "Giszero"
+                           | "Gcmp"        | "Gcmpword"    | "Gbr"         | "Gbrcond"        | "Gblockhash"  | "Gsha3"        | "Gsha3word"      | "Gloadcell"
+                           | "Gload"       | "Gloadword"   | "Gstorecell"  | "Gstore"         | "Gstoreword"  | "Gbalance"     | "Gextcodesize"   | "Gcalladdress"
+                           | "Glog"        | "Glogdata"    | "Glogtopic"   | "Gsstore"        | "Gsstoreword" | "Gsstorekey"   | "Gsstoreset"     | "Gsstoresetkey"
+                           | "Gsload"      | "Gsloadkey"   | "Gsloadword"  | "Gselfdestruct"  | "Gcallmemory" | "Gcallreg"     | "Glocalcall"     | "Gcallstipend" 
+                           | "Gcall"       | "Gcallvalue"  | "Gnewaccount" | "Gcreate"        | "Gcopycreate" | "Gcodedeposit" | "Gecrec"         | "Gsha256word"
+                           | "Gsha256"     | "Grip160word" | "Grip160"     | "Gecadd"         | "Gecmul"      | "Gecpairing"   | "Gecpairingpair" | "Gtransaction"
+                           | "Gtxcreate"   | "Gmemory"     | "Gquadcoeff"  | "Gtxdatanonzero" | "Gtxdatazero" | "Rsstoreset"   | "Rselfdestruct"  | "Rb"
+                           | "Sgasdivisor" | "Smemallowance"
  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------
 ```
 
@@ -938,7 +976,6 @@ This schedule is used to execute the EVM VM tests, and contains minor variations
 ```k
     syntax Schedule ::= "DEFAULT"
  // -----------------------------
-    rule Gcopy          < DEFAULT > => 3
     rule Gmove          < DEFAULT > => 3
     rule Greadstate     < DEFAULT > => 2
     rule Gadd           < DEFAULT > => 0
@@ -952,15 +989,23 @@ This schedule is used to execute the EVM VM tests, and contains minor variations
     rule Gexpkara       < DEFAULT > => 50
     rule Gexpword       < DEFAULT > => 10
     rule Gexp           < DEFAULT > => 0
-    rule Gexpmodkara    < DEFAULT > => 4
+    rule Gexpmodkara    < DEFAULT > => 40
+    rule Gexpmodmod     < DEFAULT > => 0
+    rule Gexpmodexp     < DEFAULT > => 0
     rule Gexpmod        < DEFAULT > => 0
     rule Gnot           < DEFAULT > => 0
     rule Gnotword       < DEFAULT > => 3
     rule Gbitwise       < DEFAULT > => 0
     rule Gbitwiseword   < DEFAULT > => 3
+    rule Glogarithm     < DEFAULT > => 0
+    rule Glogarithmword < DEFAULT > => 3
     rule Gbyte          < DEFAULT > => 3
-    rule Gsign          < DEFAULT > => 0
-    rule Gsignword      < DEFAULT > => 5
+    rule Gtwos          < DEFAULT > => 0
+    rule Gtwosword      < DEFAULT > => 5
+    rule Gsext          < DEFAULT > => 0
+    rule Gsextword      < DEFAULT > => 5
+    rule Gbswap         < DEFAULT > => 0
+    rule Gbswapword     < DEFAULT > => 5
     rule Giszero        < DEFAULT > => 3
     rule Gcmp           < DEFAULT > => 0
     rule Gcmpword       < DEFAULT > => 3
@@ -985,6 +1030,7 @@ This schedule is used to execute the EVM VM tests, and contains minor variations
     rule Gsstoreword    < DEFAULT > => 500
     rule Gsstorekey     < DEFAULT > => 500
     rule Gsstoreset     < DEFAULT > => 1875
+    rule Rsstoreset     < DEFAULT > => 1875
     rule Gsstoresetkey  < DEFAULT > => 1875
     rule Gsload         < DEFAULT > => 50
     rule Gsloadkey      < DEFAULT > => 100
@@ -993,7 +1039,6 @@ This schedule is used to execute the EVM VM tests, and contains minor variations
     rule Gcallmemory    < DEFAULT > => 2
     rule Gcallreg       < DEFAULT > => 3
     rule Glocalcall     < DEFAULT > => 11
-    rule Gret           < DEFAULT > => 8
     rule Gcall          < DEFAULT > => 40
     rule Gcallstipend   < DEFAULT > => 2300
     rule Gcallvalue     < DEFAULT > => 9000
@@ -1001,6 +1046,15 @@ This schedule is used to execute the EVM VM tests, and contains minor variations
     rule Gcreate        < DEFAULT > => 32000
     rule Gcopycreate    < DEFAULT > => 33000
     rule Gcodedeposit   < DEFAULT > => 200
+    rule Gecrec         < DEFAULT > => 3000
+    rule Gsha256        < DEFAULT > => 60
+    rule Gsha256word    < DEFAULT > => 3
+    rule Grip160        < DEFAULT > => 600
+    rule Grip160word    < DEFAULT > => 30
+    rule Gecadd         < DEFAULT > => 500
+    rule Gecmul         < DEFAULT > => 40000
+    rule Gecpairing     < DEFAULT > => 100000
+    rule Gecpairingpair < DEFAULT > => 80000
     rule Gmemory        < DEFAULT > => 1
     rule Gquadcoeff     < DEFAULT > => 8192
     rule Gtransaction   < DEFAULT > => 21000
@@ -1012,8 +1066,11 @@ This schedule is used to execute the EVM VM tests, and contains minor variations
 
     rule Gselfdestructnewaccount << DEFAULT >> => false
     rule Gstaticcalldepth        << DEFAULT >> => true
+    rule Gnewmove                << DEFAULT >> => false
+    rule Gnewarith               << DEFAULT >> => false
 
     rule Smemallowance  < DEFAULT > => 4096
+    rule Sgasdivisor    < DEFAULT > => 1
 ```
 
 ### Albe Schedule
@@ -1021,7 +1078,7 @@ This schedule is used to execute the EVM VM tests, and contains minor variations
 This is the initial schedule of IELE.
 
 ```k
-    syntax Schedule ::= "ALBE"
+ // Albe
  // --------------------------
     rule Gcall         < ALBE > => 700
     rule Gselfdestruct < ALBE > => 5000
@@ -1030,6 +1087,102 @@ This is the initial schedule of IELE.
     rule Gselfdestructnewaccount << ALBE >> => true
     rule Gstaticcalldepth        << ALBE >> => false
     rule SCHEDCONST              << ALBE >> => SCHEDCONST << DEFAULT >> [owise]
+```
+
+### Danse Schedule
+
+This is the first major revision of IELE.
+
+```k
+ // Danse
+ // ---------------------------
+    rule Gmove          < DANSE > => 2000
+    rule Greadstate     < DANSE > => 2000
+    rule Gadd           < DANSE > => 2800
+    rule Gaddword       < DANSE > => 1
+    rule Gmul           < DANSE > => 4900
+    rule Gmulword       < DANSE > => 4
+    rule Gmulkara       < DANSE > => 4
+    rule Gdiv           < DANSE > => 4900
+    rule Gdivword       < DANSE > => 5
+    rule Gdivkara       < DANSE > => 8
+    rule Gexpkara       < DANSE > => 2
+    rule Gexpword       < DANSE > => 80
+    rule Gexp           < DANSE > => 5300
+    rule Gexpmodkara    < DANSE > => 15
+    rule Gexpmodmod     < DANSE > => 180
+    rule Gexpmodexp     < DANSE > => 8
+    rule Gexpmod        < DANSE > => 6000
+    rule Gnot           < DANSE > => 2700
+    rule Gnotword       < DANSE > => 3
+    rule Gbitwise       < DANSE > => 2900
+    rule Gbitwiseword   < DANSE > => 1
+    rule Glogarithm     < DANSE > => 2300
+    rule Glogarithmword < DANSE > => 1
+    rule Gbyte          < DANSE > => 2500
+    rule Gtwos          < DANSE > => 3100
+    rule Gtwosword      < DANSE > => 1
+    rule Gsext          < DANSE > => 3300
+    rule Gsextword      < DANSE > => 5
+    rule Gbswap         < DANSE > => 3300
+    rule Gbswapword     < DANSE > => 10
+    rule Giszero        < DANSE > => 1800
+    rule Gcmp           < DANSE > => 2500
+    rule Gcmpword       < DANSE > => 1
+    rule Gbr            < DANSE > => 5000
+    rule Gbrcond        < DANSE > => 5000
+    rule Gblockhash     < DANSE > => 20000
+    rule Gsha3          < DANSE > => 8300
+    rule Gsha3word      < DANSE > => 20
+    rule Gloadcell      < DANSE > => 2900
+    rule Gload          < DANSE > => 3300
+    rule Gloadword      < DANSE > => 3
+    rule Gstorecell     < DANSE > => 2800
+    rule Gstore         < DANSE > => 3900
+    rule Gstoreword     < DANSE > => 4
+    rule Gbalance       < DANSE > => 400000
+    rule Gextcodesize   < DANSE > => 700000
+    rule Gcalladdress   < DANSE > => 700000
+    rule Glog           < DANSE > => 375000
+    rule Glogdata       < DANSE > => 8000
+    rule Glogtopic      < DANSE > => 375000
+    rule Gsstore        < DANSE > => 4950000
+    rule Gsstoreword    < DANSE > => 300
+    rule Gsstorekey     < DANSE > => 400
+    rule Gsstoreset     < DANSE > => 1875000
+    rule Gsstoresetkey  < DANSE > => 1875000
+    rule Gsload         < DANSE > => 190000
+    rule Gsloadkey      < DANSE > => 8000
+    rule Gsloadword     < DANSE > => 2000
+    rule Gselfdestruct  < DANSE > => 0
+    rule Gcallmemory    < DANSE > => 2
+    rule Gcallreg       < DANSE > => 1000
+    rule Glocalcall     < DANSE > => 6800
+    rule Gcall          < DANSE > => 40000
+    rule Gcallstipend   < DANSE > => 2300000
+    rule Gcallvalue     < DANSE > => 9000000
+    rule Gnewaccount    < DANSE > => 25000000
+    rule Gcreate        < DANSE > => 32000000
+    rule Gcopycreate    < DANSE > => 33000000
+    rule Gcodedeposit   < DANSE > => 200000
+    rule Gecrec         < DANSE > => 3000000
+    rule Gsha256        < DANSE > => 25000
+    rule Gsha256word    < DANSE > => 30
+    rule Grip160        < DANSE > => 25000
+    rule Grip160word    < DANSE > => 30
+    rule Gecadd         < DANSE > => 35000
+    rule Gecmul         < DANSE > => 1700000
+    rule Gecpairing     < DANSE > => 100000000
+    rule Gecpairingpair < DANSE > => 26000000
+    rule Gmemory        < DANSE > => 750
+ 
+    rule Sgasdivisor < DANSE > => 1000
+    rule SCHEDCONST  < DANSE > => SCHEDCONST < ALBE > [owise]
+
+    rule Gnewmove      << DANSE >> => true
+    rule Gnewarith     << DANSE >> => true
+    rule SCHEDCONST    << DANSE >> => SCHEDCONST << ALBE >> [owise]
+    
 endmodule
 ```
 
