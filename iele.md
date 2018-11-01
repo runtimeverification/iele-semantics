@@ -899,7 +899,7 @@ These operators make queries about the current execution state.
 -   `REG = call @iele.blockhash(N)` returns the hash of the block header of the Nth previous block.
 
 ```k
-    rule <k> #exec REG = call @iele.gas      ( .Ints )  => #load REG (GAVAIL up/Int Sgasdivisor < SCHED >) ... </k> <gas> GAVAIL </gas> <schedule> SCHED </schedule>
+    rule <k> #exec REG = call @iele.gas      ( .Ints )  => #load REG (GAVAIL /Int Sgasdivisor < SCHED >) ... </k> <gas> GAVAIL </gas> <schedule> SCHED </schedule>
     rule <k> #exec REG = call @iele.gasprice ( .Ints )  => #load REG GPRICE ... </k> <gasPrice> GPRICE </gasPrice>
     rule <k> #exec REG = call @iele.gaslimit ( .Ints )  => #load REG GLIMIT ... </k> <gasLimit> GLIMIT </gasLimit>
 
