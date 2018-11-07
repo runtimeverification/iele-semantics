@@ -594,14 +594,14 @@ constant cost to perform the jump and store the return address.
 The cost to return is folded into the cost of the call instruction.
 
 ```k
-    rule <k> #compute [ ret ARGS::Ints, SCHED ] => Gmove < SCHED > *Int #sizeRegs(ARGS) +Int 8 ... </k>
+    rule <k> #compute [ ret ARGS::NonEmptyInts, SCHED ] => Gmove < SCHED > *Int #sizeRegs(ARGS) +Int 8 ... </k>
          <localCalls> ListItem(_) ... </localCalls>
       requires notBool Gnewmove << SCHED >>
-    rule <k> #compute [ ret _::Ints, SCHED ] => 0 ... </k>
+    rule <k> #compute [ ret _::NonEmptyInts, SCHED ] => 0 ... </k>
          <localCalls> .List </localCalls>
       requires notBool Gnewmove << SCHED >>
 
-    rule <k> #compute [ ret _::Ints, SCHED ] => 0 ... </k>
+    rule <k> #compute [ ret _::NonEmptyInts, SCHED ] => 0 ... </k>
       requires Gnewmove << SCHED >>
     rule #compute [ revert _, SCHED ] => 0
 ```

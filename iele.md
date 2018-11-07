@@ -163,6 +163,24 @@ In the comments next to each cell, we explain the purpose of the cell.
     syntax Schedule
     syntax Contract ::= "#emptyCode"
  // --------------------------------
+```
+
+### Uninitialized Accounts
+
+An account to which code has never been deployed has a size in bytes of zero, but contains an implicit public function `@deposit` which takes
+no arguments, returns no values, and does nothing. This function exists to allow accounts to receive payment even if they do not have a contract
+deployed to them. Note that a contract can forbid payments by refusing to declare the `@deposit` function, and explicitly raising an exception
+if any of its entry points are invoked with a balance transfer.
+
+Note that the syntax used in the following `#emptyCode` macro is desugared IELE syntax, where contracts have a size in bytes metadata attachment (`!0` here) and argument lists are replaced with an integer value representing arity (`0` here).
+
+```k
+    syntax IeleName ::= "Main" [token]
+                      | "iele.Wallet" [token]
+    syntax ContractDefinition ::= "contract" IeleName "!" /* size in bytes */ Int /* byte string */ String "{" TopLevelDefinitions "}" /* when desugared to include the code size */
+ // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    rule #emptyCode => contract iele.Wallet !0 "" { define public @deposit ( 0 ) { ret .NonEmptyOperands .Instructions .LabeledBlocks } } .Contract [macro]
+
 endmodule
 ```
 
@@ -342,7 +360,6 @@ Description of registers.
  // ---------------------------
     rule <k> % REG:Int => REGS [ REG ] ... </k> <regs> REGS </regs> <typeChecking> false </typeChecking>
 
-    syntax NonEmptyOperands ::= Operands
     syntax KResult ::= Ints
  // -----------------------
     rule isKResult(.Operands) => true
@@ -707,22 +724,6 @@ Organization is based roughly on what parts of the execution state are needed to
 
 We use an explicit call to `@iele.invalid` both for marking the designated invalid operator and for garbage bytes in the input program.
 Executing the INVALID instruction results in an exception.
-
-### Uninitialized Accounts
-
-An account to which code has never been deployed has a size in bytes of zero, but contains an implicit public function `@deposit` which takes
-no arguments, returns no values, and does nothing. This function exists to allow accounts to receive payment even if they do not have a contract
-deployed to them. Note that a contract can forbid payments by refusing to declare the `@deposit` function, and explicitly raising an exception
-if any of its entry points are invoked with a balance transfer.
-
-Note that the syntax used in the following `#emptyCode` macro is desugared IELE syntax, where contracts have a size in bytes metadata attachment (`!0` here) and argument lists are replaced with an integer value representing arity (`0` here).
-
-```k
-    syntax IeleName ::= "Main" [token]
-                      | "iele.Wallet" [token]
- // ----------------------------------
-    rule #emptyCode => contract iele.Wallet !0 "" { define public @deposit ( 0 ) { ret .NonEmptyOperands .Instructions .LabeledBlocks } } .Contract [macro]
-```
 
 ### Register Manipulations
 
@@ -1730,7 +1731,6 @@ module IELE-PROGRAM-LOADING
     // when type checking contracts
     rule contract NAME ! _ _ { DEFS } => contract NAME { DEFS }
 
-    syntax ContractDefinition ::= "contract" IeleName "!" /* size in bytes */ Int /* byte string */ String "{" TopLevelDefinitions "}" /* when desugared to include the code size */
     syntax FunctionParameters ::= Int /* when desugared to just the number of parameters */
 
     syntax ProgramCell ::= #loadCode ( Contract ) [function]
@@ -1808,7 +1808,7 @@ module IELE-PROGRAM-LOADING
 
     syntax Int ::= #registers ( Instruction ) [function]
                  | #registers ( LValues ) [function, klabel(registersLValues)]
-                 | #registers ( NonEmptyOperands ) [function, klabel(registersOperands)]
+                 | #registers ( Operands ) [function, klabel(registersOperands)]
     syntax Int ::= #computeNRegs ( Blocks )       [function]
                  | #computeNRegs ( Blocks , Int ) [function, klabel(#computeNRegsAux)]
  // ----------------------------------------------------------------------------------

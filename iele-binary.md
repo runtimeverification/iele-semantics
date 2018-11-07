@@ -318,9 +318,9 @@ After interpreting the strings representing programs as a `WordStack`, it should
  // --------------------------------------------------------------------
     rule %(REGS, WIDTH, MASK, IDX) => % ((REGS >>Int (IDX *Int WIDTH)) &Int MASK)
 
-    syntax Operands ::= "%o" "(" Int "," Int "," Int "," Int "," Int ")" [function]
+    syntax NonEmptyOperands ::= "%o" "(" Int "," Int "," Int "," Int "," Int ")" [function]
  // -------------------------------------------------------------------------------
-    rule %o(REGS, WIDTH, MASK, IDX, 0) => .Operands
+    rule %o(REGS, WIDTH, MASK, IDX, 0) => .NonEmptyOperands
     rule %o(REGS, WIDTH, MASK, IDX, COUNT) => %(REGS, WIDTH, MASK, IDX) , %o(REGS, WIDTH, MASK, IDX +Int 1, COUNT -Int 1) [owise]
 
     syntax LValues ::= "%l" "(" Int "," Int "," Int "," Int "," Int ")" [function]
