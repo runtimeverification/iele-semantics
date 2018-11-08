@@ -674,18 +674,6 @@ After executing a transaction, it's necessary to have the effect of the substate
          <activeAccounts> ACCTS </activeAccounts>
       requires notBool MINER in ACCTS
 
-    rule <k> #finalizeTx(false) ... </k>
-         <mode> NORMAL </mode>
-         <gas> GAVAIL => G*(GAVAIL, GLIMIT, REFUND) </gas>
-         <refund> REFUND => 0 </refund>
-         <txPending> ListItem(MSGID:Int) ... </txPending>
-         <message>
-            <msgID> MSGID </msgID>
-            <txGasLimit> GLIMIT </txGasLimit>
-            ...
-         </message>
-      requires REFUND =/=Int 0
-
     rule <k> #finalizeTx(false => true) ... </k>
          <mode> NORMAL </mode>
          <txPending> ListItem(_) => .List ... </txPending>
