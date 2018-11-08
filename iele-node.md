@@ -127,6 +127,9 @@ module IELE-NODE
     rule #toList(.Ints) => .List
     rule #toList(I , L) => ListItem(I) #toList(L)
 
+    syntax String ::= unparseByteStack(Bytes) [function]
+    rule unparseByteStack(B::Bytes) => Bytes2String(B)
+
     syntax KItem ::= vmResult(return: List,gas: Int,refund: Int,status: Int,selfdestruct: List,logs: List,AccountsCell, touched: List)
     syntax KItem ::= extractConfig(GeneratedTopCell) [function]
  // ----------------------------------------------------------

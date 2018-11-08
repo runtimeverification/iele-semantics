@@ -472,7 +472,7 @@ We need to interperet a `WordStack` as a `String` again so that we can call `Kec
 -   `#unparseByteStack` turns a stack of bytes (as a `WordStack`) into a `String`.
 
 ```k
-    syntax String ::= #unparseByteStack ( WordStack )                [function, klabel(unparseByteStack)]
+    syntax String ::= #unparseByteStack ( WordStack )                [function]
                     | #unparseByteStack ( WordStack , StringBuffer ) [function, klabel(#unparseByteStackAux)]
  // ---------------------------------------------------------------------------------------------------------
     rule #unparseByteStack ( WS ) => #unparseByteStack(WS, .StringBuffer)
