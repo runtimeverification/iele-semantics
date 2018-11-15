@@ -107,9 +107,12 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to IELE'
     rule #sizeLVals(REG , REGS, N) => #sizeLVals(REGS, N +Int 1)
     rule #sizeLVals(.LValues, N) => N
 
-    syntax String ::= IeleName2String ( IeleName ) [function, hook(STRING.token2string)]
+    syntax String ::= IeleName2String ( IeleName ) [function]
+                    | IeleNameToken2String ( IeleName ) [function, hook(STRING.token2string)]
     syntax IeleName ::= String2IeleName ( String ) [function, hook(STRING.string2token)]
  // ------------------------------------------------------------------------------------
+    rule IeleName2String(I:Int) => Int2String(I)
+    rule IeleName2String(N) => IeleNameToken2String(N) [owise]
     syntax String ::= StringIeleName2String ( StringIeleName ) [function, hook(STRING.token2string)]
  // ------------------------------------------------------------------------------------------------
 
@@ -469,7 +472,7 @@ We need to interperet a `WordStack` as a `String` again so that we can call `Kec
 -   `#unparseByteStack` turns a stack of bytes (as a `WordStack`) into a `String`.
 
 ```k
-    syntax String ::= #unparseByteStack ( WordStack )                [function, klabel(unparseByteStack)]
+    syntax String ::= #unparseByteStack ( WordStack )                [function]
                     | #unparseByteStack ( WordStack , StringBuffer ) [function, klabel(#unparseByteStackAux)]
  // ---------------------------------------------------------------------------------------------------------
     rule #unparseByteStack ( WS ) => #unparseByteStack(WS, .StringBuffer)

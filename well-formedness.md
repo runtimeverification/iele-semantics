@@ -18,7 +18,7 @@ Our semantics is modal, with the initial mode being set on the command line via 
 
 ```k
 module IELE-CONSTANTS
-    syntax Mode ::= "NORMAL" [klabel(NORMAL)] | "VMTESTS"
+    syntax Mode ::= "NORMAL" [klabel(NORMAL), symbol] | "VMTESTS"
     syntax Schedule ::= "ALBE"
                       | "DANSE"
 endmodule
@@ -191,7 +191,6 @@ Each of these instructions takes some number of immediates, globals, or register
 ```k
     syntax KResult ::= Type
                      | Types
-    syntax NonEmptyOperands ::= Operands
     syntax KItem ::= "check"
  // ------------------------
 
@@ -336,8 +335,8 @@ Reserved Names
 All identifiers beginning with "iele." are reserved by the language and cannot be written to.
 
 ```k
-    syntax K ::= checkName(IeleName)
- // --------------------------------
+    syntax KItem ::= checkName(IeleName)
+ // ------------------------------------
     rule checkName(NAME) => .
       requires lengthString(IeleName2String(NAME)) <Int 5 orBool substrString(IeleName2String(NAME), 0, 5) =/=String "iele."
 
@@ -360,7 +359,7 @@ In order to correctly check names, we must convert escaped IELE names to their c
       requires IDX <Int lengthString(S) -Int 1 andBool substrString(S, IDX, IDX +Int 1) ==K "\\"
     rule unescape(S, IDX, SB) => StringBuffer2String(SB)
       requires IDX ==Int lengthString(S) -Int 1
-    rule `StringIeleName`(NAME:StringIeleName) => String2IeleName(unescape(StringIeleName2String(NAME))) [anywhere]
+    rule `StringIeleName`(NAME:StringIeleName) => String2IeleName(unescape(StringIeleName2String(NAME)))
 ```
 
 Checking Operands

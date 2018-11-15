@@ -45,7 +45,7 @@ module IELE-COMMON
   syntax NumericIeleName ::= Int
   syntax StringIeleName
   syntax IeleName ::= NumericIeleName
-  syntax IeleName ::= StringIeleName [klabel(StringIeleName), avoid, symbol]
+  syntax IeleName ::= StringIeleName [klabel(StringIeleName), avoid, symbol, function]
 ```
 
 ### Identifiers
@@ -100,6 +100,14 @@ IELE instruction operands are used at the left- and right-hand side of IELE inst
   syntax Ints ::= List{Int, ","} [klabel(operandList)]
 
   syntax Operands ::= Ints
+
+  syntax Operands ::= NonEmptyOperands
+
+  syntax Ints ::= NonEmptyInts
+
+  syntax NonEmptyOperands ::= NonEmptyInts
+
+  syntax NonEmptyInts ::= NeList{Int, ","} [klabel(operandList)]
 ```
 
 ### Assignment

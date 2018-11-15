@@ -134,14 +134,14 @@ test-bad-packet:
 	netcat 127.0.0.1 $(PORT) < tests/bad-packet-2
 	.build/vm/iele-test-vm tests/iele/albe/sum/sum_zero.iele.json $(PORT)
 
-tests/VMTests/%.json.test: tests/VMTests/%.json | build
+tests/VMTests/%.json.test: tests/VMTests/%.json | .build/standalone/iele-testing-kompiled/interpreter
 	./vmtest $<
-tests/BlockchainTests/%.json.test: tests/BlockchainTests/%.json | build
+tests/BlockchainTests/%.json.test: tests/BlockchainTests/%.json | .build/standalone/iele-testing-kompiled/interpreter
 	./blockchaintest $<
-tests/iele/%.json.test: tests/iele/%.json | build
+tests/iele/%.json.test: tests/iele/%.json | .build/standalone/iele-testing-kompiled/interpreter 
 	./blockchaintest $<
 
-%.iele.test: %.iele | build
+%.iele.test: %.iele | .build/check/well-formedness-kompiled/interpreter
 	./check-iele $<
 
 PORT?=10000
