@@ -24,20 +24,27 @@ endif
 
 export PATH:=$(shell cd compiler && stack path --local-install-root)/bin:${PATH}
 
+# Haskell backend goes in tests/ci/kore alongside tests/ci/rv-k
+# Not sure it's the best choice, but will do for now.
+KORE_SUBMODULE:=tests/ci/kore
+
 .PHONY: all clean distclean build tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode install kore
 .SECONDARY:
 
 all: build split-vm-tests testnode
 
 clean:
-	rm -rf .build/standalone .build/kore .build/node .build/check .build/plugin-node .build/plugin-standalone .build/vm compiler/.stack-work
+	rm -rf .build/standalone .build/kore .build/node .build/check .build/plugin-node .build/plugin-standalone .build/vm compiler/.stack-work .build/haskell
 
 distclean: clean
 	cd tests/ci/rv-k && mvn clean
+	cd tests/ci/kore && stack clean
 
 build: tangle .build/standalone/iele-testing-kompiled/interpreter .build/vm/iele-vm assembler .build/check/well-formedness-kompiled/interpreter
 
 kore: tangle .build/kore/iele-testing.kore
+
+haskell: tangle .build/haskell/definition.kore
 
 assembler:
 	cd compiler && stack build --install-ghc
@@ -180,10 +187,19 @@ ocaml-deps:
 	opam switch 4.03.1+k
 	eval `opam config env` && opam install -y mlgmp zarith uuidm cryptokit secp256k1.0.3.2 bn128 hex ocaml-protoc rlp yojson ocp-ocamlres bisect_ppx
 
+haskell-deps: kore-deps
+		git submodule update --init -- $(KORE_SUBMODULE)
+		cd $(KORE_SUBMODULE) && stack install --local-bin-path $(abspath $(KORE_SUBMODULE))/bin kore:exe:kore-exec
+
 .build/kore/iele-testing.kore: $(defn_files)
 	@echo "== kompile: $@"
 	${KOMPILE} --debug --main-module IELE-TESTING --backend kore \
 					--syntax-module IELE-SYNTAX .build/standalone/iele-testing.k --directory .build/kore
+
+.build/haskell/definition.kore: $(defn_files)
+	@echo "== kompile: $@"
+	${KOMPILE} --debug --main-module IELE-TESTING --backend haskell \
+					--syntax-module IELE-SYNTAX .build/standalone/iele-testing.k --directory .build/haskell -I .build/haskell
 
 .build/%/iele-testing-kompiled/constants.$(EXT): $(defn_files)
 	@echo "== kompile: $@"
