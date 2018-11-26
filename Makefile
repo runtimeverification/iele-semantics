@@ -24,7 +24,7 @@ endif
 
 export PATH:=$(shell cd compiler && stack path --local-install-root)/bin:${PATH}
 
-# Haskell backend goes in tests/ci/kore alongside tests/ci/rv-k
+# Haskell backend goes in tests/ci/kore alongside .build/rv-k
 # Not sure it's the best choice, but will do for now.
 KORE_SUBMODULE:=.build/kore
 
@@ -37,7 +37,7 @@ clean:
 	rm -rf .build/standalone .build/llvm .build/node .build/check .build/plugin-node .build/plugin-standalone .build/vm compiler/.stack-work .build/haskell
 
 distclean: clean
-	cd tests/ci/rv-k && mvn clean
+	cd .build/rv-k && mvn clean
 	cd tests/ci/kore && stack clean
 
 build: tangle .build/standalone/iele-testing-kompiled/interpreter .build/vm/iele-vm assembler .build/check/well-formedness-kompiled/interpreter
@@ -168,7 +168,7 @@ tests/ethereum-tests/%.json:
 	@echo "==  git submodule: cloning upstreams test repository"
 	git submodule update --init
 
-K_BIN=tests/ci/rv-k/k-distribution/target/release/k/bin/
+K_BIN=.build/rv-k/k-distribution/target/release/k/bin/
 KOMPILE=${K_BIN}/kompile
 
 coverage:
@@ -178,11 +178,11 @@ coverage:
 
 deps: k-deps ocaml-deps
 k-deps:
-	cd tests/ci/rv-k && mvn package
+	cd .build/rv-k && mvn package
 
 ocaml-deps:
 	opam init
-	opam repository add k "tests/ci/rv-k/k-distribution/target/release/k/lib/opam" || opam repository set-url k "tests/ci/rv-k/k-distribution/target/release/k/lib/opam"
+	opam repository add k ".build/rv-k/k-distribution/target/release/k/lib/opam" || opam repository set-url k ".build/rv-k/k-distribution/target/release/k/lib/opam"
 	opam update
 	opam switch 4.03.1+k
 	eval `opam config env` && opam install -y mlgmp zarith uuidm cryptokit secp256k1.0.3.2 bn128 hex ocaml-protoc rlp yojson ocp-ocamlres bisect_ppx
