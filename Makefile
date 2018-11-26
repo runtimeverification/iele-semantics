@@ -24,8 +24,6 @@ endif
 
 export PATH:=$(shell cd compiler && stack path --local-install-root)/bin:${PATH}
 
-# Haskell backend goes in tests/ci/kore alongside .build/rv-k
-# Not sure it's the best choice, but will do for now.
 KORE_SUBMODULE:=.build/kore
 
 .PHONY: all clean distclean build tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode install kore
