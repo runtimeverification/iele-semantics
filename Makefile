@@ -188,7 +188,6 @@ ocaml-deps:
 	eval `opam config env` && opam install -y mlgmp zarith uuidm cryptokit secp256k1.0.3.2 bn128 hex ocaml-protoc rlp yojson ocp-ocamlres bisect_ppx
 
 haskell-deps: kore-deps
-		git submodule update --init -- $(KORE_SUBMODULE)
 		cd $(KORE_SUBMODULE) && stack install --local-bin-path $(abspath $(KORE_SUBMODULE))/bin kore:exe:kore-exec
 
 .build/kore/iele-testing.kore: $(defn_files)
