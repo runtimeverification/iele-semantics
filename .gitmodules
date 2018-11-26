@@ -16,6 +16,6 @@
 [submodule ".build/tangle"]
 	path = .build/tangle
 	url = https://github.com/ehildenb/pandoc-tangle
-[submodule "tests/ci/kore"]
-	path = tests/ci/kore
+[submodule ".build/kore"]
+	path = .build/kore
 	url = https://github.com/kframework/kore

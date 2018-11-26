@@ -26,7 +26,7 @@ export PATH:=$(shell cd compiler && stack path --local-install-root)/bin:${PATH}
 
 # Haskell backend goes in tests/ci/kore alongside tests/ci/rv-k
 # Not sure it's the best choice, but will do for now.
-KORE_SUBMODULE:=tests/ci/kore
+KORE_SUBMODULE:=.build/kore
 
 .PHONY: all clean distclean build tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode install kore
 .SECONDARY:
@@ -187,7 +187,7 @@ ocaml-deps:
 	opam switch 4.03.1+k
 	eval `opam config env` && opam install -y mlgmp zarith uuidm cryptokit secp256k1.0.3.2 bn128 hex ocaml-protoc rlp yojson ocp-ocamlres bisect_ppx
 
-haskell-deps: kore-deps
+haskell-deps:
 		cd $(KORE_SUBMODULE) && stack install --local-bin-path $(abspath $(KORE_SUBMODULE))/bin kore:exe:kore-exec
 
 .build/llvm/iele-testing.kore: $(defn_files)
