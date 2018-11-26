@@ -34,7 +34,7 @@ KORE_SUBMODULE:=tests/ci/kore
 all: build split-vm-tests testnode
 
 clean:
-	rm -rf .build/standalone .build/kore .build/node .build/check .build/plugin-node .build/plugin-standalone .build/vm compiler/.stack-work .build/haskell
+	rm -rf .build/standalone .build/llvm .build/node .build/check .build/plugin-node .build/plugin-standalone .build/vm compiler/.stack-work .build/haskell
 
 distclean: clean
 	cd tests/ci/rv-k && mvn clean
@@ -42,7 +42,7 @@ distclean: clean
 
 build: tangle .build/standalone/iele-testing-kompiled/interpreter .build/vm/iele-vm assembler .build/check/well-formedness-kompiled/interpreter
 
-kore: tangle .build/kore/iele-testing.kore
+llvm: tangle .build/llvm/iele-testing.kore
 
 haskell: tangle .build/haskell/definition.kore
 
@@ -190,10 +190,10 @@ ocaml-deps:
 haskell-deps: kore-deps
 		cd $(KORE_SUBMODULE) && stack install --local-bin-path $(abspath $(KORE_SUBMODULE))/bin kore:exe:kore-exec
 
-.build/kore/iele-testing.kore: $(defn_files)
+.build/llvm/iele-testing.kore: $(defn_files)
 	@echo "== kompile: $@"
 	${KOMPILE} --debug --main-module IELE-TESTING --backend kore \
-					--syntax-module IELE-SYNTAX .build/standalone/iele-testing.k --directory .build/kore
+					--syntax-module IELE-SYNTAX .build/standalone/iele-testing.k --directory .build/llvm
 
 .build/haskell/definition.kore: $(defn_files)
 	@echo "== kompile: $@"
