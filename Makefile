@@ -196,7 +196,7 @@ haskell-deps:
 .build/haskell/definition.kore: $(defn_files)
 	@echo "== kompile: $@"
 	${KOMPILE} --debug --main-module IELE-TESTING --backend haskell \
-					--syntax-module IELE-SYNTAX .build/standalone/iele-testing.k --directory .build/haskell -I .build/haskell
+					--syntax-module IELE-TESTING .build/standalone/iele-testing.k --directory .build/haskell -I .build/haskell
 
 .build/%/iele-testing-kompiled/constants.$(EXT): $(defn_files)
 	@echo "== kompile: $@"
