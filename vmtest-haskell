@@ -4,10 +4,9 @@ KRUN_BINARY=".build/rv-k/k-distribution/target/release/k/bin/krun"
 KOMPILED_DEF=".build/haskell/"
 HASKELL_BACKEND_CMD=".build/kore/bin/kore-exec"
 
-cSCHEDULE='`DEFAULT_IELE-GAS`(.KList)'
-cMODE='`VMTESTS_IELE-CONSTANTS`(.KList)'
+cSCHEDULE=DEFAULT
+cMODE=VMTESTS
 
 PGM=$1
 
-$KRUN_BINARY --directory "$KOMPILED_DEF" "$PGM" --haskell-backend-command "$HASKELL_BACKEND_CMD"
-# $KRUN_BINARY --directory "$KOMPILED_DEF" -cSCHEDULE="$cSCHEDULE" -pSCHEDULE='printf %s' -cMODE="$cMODE" -pMODE='printf %s' "$PGM" --haskell-backend-command "$HASKELL_BACKEND_CMD"
+$KRUN_BINARY --directory "$KOMPILED_DEF" -cSCHEDULE="$cSCHEDULE" -pSCHEDULE='printf %s' -cMODE="$cMODE" -pMODE='printf %s' "$PGM" --haskell-backend-command "$HASKELL_BACKEND_CMD"
