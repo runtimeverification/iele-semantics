@@ -9,4 +9,4 @@ cMODE=VMTESTS
 
 PGM=$1
 
-$KRUN_BINARY --directory "$KOMPILED_DEF" -cSCHEDULE="$cSCHEDULE" -pSCHEDULE='printf %s' -cMODE="$cMODE" -pMODE='printf %s' "$PGM" --haskell-backend-command "$HASKELL_BACKEND_CMD"
+$KRUN_BINARY --directory "$KOMPILED_DEF" -cSCHEDULE="$cSCHEDULE" -cMODE="$cMODE" "$PGM" --haskell-backend-command "$HASKELL_BACKEND_CMD"
