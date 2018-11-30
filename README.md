@@ -1,4 +1,4 @@
-IELE: Semantics of New Cryptocurrency VM in K
+IELE: Semantics of New Blockchain VM in K
 ==============================================
 
 In this repository we provide a model of IELE in K.
