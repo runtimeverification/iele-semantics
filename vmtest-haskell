@@ -1,0 +1,12 @@
+#!/bin/sh
+
+KRUN_BINARY=".build/rv-k/k-distribution/target/release/k/bin/krun"
+KOMPILED_DEF=".build/haskell/"
+HASKELL_BACKEND_CMD=".build/kore/bin/kore-exec"
+
+cSCHEDULE=DEFAULT
+cMODE=VMTESTS
+
+PGM=$1
+
+$KRUN_BINARY --directory "$KOMPILED_DEF" -cSCHEDULE="$cSCHEDULE" -cMODE="$cMODE" "$PGM" --haskell-backend-command "$HASKELL_BACKEND_CMD"
