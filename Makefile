@@ -36,7 +36,7 @@ clean:
 
 distclean: clean
 	cd .build/rv-k && mvn clean
-	cd tests/ci/kore && stack clean
+	cd .build/kore && stack clean
 
 build: tangle .build/standalone/iele-testing-kompiled/interpreter .build/vm/iele-vm assembler .build/check/well-formedness-kompiled/interpreter
 
