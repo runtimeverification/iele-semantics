@@ -754,22 +754,35 @@ These operations are getters/setters of the local execution memory.
     rule <k> #exec REG = load CELL , OFFSET , WIDTH => #load REG Bytes2Int(LM [ OFFSET .. WIDTH ], LE, Unsigned) ... </k>
          <localMem>... CELL |-> LM ...</localMem>
 
-    rule <k> #exec _ = load CELL , _ , _ ... </k>
-         <localMem> LM (.Map => CELL |-> .Bytes) </localMem>
+    rule <k> #exec REG = load CELL , OFFSET , WIDTH => #load REG 0 ... </k>
+         <localMem> LM </localMem>
       requires notBool CELL in_keys(LM)
 
     rule <k> #exec REG = load CELL => #load REG Bytes2Int(LM, LE, Signed) ... </k>
          <localMem>... CELL |-> LM ...</localMem>
 
+    rule <k> #exec REG = load CELL => #load REG 0 ... </k>
+         <localMem> LM </localMem>
+      requires notBool CELL in_keys(LM)
+
     rule <k> #exec store VALUE , CELL , OFFSET , WIDTH => . ... </k>
          <localMem>... CELL |-> (LM => LM [ OFFSET := Int2Bytes(chop(WIDTH), twos(chop(WIDTH), VALUE), LE) ]) </localMem>
 
-    rule <k> #exec store _ , CELL , _ , _ ... </k>
+    rule <k> #exec store _ , CELL , _ , WIDTH ... </k>
          <localMem> LM (.Map => CELL |-> .Bytes) </localMem>
+      requires notBool CELL in_keys(LM) andBool WIDTH =/=Int 0
+
+    rule <k> #exec store _ , CELL , _ , 0 => . ... </k>
+         <localMem> LM </localMem>
       requires notBool CELL in_keys(LM)
 
     rule <k> #exec store VALUE , CELL => . ... </k>
          <localMem> LM => LM [ CELL <- Int2Bytes(VALUE, LE, Signed) ] </localMem>
+      requires CELL in_keys(LM) orBool VALUE =/=Int 0
+
+    rule <k> #exec store 0 , CELL => . ... </k>
+         <localMem> LM </localMem>
+      requires notBool CELL in_keys(LM)
 ```
 
 ### Expressions
@@ -866,6 +879,9 @@ The sha3 instruction computes the keccak256 hash of an entire memory cell.
 
     rule <k> #exec REG = sha3 MEMINDEX => #load REG keccak(LM) ... </k>
          <localMem>... MEMINDEX |-> LM ...</localMem>
+    rule <k> #exec REG = sha3 MEMINDEX => #load REG keccak(.Bytes) ... </k>
+         <localMem> LM </localMem>
+      requires notBool MEMINDEX in_keys(LM)
 ```
 
 ### Local State
