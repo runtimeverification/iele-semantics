@@ -780,8 +780,8 @@ Note: These are all functions as the operator `#compute` has already loaded all 
     syntax KResult ::= Bool
     syntax BExp ::= Bool
                   | #accountEmpty(Int)
-                  | #accountEmpty(Contract, Int, Int) [klabel(accountEmpty), function]
- // ----------------------------------------------------------------------------------
+    syntax Bool ::= #accountEmpty(Contract, Int, Int) [klabel(accountEmpty), function, symbol]
+ // ------------------------------------------------------------------------------------------
     rule <k> #accountEmpty(ACCT) => #accountEmpty(CODE, NONCE, BAL) ... </k>
          <account>
            <acctID> ACCT </acctID>

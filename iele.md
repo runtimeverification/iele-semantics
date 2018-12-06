@@ -1755,7 +1755,7 @@ module IELE-PROGRAM-LOADING
 
     syntax IeleName ::= #mainContract ( Contract )                       [function]
     syntax Int ::= #contractSize ( Contract , IeleName )                 [function]
-    syntax String ::= #contractBytes ( Contract )                        [function, klabel(contractBytes)]
+    syntax String ::= #contractBytes ( Contract )                        [function, klabel(contractBytes), symbol]
                     | #contractBytes ( Contract , IeleName )             [function, klabel(#contractBytesAux)]
     syntax Int ::= #callAddress ( Contract , IeleName , IeleName )       [function]
                  | #callAddress ( TopLevelDefinitions , IeleName , Int ) [function, klabel(#callAddressAux)]
