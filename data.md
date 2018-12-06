@@ -155,12 +155,14 @@ You could alternatively calculate `I1 %Int I2`, then add one to the normal integ
     rule intSizes(.Ints) => 0
     rule intSizes(I , INTS) => intSize(I) +Int intSizes(INTS)
 
-    syntax Int ::= intSizes ( Array , Int ) [function, klabel(intSizesArr)]
-                 | intSizes ( Array , Int , Int ) [function, klabel(intSizesAux)]
+    syntax Int ::= intSizes ( Array , Int , Schedule ) [function, klabel(intSizesArr)]
+                 | intSizes ( Array , Int , Int , Schedule ) [function, klabel(intSizesAux)]
  // -----------------------------------------------------------------------------
-    rule intSizes(ARR::Array, I) => intSizes(ARR, I, 0)
-    rule intSizes(ARR::Array, I, I) => 0
-    rule intSizes(ARR, I, J) => getInt(ARR [ J ]) +Int intSizes(ARR, I, J +Int 1) [owise]
+    rule intSizes(ARR::Array, I, SCHED) => intSizes(ARR, I, 0, SCHED)
+    rule intSizes(ARR::Array, I, I, _) => 0
+    rule intSizes(ARR, I, J, SCHED) => intSize(getInt(ARR [ J ])) +Int intSizes(ARR, I, J +Int 1, SCHED)
+      requires SCHED =/=K ALBE [owise]
+    rule intSizes(ARR, I, J, ALBE) => getInt(ARR [ J ]) +Int intSizes(ARR, I, J +Int 1, ALBE) [owise]
 
     syntax Int ::= bitsInWords ( Int , Schedule ) [function]
  // ---------------------------------------------

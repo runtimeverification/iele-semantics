@@ -228,7 +228,7 @@ There is also some memory change associated with assigning `ARGS` to the
 caller's registers, but that is handled in `iele.md`.
 
 ```k
-    rule <k> #memory [ ret ARGS ] => #memoryDelta(0 -Int intSizes(REGS, NREGS) -Int Gcallmemory < SCHED >) ... </k>
+    rule <k> #memory [ ret ARGS ] => #memoryDelta(0 -Int intSizes(REGS, NREGS, SCHED) -Int Gcallmemory < SCHED >) ... </k>
          <schedule> SCHED </schedule>
          <fid> NAME </fid>
          <regs> REGS </regs>
