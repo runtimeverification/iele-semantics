@@ -364,11 +364,11 @@ Description of registers.
  // -----------------------
     rule isKResult(.Operands) => true
 
-    syntax Ints ::= lookupRegisters(Operands, Array) [function]
+    syntax NonEmptyInts ::= lookupRegisters(Operands, Array) [function]
  // -----------------------------------------------------------
     rule <k> % REG:Int , OPS => lookupRegisters(% REG, OPS, REGS) ... </k> <regs> REGS </regs> <typeChecking> false </typeChecking>
     rule lookupRegisters(% REG:Int, OPS, REGS) => getInt(REGS [ REG ]) , lookupRegisters(OPS, REGS)
-    rule lookupRegisters(.Operands, _) => .Ints
+    rule lookupRegisters(.Operands, _) => .NonEmptyInts
 
     syntax LValues ::= #regRange ( Int ) [function]
                      | #regRange ( Int , Int ) [function, klabel(#regRangeAux)]
