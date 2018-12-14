@@ -777,12 +777,7 @@ These operations are getters/setters of the local execution memory.
       requires notBool CELL in_keys(LM)
 
     rule <k> #exec store VALUE , CELL => . ... </k>
-         <localMem> LM => LM [ CELL <- Int2Bytes(VALUE, LE, Signed) ] </localMem>
-      requires CELL in_keys(LM) orBool VALUE =/=Int 0
-
-    rule <k> #exec store 0 , CELL => . ... </k>
-         <localMem> LM </localMem>
-      requires notBool CELL in_keys(LM)
+         <localMem> LM => #if VALUE ==Int 0 andBool notBool CELL in_keys(LM) #then LM #else LM [ CELL <- Int2Bytes(VALUE, LE, Signed) ] #fi </localMem>
 ```
 
 ### Expressions
