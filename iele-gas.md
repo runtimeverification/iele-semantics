@@ -256,7 +256,7 @@ caller's registers, but that is handled in `iele.md`.
 
     rule <k> #memory [ REG = load INDEX ] => #registerDelta(REG, bytesInWords(lengthBytes(LM))) ... </k>
          <localMem>... INDEX |-> LM ...</localMem>
-    rule <k> #memory [ REG = load INDEX ] => #registerDelta(REG, bytesInWords(0))... </k>
+    rule <k> #memory [ REG = load INDEX ] => #registerDelta(REG, 0)... </k>
          <localMem> LM </localMem>
       requires notBool INDEX in_keys(LM)
     rule #memory [ store VALUE ,  INDEX ] => #memoryDelta(INDEX, intSize(VALUE))
@@ -376,8 +376,8 @@ which is maintained by the next rules.
 
     rule <k> #memoryExpand(INDEX, NEWSIZE) => #deductMemory(PEAK) ... </k>
          <localMem> LM </localMem>
-         <currentMemory> CURR => CURR +Int maxInt(0, NEWSIZE -Int bytesInWords(0)) </currentMemory>
-         <peakMemory> PEAK => maxInt(PEAK, CURR +Int maxInt(0, NEWSIZE -Int bytesInWords(0))) </peakMemory>
+         <currentMemory> CURR => CURR +Int NEWSIZE </currentMemory>
+         <peakMemory> PEAK => maxInt(PEAK, CURR +Int NEWSIZE) </peakMemory>
       requires notBool INDEX in_keys(LM)
 
     rule <k> #memoryDelta(INDEX, NEWSIZE) => #deductMemory(PEAK) ... </k>
@@ -387,8 +387,8 @@ which is maintained by the next rules.
 
     rule <k> #memoryDelta(INDEX, NEWSIZE) => #deductMemory(PEAK) ... </k>
          <localMem> LM </localMem>
-         <currentMemory> CURR => CURR +Int NEWSIZE -Int bytesInWords(0) </currentMemory>
-         <peakMemory> PEAK => maxInt(PEAK, CURR +Int NEWSIZE -Int bytesInWords(0)) </peakMemory>
+         <currentMemory> CURR => CURR +Int NEWSIZE </currentMemory>
+         <peakMemory> PEAK => maxInt(PEAK, CURR +Int NEWSIZE) </peakMemory>
       requires notBool INDEX in_keys(LM)
 
     rule <k> #memoryDelta(DELTA) => #deductMemory(PEAK) ... </k>
@@ -489,7 +489,7 @@ The cost of hashing a memory cell is equal to a constant plus the size of the ce
     rule <k> #compute [ _ = sha3 W0, SCHED ] => Gsha3 < SCHED > +Int bytesInWords(lengthBytes(LM)) *Int Gsha3word < SCHED > ... </k>
          <localMem>... W0 |-> LM ...</localMem>
 
-    rule <k> #compute [ _ = sha3 W0, SCHED ] => Gsha3 < SCHED > +Int bytesInWords(0) *Int Gsha3word < SCHED > ... </k>
+    rule <k> #compute [ _ = sha3 W0, SCHED ] => Gsha3 < SCHED > ... </k>
          <localMem> LM </localMem>
       requires notBool W0 in_keys(LM)
 ```
@@ -653,7 +653,7 @@ The cost of logging is similar to the cost in EVM: a constant ccost plus a cost 
 ```k
     rule <k> #compute [ _ = load INDEX, SCHED ] => Gloadcell < SCHED > +Int bytesInWords(lengthBytes(LM)) *Int Gloadword < SCHED > ... </k>
          <localMem>... INDEX |-> LM ...</localMem>
-    rule <k> #compute [ _ = load INDEX, SCHED ] => Gloadcell < SCHED > +Int bytesInWords(0) *Int Gloadword < SCHED > ... </k>
+    rule <k> #compute [ _ = load INDEX, SCHED ] => Gloadcell < SCHED > ... </k>
          <localMem> LM </localMem>
       requires notBool INDEX in_keys(LM)
 
