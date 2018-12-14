@@ -12,7 +12,9 @@ This data is defined functionally.
 
 [iele.md](iele.md) is the file containing the semantics of IELE.
 This file contains the **configuration** (a map of the state), and a simple imperative execution machine which IELE lives on top of.
-It deals with the semantics of opcodes, the gas cost of execution, and parsing/unparsing/assembling/disassembling.
+It deals with the semantics of opcodes and parsing/unparsing/assembling/disassembling.
+
+[iele-gas.md](iele-gas.md) describes gas price computations. [iele-gas-summary.md](iele-gas-summary.md) summarizes them in a format readable by those who don't know K. 
 
 Finally, the file [Design.md](Design.md) discusses the design rationale of IELE. It also provides more detailed descriptions of various IELE features, as well as differences and similarities with EVM and LLVM.
 
