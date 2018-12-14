@@ -364,11 +364,11 @@ Description of registers.
  // -----------------------
     rule isKResult(.Operands) => true
 
-    syntax Ints ::= lookupRegisters(Operands, Array) [function]
+    syntax NonEmptyInts ::= lookupRegisters(Operands, Array) [function]
  // -----------------------------------------------------------
     rule <k> % REG:Int , OPS => lookupRegisters(% REG, OPS, REGS) ... </k> <regs> REGS </regs> <typeChecking> false </typeChecking>
     rule lookupRegisters(% REG:Int, OPS, REGS) => getInt(REGS [ REG ]) , lookupRegisters(OPS, REGS)
-    rule lookupRegisters(.Operands, _) => .Ints
+    rule lookupRegisters(.Operands, _) => .NonEmptyInts
 
     syntax LValues ::= #regRange ( Int ) [function]
                      | #regRange ( Int , Int ) [function, klabel(#regRangeAux)]
@@ -754,22 +754,30 @@ These operations are getters/setters of the local execution memory.
     rule <k> #exec REG = load CELL , OFFSET , WIDTH => #load REG Bytes2Int(LM [ OFFSET .. WIDTH ], LE, Unsigned) ... </k>
          <localMem>... CELL |-> LM ...</localMem>
 
-    rule <k> #exec _ = load CELL , _ , _ ... </k>
-         <localMem> LM (.Map => CELL |-> .Bytes) </localMem>
+    rule <k> #exec REG = load CELL , OFFSET , WIDTH => #load REG 0 ... </k>
+         <localMem> LM </localMem>
       requires notBool CELL in_keys(LM)
 
     rule <k> #exec REG = load CELL => #load REG Bytes2Int(LM, LE, Signed) ... </k>
          <localMem>... CELL |-> LM ...</localMem>
 
+    rule <k> #exec REG = load CELL => #load REG 0 ... </k>
+         <localMem> LM </localMem>
+      requires notBool CELL in_keys(LM)
+
     rule <k> #exec store VALUE , CELL , OFFSET , WIDTH => . ... </k>
          <localMem>... CELL |-> (LM => LM [ OFFSET := Int2Bytes(chop(WIDTH), twos(chop(WIDTH), VALUE), LE) ]) </localMem>
 
-    rule <k> #exec store _ , CELL , _ , _ ... </k>
+    rule <k> #exec store _ , CELL , _ , WIDTH ... </k>
          <localMem> LM (.Map => CELL |-> .Bytes) </localMem>
+      requires notBool CELL in_keys(LM) andBool WIDTH =/=Int 0
+
+    rule <k> #exec store _ , CELL , _ , 0 => . ... </k>
+         <localMem> LM </localMem>
       requires notBool CELL in_keys(LM)
 
     rule <k> #exec store VALUE , CELL => . ... </k>
-         <localMem> LM => LM [ CELL <- Int2Bytes(VALUE, LE, Signed) ] </localMem>
+         <localMem> LM => #if VALUE ==Int 0 andBool notBool CELL in_keys(LM) #then LM #else LM [ CELL <- Int2Bytes(VALUE, LE, Signed) ] #fi </localMem>
 ```
 
 ### Expressions
@@ -866,6 +874,9 @@ The sha3 instruction computes the keccak256 hash of an entire memory cell.
 
     rule <k> #exec REG = sha3 MEMINDEX => #load REG keccak(LM) ... </k>
          <localMem>... MEMINDEX |-> LM ...</localMem>
+    rule <k> #exec REG = sha3 MEMINDEX => #load REG keccak(.Bytes) ... </k>
+         <localMem> LM </localMem>
+      requires notBool MEMINDEX in_keys(LM)
 ```
 
 ### Local State
@@ -1755,7 +1766,7 @@ module IELE-PROGRAM-LOADING
 
     syntax IeleName ::= #mainContract ( Contract )                       [function]
     syntax Int ::= #contractSize ( Contract , IeleName )                 [function]
-    syntax String ::= #contractBytes ( Contract )                        [function, klabel(contractBytes)]
+    syntax String ::= #contractBytes ( Contract )                        [function, klabel(contractBytes), symbol]
                     | #contractBytes ( Contract , IeleName )             [function, klabel(#contractBytesAux)]
     syntax Int ::= #callAddress ( Contract , IeleName , IeleName )       [function]
                  | #callAddress ( TopLevelDefinitions , IeleName , Int ) [function, klabel(#callAddressAux)]

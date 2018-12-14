@@ -155,12 +155,14 @@ You could alternatively calculate `I1 %Int I2`, then add one to the normal integ
     rule intSizes(.Ints) => 0
     rule intSizes(I , INTS) => intSize(I) +Int intSizes(INTS)
 
-    syntax Int ::= intSizes ( Array , Int ) [function, klabel(intSizesArr)]
-                 | intSizes ( Array , Int , Int ) [function, klabel(intSizesAux)]
+    syntax Int ::= intSizes ( Array , Int , Schedule ) [function, klabel(intSizesArr)]
+                 | intSizes ( Array , Int , Int , Schedule ) [function, klabel(intSizesAux)]
  // -----------------------------------------------------------------------------
-    rule intSizes(ARR::Array, I) => intSizes(ARR, I, 0)
-    rule intSizes(ARR::Array, I, I) => 0
-    rule intSizes(ARR, I, J) => getInt(ARR [ J ]) +Int intSizes(ARR, I, J +Int 1) [owise]
+    rule intSizes(ARR::Array, I, SCHED) => intSizes(ARR, I, 0, SCHED)
+    rule intSizes(ARR::Array, I, I, _) => 0
+    rule intSizes(ARR, I, J, SCHED) => intSize(getInt(ARR [ J ])) +Int intSizes(ARR, I, J +Int 1, SCHED)
+      requires SCHED =/=K ALBE [owise]
+    rule intSizes(ARR, I, J, ALBE) => getInt(ARR [ J ]) +Int intSizes(ARR, I, J +Int 1, ALBE) [owise]
 
     syntax Int ::= bitsInWords ( Int , Schedule ) [function]
  // ---------------------------------------------
@@ -499,7 +501,7 @@ Encoding
     syntax String ::= #rlpEncodeWord ( Int )            [function]
                     | #rlpEncodeBytes ( Int , Int )     [function]
                     | #rlpEncodeString ( String )       [function]
-                    | #rlpEncodeInts ( Ints ) [function]
+                    | #rlpEncodeInts ( Ints ) [function, klabel(rlpEncodeInts), symbol]
                     | #rlpEncodeInts ( StringBuffer, Ints ) [function, klabel(#rlpEncodeIntsAux)]
  // ---------------------------------------------------------------------------------------------
     rule #rlpEncodeWord(0) => "\x80"
@@ -528,6 +530,8 @@ Decoding
 --------
 
 -   `#loadLen` and `#loadOffset` decode a `WordStack` into a single string in an RLP-like encoding which does not allow lists in its structure.
+-   `#rlpDecode` RLP decodes a single `String` into a `JSON`.
+-   `#rlpDecodeList` RLP decodes a single `String` into a `JSONList`, interpereting the string as the RLP encoding of a list.
 
 ```k
     syntax LengthPrefixType ::= "#str" | "#list"
@@ -545,6 +549,40 @@ Decoding
     rule #loadOffset ( B0 : WS ) => 0           requires B0  <Int 128 orBool  B0 >=Int 192
     rule #loadOffset ( B0 : WS ) => 1           requires B0 >=Int 128 andBool B0  <Int 184
     rule #loadOffset ( B0 : WS ) => B0 -Int 182 requires B0 >=Int 184 andBool B0  <Int 192
+
+    syntax JSON ::= #rlpDecode(String)               [function, klabel(rlpDecode), symbol]
+                  | #rlpDecode(String, LengthPrefix) [function, klabel(#rlpDecodeAux)]
+ // ----------------------------------------------------------------------------------
+    rule #rlpDecode(STR) => #rlpDecode(STR, #decodeLengthPrefix(STR, 0))
+    rule #rlpDecode(STR, #str(LEN, POS))  => substrString(STR, POS, POS +Int LEN)
+    rule #rlpDecode(STR, #list(LEN, POS)) => [#rlpDecodeList(STR, POS)]
+
+    syntax JSONList ::= #rlpDecodeList(String, Int)               [function]
+                      | #rlpDecodeList(String, Int, LengthPrefix) [function, klabel(#rlpDecodeListAux)]
+ // ---------------------------------------------------------------------------------------------------
+    rule #rlpDecodeList(STR, POS) => #rlpDecodeList(STR, POS, #decodeLengthPrefix(STR, POS)) requires POS <Int lengthString(STR)
+    rule #rlpDecodeList(STR, POS) => .JSONList [owise]
+    rule #rlpDecodeList(STR, POS, _:LengthPrefixType(L, P)) => #rlpDecode(substrString(STR, POS, L +Int P)) , #rlpDecodeList(STR, L +Int P)
+
+    syntax LengthPrefixType ::= "#str" | "#list"
+    syntax LengthPrefix ::= LengthPrefixType "(" Int "," Int ")"
+                          | #decodeLengthPrefix ( String , Int )                                [function]
+                          | #decodeLengthPrefix ( String , Int , Int )                          [function, klabel(#decodeLengthPrefixAux)]
+                          | #decodeLengthPrefixLength ( LengthPrefixType , String , Int , Int ) [function]
+                          | #decodeLengthPrefixLength ( LengthPrefixType , Int    , Int , Int ) [function, klabel(#decodeLengthPrefixLengthAux)]
+ // --------------------------------------------------------------------------------------------------------------------------------------------
+    rule #decodeLengthPrefix(STR, START) => #decodeLengthPrefix(STR, START, ordChar(substrString(STR, START, START +Int 1)))
+
+    rule #decodeLengthPrefix(STR, START, B0) => #str(1, START)                                   requires B0 <Int 128
+    rule #decodeLengthPrefix(STR, START, B0) => #str(B0 -Int 128, START +Int 1)                  requires B0 >=Int 128 andBool B0 <Int (128 +Int 56)
+    rule #decodeLengthPrefix(STR, START, B0) => #decodeLengthPrefixLength(#str, STR, START, B0)  requires B0 >=Int (128 +Int 56) andBool B0 <Int 192
+    rule #decodeLengthPrefix(STR, START, B0) => #list(B0 -Int 192, START +Int 1)                 requires B0 >=Int 192 andBool B0 <Int 192 +Int 56
+    rule #decodeLengthPrefix(STR, START, B0) => #decodeLengthPrefixLength(#list, STR, START, B0) [owise]
+
+    rule #decodeLengthPrefixLength(#str,  STR, START, B0) => #decodeLengthPrefixLength(#str,  START, B0 -Int 128 -Int 56 +Int 1, Bytes2Int(String2Bytes(substrString(STR, START +Int 1, START +Int 1 +Int (B0 -Int 128 -Int 56 +Int 1))), BE, Unsigned))
+    rule #decodeLengthPrefixLength(#list, STR, START, B0) => #decodeLengthPrefixLength(#list, START, B0 -Int 192 -Int 56 +Int 1, Bytes2Int(String2Bytes(substrString(STR, START +Int 1, START +Int 1 +Int (B0 -Int 192 -Int 56 +Int 1))), BE, Unsigned))
+    rule #decodeLengthPrefixLength(TYPE, START, LL, L) => TYPE(L, START +Int 1 +Int LL)
+
 endmodule
 ```
 
