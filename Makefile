@@ -176,7 +176,7 @@ coverage:
 
 deps: k-deps ocaml-deps
 k-deps:
-	cd .build/rv-k && mvn package
+	cd .build/rv-k && mvn package -q -DskipTests -Dllvm.backend.skip
 
 ocaml-deps:
 	opam init
