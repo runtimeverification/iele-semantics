@@ -379,8 +379,8 @@ Addresses
  // ------------------------------------------------
     rule #newAddr(ACCT, NONCE) => #addr(#parseHexWord(Keccak256(#rlpEncodeLength(#rlpEncodeBytes(ACCT, 20) +String #rlpEncodeWord(NONCE), 192))))
 
-    syntax Int ::= #sender ( String , Int , String , String )                                         [function, klabel(#senderAux)]
-                 | #sender ( String )                                                                 [function, klabel(#senderAux2)]
+    syntax Account ::= #sender ( String , Int , String , String )                                         [function, klabel(#senderAux)]
+                     | #sender ( String )                                                                 [function, klabel(#senderAux2)]
  // ---------------------------------------------------------------------------------------------------------------------------------
     rule #sender(HT, TW, TR, TS) => #sender(ECDSARecover(HT, TW, TR, TS))
 
