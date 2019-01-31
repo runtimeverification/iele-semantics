@@ -35,7 +35,7 @@ clean:
 	rm -rf .build/standalone .build/llvm .build/node .build/check .build/plugin-node .build/plugin-standalone .build/vm compiler/.stack-work .build/haskell
 
 distclean: clean
-	cd .build/rv-k && mvn clean
+	cd .build/k && mvn clean
 	cd .build/kore && stack clean
 
 build: tangle .build/standalone/iele-testing-kompiled/interpreter .build/vm/iele-vm assembler .build/check/well-formedness-kompiled/interpreter
@@ -166,7 +166,7 @@ tests/ethereum-tests/%.json:
 	@echo "==  git submodule: cloning upstreams test repository"
 	git submodule update --init
 
-K_BIN=.build/rv-k/k-distribution/target/release/k/bin/
+K_BIN=.build/k/k-distribution/target/release/k/bin/
 KOMPILE=${K_BIN}/kompile
 
 coverage:
@@ -176,13 +176,9 @@ coverage:
 
 deps: k-deps ocaml-deps
 k-deps:
-	cd .build/rv-k && mvn package -q -DskipTests -Dllvm.backend.skip
+	cd .build/k && mvn package -q -DskipTests -Dllvm.backend.skip -Dhaskell.backend.skip
 
 ocaml-deps:
-	opam init
-	opam repository add k ".build/rv-k/k-distribution/target/release/k/lib/opam" || opam repository set-url k ".build/rv-k/k-distribution/target/release/k/lib/opam"
-	opam update
-	opam switch 4.03.1+k
 	eval `opam config env` && opam install -y mlgmp zarith uuidm cryptokit secp256k1.0.3.2 bn128 hex ocaml-protoc rlp yojson ocp-ocamlres bisect_ppx
 
 haskell-deps:

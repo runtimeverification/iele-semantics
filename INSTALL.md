@@ -13,7 +13,8 @@ git submodule update --init --recursive # Initialize submodules
 curl -sSL https://get.haskellstack.org/ | sh # Install stack
 cd .build/secp256k1 && ./autogen.sh && ./configure --enable-module-recovery --enable-module-ecdh --enable-experimental && make && sudo make install # install secp256k1 from bitcoin-core
 cd ../..
-make deps # Build dependencies not installed by package manager
+./.build/k/k-distribution/src/main/scripts/bin/k-configure-opam-dev # install user-level ocaml dependencies
+make deps # build remaining submodule dependencies
 eval `opam config env` # add OCAML installation to path
 make # Build project
 make install # install to ~/.local

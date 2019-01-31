@@ -11,9 +11,6 @@
 [submodule ".build/tangle"]
 	path = .build/tangle
 	url = https://github.com/ehildenb/pandoc-tangle
-[submodule ".build/kore"]
-	path = .build/kore
-	url = https://github.com/kframework/kore
-[submodule ".build/rv-k"]
-	path = .build/rv-k
-	url = https://github.com/runtimeverification/k
+[submodule ".build/k"]
+	path = .build/k
+	url = https://github.com/kframework/k
