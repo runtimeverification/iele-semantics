@@ -175,7 +175,7 @@ ocaml-deps:
 	opam init
 	opam repository add k "tests/ci/rv-k/k-distribution/target/release/k/lib/opam" || opam repository set-url k "tests/ci/rv-k/k-distribution/target/release/k/lib/opam"
 	opam update
-	opam switch 4.03.0+k
+	opam switch 4.03.1+k
 	eval `opam config env` && opam install -y mlgmp zarith uuidm cryptokit secp256k1.0.3.2 bn128 hex ocaml-protoc rlp yojson ocp-ocamlres bisect_ppx
 
 .build/%/ethereum-kompiled/constants.$(EXT): $(defn_files)
