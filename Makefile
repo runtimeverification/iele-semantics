@@ -1,6 +1,13 @@
 # Common to all versions of K
 # ===========================
 
+BUILD_DIR:=$(CURDIR)/.build
+BUILD_LOCAL:=$(BUILD_DIR)/local
+LIBRARY_PATH:=$(BUILD_LOCAL)/lib
+PKG_CONFIG_PATH:=$(LIBRARY_PATH)/pkgconfig
+export LIBRARY_PATH
+export PKG_CONFIG_PATH
+
 ifeq ($(BYTE),yes)
 EXT=cmo
 LIBEXT=cma
@@ -178,11 +185,21 @@ deps: k-deps ocaml-deps
 k-deps:
 	cd .build/k && mvn package -q -DskipTests -Dllvm.backend.skip -Dhaskell.backend.skip
 
-ocaml-deps:
+ocaml-deps: .build/local/lib/pkgconfig/libsecp256k1.pc
 	eval `opam config env` && opam install -y mlgmp zarith uuidm cryptokit secp256k1.0.3.2 bn128 hex ocaml-protoc rlp yojson ocp-ocamlres bisect_ppx
 
 haskell-deps:
 		cd $(KORE_SUBMODULE) && stack install --local-bin-path $(abspath $(KORE_SUBMODULE))/bin kore:exe:kore-exec
+
+# install secp256k1 from bitcoin-core
+.build/local/lib/pkgconfig/libsecp256k1.pc:
+	@echo "== submodule: $@"
+	git submodule update --init -- .build/secp256k1/
+	cd .build/secp256k1/ \
+	    && ./autogen.sh \
+	    && ./configure --enable-module-recovery --prefix="$(BUILD_LOCAL)" \
+	    && make -s -j4 \
+	    && make install
 
 .build/llvm/iele-testing.kore: $(defn_files)
 	@echo "== kompile: $@"
