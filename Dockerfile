@@ -37,3 +37,9 @@ ADD .build/k/k-distribution/src/main/scripts/bin/k-configure-opam-dev .build/k/k
 ADD .build/k/k-distribution/src/main/scripts/lib/opam  /home/user/.tmp-opam/lib/opam/
 RUN    cd /home/user \
     && ./.tmp-opam/bin/k-configure-opam-dev
+
+ENV LC_ALL=C.UTF-8
+ADD --chown=user:user .build/k/haskell-backend/src/main/native/haskell-backend/stack.yaml /home/user/.tmp-haskell/
+ADD --chown=user:user .build/k/haskell-backend/src/main/native/haskell-backend/src/main/haskell/kore/package.yaml /home/user/.tmp-haskell/src/main/haskell/kore/
+RUN    cd /home/user/.tmp-haskell \
+    && stack build --only-snapshot --test --bench --haddock --library-profiling
