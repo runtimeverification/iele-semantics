@@ -9,7 +9,7 @@ RUN    apt update                                                          \
     && apt install --yes                                                   \
            autoconf build-essential curl flex gcc libffi-dev libmpfr-dev   \
            libtool make maven opam openjdk-8-jdk pandoc pkg-config python3 \
-           zlib1g-dev libsecp256k1-dev
+           zlib1g-dev libsecp256k1-dev netcat
 
 RUN update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java
 
