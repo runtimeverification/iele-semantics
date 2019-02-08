@@ -27,7 +27,7 @@ pipeline {
     stage('Test') {
       steps {
         ansiColor('xterm') {
-          sh '''
+          sh '''#!/bin/bash
             eval $(opam config env)
             .build/vm/iele-vm 0 127.0.0.1 > port &
             sleep 3
