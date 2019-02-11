@@ -13,13 +13,22 @@ pipeline {
         }
       }
     }
-    stage('Build and Test') {
+    stage('Build') {
       steps {
         ansiColor('xterm') {
           sh '''
             eval $(opam config env)
-            make k-deps
+            make deps
             make COVERAGE=k
+          '''
+        }
+      }
+    }
+    stage('Test') {
+      steps {
+        ansiColor('xterm') {
+          sh '''#!/bin/bash
+            eval $(opam config env)
             .build/vm/iele-vm 0 127.0.0.1 > port &
             sleep 3
             export PORT=`cat port | awk -F ':' '{print $3}'`
