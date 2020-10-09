@@ -56,17 +56,8 @@ install: assembler
 
 tangle: defn proofs
 
-k_files:=iele-testing.k data.k iele.k iele-gas.k iele-binary.k krypto.k iele-syntax.k iele-node.k well-formedness.k
-standalone_files:=$(patsubst %,.build/standalone/%,$(k_files))
-node_files:=$(patsubst %,.build/node/%,$(k_files))
-checker_files:=.build/standalone/iele-syntax.k .build/standalone/well-formedness.k .build/standalone/data.k
-defn_files=$(standalone_files) $(node_files)
-source_files=$(patsubst %.k,%.md,$(k_files))
-
-defn: $(defn_files)
-
-export LUA_PATH=$(shell pwd)/.build/tangle/?.lua;;
-
+k_files:=iele-testing.md data.md iele.md iele-gas.md iele-binary.md krypto.md iele-syntax.md iele-node.md well-formedness.md
+checker_files:=iele-syntax.md well-formedness.md data.md
 
 .build/node/%.k: %.md
 	@echo "==  tangle: $@"
@@ -79,10 +70,6 @@ export LUA_PATH=$(shell pwd)/.build/tangle/?.lua;;
 
 node: .build/vm/iele-vm
 testnode : .build/vm/iele-test-vm .build/vm/iele-test-client
-
-proof_dir=tests/proofs
-proof_files=
-proofs: $(proof_files)
 
 # Tests
 # -----
@@ -170,31 +157,12 @@ K_BIN=/usr/bin
 KOMPILE=${K_BIN}/kompile
 
 coverage:
-	sed -i 's!.build/node/\(.*\)\.k:!\1.md:!' .build/node/iele-testing-kompiled/allRules.txt
-	sed -i 's!.build/standalone/\(.*\)\.k:!\1.md:!' .build/standalone/iele-testing-kompiled/allRules.txt .build/check/well-formedness-kompiled/allRules.txt
 	${K_BIN}/kcovr .build/node/iele-testing-kompiled .build/standalone/iele-testing-kompiled .build/check/well-formedness-kompiled -- $(filter-out krypto.md, $(source_files)) > .build/coverage.xml
 
 deps:
 
 haskell-deps:
 		cd $(KORE_SUBMODULE) && stack install --local-bin-path $(abspath $(KORE_SUBMODULE))/bin kore:exe:kore-exec
-
-.build/llvm/iele-testing.kore: $(defn_files)
-	@echo "== kompile: $@"
-	${KOMPILE} --debug --main-module IELE-TESTING --backend kore \
-					--syntax-module IELE-SYNTAX .build/standalone/iele-testing.k --directory .build/llvm
-
-.build/haskell/definition.kore: $(defn_files)
-	@echo "== kompile: $@"
-	${KOMPILE} --debug --main-module IELE-TESTING --backend haskell \
-					--syntax-module IELE-TESTING .build/standalone/iele-testing.k --directory .build/haskell -I .build/haskell
-
-.build/%/iele-testing-kompiled/constants.$(EXT): $(defn_files)
-	@echo "== kompile: $@"
-	${KOMPILE} --debug --main-module IELE-TESTING \
-					--syntax-module IELE-SYNTAX .build/$*/iele-testing.k --directory .build/$* \
-					--hook-namespaces "KRYPTO BLOCKCHAIN" --gen-ml-only -O3 --non-strict $(KOMPILE_FLAGS)
-	cd .build/$*/iele-testing-kompiled && ocamlfind $(OCAMLC) -c -g constants.ml -package gmp -package zarith -safe-string
 
 PLUGIN=$(abspath plugin)
 
@@ -203,30 +171,18 @@ PLUGIN=$(abspath plugin)
 	protoc --cpp_out=.build/plugin-node -I ${PLUGIN}/plugin ${PLUGIN}/plugin/proto/msg.proto
 
 .build/check/well-formedness-kompiled/interpreter: $(checker_files) .build/plugin-node/proto/msg.pb.cc
-	${KOMPILE} --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE \
-	                                --syntax-module IELE-SYNTAX .build/standalone/well-formedness.k --directory .build/check \
+	${KOMPILE} --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE --md-selector "(k & ! node) | standalone" \
+	                                --syntax-module IELE-SYNTAX well-formedness.md --directory .build/check \
 	                                --backend llvm -ccopt ${PLUGIN}/plugin-c/crypto.cpp -ccopt ${PLUGIN}/plugin-c/blockchain.cpp -ccopt ${PLUGIN}/plugin-c/world.cpp -ccopt `pwd`/.build/plugin-node/proto/msg.pb.cc -ccopt -I -ccopt ${PLUGIN}/plugin-c -ccopt -I -ccopt `pwd`/.build/plugin-node -ccopt -L -ccopt /usr/local/lib \
 				       	-ccopt -lprotobuf -ccopt -lff -ccopt -lcryptopp -ccopt -lsecp256k1 -ccopt -lprocps -ccopt -g -ccopt -std=c++11 -ccopt -O2 $(KOMPILE_FLAGS)
 
-.build/%/iele-testing-kompiled/interpreter: $(defn_files) .build/plugin-node/proto/msg.pb.cc
+.build/%/iele-testing-kompiled/interpreter: $(k_files) .build/plugin-node/proto/msg.pb.cc
 	@echo "== kompile: $@"
 	${KOMPILE} --debug --main-module IELE-TESTING --verbose \
 					--syntax-module IELE-SYNTAX .build/$*/iele-testing.k --directory .build/$* \
 	                                --backend llvm -ccopt ${PLUGIN}/plugin-c/crypto.cpp -ccopt ${PLUGIN}/plugin-c/blockchain.cpp -ccopt ${PLUGIN}/plugin-c/world.cpp -ccopt `pwd`/.build/plugin-node/proto/msg.pb.cc -ccopt -I -ccopt ${PLUGIN}/plugin-c -ccopt -I -ccopt `pwd`/.build/plugin-node -ccopt -L -ccopt /usr/local/lib \
 				       	-ccopt -lprotobuf -ccopt -lff -ccopt -lcryptopp -ccopt -lsecp256k1 -ccopt -lprocps -ccopt -g -ccopt -std=c++11 -ccopt -O2 $(KOMPILE_FLAGS)
 
-.build/vm/iele-test-vm: $(wildcard plugin/vm/*.ml plugin/vm/*.mli)
-	mkdir -p .build/vm
-	cp ${PLUGIN}/vm/*.ml ${PLUGIN}/vm/*.mli .build/vm
-	cd .build/vm && ocamlfind $(OCAMLC) -g -I ../node/iele-testing-kompiled -o iele-test-vm ieleClientUtils.ml ieleVmTest.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin-node -package rlp -package yojson -package hex -linkpkg -linkall -thread -safe-string $(PREDICATES)
-
 .build/vm/iele-vm: .build/node/iele-testing-kompiled/interpreter $(wildcard plugin/vm-c/*.cpp plugin/vm-c/*.h) .build/plugin-node/proto/msg.pb.cc
 	mkdir -p .build/vm
 	llvm-kompile .build/node/iele-testing-kompiled/definition.kore IELE-TESTING library ${PLUGIN}/vm-c/main.cpp ${PLUGIN}/vm-c/vm.cpp -I ${PLUGIN}/plugin-c/ -I .build/plugin-node -L /usr/local/lib ${PLUGIN}/plugin-c/*.cpp .build/plugin-node/proto/msg.pb.cc -lff -lprotobuf -lgmp -lprocps -lcryptopp -lsecp256k1 -I ${PLUGIN}/vm-c/ -I ${PLUGIN}/vm-c/iele/ ${PLUGIN}/vm-c/iele/semantics.cpp -o .build/vm/iele-vm -g
-
-.build/vm/iele-test-client: $(wildcard plugin/vm/*.ml plugin/vm/*.mli)
-	mkdir -p .build/vm
-	cp ${PLUGIN}/vm/*.ml ${PLUGIN}/vm/*.mli .build/vm
-	cd .build/vm && ocamlfind $(OCAMLC) -g -I ../node/iele-testing-kompiled -o iele-test-client ieleClientUtils.ml ieleApi.mli ieleApi.ml ieleApiClient.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin-node -package rlp -package yojson -package hex -linkpkg -linkall -thread -safe-string $(PREDICATES)
-
-
