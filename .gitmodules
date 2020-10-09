@@ -14,3 +14,6 @@
 [submodule ".build/k"]
 	path = .build/k
 	url = https://github.com/kframework/k
+[submodule ".build/ff"]
+	path = .build/ff
+	url = https://github.com/scipr-lab/libff

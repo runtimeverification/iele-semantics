@@ -16,7 +16,6 @@ module IELE-DATA
     imports BYTES
     imports IELE-CONSTANTS
     imports IELE-COMMON
-    imports DOMAINS
     imports COLLECTIONS
 
     syntax KResult ::= Int

@@ -28,7 +28,6 @@ module IELE-WELL-FORMEDNESS
     imports IELE-COMMON
     imports IELE-DATA
     imports IELE-CONSTANTS
-    imports DOMAINS
     imports DEFAULT-CONFIGURATION
 ```
 
