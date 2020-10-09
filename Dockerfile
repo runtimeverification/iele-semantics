@@ -8,6 +8,8 @@ RUN    apt update                                                          \
            libtool make maven opam openjdk-8-jdk pandoc pkg-config python3 \
            zlib1g-dev libsecp256k1-dev netcat
 
+RUN curl -sSL https://get.haskellstack.org/ | sh
+
 ARG USER_ID=1000
 ARG GROUP_ID=1000
 RUN    groupadd --gid $GROUP_ID user                                        \
