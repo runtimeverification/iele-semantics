@@ -5,12 +5,12 @@ Here we define a test harness for the new IELE VM.
 Actual execution of IELE is defined in [the IELE file](iele.md).
 
 ```k
-requires "iele.k"
-requires "iele-binary.k"
+requires "iele.md"
+requires "iele-binary.md"
 ```
 
 ```{.k .node}
-requires "iele-node.k"
+requires "iele-node.md"
 ```
 
 ```k

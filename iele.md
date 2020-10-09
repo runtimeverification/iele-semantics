@@ -7,10 +7,10 @@ This file only defines the local execution operations. A separate `cardano.md` w
 of the transaction protocol.
 
 ```k
-requires "data.k"
-requires "iele-syntax.k"
-requires "iele-gas.k"
-requires "well-formedness.k"
+requires "data.md"
+requires "iele-syntax.md"
+requires "iele-gas.md"
+requires "well-formedness.md"
 
 module IELE-CONFIGURATION
     imports STRING

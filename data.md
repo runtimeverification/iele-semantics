@@ -6,8 +6,8 @@ Here we provide the arithmetic of these words, as well as some data-structures o
 Both are implemented using K's `Int`.
 
 ```k
-requires "krypto.k"
-requires "domains.k"
+requires "krypto.md"
+requires "domains.md"
 
 module IELE-DATA
     imports KRYPTO

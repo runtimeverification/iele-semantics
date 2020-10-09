@@ -4,8 +4,8 @@ IELE Contract Well-Formedness
 The following document describes a semantics of type- and semantic-checking in IELE. The semantics takes a contract as input and succeeds only if the contract is determined to be well-formed, i.e., free from type errors and malformed instructions or functions.
 
 ```k
-require "iele-syntax.k"
-require "data.k"
+require "iele-syntax.md"
+require "data.md"
 ```
 
 Modal Semantics
