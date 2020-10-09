@@ -3,14 +3,11 @@
 	url = https://github.com/ethereum/tests.git
 	branch = develop
 [submodule ".build/secp256k1"]
-	path = .build/secp256k1
+	path = deps/secp256k1
 	url = https://github.com/bitcoin-core/secp256k1
 [submodule "plugin"]
 	path = plugin
 	url = https://github.com/runtimeverification/blockchain-k-plugin
 [submodule ".build/tangle"]
-	path = .build/tangle
+	path = deps/tangle
 	url = https://github.com/ehildenb/pandoc-tangle
-[submodule ".build/k"]
-	path = .build/k
-	url = https://github.com/kframework/k
