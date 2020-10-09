@@ -1143,8 +1143,6 @@ These operations interact with the account storage.
 
 The various `call*` (and other inter-contract control flow) operations will be desugared into these `InternalOp`s.
 
-```k
-
 -   `#checkCall` checks that the current account has the balance necessary to invoke the contract call, and that the contract call stack depth limit has not been reached.
 -   `#call_____` takes the calling account, the account to execute as, the account whose code should execute, the gas limit, the amount to transfer, the function to call, and the arguments.
 -   `#callWithCode______` takes the calling account, the accout to execute as, the code to execute (as a map), the gas limit, the amount to transfer, the function to call, and the arguments.

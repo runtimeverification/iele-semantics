@@ -296,8 +296,6 @@ Checking these instructions also requires checking that the contract they refere
     rule check ~> STATUS , RET = copycreate OP1 ( ARGS ) send OP2 => checkLVals(STATUS, RET) ~> checkOperands(OP1 , OP2 , ARGS)
 ```
 
-```
-
 Types of intrinsic functions
 ----------------------------
 
