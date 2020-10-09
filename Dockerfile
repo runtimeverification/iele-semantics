@@ -6,7 +6,8 @@ RUN    apt update                                                          \
     && apt install --yes                                                   \
            autoconf build-essential curl flex gcc libffi-dev libmpfr-dev   \
            libtool make maven opam openjdk-8-jdk pandoc pkg-config python3 \
-           zlib1g-dev libsecp256k1-dev netcat
+           zlib1g-dev libsecp256k1-dev netcat protobuf-compiler            \
+           libprotobuf-dev libcrypto++-dev libssl-dev libprocps-dev
 
 RUN curl -sSL https://get.haskellstack.org/ | sh
 
