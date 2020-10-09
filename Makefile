@@ -166,7 +166,7 @@ tests/ethereum-tests/%.json:
 	@echo "==  git submodule: cloning upstreams test repository"
 	git submodule update --init
 
-K_BIN=.build/k/k-distribution/target/release/k/bin/
+K_BIN=/usr/bin
 KOMPILE=${K_BIN}/kompile
 
 coverage:
@@ -174,12 +174,7 @@ coverage:
 	sed -i 's!.build/standalone/\(.*\)\.k:!\1.md:!' .build/standalone/iele-testing-kompiled/allRules.txt .build/check/well-formedness-kompiled/allRules.txt
 	${K_BIN}/kcovr .build/node/iele-testing-kompiled .build/standalone/iele-testing-kompiled .build/check/well-formedness-kompiled -- $(filter-out krypto.md, $(source_files)) > .build/coverage.xml
 
-deps: k-deps ocaml-deps
-k-deps:
-	cd .build/k && mvn package -q -DskipTests -Dllvm.backend.skip -Dhaskell.backend.skip
-
-ocaml-deps:
-	eval `opam config env` && opam install -y mlgmp zarith uuidm cryptokit secp256k1.0.3.2 bn128 hex ocaml-protoc rlp yojson ocp-ocamlres bisect_ppx
+deps:
 
 haskell-deps:
 		cd $(KORE_SUBMODULE) && stack install --local-bin-path $(abspath $(KORE_SUBMODULE))/bin kore:exe:kore-exec
