@@ -196,46 +196,37 @@ haskell-deps:
 					--hook-namespaces "KRYPTO BLOCKCHAIN" --gen-ml-only -O3 --non-strict $(KOMPILE_FLAGS)
 	cd .build/$*/iele-testing-kompiled && ocamlfind $(OCAMLC) -c -g constants.ml -package gmp -package zarith -safe-string
 
-.build/check/well-formedness-kompiled/interpreter: $(checker_files)
+PLUGIN=$(abspath plugin)
+
+.build/plugin-node/proto/msg.pb.cc: ${PLUGIN}/plugin/proto/msg.proto
+	mkdir -p .build/plugin-node
+	protoc --cpp_out=.build/plugin-node -I ${PLUGIN}/plugin ${PLUGIN}/plugin/proto/msg.proto
+
+.build/check/well-formedness-kompiled/interpreter: $(checker_files) .build/plugin-node/proto/msg.pb.cc
 	${KOMPILE} --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE \
 	                                --syntax-module IELE-SYNTAX .build/standalone/well-formedness.k --directory .build/check \
-	                                --gen-ml-only -O3 --non-strict $(KOMPILE_FLAGS)
-	cd .build/check/well-formedness-kompiled && ocamlfind $(OCAMLC) -c -g -package gmp -package zarith -package uuidm -safe-string constants.ml prelude.ml plugin.ml parser.mli parser.ml lexer.ml run.ml
-	cd .build/check/well-formedness-kompiled && ocamlfind $(OCAMLC) -c -g -w -11-26 -package gmp -package zarith -package uuidm -safe-string realdef.ml -match-context-rows 2 -thread
-	cd .build/check/well-formedness-kompiled && ocamlfind $(OCAMLC) $(LIBFLAG) -o realdef.$(DLLEXT) realdef.$(EXT)
-	cd .build/check/well-formedness-kompiled && ocamlfind $(OCAMLC) -g -o interpreter constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) run.$(EXT) interpreter.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -linkpkg -linkall -safe-string
+	                                --backend llvm -ccopt ${PLUGIN}/plugin-c/crypto.cpp -ccopt ${PLUGIN}/plugin-c/blockchain.cpp -ccopt ${PLUGIN}/plugin-c/world.cpp -ccopt `pwd`/.build/plugin-node/proto/msg.pb.cc -ccopt -I -ccopt ${PLUGIN}/plugin-c -ccopt -I -ccopt `pwd`/.build/plugin-node -ccopt -L -ccopt /usr/local/lib \
+				       	-ccopt -lprotobuf -ccopt -lff -ccopt -lcryptopp -ccopt -lsecp256k1 -ccopt -lprocps -ccopt -g -ccopt -std=c++11 -ccopt -O2 $(KOMPILE_FLAGS)
 
-.build/plugin-%/semantics.$(LIBEXT): $(wildcard plugin/plugin/*.ml plugin/plugin/*.mli) .build/%/iele-testing-kompiled/constants.$(EXT)
-	mkdir -p .build/plugin-$*
-	cp plugin/plugin/*.ml plugin/plugin/*.mli .build/plugin-$*
-	ocp-ocamlres -format ocaml plugin/plugin/proto/VERSION -o .build/plugin-$*/apiVersion.ml
-	ocaml-protoc plugin/plugin/proto/*.proto -ml_out .build/plugin-$*
-	cd .build/plugin-$* && ocamlfind $(OCAMLC) -c -g -I ../$*/iele-testing-kompiled msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml apiVersion.ml world.mli world.ml caching.mli caching.ml BLOCKCHAIN.ml KRYPTO.ml -package cryptokit -package secp256k1 -package bn128 -package ocaml-protoc $(BISECT) -safe-string -thread
-	cd .build/plugin-$* && ocamlfind $(OCAMLC) -a -o semantics.$(LIBEXT) KRYPTO.$(EXT) msg_types.$(EXT) msg_pb.$(EXT) apiVersion.$(EXT) world.$(EXT) caching.$(EXT) BLOCKCHAIN.$(EXT) -thread
-	ocamlfind remove iele-semantics-plugin-$*
-	ocamlfind install iele-semantics-plugin-$* plugin/plugin/META .build/plugin-$*/semantics.* .build/plugin-$*/*.cmi .build/plugin-$*/*.$(EXT)
+.build/%/iele-testing-kompiled/interpreter: $(defn_files) .build/plugin-node/proto/msg.pb.cc
+	@echo "== kompile: $@"
+	${KOMPILE} --debug --main-module IELE-TESTING --verbose \
+					--syntax-module IELE-SYNTAX .build/$*/iele-testing.k --directory .build/$* \
+	                                --backend llvm -ccopt ${PLUGIN}/plugin-c/crypto.cpp -ccopt ${PLUGIN}/plugin-c/blockchain.cpp -ccopt ${PLUGIN}/plugin-c/world.cpp -ccopt `pwd`/.build/plugin-node/proto/msg.pb.cc -ccopt -I -ccopt ${PLUGIN}/plugin-c -ccopt -I -ccopt `pwd`/.build/plugin-node -ccopt -L -ccopt /usr/local/lib \
+				       	-ccopt -lprotobuf -ccopt -lff -ccopt -lcryptopp -ccopt -lsecp256k1 -ccopt -lprocps -ccopt -g -ccopt -std=c++11 -ccopt -O2 $(KOMPILE_FLAGS)
 
-.build/%/iele-testing-kompiled/interpreter: .build/plugin-%/semantics.$(LIBEXT)
-	cd .build/$*/iele-testing-kompiled && ocamllex lexer.mll
-	cd .build/$*/iele-testing-kompiled && ocamlyacc parser.mly
-	cd .build/$*/iele-testing-kompiled && ocamlfind $(OCAMLC) -c -g -package gmp -package zarith -package uuidm -safe-string prelude.ml plugin.ml parser.mli parser.ml lexer.ml run.ml -thread
-	cd .build/$*/iele-testing-kompiled && ocamlfind $(OCAMLC) -c -g -w -11-26 -package gmp -package zarith -package uuidm -package iele-semantics-plugin-$* -safe-string realdef.ml -match-context-rows 2 -thread
-	cd .build/$*/iele-testing-kompiled && ocamlfind $(OCAMLC) $(LIBFLAG) -o realdef.$(DLLEXT) realdef.$(EXT)
-	cd .build/$*/iele-testing-kompiled && ocamlfind $(OCAMLC) -g -o interpreter constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) run.$(EXT) interpreter.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin-$* -linkpkg -linkall -thread -safe-string $(PREDICATES)
-
-.build/vm/iele-test-vm: .build/node/iele-testing-kompiled/interpreter $(wildcard plugin/vm/*.ml plugin/vm/*.mli)
+.build/vm/iele-test-vm: $(wildcard plugin/vm/*.ml plugin/vm/*.mli)
 	mkdir -p .build/vm
-	cp plugin/vm/*.ml plugin/vm/*.mli .build/vm
-	cd .build/vm && ocamlfind $(OCAMLC) -g -I ../node/iele-testing-kompiled -o iele-test-vm constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) realdef.$(EXT) run.$(EXT) VM.mli VM.ml ieleClientUtils.ml ieleVmTest.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin-node -package rlp -package yojson -package hex -linkpkg -linkall -thread -safe-string $(PREDICATES)
+	cp ${PLUGIN}/vm/*.ml ${PLUGIN}/vm/*.mli .build/vm
+	cd .build/vm && ocamlfind $(OCAMLC) -g -I ../node/iele-testing-kompiled -o iele-test-vm ieleClientUtils.ml ieleVmTest.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin-node -package rlp -package yojson -package hex -linkpkg -linkall -thread -safe-string $(PREDICATES)
 
-.build/vm/iele-vm: .build/node/iele-testing-kompiled/interpreter $(wildcard plugin/vm/*.ml plugin/vm/*.mli)
+.build/vm/iele-vm: .build/node/iele-testing-kompiled/interpreter $(wildcard plugin/vm-c/*.cpp plugin/vm-c/*.h) .build/plugin-node/proto/msg.pb.cc
 	mkdir -p .build/vm
-	cp plugin/vm/*.ml plugin/vm/*.mli .build/vm
-	cd .build/vm && ocamlfind $(OCAMLC) -g -I ../node/iele-testing-kompiled -o iele-vm constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) realdef.$(EXT) run.$(EXT) VM.mli VM.ml vmNetworkServer.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin-node -package rlp -package yojson -package hex $(BISECT) -linkpkg -linkall -thread -safe-string $(PREDICATES)
+	llvm-kompile .build/node/iele-testing-kompiled/definition.kore IELE-TESTING library ${PLUGIN}/vm-c/main.cpp ${PLUGIN}/vm-c/vm.cpp -I ${PLUGIN}/plugin-c/ -I .build/plugin-node -L /usr/local/lib ${PLUGIN}/plugin-c/*.cpp .build/plugin-node/proto/msg.pb.cc -lff -lprotobuf -lgmp -lprocps -lcryptopp -lsecp256k1 -I ${PLUGIN}/vm-c/ -I ${PLUGIN}/vm-c/iele/ ${PLUGIN}/vm-c/iele/semantics.cpp -o .build/vm/iele-vm -g
 
-.build/vm/iele-test-client: .build/node/iele-testing-kompiled/interpreter $(wildcard plugin/vm/*.ml plugin/vm/*.mli)
+.build/vm/iele-test-client: $(wildcard plugin/vm/*.ml plugin/vm/*.mli)
 	mkdir -p .build/vm
-	cp plugin/vm/*.ml plugin/vm/*.mli .build/vm
-	cd .build/vm && ocamlfind $(OCAMLC) -g -I ../node/iele-testing-kompiled -o iele-test-client constants.$(EXT) prelude.$(EXT) plugin.$(EXT) parser.$(EXT) lexer.$(EXT) realdef.$(EXT) run.$(EXT) VM.mli VM.ml ieleClientUtils.ml ieleApi.mli ieleApi.ml ieleApiClient.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin-node -package rlp -package yojson -package hex -linkpkg -linkall -thread -safe-string $(PREDICATES)
+	cp ${PLUGIN}/vm/*.ml ${PLUGIN}/vm/*.mli .build/vm
+	cd .build/vm && ocamlfind $(OCAMLC) -g -I ../node/iele-testing-kompiled -o iele-test-client ieleClientUtils.ml ieleApi.mli ieleApi.ml ieleApiClient.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package iele-semantics-plugin-node -package rlp -package yojson -package hex -linkpkg -linkall -thread -safe-string $(PREDICATES)
 
 

@@ -11,3 +11,6 @@
 [submodule ".build/tangle"]
 	path = deps/tangle
 	url = https://github.com/ehildenb/pandoc-tangle
+[submodule ".build/ff"]
+	path = .build/ff
+	url = https://github.com/scipr-lab/libff
