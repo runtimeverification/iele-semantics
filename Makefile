@@ -153,11 +153,10 @@ tests/ethereum-tests/%.json:
 	@echo "==  git submodule: cloning upstreams test repository"
 	git submodule update --init
 
-K_BIN=/usr/bin
-KOMPILE=${K_BIN}/kompile
+KOMPILE=kompile
 
 coverage:
-	${K_BIN}/kcovr .build/node/iele-testing-kompiled .build/standalone/iele-testing-kompiled .build/check/well-formedness-kompiled -- $(filter-out krypto.md, $(source_files)) > .build/coverage.xml
+	kcovr .build/node/iele-testing-kompiled .build/standalone/iele-testing-kompiled .build/check/well-formedness-kompiled -- $(filter-out krypto.md, $(source_files)) > .build/coverage.xml
 
 deps:
 
