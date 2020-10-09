@@ -173,14 +173,17 @@ PLUGIN=$(abspath plugin)
 	${KOMPILE} --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE --md-selector "(k & ! node) | standalone" \
 	                                --syntax-module IELE-SYNTAX well-formedness.md --directory .build/check \
 	                                --backend llvm -ccopt ${PLUGIN}/plugin-c/crypto.cpp -ccopt ${PLUGIN}/plugin-c/blockchain.cpp -ccopt ${PLUGIN}/plugin-c/world.cpp -ccopt `pwd`/.build/plugin-node/proto/msg.pb.cc -ccopt -I -ccopt ${PLUGIN}/plugin-c -ccopt -I -ccopt `pwd`/.build/plugin-node -ccopt -L -ccopt /usr/local/lib \
-				       	-ccopt -lprotobuf -ccopt -lff -ccopt -lcryptopp -ccopt -lsecp256k1 -ccopt -lprocps -ccopt -g -ccopt -std=c++11 -ccopt -O2 $(KOMPILE_FLAGS)
+				       	-ccopt -lprotobuf -ccopt -lff -ccopt -lcryptopp -ccopt -lsecp256k1 -ccopt -lprocps -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
+
+.build/standalone/iele-testing-kompiled/interpreter: MD_SELECTOR="(k & ! node) | standalone"
+.build/node/iele-testing-kompiled/interpreter: MD_SELECTOR="(k & ! standalone) | node"
 
 .build/%/iele-testing-kompiled/interpreter: $(k_files) .build/plugin-node/proto/msg.pb.cc
 	@echo "== kompile: $@"
-	${KOMPILE} --debug --main-module IELE-TESTING --verbose \
+	${KOMPILE} --debug --main-module IELE-TESTING --verbose --md-selector ${MD_SELECTOR} \
 					--syntax-module IELE-SYNTAX iele-testing.md --directory .build/$* \
 	                                --backend llvm -ccopt ${PLUGIN}/plugin-c/crypto.cpp -ccopt ${PLUGIN}/plugin-c/blockchain.cpp -ccopt ${PLUGIN}/plugin-c/world.cpp -ccopt `pwd`/.build/plugin-node/proto/msg.pb.cc -ccopt -I -ccopt ${PLUGIN}/plugin-c -ccopt -I -ccopt `pwd`/.build/plugin-node -ccopt -L -ccopt /usr/local/lib \
-				       	-ccopt -lprotobuf -ccopt -lff -ccopt -lcryptopp -ccopt -lsecp256k1 -ccopt -lprocps -ccopt -g -ccopt -std=c++11 -ccopt -O2 $(KOMPILE_FLAGS)
+				       	-ccopt -lprotobuf -ccopt -lff -ccopt -lcryptopp -ccopt -lsecp256k1 -ccopt -lprocps -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
 
 .build/vm/iele-vm: .build/node/iele-testing-kompiled/interpreter $(wildcard plugin/vm-c/*.cpp plugin/vm-c/*.h) .build/plugin-node/proto/msg.pb.cc
 	mkdir -p .build/vm
