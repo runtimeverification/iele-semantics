@@ -2,9 +2,10 @@ pipeline {
   agent {
     dockerfile {
       label 'docker'
-      additionalBuildArgs '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g)'
+      additionalBuildArgs '--build-arg K_COMMIT=$(cat deps/k_release | cut --delimiter="-" --field="2") --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g)'
     }
   }
+  options { ansiColor('xterm') }
   stages {
     stage("Init title") {
       when { changeRequest() }
@@ -16,20 +17,16 @@ pipeline {
     }
     stage('Build') {
       steps {
-        ansiColor('xterm') {
-          sh '''
-            eval $(opam config env)
-            make deps
-            make COVERAGE=k
-          '''
-        }
+        sh '''
+          make deps
+          make COVERAGE=k
+        '''
       }
     }
     stage('Test') {
       steps {
         ansiColor('xterm') {
           sh '''#!/bin/bash
-            eval $(opam config env)
             .build/vm/iele-vm 0 127.0.0.1 > port &
             sleep 3
             export PORT=`cat port | awk -F ':' '{print $3}'`
