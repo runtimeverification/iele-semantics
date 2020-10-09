@@ -17,3 +17,8 @@ RUN    groupadd --gid $GROUP_ID user                                        \
     && useradd --create-home --uid $USER_ID --shell /bin/sh --gid user user
 
 USER $USER_ID:$GROUP_ID
+
+ENV LC_ALL=C.UTF-8
+ADD --chown=user:user compiler/stack.yaml /home/user/.tmp-haskell/
+RUN    cd /home/user/.tmp-haskell \
+-    && stack build --only-snapshot
