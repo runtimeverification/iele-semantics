@@ -981,8 +981,8 @@ A `ScheduleConst` is a constant determined by the fee schedule; applying a `Sche
 This schedule is used to execute the EVM VM tests, and contains minor variations from the actual schedule used for execution.
 
 ```k
-    syntax Schedule ::= "DEFAULT"
- // -----------------------------
+    syntax Schedule ::= "DEFAULT" [klabel(DEFAULT), symbol] 
+ // -------------------------------------------------------
     rule Gmove          < DEFAULT > => 3
     rule Greadstate     < DEFAULT > => 2
     rule Gadd           < DEFAULT > => 0

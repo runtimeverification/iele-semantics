@@ -18,9 +18,9 @@ Our semantics is modal, with the initial mode being set on the command line via 
 
 ```k
 module IELE-CONSTANTS
-    syntax Mode ::= "NORMAL" [klabel(NORMAL), symbol] | "VMTESTS"
-    syntax Schedule ::= "ALBE"
-                      | "DANSE"
+    syntax Mode ::= "NORMAL" [klabel(NORMAL), symbol] | "VMTESTS" [klabel(VMTESTS), symbol]
+    syntax Schedule ::= "ALBE" [klabel(ALBE), symbol]
+                      | "DANSE" [klabel(DANSE), symbol]
 endmodule
 
 
