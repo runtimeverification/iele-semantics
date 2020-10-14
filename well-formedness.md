@@ -80,7 +80,7 @@ Contracts
 
 ```k
     rule CONTRACT1::ContractDefinition CONTRACT2::ContractDefinition CONTRACTS => CONTRACT1 ~> CONTRACT2 CONTRACTS
-    rule CONTRACT::ContractDefinition .Contract => CONTRACT
+    rule CONTRACT::ContractDefinition .Contract => (CONTRACT::ContractDefinition :KItem)
 
     rule <k> contract NAME { DEFINITIONS } => checkName(NAME) ~> DEFINITIONS ... </k>
          <contracts> CONTRACTS => CONTRACTS SetItem(NAME) </contracts>
