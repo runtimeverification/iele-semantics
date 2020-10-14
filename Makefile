@@ -165,9 +165,9 @@ haskell-deps:
 
 PLUGIN=$(abspath plugin)
 
-.build/plugin-node/proto/msg.pb.cc: ${PLUGIN}/plugin/proto/msg.proto
+.build/plugin-node/proto/msg.pb.cc: ${PLUGIN}/plugin-c/proto/msg.proto
 	mkdir -p .build/plugin-node
-	protoc --cpp_out=.build/plugin-node -I ${PLUGIN}/plugin ${PLUGIN}/plugin/proto/msg.proto
+	protoc --cpp_out=.build/plugin-node -I ${PLUGIN}/plugin-c $<
 
 .build/check/well-formedness-kompiled/interpreter: $(checker_files) .build/plugin-node/proto/msg.pb.cc
 	${KOMPILE} --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE --md-selector "(k & ! node) | standalone" \
