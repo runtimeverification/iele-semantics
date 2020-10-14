@@ -6,7 +6,7 @@ Here we provide the arithmetic of these words, as well as some data-structures o
 Both are implemented using K's `Int`.
 
 ```k
-requires "krypto.md"
+requires "plugin/plugin/krypto.md"
 requires "domains.md"
 
 module IELE-DATA

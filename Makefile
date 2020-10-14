@@ -56,7 +56,7 @@ install: assembler
 
 tangle: defn proofs
 
-k_files:=iele-testing.md data.md iele.md iele-gas.md iele-binary.md krypto.md iele-syntax.md iele-node.md well-formedness.md
+k_files:=iele-testing.md data.md iele.md iele-gas.md iele-binary.md plugin/plugin/krypto.md iele-syntax.md iele-node.md well-formedness.md
 checker_files:=iele-syntax.md well-formedness.md data.md
 
 .build/node/%.k: %.md
@@ -171,7 +171,7 @@ PLUGIN=$(abspath plugin)
 
 .build/check/well-formedness-kompiled/interpreter: $(checker_files) .build/plugin-node/proto/msg.pb.cc
 	${KOMPILE} --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE --md-selector "(k & ! node) | standalone" \
-	                                --syntax-module IELE-SYNTAX well-formedness.md --directory .build/check \
+	                                --syntax-module IELE-SYNTAX well-formedness.md --directory .build/check --hook-namespaces KRYPTO \
 	                                --backend llvm -ccopt ${PLUGIN}/plugin-c/crypto.cpp -ccopt ${PLUGIN}/plugin-c/blockchain.cpp -ccopt ${PLUGIN}/plugin-c/world.cpp -ccopt ${PLUGIN}/plugin-c/blake2.cpp -ccopt ${PLUGIN}/plugin-c/plugin_util.cpp -ccopt `pwd`/.build/plugin-node/proto/msg.pb.cc -ccopt -I -ccopt ${PLUGIN}/plugin-c -ccopt -I -ccopt `pwd`/.build/plugin-node -ccopt -L -ccopt /usr/local/lib \
 				       	-ccopt -lprotobuf -ccopt -lff -ccopt -lcryptopp -ccopt -lsecp256k1 -ccopt -lprocps -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
 
@@ -181,7 +181,7 @@ PLUGIN=$(abspath plugin)
 .build/%/iele-testing-kompiled/interpreter: $(k_files) .build/plugin-node/proto/msg.pb.cc
 	@echo "== kompile: $@"
 	${KOMPILE} --debug --main-module IELE-TESTING --verbose --md-selector ${MD_SELECTOR} \
-					--syntax-module IELE-SYNTAX iele-testing.md --directory .build/$* \
+					--syntax-module IELE-SYNTAX iele-testing.md --directory .build/$* --hook-namespaces KRYPTO \
 	                                --backend llvm -ccopt ${PLUGIN}/plugin-c/crypto.cpp -ccopt ${PLUGIN}/plugin-c/blockchain.cpp -ccopt ${PLUGIN}/plugin-c/world.cpp -ccopt ${PLUGIN}/plugin-c/blake2.cpp -ccopt ${PLUGIN}/plugin-c/plugin_util.cpp -ccopt `pwd`/.build/plugin-node/proto/msg.pb.cc -ccopt -I -ccopt ${PLUGIN}/plugin-c -ccopt -I -ccopt `pwd`/.build/plugin-node -ccopt -L -ccopt /usr/local/lib \
 				       	-ccopt -lprotobuf -ccopt -lff -ccopt -lcryptopp -ccopt -lsecp256k1 -ccopt -lprocps -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
 
