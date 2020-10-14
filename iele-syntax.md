@@ -42,6 +42,9 @@ Local register names are desugared to integers when assembling an IELE program
 module IELE-COMMON
   imports DOMAINS-SYNTAX
   imports INT-SYNTAX
+
+  syntax KResult
+
   syntax NumericIeleName ::= Int
   syntax StringIeleName
   syntax IeleName ::= NumericIeleName
