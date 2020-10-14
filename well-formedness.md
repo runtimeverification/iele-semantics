@@ -37,7 +37,7 @@ Configuration
 The semantic checker for IELE has its own configuration separate from the configuration of execution. This is consistent with the semantics of other languages defined in K, which can have separate compile-time and execution-time semantics.
 
 ```k
-    syntax IeleName ::= "Main" [token]
+    syntax IeleNameToken ::= "Main" [token]
     syntax Schedule
 
     configuration <well-formedness>

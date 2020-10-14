@@ -175,7 +175,7 @@ if any of its entry points are invoked with a balance transfer.
 Note that the syntax used in the following `#emptyCode` macro is desugared IELE syntax, where contracts have a size in bytes metadata attachment (`!0` here) and argument lists are replaced with an integer value representing arity (`0` here).
 
 ```k
-    syntax IeleName ::= "Main" [token]
+    syntax IeleNameToken ::= "Main" [token]
                       | "iele.Wallet" [token]
     syntax ContractDefinition ::= "contract" IeleName "!" /* size in bytes */ Int /* byte string */ String "{" TopLevelDefinitions "}" /* when desugared to include the code size */
  // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
