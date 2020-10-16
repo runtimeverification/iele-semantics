@@ -211,9 +211,12 @@ haskell-deps:
 					--syntax-module IELE-SYNTAX iele-testing.md --directory .build/$* --hook-namespaces KRYPTO \
 	                                --backend llvm -ccopt ${PLUGIN}/plugin-c/crypto.cpp -ccopt ${PLUGIN}/plugin-c/blockchain.cpp -ccopt ${PLUGIN}/plugin-c/world.cpp -ccopt ${PLUGIN}/plugin-c/blake2.cpp -ccopt ${PLUGIN}/plugin-c/plugin_util.cpp -ccopt $(protobuf_out) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
 
+LLVM_KOMPILE_INCLUDE_OPTS := -I $(PLUGIN)/plugin-c/ -I $(BUILD_DIR)/plugin-node -I $(PLUGIN)/vm-c/ -I $(PLUGIN)/vm-c/iele/ -I $(PLUGIN)/client-c -I $(LOCAL_INCLUDE)
+LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(LOCAL_LIB) -lff -lprotobuf -lgmp -lprocps -lcryptopp -lsecp256k1
+
 .build/vm/iele-vm: .build/node/iele-testing-kompiled/interpreter $(wildcard plugin/vm-c/*.cpp plugin/vm-c/*.h) $(protobuf_out)
 	mkdir -p .build/vm
-	llvm-kompile .build/node/iele-testing-kompiled/definition.kore .build/node/iele-testing-kompiled/dt library ${PLUGIN}/vm-c/main.cpp ${PLUGIN}/vm-c/vm.cpp ${PLUGIN}/client-c/init.cpp -I ${PLUGIN}/plugin-c/ -I .build/plugin-node -L /usr/local/lib ${PLUGIN}/plugin-c/*.cpp $(protobuf_out) -lff -lprotobuf -lgmp -lprocps -lcryptopp -lsecp256k1 -I ${PLUGIN}/vm-c/ -I ${PLUGIN}/vm-c/iele/ -I ${PLUGIN}/client-c ${PLUGIN}/vm-c/iele/semantics.cpp -o .build/vm/iele-vm -g
+	llvm-kompile .build/node/iele-testing-kompiled/definition.kore .build/node/iele-testing-kompiled/dt library ${PLUGIN}/vm-c/main.cpp ${PLUGIN}/vm-c/vm.cpp ${PLUGIN}/client-c/init.cpp ${PLUGIN}/plugin-c/*.cpp $(protobuf_out) ${PLUGIN}/vm-c/iele/semantics.cpp $(LLVM_KOMPILE_INCLUDE_OPTS) $(LLVM_KOMPILE_LINK_OPTS) -o .build/vm/iele-vm -g
 
 # Ocaml Builds
 # ------------
