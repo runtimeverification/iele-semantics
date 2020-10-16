@@ -24,9 +24,15 @@ endif
 
 export PATH:=$(shell cd compiler && stack path --local-install-root)/bin:${PATH}
 
-KORE_SUBMODULE:=.build/kore
+BUILD_DIR      := .build
+KORE_SUBMODULE := $(BUILD_DIR)/kore
+BUILD_LOCAL    := $(abspath $(BUILD_DIR)/local)
+LOCAL_LIB      := $(BUILD_LOCAL)/lib
+LOCAL_INCLUDE  := $(BUILD_LOCAL)/include
 
-.PHONY: all clean distclean build tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode install kore
+PLUGIN=$(abspath plugin)
+
+.PHONY: all clean distclean build tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode install kore libff
 .SECONDARY:
 
 all: build split-vm-tests testnode
@@ -70,6 +76,20 @@ checker_files:=iele-syntax.md well-formedness.md data.md
 
 node: .build/vm/iele-vm
 testnode : .build/vm/iele-test-vm .build/vm/iele-test-client
+
+# Dependencies
+# ------------
+
+libff_out := $(LOCAL_LIB)/libff.a
+
+libff: $(libff_out)
+
+$(libff_out): $(PLUGIN)/deps/libff/CMakeLists.txt
+	@mkdir -p $(PLUGIN)/deps/libff/build
+	cd $(PLUGIN)/deps/libff/build                                                   \
+	   && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(BUILD_LOCAL) \
+	   && make -s -j4                                                               \
+	   && make install
 
 # Tests
 # -----
@@ -153,6 +173,9 @@ tests/ethereum-tests/%.json:
 	@echo "==  git submodule: cloning upstreams test repository"
 	git submodule update --init
 
+# LLVM Builds
+# -----------
+
 KOMPILE=kompile
 
 coverage:
@@ -162,8 +185,6 @@ deps:
 
 haskell-deps:
 		cd $(KORE_SUBMODULE) && stack install --local-bin-path $(abspath $(KORE_SUBMODULE))/bin kore:exe:kore-exec
-
-PLUGIN=$(abspath plugin)
 
 .build/plugin-node/proto/msg.pb.cc: ${PLUGIN}/plugin-c/proto/msg.proto
 	mkdir -p .build/plugin-node
@@ -188,6 +209,9 @@ PLUGIN=$(abspath plugin)
 .build/vm/iele-vm: .build/node/iele-testing-kompiled/interpreter $(wildcard plugin/vm-c/*.cpp plugin/vm-c/*.h) .build/plugin-node/proto/msg.pb.cc
 	mkdir -p .build/vm
 	llvm-kompile .build/node/iele-testing-kompiled/definition.kore .build/node/iele-testing-kompiled/dt library ${PLUGIN}/vm-c/main.cpp ${PLUGIN}/vm-c/vm.cpp ${PLUGIN}/client-c/init.cpp -I ${PLUGIN}/plugin-c/ -I .build/plugin-node -L /usr/local/lib ${PLUGIN}/plugin-c/*.cpp .build/plugin-node/proto/msg.pb.cc -lff -lprotobuf -lgmp -lprocps -lcryptopp -lsecp256k1 -I ${PLUGIN}/vm-c/ -I ${PLUGIN}/vm-c/iele/ -I ${PLUGIN}/client-c ${PLUGIN}/vm-c/iele/semantics.cpp -o .build/vm/iele-vm -g
+
+# Ocaml Builds
+# ------------
 
 .build/plugin-ocaml/msg_types.ml: plugin/plugin-c/proto/msg.proto
 	mkdir .build/plugin-ocaml
