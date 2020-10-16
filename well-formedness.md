@@ -50,7 +50,7 @@ The semantic checker for IELE has its own configuration separate from the config
                       <declaredContracts> .Set </declaredContracts>
                       <functionBodies> .K </functionBodies>
                       <currentFunction>
-                        <functionName> deposit </functionName>
+                        <functionName> deposit:IeleName </functionName>
                         <labels> .Set </labels>
                         <currentInstructions> .K </currentInstructions>
                       </currentFunction>

@@ -58,7 +58,7 @@ In the comments next to each cell, we explain the purpose of the cell.
                       <program>
                         <functions>
                           <function multiplicity="*" type="Map">
-                            <funcId>       deposit </funcId>         // The name of the function
+                            <funcId>       deposit:IeleName </funcId>         // The name of the function
                             <nparams>      0       </nparams>        // The number of parameters of the function
                             <instructions> (.Instructions .LabeledBlocks):Blocks </instructions> // The blocks of the function
                             <jumpTable>    .Map    </jumpTable>      // Map from jump label to blocks, for branch instruction
@@ -85,7 +85,7 @@ In the comments next to each cell, we explain the purpose of the cell.
                       <localMem>      .Map    </localMem>             // Current values of local memory
                       <peakMemory>    0       </peakMemory>           // Maximum memory used so far in call frame
                       <currentMemory> 0       </currentMemory>        // Current memory used in call frame
-                      <fid>           deposit </fid>                  // Name of currently executing function
+                      <fid>           deposit:IeleName </fid>                  // Name of currently executing function
                       <gas>           0       </gas>                  // Current gas remaining
                       <previousGas>   0       </previousGas>          // Gas remaining prior to last decrease
 
@@ -148,7 +148,7 @@ In the comments next to each cell, we explain the purpose of the cell.
                         <txGasPrice> 0          </txGasPrice>         // Gas price of transaction
                         <txGasLimit> 0          </txGasLimit>         // Gas limit of transaction
                         <sendto>     .Account   </sendto>             // Destination of transaction (.Account for account creation)
-                        <func>       deposit    </func>               // Function to call by transaction
+                        <func>       deposit:IeleName    </func>               // Function to call by transaction
                         <value>      0          </value>              // Value in funds to transfer by transaction
                         <from>       0          </from>               // Sender of transaction
                         <data>       .WordStack </data>               // Arguments to function called by transaction
