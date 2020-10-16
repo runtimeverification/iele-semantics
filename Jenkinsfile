@@ -29,7 +29,7 @@ pipeline {
           sh '''#!/bin/bash
             .build/vm/iele-vm 0 127.0.0.1 > port &
             sleep 3
-            export PORT=`cat port | awk -F ':' '{print $3}'`
+            export PORT=`cat port | awk -F ':' '{print $2}'`
             make test -j`nproc`
             make coverage
             kill %1
