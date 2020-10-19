@@ -23,7 +23,7 @@ pipeline {
         '''
       }
     }
-    stage('Test') {
+/*    stage('Test') {
       steps {
         ansiColor('xterm') {
           sh '''#!/bin/bash -ex
@@ -36,6 +36,6 @@ pipeline {
           '''
         }
       }
-    }
+    }*/
   }
 }
