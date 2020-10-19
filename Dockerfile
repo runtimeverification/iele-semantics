@@ -24,5 +24,5 @@ RUN    cd /home/user/.tmp-haskell \
 -    && stack build --only-snapshot
 
 RUN    opam init -y \
-    && opam install zarith hex mlgmp uuidm rlp yojson cryptokit ocaml-protoc
+    && opam install zarith hex uuidm rlp yojson cryptokit ocaml-protoc
     
