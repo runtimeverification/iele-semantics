@@ -22,3 +22,7 @@ ENV LC_ALL=C.UTF-8
 ADD --chown=user:user compiler/stack.yaml compiler/compiler.cabal /home/user/.tmp-haskell/
 RUN    cd /home/user/.tmp-haskell \
 -    && stack build --only-snapshot
+
+RUN    opam init -y \
+    && opam install zarith hex mlgmp uuidm rlp yojson cryptokit ocaml-protoc
+    
