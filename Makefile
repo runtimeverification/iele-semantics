@@ -24,9 +24,15 @@ endif
 
 export PATH:=$(shell cd compiler && stack path --local-install-root)/bin:${PATH}
 
-KORE_SUBMODULE:=.build/kore
+BUILD_DIR      := $(abspath .build)
+KORE_SUBMODULE := $(BUILD_DIR)/kore
+BUILD_LOCAL    := $(BUILD_DIR)/local
+LOCAL_LIB      := $(BUILD_LOCAL)/lib
+LOCAL_INCLUDE  := $(BUILD_LOCAL)/include
 
-.PHONY: all clean distclean build tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode install kore
+PLUGIN=$(abspath plugin)
+
+.PHONY: all clean distclean build tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode install kore libff protobuf
 .SECONDARY:
 
 all: build split-vm-tests testnode
@@ -70,6 +76,28 @@ checker_files:=iele-syntax.md well-formedness.md data.md
 
 node: .build/vm/iele-vm
 testnode : .build/vm/iele-test-vm .build/vm/iele-test-client
+
+# Dependencies
+# ------------
+
+libff_out := $(LOCAL_LIB)/libff.a
+
+libff: $(libff_out)
+
+$(libff_out): $(PLUGIN)/deps/libff/CMakeLists.txt
+	@mkdir -p $(PLUGIN)/deps/libff/build
+	cd $(PLUGIN)/deps/libff/build                                                   \
+	   && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(BUILD_LOCAL) \
+	   && make -s -j4                                                               \
+	   && make install
+
+protobuf_out := $(BUILD_DIR)/plugin-node/proto/msg.pb.cc
+
+protobuf: $(protobuf_out)
+
+$(protobuf_out): $(PLUGIN)/plugin-c/proto/msg.proto
+	mkdir -p .build/plugin-node
+	protoc --cpp_out=.build/plugin-node -I $(PLUGIN)/plugin-c $<
 
 # Tests
 # -----
@@ -153,7 +181,13 @@ tests/ethereum-tests/%.json:
 	@echo "==  git submodule: cloning upstreams test repository"
 	git submodule update --init
 
+# LLVM Builds
+# -----------
+
 KOMPILE=kompile
+
+KOMPILE_INCLUDE_OPTS := -ccopt -I -ccopt $(PLUGIN)/plugin-c -ccopt -I -ccopt $(BUILD_DIR)/plugin-node -ccopt -I -ccopt $(LOCAL_INCLUDE)
+KOMPILE_LINK_OPTS    := -ccopt -L -ccopt /usr/local/lib -ccopt -L -ccopt $(LOCAL_LIB) -ccopt -lprotobuf -ccopt -lff -ccopt -lcryptopp -ccopt -lsecp256k1 -ccopt -lprocps
 
 coverage:
 	kcovr .build/node/iele-testing-kompiled .build/standalone/iele-testing-kompiled .build/check/well-formedness-kompiled -- $(filter-out krypto.md, $(source_files)) > .build/coverage.xml
@@ -163,31 +197,29 @@ deps:
 haskell-deps:
 		cd $(KORE_SUBMODULE) && stack install --local-bin-path $(abspath $(KORE_SUBMODULE))/bin kore:exe:kore-exec
 
-PLUGIN=$(abspath plugin)
-
-.build/plugin-node/proto/msg.pb.cc: ${PLUGIN}/plugin-c/proto/msg.proto
-	mkdir -p .build/plugin-node
-	protoc --cpp_out=.build/plugin-node -I ${PLUGIN}/plugin-c $<
-
-.build/check/well-formedness-kompiled/interpreter: $(checker_files) .build/plugin-node/proto/msg.pb.cc
+.build/check/well-formedness-kompiled/interpreter: $(checker_files) $(protobuf_out) $(libff_out)
 	${KOMPILE} --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE --md-selector "(k & ! node) | standalone" \
 	                                --syntax-module IELE-SYNTAX well-formedness.md --directory .build/check --hook-namespaces KRYPTO \
-	                                --backend llvm -ccopt ${PLUGIN}/plugin-c/crypto.cpp -ccopt ${PLUGIN}/plugin-c/blockchain.cpp -ccopt ${PLUGIN}/plugin-c/world.cpp -ccopt ${PLUGIN}/plugin-c/blake2.cpp -ccopt ${PLUGIN}/plugin-c/plugin_util.cpp -ccopt `pwd`/.build/plugin-node/proto/msg.pb.cc -ccopt -I -ccopt ${PLUGIN}/plugin-c -ccopt -I -ccopt `pwd`/.build/plugin-node -ccopt -L -ccopt /usr/local/lib \
-				       	-ccopt -lprotobuf -ccopt -lff -ccopt -lcryptopp -ccopt -lsecp256k1 -ccopt -lprocps -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
+	                                --backend llvm -ccopt ${PLUGIN}/plugin-c/crypto.cpp -ccopt ${PLUGIN}/plugin-c/blockchain.cpp -ccopt ${PLUGIN}/plugin-c/world.cpp -ccopt ${PLUGIN}/plugin-c/blake2.cpp -ccopt ${PLUGIN}/plugin-c/plugin_util.cpp -ccopt $(protobuf_out) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
 
 .build/standalone/iele-testing-kompiled/interpreter: MD_SELECTOR="(k & ! node) | standalone"
 .build/node/iele-testing-kompiled/interpreter: MD_SELECTOR="(k & ! standalone) | node"
 
-.build/%/iele-testing-kompiled/interpreter: $(k_files) .build/plugin-node/proto/msg.pb.cc
+.build/%/iele-testing-kompiled/interpreter: $(k_files) $(protobuf_out) $(libff_out)
 	@echo "== kompile: $@"
 	${KOMPILE} --debug --main-module IELE-TESTING --verbose --md-selector ${MD_SELECTOR} \
 					--syntax-module IELE-SYNTAX iele-testing.md --directory .build/$* --hook-namespaces KRYPTO \
-	                                --backend llvm -ccopt ${PLUGIN}/plugin-c/crypto.cpp -ccopt ${PLUGIN}/plugin-c/blockchain.cpp -ccopt ${PLUGIN}/plugin-c/world.cpp -ccopt ${PLUGIN}/plugin-c/blake2.cpp -ccopt ${PLUGIN}/plugin-c/plugin_util.cpp -ccopt `pwd`/.build/plugin-node/proto/msg.pb.cc -ccopt -I -ccopt ${PLUGIN}/plugin-c -ccopt -I -ccopt `pwd`/.build/plugin-node -ccopt -L -ccopt /usr/local/lib \
-				       	-ccopt -lprotobuf -ccopt -lff -ccopt -lcryptopp -ccopt -lsecp256k1 -ccopt -lprocps -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
+	                                --backend llvm -ccopt ${PLUGIN}/plugin-c/crypto.cpp -ccopt ${PLUGIN}/plugin-c/blockchain.cpp -ccopt ${PLUGIN}/plugin-c/world.cpp -ccopt ${PLUGIN}/plugin-c/blake2.cpp -ccopt ${PLUGIN}/plugin-c/plugin_util.cpp -ccopt $(protobuf_out) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
 
-.build/vm/iele-vm: .build/node/iele-testing-kompiled/interpreter $(wildcard plugin/vm-c/*.cpp plugin/vm-c/*.h) .build/plugin-node/proto/msg.pb.cc
+LLVM_KOMPILE_INCLUDE_OPTS := -I $(PLUGIN)/plugin-c/ -I $(BUILD_DIR)/plugin-node -I $(PLUGIN)/vm-c/ -I $(PLUGIN)/vm-c/iele/ -I $(PLUGIN)/client-c -I $(LOCAL_INCLUDE)
+LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(LOCAL_LIB) -lff -lprotobuf -lgmp -lprocps -lcryptopp -lsecp256k1
+
+.build/vm/iele-vm: .build/node/iele-testing-kompiled/interpreter $(wildcard plugin/vm-c/*.cpp plugin/vm-c/*.h) $(protobuf_out)
 	mkdir -p .build/vm
-	llvm-kompile .build/node/iele-testing-kompiled/definition.kore .build/node/iele-testing-kompiled/dt library ${PLUGIN}/vm-c/main.cpp ${PLUGIN}/vm-c/vm.cpp ${PLUGIN}/client-c/init.cpp -I ${PLUGIN}/plugin-c/ -I .build/plugin-node -L /usr/local/lib ${PLUGIN}/plugin-c/*.cpp .build/plugin-node/proto/msg.pb.cc -lff -lprotobuf -lgmp -lprocps -lcryptopp -lsecp256k1 -I ${PLUGIN}/vm-c/ -I ${PLUGIN}/vm-c/iele/ -I ${PLUGIN}/client-c ${PLUGIN}/vm-c/iele/semantics.cpp -o .build/vm/iele-vm -g
+	llvm-kompile .build/node/iele-testing-kompiled/definition.kore .build/node/iele-testing-kompiled/dt library ${PLUGIN}/vm-c/main.cpp ${PLUGIN}/vm-c/vm.cpp ${PLUGIN}/client-c/init.cpp ${PLUGIN}/plugin-c/*.cpp $(protobuf_out) ${PLUGIN}/vm-c/iele/semantics.cpp $(LLVM_KOMPILE_INCLUDE_OPTS) $(LLVM_KOMPILE_LINK_OPTS) -o .build/vm/iele-vm -g
+
+# Ocaml Builds
+# ------------
 
 .build/plugin-ocaml/msg_types.ml: plugin/plugin-c/proto/msg.proto
 	mkdir .build/plugin-ocaml
