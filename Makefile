@@ -175,7 +175,7 @@ tests/%/make.timestamp: tests/ethereum-tests/%.json tests/evm-to-iele/evm-to-iel
 	touch $@
 
 tests/evm-to-iele/evm-to-iele: $(wildcard tests/evm-to-iele/*.ml tests/evm-to-iele/*.mli)
-	cd tests/evm-to-iele && ocamlfind $(OCAMLC) -g ieleUtil.mli ieleUtil.ml evm.mli evm.ml iele.mli iele.ml conversion.mli conversion.ml main.ml -package zarith -package hex -linkpkg -o evm-to-iele
+	cd tests/evm-to-iele && eval `opam config env` && ocamlfind $(OCAMLC) -g ieleUtil.mli ieleUtil.ml evm.mli evm.ml iele.mli iele.ml conversion.mli conversion.ml main.ml -package zarith -package hex -linkpkg -o evm-to-iele
 
 tests/ethereum-tests/%.json:
 	@echo "==  git submodule: cloning upstreams test repository"
@@ -228,9 +228,9 @@ LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(LOCAL_LIB) -lff -lprotobuf -
 .build/vm/iele-test-vm: $(wildcard plugin/vm/*.ml plugin/vm/*.mli) .build/plugin-ocaml/msg_types.ml
 	mkdir -p .build/vm
 	cp ${PLUGIN}/vm/*.ml ${PLUGIN}/vm/*.mli .build/plugin-ocaml/*.ml .build/plugin-ocaml/*.mli .build/vm
-	cd .build/vm && ocamlfind $(OCAMLC) -g -o iele-test-vm msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml ieleClientUtils.ml ieleVmTest.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package rlp -package yojson -package hex -package cryptokit -package ocaml-protoc -linkpkg -linkall -thread -safe-string
+	cd .build/vm && eval `opam config env` && ocamlfind $(OCAMLC) -g -o iele-test-vm msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml ieleClientUtils.ml ieleVmTest.ml -package dynlink -package zarith -package str -package uuidm -package unix -package rlp -package yojson -package hex -package cryptokit -package ocaml-protoc -linkpkg -linkall -thread -safe-string
 
 .build/vm/iele-test-client: $(wildcard plugin/vm/*.ml plugin/vm/*.mli) .build/plugin-ocaml/msg_types.ml
 	mkdir -p .build/vm
 	cp ${PLUGIN}/vm/*.ml ${PLUGIN}/vm/*.mli .build/plugin-ocaml/*.ml .build/plugin-ocaml/*.mli .build/vm
-	cd .build/vm && ocamlfind $(OCAMLC) -g -o iele-test-client msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml ieleClientUtils.ml ieleApi.mli ieleApi.ml ieleApiClient.ml -package gmp -package dynlink -package zarith -package str -package uuidm -package unix -package rlp -package yojson -package hex -package cryptokit -package ocaml-protoc -linkpkg -linkall -thread -safe-string $(PREDICATES)
+	cd .build/vm && eval `opam config env` && ocamlfind $(OCAMLC) -g -o iele-test-client msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml ieleClientUtils.ml ieleApi.mli ieleApi.ml ieleApiClient.ml -package dynlink -package zarith -package str -package uuidm -package unix -package rlp -package yojson -package hex -package cryptokit -package ocaml-protoc -linkpkg -linkall -thread -safe-string $(PREDICATES)
