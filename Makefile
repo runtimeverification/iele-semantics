@@ -223,7 +223,7 @@ LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(LOCAL_LIB) -lff -lprotobuf -
 
 .build/plugin-ocaml/msg_types.ml: plugin/plugin-c/proto/msg.proto
 	mkdir .build/plugin-ocaml
-	ocaml-protoc $< -ml_out .build/plugin-ocaml
+	eval `opam config env` && ocaml-protoc $< -ml_out .build/plugin-ocaml
 
 .build/vm/iele-test-vm: $(wildcard plugin/vm/*.ml plugin/vm/*.mli) .build/plugin-ocaml/msg_types.ml
 	mkdir -p .build/vm
