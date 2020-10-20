@@ -4,8 +4,8 @@ IELE Contract Well-Formedness
 The following document describes a semantics of type- and semantic-checking in IELE. The semantics takes a contract as input and succeeds only if the contract is determined to be well-formed, i.e., free from type errors and malformed instructions or functions.
 
 ```k
-require "iele-syntax.k"
-require "data.k"
+require "iele-syntax.md"
+require "data.md"
 ```
 
 Modal Semantics
@@ -18,9 +18,9 @@ Our semantics is modal, with the initial mode being set on the command line via 
 
 ```k
 module IELE-CONSTANTS
-    syntax Mode ::= "NORMAL" [klabel(NORMAL), symbol] | "VMTESTS"
-    syntax Schedule ::= "ALBE"
-                      | "DANSE"
+    syntax Mode ::= "NORMAL" [klabel(NORMAL), symbol] | "VMTESTS" [klabel(VMTESTS), symbol]
+    syntax Schedule ::= "ALBE" [klabel(ALBE), symbol]
+                      | "DANSE" [klabel(DANSE), symbol]
 endmodule
 
 
@@ -28,7 +28,6 @@ module IELE-WELL-FORMEDNESS
     imports IELE-COMMON
     imports IELE-DATA
     imports IELE-CONSTANTS
-    imports DOMAINS
     imports DEFAULT-CONFIGURATION
 ```
 
@@ -38,7 +37,7 @@ Configuration
 The semantic checker for IELE has its own configuration separate from the configuration of execution. This is consistent with the semantics of other languages defined in K, which can have separate compile-time and execution-time semantics.
 
 ```k
-    syntax IeleName ::= "Main" [token]
+    syntax IeleNameToken ::= "Main" [token]
     syntax Schedule
 
     configuration <well-formedness>
@@ -51,7 +50,7 @@ The semantic checker for IELE has its own configuration separate from the config
                       <declaredContracts> .Set </declaredContracts>
                       <functionBodies> .K </functionBodies>
                       <currentFunction>
-                        <functionName> deposit </functionName>
+                        <functionName> deposit:IeleName </functionName>
                         <labels> .Set </labels>
                         <currentInstructions> .K </currentInstructions>
                       </currentFunction>
@@ -81,7 +80,7 @@ Contracts
 
 ```k
     rule CONTRACT1::ContractDefinition CONTRACT2::ContractDefinition CONTRACTS => CONTRACT1 ~> CONTRACT2 CONTRACTS
-    rule CONTRACT::ContractDefinition .Contract => CONTRACT
+    rule CONTRACT::ContractDefinition .Contract => (CONTRACT::ContractDefinition :KItem)
 
     rule <k> contract NAME { DEFINITIONS } => checkName(NAME) ~> DEFINITIONS ... </k>
          <contracts> CONTRACTS => CONTRACTS SetItem(NAME) </contracts>
@@ -295,8 +294,6 @@ Checking these instructions also requires checking that the contract they refere
          <declaredContracts> ... SetItem(NAME) </declaredContracts>
 
     rule check ~> STATUS , RET = copycreate OP1 ( ARGS ) send OP2 => checkLVals(STATUS, RET) ~> checkOperands(OP1 , OP2 , ARGS)
-```
-
 ```
 
 Types of intrinsic functions

@@ -6,8 +6,9 @@ Here we provide the arithmetic of these words, as well as some data-structures o
 Both are implemented using K's `Int`.
 
 ```k
-requires "krypto.k"
-requires "domains.k"
+requires "plugin/plugin/krypto.md"
+requires "domains.md"
+requires "json.md"
 
 module IELE-DATA
     imports KRYPTO
@@ -16,8 +17,8 @@ module IELE-DATA
     imports BYTES
     imports IELE-CONSTANTS
     imports IELE-COMMON
-    imports DOMAINS
     imports COLLECTIONS
+    imports JSON
 
     syntax KResult ::= Int
 ```
@@ -32,19 +33,6 @@ Some important numbers that are referred to often during execution:
     rule pow30  => 2 ^Int 30
     rule pow160 => 2 ^Int 160
     rule pow256 => 2 ^Int 256
-```
-
-The JSON format is used to encode IELE test cases.
-Writing a JSON-ish parser in K takes 6 lines.
-
-```k
-    syntax JSONList ::= List{JSON,","}
-    syntax JSONKey  ::= String | Int
-    syntax JSON     ::= String | Bool
-                      | JSONKey ":" JSON
-                      | "{" JSONList "}"
-                      | "[" JSONList "]"
- // ------------------------------------
 ```
 
 Primitives
@@ -108,9 +96,9 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to IELE'
     rule #sizeLVals(.LValues, N) => N
 
     syntax String ::= IeleName2String ( IeleName ) [function]
-                    | IeleNameToken2String ( IeleName ) [function, hook(STRING.token2string)]
-    syntax IeleName ::= String2IeleName ( String ) [function, hook(STRING.string2token)]
- // ------------------------------------------------------------------------------------
+                    | IeleNameToken2String ( IeleNameToken ) [function, hook(STRING.token2string)]
+    syntax IeleNameToken ::= String2IeleName ( String ) [function, hook(STRING.string2token)]
+ // -----------------------------------------------------------------------------------------
     rule IeleName2String(I:Int) => Int2String(I)
     rule IeleName2String(N) => IeleNameToken2String(N) [owise]
     syntax String ::= StringIeleName2String ( StringIeleName ) [function, hook(STRING.token2string)]
@@ -457,7 +445,7 @@ These parsers can interperet hex-encoded strings as `Int`s, `WordStack`s, and `M
 
     syntax Map ::= #parseMap ( JSON ) [function]
  // --------------------------------------------
-    rule #parseMap( { .JSONList                   } ) => .Map
+    rule #parseMap( { .JSONs                   } ) => .Map
     rule #parseMap( { _   : (VALUE:String) , REST } ) => #parseMap({ REST })                                                requires #parseHexWord(VALUE) ==K 0
     rule #parseMap( { KEY : (VALUE:String) , REST } ) => #parseMap({ REST }) [ #parseHexWord(KEY) <- #parseHexWord(VALUE) ] requires #parseHexWord(VALUE) =/=K 0
 
@@ -531,7 +519,7 @@ Decoding
 
 -   `#loadLen` and `#loadOffset` decode a `WordStack` into a single string in an RLP-like encoding which does not allow lists in its structure.
 -   `#rlpDecode` RLP decodes a single `String` into a `JSON`.
--   `#rlpDecodeList` RLP decodes a single `String` into a `JSONList`, interpereting the string as the RLP encoding of a list.
+-   `#rlpDecodeList` RLP decodes a single `String` into a `JSONs`, interpereting the string as the RLP encoding of a list.
 
 ```k
     syntax LengthPrefixType ::= "#str" | "#list"
@@ -557,11 +545,11 @@ Decoding
     rule #rlpDecode(STR, #str(LEN, POS))  => substrString(STR, POS, POS +Int LEN)
     rule #rlpDecode(STR, #list(LEN, POS)) => [#rlpDecodeList(STR, POS)]
 
-    syntax JSONList ::= #rlpDecodeList(String, Int)               [function]
+    syntax JSONs ::= #rlpDecodeList(String, Int)               [function]
                       | #rlpDecodeList(String, Int, LengthPrefix) [function, klabel(#rlpDecodeListAux)]
  // ---------------------------------------------------------------------------------------------------
     rule #rlpDecodeList(STR, POS) => #rlpDecodeList(STR, POS, #decodeLengthPrefix(STR, POS)) requires POS <Int lengthString(STR)
-    rule #rlpDecodeList(STR, POS) => .JSONList [owise]
+    rule #rlpDecodeList(STR, POS) => .JSONs [owise]
     rule #rlpDecodeList(STR, POS, _:LengthPrefixType(L, P)) => #rlpDecode(substrString(STR, POS, L +Int P)) , #rlpDecodeList(STR, L +Int P)
 
     syntax LengthPrefixType ::= "#str" | "#list"

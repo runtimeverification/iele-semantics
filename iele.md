@@ -7,10 +7,10 @@ This file only defines the local execution operations. A separate `cardano.md` w
 of the transaction protocol.
 
 ```k
-requires "data.k"
-requires "iele-syntax.k"
-requires "iele-gas.k"
-requires "well-formedness.k"
+requires "data.md"
+requires "iele-syntax.md"
+requires "iele-gas.md"
+requires "well-formedness.md"
 
 module IELE-CONFIGURATION
     imports STRING
@@ -58,7 +58,7 @@ In the comments next to each cell, we explain the purpose of the cell.
                       <program>
                         <functions>
                           <function multiplicity="*" type="Map">
-                            <funcId>       deposit </funcId>         // The name of the function
+                            <funcId>       deposit:IeleName </funcId>         // The name of the function
                             <nparams>      0       </nparams>        // The number of parameters of the function
                             <instructions> (.Instructions .LabeledBlocks):Blocks </instructions> // The blocks of the function
                             <jumpTable>    .Map    </jumpTable>      // Map from jump label to blocks, for branch instruction
@@ -85,7 +85,7 @@ In the comments next to each cell, we explain the purpose of the cell.
                       <localMem>      .Map    </localMem>             // Current values of local memory
                       <peakMemory>    0       </peakMemory>           // Maximum memory used so far in call frame
                       <currentMemory> 0       </currentMemory>        // Current memory used in call frame
-                      <fid>           deposit </fid>                  // Name of currently executing function
+                      <fid>           deposit:IeleName </fid>                  // Name of currently executing function
                       <gas>           0       </gas>                  // Current gas remaining
                       <previousGas>   0       </previousGas>          // Gas remaining prior to last decrease
 
@@ -148,7 +148,7 @@ In the comments next to each cell, we explain the purpose of the cell.
                         <txGasPrice> 0          </txGasPrice>         // Gas price of transaction
                         <txGasLimit> 0          </txGasLimit>         // Gas limit of transaction
                         <sendto>     .Account   </sendto>             // Destination of transaction (.Account for account creation)
-                        <func>       deposit    </func>               // Function to call by transaction
+                        <func>       deposit:IeleName    </func>               // Function to call by transaction
                         <value>      0          </value>              // Value in funds to transfer by transaction
                         <from>       0          </from>               // Sender of transaction
                         <data>       .WordStack </data>               // Arguments to function called by transaction
@@ -175,7 +175,7 @@ if any of its entry points are invoked with a balance transfer.
 Note that the syntax used in the following `#emptyCode` macro is desugared IELE syntax, where contracts have a size in bytes metadata attachment (`!0` here) and argument lists are replaced with an integer value representing arity (`0` here).
 
 ```k
-    syntax IeleName ::= "Main" [token]
+    syntax IeleNameToken ::= "Main" [token]
                       | "iele.Wallet" [token]
     syntax ContractDefinition ::= "contract" IeleName "!" /* size in bytes */ Int /* byte string */ String "{" TopLevelDefinitions "}" /* when desugared to include the code size */
  // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1142,8 +1142,6 @@ These operations interact with the account storage.
 ### Call Operations
 
 The various `call*` (and other inter-contract control flow) operations will be desugared into these `InternalOp`s.
-
-```k
 
 -   `#checkCall` checks that the current account has the balance necessary to invoke the contract call, and that the contract call stack depth limit has not been reached.
 -   `#call_____` takes the calling account, the account to execute as, the account whose code should execute, the gas limit, the amount to transfer, the function to call, and the arguments.

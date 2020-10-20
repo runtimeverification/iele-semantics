@@ -5,12 +5,12 @@ Here we define a test harness for the new IELE VM.
 Actual execution of IELE is defined in [the IELE file](iele.md).
 
 ```k
-requires "iele.k"
-requires "iele-binary.k"
+requires "iele.md"
+requires "iele-binary.md"
 ```
 
 ```{.k .node}
-requires "iele-node.k"
+requires "iele-node.md"
 ```
 
 ```k
@@ -44,25 +44,26 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
 
 ```{.k .standalone}
     syntax JSON ::= Int | WordStack | Bytes | Map | SubstateLogEntry | Account
+    syntax JSONKey ::= Int
  // ------------------------------------------------------------------
 
-    syntax JSONList ::= #sortJSONList ( JSONList )            [function]
-                      | #sortJSONList ( JSONList , JSONList ) [function, klabel(#sortJSONListAux)]
+    syntax JSONs ::= #sortJSONList ( JSONs )            [function]
+                      | #sortJSONList ( JSONs , JSONs ) [function, klabel(#sortJSONListAux)]
  // ----------------------------------------------------------------------------------------------
-    rule #sortJSONList(JS) => #sortJSONList(JS, .JSONList)
-    rule #sortJSONList(.JSONList, LS)            => LS
-    rule #sortJSONList(((KEY : VAL) , REST), LS) => #insertJSONKey((KEY : VAL), #sortJSONList(REST, LS))
+    rule #sortJSONList(JS) => #sortJSONList(JS, .JSONs)
+    rule #sortJSONList(.JSONs, LS)            => LS
+    rule #sortJSONList(((KEY : VAL:JSON) , REST), LS) => #insertJSONKey((KEY : VAL), #sortJSONList(REST, LS))
 
-    syntax JSONList ::= #insertJSONKey ( JSON , JSONList ) [function]
+    syntax JSONs ::= #insertJSONKey ( JSON , JSONs ) [function]
  // -----------------------------------------------------------------
-    rule #insertJSONKey( JS , .JSONList ) => JS , .JSONList
+    rule #insertJSONKey( JS , .JSONs ) => JS , .JSONs
     rule #insertJSONKey( (KEY : VAL) , ((KEY' : VAL') , REST) ) => (KEY : VAL)   , (KEY' : VAL')              , REST  requires KEY <String KEY'
     rule #insertJSONKey( (KEY : VAL) , ((KEY' : VAL') , REST) ) => (KEY' : VAL') , #insertJSONKey((KEY : VAL) , REST) requires KEY >=String KEY'
 
-    syntax Bool ::= #isSorted ( JSONList ) [function]
+    syntax Bool ::= #isSorted ( JSONs ) [function]
  // -------------------------------------------------
-    rule #isSorted( .JSONList ) => true
-    rule #isSorted( KEY : _ )   => true
+    rule #isSorted( .JSONs ) => true
+    rule #isSorted( KEY : _:JSON )   => true
     rule #isSorted( (KEY : _) , (KEY' : VAL) , REST ) => KEY <=String KEY' andThenBool #isSorted((KEY' : VAL) , REST)
 ```
 
@@ -248,8 +249,8 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
 ```{.k .standalone}
     syntax IELECommand ::= "run" JSON
  // ---------------------------------
-    rule run { .JSONList } => .
-    rule run { TESTID : { TEST:JSONList } , TESTS }
+    rule run { .JSONs } => .
+    rule run { TESTID : { TEST:JSONs } , TESTS }
       => run ( TESTID : { #sortJSONList(TEST) } )
       ~> #if #hasPost?( { TEST } ) #then .K #else exception #fi
       ~> clear
@@ -257,7 +258,7 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
 
     syntax Bool ::= "#hasPost?" "(" JSON ")" [function]
  // ---------------------------------------------------
-    rule #hasPost? ({ .JSONList }) => false
+    rule #hasPost? ({ .JSONs }) => false
     rule #hasPost? ({ (KEY:String) : _ , REST }) => (KEY in #postKeys) orBool #hasPost? ({ REST })
 ```
 
@@ -270,8 +271,8 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
 
     rule run TESTID : { KEY : (VAL:JSON) , REST } => load KEY : VAL ~> run TESTID : { REST } requires KEY in #loadKeys
 
-    rule run TESTID : { "blocks" : [ { KEY : VAL , REST1 => REST1 }, .JSONList ] , ( REST2 => KEY : VAL , REST2 ) }
-    rule run TESTID : { "blocks" : [ { .JSONList }, .JSONList ] , REST } => run TESTID : { REST }
+    rule run TESTID : { "blocks" : [ { KEY : VAL:JSON , REST1 => REST1 }, .JSONs ] , ( REST2 => KEY : VAL , REST2 ) }
+    rule run TESTID : { "blocks" : [ { .JSONs }, .JSONs ] , REST } => run TESTID : { REST }
 ```
 
 -   `#execKeys` are all the JSON nodes which should be considered for execution (between loading and checking).
@@ -285,7 +286,7 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
 
     rule run TESTID : { "exec" : (EXEC:JSON) } => load "exec" : EXEC ~> start ~> flush
     rule run TESTID : { "lastblockhash" : (HASH:String) } => startTx
-    rule run TESTID : { .JSONList } => startTx
+    rule run TESTID : { .JSONs } => startTx
 ```
 
 -   `#postKeys` are a subset of `#checkKeys` which correspond to post-state account checks.
@@ -311,7 +312,7 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
  // ----------------------------------------
     rule #discardKeys => ( SetItem("//") SetItem("_info") SetItem("rlp") )
 
-    rule run TESTID : { KEY : _ , REST } => run TESTID : { REST } requires KEY in #discardKeys
+    rule run TESTID : { KEY : _:JSON , REST } => run TESTID : { REST } requires KEY in #discardKeys
 ```
 
 State Manipulation
@@ -345,11 +346,11 @@ State Manipulation
 ```{.k .standalone}
     syntax IELECommand ::= "load" JSON
  // ----------------------------------
-    rule load DATA : { .JSONList } => .
-    rule load DATA : { KEY : VALUE , REST } => load DATA : { KEY : VALUE } ~> load DATA : { REST }
-      requires REST =/=K .JSONList andBool DATA =/=String "transactions"
+    rule load DATA : { .JSONs } => .
+    rule load DATA : { KEY : VALUE:JSON , REST } => load DATA : { KEY : VALUE } ~> load DATA : { REST }
+      requires REST =/=K .JSONs andBool DATA =/=String "transactions"
 
-    rule load DATA : [ .JSONList ] => .
+    rule load DATA : [ .JSONs ] => .
     rule load DATA : [ { TEST } , REST ] => load DATA : { TEST } ~> load DATA : [ REST ]
 ```
 
@@ -357,13 +358,13 @@ Here we perform pre-proccesing on account data which allows "pretty" specificati
 
 ```{.k .standalone}
     rule load "pre" : { (ACCTID:String) : ACCT } => mkAcct #parseAddr(ACCTID) ~> load "account" : { ACCTID : ACCT }
-    rule load "account" : { ACCTID: { KEY : VALUE , REST } } => load "account" : { ACCTID : { KEY : VALUE } } ~> load "account" : { ACCTID : { REST } } requires REST =/=K .JSONList
+    rule load "account" : { ACCTID: { KEY : VALUE:JSON , REST } } => load "account" : { ACCTID : { KEY : VALUE } } ~> load "account" : { ACCTID : { REST } } requires REST =/=K .JSONs
 
     rule load "account" : { ((ACCTID:String) => #parseAddr(ACCTID)) : ACCT }
     rule load "account" : { (ACCT:Int) : { "balance" : ((VAL:String)         => #parseWord(VAL)) } }
     rule load "account" : { (ACCT:Int) : { "nonce"   : ((VAL:String)         => #parseWord(VAL)) } }
     rule load "account" : { (ACCT:Int) : { "code"    : ((CODE:String)        => #parseByteStack(CODE)) } }
-    rule load "account" : { (ACCT:Int) : { "storage" : ({ STORAGE:JSONList } => #parseMap({ STORAGE })) } }
+    rule load "account" : { (ACCT:Int) : { "storage" : ({ STORAGE:JSONs } => #parseMap({ STORAGE })) } }
 
 ```
 
@@ -495,7 +496,7 @@ The `"transactions"` key loads the transactions.
     rule load "transactions" : { TX } => load "transactions" : { #sortJSONList(TX) }
          requires notBool #isSorted(TX)
 
-    rule <k> load "transactions" : { "arguments" : [ ARGS ],  "contractCode" : TI , "from" : FROM, "function" : FUNC, "gasLimit" : TG , "gasPrice" : TP , "nonce" : TN , "to" : TT , "value" : TV , .JSONList } => . ... </k>
+    rule <k> load "transactions" : { "arguments" : [ ARGS ],  "contractCode" : TI , "from" : FROM, "function" : FUNC, "gasLimit" : TG , "gasPrice" : TP , "nonce" : TN , "to" : TT , "value" : TV , .JSONs } => . ... </k>
          <txOrder>   ... .List => ListItem(!ID) </txOrder>
          <txPending> ... .List => ListItem(!ID) </txPending>
          <messages>
@@ -516,9 +517,9 @@ The `"transactions"` key loads the transactions.
            ...
          </messages>
 
-    syntax Ints ::= #toInts ( JSONList ) [function]
+    syntax Ints ::= #toInts ( JSONs ) [function]
  // -----------------------------------------------
-    rule #toInts(.JSONList) => .Ints
+    rule #toInts(.JSONs) => .Ints
     rule #toInts(WORD:String , ARGS) => #parseHexWord(WORD) , #toInts(ARGS)
 ```
 
@@ -530,24 +531,24 @@ The `"transactions"` key loads the transactions.
     syntax IELECommand ::= "check" JSON
  // -----------------------------------
     rule #exception CODE ~> check J:JSON => check J ~> #exception CODE
-    rule check DATA : { .JSONList } => . requires DATA =/=String "transactions"
+    rule check DATA : { .JSONs } => . requires DATA =/=String "transactions"
     rule check DATA : { (KEY:String) : VALUE , REST } => check DATA : { KEY : VALUE } ~> check DATA : { REST }
-      requires REST =/=K .JSONList andBool notBool DATA in (SetItem("callcreates") SetItem("transactions"))
+      requires REST =/=K .JSONs andBool notBool DATA in (SetItem("callcreates") SetItem("transactions"))
 
-    rule check DATA : [ .JSONList ] => . requires DATA =/=String "ommerHeaders" andBool DATA =/=String "out"
+    rule check DATA : [ .JSONs ] => . requires DATA =/=String "ommerHeaders" andBool DATA =/=String "out"
     rule check DATA : [ { TEST } , REST ] => check DATA : { TEST } ~> check DATA : [ REST ] requires DATA =/=String "transactions"
 
-    rule check (KEY:String) : { JS:JSONList => #sortJSONList(JS) }
+    rule check (KEY:String) : { JS:JSONs => #sortJSONList(JS) }
       requires KEY in (SetItem("callcreates")) andBool notBool #isSorted(JS)
 
     rule check TESTID : { "post" : POST } => check "account" : POST ~> failure TESTID
-    rule check "account" : { ACCTID: { KEY : VALUE , REST } } => check "account" : { ACCTID : { KEY : VALUE } } ~> check "account" : { ACCTID : { REST } } requires REST =/=K .JSONList
+    rule check "account" : { ACCTID: { KEY : VALUE:JSON , REST } } => check "account" : { ACCTID : { KEY : VALUE } } ~> check "account" : { ACCTID : { REST } } requires REST =/=K .JSONs
  // -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     rule check "account" : { ((ACCTID:String) => #parseAddr(ACCTID)) : ACCT }
     rule check "account" : { (ACCT:Int) : { "balance" : ((VAL:String)         => #parseWord(VAL)) } }
     rule check "account" : { (ACCT:Int) : { "nonce"   : ((VAL:String)         => #parseWord(VAL)) } }
     rule check "account" : { (ACCT:Int) : { "code"    : ((CODE:String)        => #parseByteStack(CODE)) } }
-    rule check "account" : { (ACCT:Int) : { "storage" : ({ STORAGE:JSONList } => #parseMap({ STORAGE })) } }
+    rule check "account" : { (ACCT:Int) : { "storage" : ({ STORAGE:JSONs } => #parseMap({ STORAGE })) } }
 
 
     rule <k> check "account" : { ACCT : { "balance" : (BAL:Int) } } => . ... </k>
@@ -590,7 +591,7 @@ Here we check the other post-conditions associated with an EVM test.
 
 ```{.k .standalone}
     rule check TESTID : { "results" : [ _ , A , REST => A , REST ] }
-    rule check TESTID : { "results" : [ A , .JSONList ] } => check TESTID : A
+    rule check TESTID : { "results" : [ A , .JSONs ] } => check TESTID : A
 
     rule check TESTID : { "out" : OUT } => check "out" : OUT ~> failure TESTID
  // --------------------------------------------------------------------------
@@ -631,12 +632,12 @@ Here we check the other post-conditions associated with an EVM test.
 
     rule check TESTID : { "callcreates" : CCREATES } => check "callcreates" : CCREATES ~> failure TESTID
  // ----------------------------------------------------------------------------------------------------
-    rule check "callcreates" : { ("data" : (DATA:String)) , ("destination" : (ACCTTO:String)) , ("gasLimit" : (GLIMIT:String)) , ("value" : (VAL:String)) , .JSONList }
+    rule check "callcreates" : { ("data" : (DATA:String)) , ("destination" : (ACCTTO:String)) , ("gasLimit" : (GLIMIT:String)) , ("value" : (VAL:String)) , .JSONs }
       => .
 
     rule check TESTID : { "genesisBlockHeader" : BLOCKHEADER } => check "genesisBlockHeader" : BLOCKHEADER ~> failure TESTID
  // ------------------------------------------------------------------------------------------------------------------------
-    rule check "genesisBlockHeader" : { KEY : VALUE , REST } => check "genesisBlockHeader" : { KEY : VALUE } ~> check "genesisBlockHeader" : { REST } requires REST =/=K .JSONList
+    rule check "genesisBlockHeader" : { KEY : VALUE:JSON , REST } => check "genesisBlockHeader" : { KEY : VALUE } ~> check "genesisBlockHeader" : { REST } requires REST =/=K .JSONs
     rule check "genesisBlockHeader" : { KEY : VALUE } => .K requires KEY =/=String "hash"
 
     rule check "genesisBlockHeader" : { "hash": (HASH:String => #parseHexWord(HASH)) }

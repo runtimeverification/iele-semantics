@@ -5,8 +5,8 @@ Here we define an ad-hoc binary encoding for IELE. This encoding is subject to c
 You can use the IELE assembler provided with the semantics to convert from the textual encoding into this binary encoding.
 
 ```k
-requires "iele.k"
-requires "iele-syntax.k"
+requires "iele.md"
+requires "iele-syntax.md"
 
 module IELE-BINARY
     imports IELE

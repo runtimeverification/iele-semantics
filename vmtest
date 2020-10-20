@@ -3,17 +3,16 @@ interpreter="$(dirname "$0")/.build/standalone/iele-testing-kompiled/interpreter
 assembled="$(mktemp)"
 kast="$(mktemp)"
 output="$(mktemp)"
-kast_output="$(mktemp)"
-trap "rm -rf $kast $output $kast_output $assembled" INT TERM EXIT
-"$(dirname "$0")/assemble-iele-test" "$1" > "$assembled"
-"$(dirname "$0")/kast-json.py" "$assembled" > "$kast"
+trap "rm -rf $kast $output $assembled" INT TERM EXIT
+"$(dirname "$0")/assemble-iele-test" "$1" > "$assembled" || exit $?
+"$(dirname "$0")/kore-json.py" "$assembled" '`DEFAULT`(.KList)' '`VMTESTS`(.KList)' > "$kast"
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
-$interpreter "$(dirname "$0")/.build/standalone/iele-testing-kompiled/realdef.cma" -c PGM "$kast" textfile -c SCHEDULE '`DEFAULT_IELE-GAS`(.KList)' text -c MODE '`VMTESTS_IELE-CONSTANTS`(.KList)' text --output-file "$output"
+shift 1
+$interpreter "$kast" -1 "$output" "$@"
 exit=$?
 if [ $exit -eq 0 ]; then
   exit 0
 fi
-.build/k/k-distribution/target/release/k/bin/k-bin-to-text "$output" "$kast_output"
-cat "$kast_output"
+kprint "$(dirname "$interpreter")" "$output"
 printf "\n"
 exit $exit

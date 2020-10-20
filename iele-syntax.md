@@ -19,7 +19,7 @@ IELE uses alphanumeric names for identifying registers, labels, functions, and c
 module IELE-SYNTAX
   imports IELE-COMMON
 
-  syntax IeleName ::= r"(?<![A-Za-z0-9\\_\\.\\-\\$])[a-zA-Z\\.\\_\\$][0-9a-zA-Z\\.\\_\\-\\$]*" [token, notInRules, prec(3)]
+  syntax IeleNameToken ::= r"(?<![A-Za-z0-9\\_\\.\\-\\$])[a-zA-Z\\.\\_\\$][0-9a-zA-Z\\.\\_\\-\\$]*" [token, notInRules, prec(3)]
 
   syntax Keyword ::= "load" | "store" | "sload"  | "sstore" | "iszero" | "not"  | "add"  | "mul"  | "sub" | "div"
                    | "exp"  | "mod"   | "addmod" | "mulmod" | "expmod" | "byte" | "sext" | "twos" | "and" | "or"
@@ -28,7 +28,7 @@ module IELE-SYNTAX
   syntax Keyword ::= "br"   | "call"   | "staticcall" | "at" | "send"  | "gaslimit" | "ret"      | "void"   | "revert"
                    | "log"  | "create" | "copycreate" | "selfdestruct" | "contract" | "external" | "define" | "public"
                    | "log2" | "bswap"  | "calladdress"
-  syntax IeleName ::= Keyword [token]
+  syntax IeleNameToken ::= Keyword [token]
 
   syntax NumericIeleName ::= r"[0-9]+" [token]
 
@@ -42,9 +42,14 @@ Local register names are desugared to integers when assembling an IELE program
 module IELE-COMMON
   imports DOMAINS-SYNTAX
   imports INT-SYNTAX
+
+  syntax KResult
+
   syntax NumericIeleName ::= Int
   syntax StringIeleName
   syntax IeleName ::= NumericIeleName
+  syntax IeleNameToken [token]
+  syntax IeleName ::= IeleNameToken
   syntax IeleName ::= StringIeleName [klabel(StringIeleName), avoid, symbol, function]
 ```
 
@@ -225,25 +230,25 @@ Instructions to create and/or delete a new account with a contract deployed with
 These accessors are implemented as builtins that can be called using the same syntax as in a local call, e.g. `%pc = call @iele.pc()` or `%balance = call @iele.balance(%bank.account)`. The names of the builtins follow the IELE convention for intrinsics: Their name is a valid global name that starts with the prefix `iele.`. This means that no user-defined global name can start with the prefix `iele.`.
 
 ```k
-  syntax IeleName ::= "iele.invalid"     [token]
+  syntax IeleNameToken ::= "iele.invalid"     [token]
   // local state queries
-  syntax IeleName ::= "iele.gas"         [token]
-  syntax IeleName ::= "iele.gasprice"    [token]
-  syntax IeleName ::= "iele.gaslimit"    [token]
-  syntax IeleName ::= "iele.beneficiary" [token]
-  syntax IeleName ::= "iele.timestamp"   [token]
-  syntax IeleName ::= "iele.number"      [token]
-  syntax IeleName ::= "iele.difficulty"  [token]
-  syntax IeleName ::= "iele.address"     [token]
-  syntax IeleName ::= "iele.origin"      [token]
-  syntax IeleName ::= "iele.caller"      [token]
-  syntax IeleName ::= "iele.callvalue"   [token]
-  syntax IeleName ::= "iele.msize"       [token]
-  syntax IeleName ::= "iele.codesize"    [token]
-  syntax IeleName ::= "iele.blockhash"   [token]
+  syntax IeleNameToken ::= "iele.gas"         [token]
+  syntax IeleNameToken ::= "iele.gasprice"    [token]
+  syntax IeleNameToken ::= "iele.gaslimit"    [token]
+  syntax IeleNameToken ::= "iele.beneficiary" [token]
+  syntax IeleNameToken ::= "iele.timestamp"   [token]
+  syntax IeleNameToken ::= "iele.number"      [token]
+  syntax IeleNameToken ::= "iele.difficulty"  [token]
+  syntax IeleNameToken ::= "iele.address"     [token]
+  syntax IeleNameToken ::= "iele.origin"      [token]
+  syntax IeleNameToken ::= "iele.caller"      [token]
+  syntax IeleNameToken ::= "iele.callvalue"   [token]
+  syntax IeleNameToken ::= "iele.msize"       [token]
+  syntax IeleNameToken ::= "iele.codesize"    [token]
+  syntax IeleNameToken ::= "iele.blockhash"   [token]
   // account queries
-  syntax IeleName ::= "iele.balance"     [token]
-  syntax IeleName ::= "iele.extcodesize" [token]
+  syntax IeleNameToken ::= "iele.balance"     [token]
+  syntax IeleNameToken ::= "iele.extcodesize" [token]
 ```
 
 ### Precompiled Contracts
@@ -251,13 +256,13 @@ These accessors are implemented as builtins that can be called using the same sy
 Precompiled contracts are also available as IELE builtins but they should be called using the syntax for an account call targeting the account with address `1` (e.g. `%res  = call @iele.sha256 at 1 ( %len, %data ) send %val, gaslimit %gas`).
 
 ```k
-  syntax IeleName ::= "iele.ecrec"     [token]
-  syntax IeleName ::= "iele.sha256"    [token]
-  syntax IeleName ::= "iele.rip160"    [token]
-  syntax IeleName ::= "iele.id"        [token]
-  syntax IeleName ::= "iele.ecadd"     [token]
-  syntax IeleName ::= "iele.ecmul"     [token]
-  syntax IeleName ::= "iele.ecpairing" [token]
+  syntax IeleNameToken ::= "iele.ecrec"     [token]
+  syntax IeleNameToken ::= "iele.sha256"    [token]
+  syntax IeleNameToken ::= "iele.rip160"    [token]
+  syntax IeleNameToken ::= "iele.id"        [token]
+  syntax IeleNameToken ::= "iele.ecadd"     [token]
+  syntax IeleNameToken ::= "iele.ecmul"     [token]
+  syntax IeleNameToken ::= "iele.ecpairing" [token]
 ```
 
 #### Instruction Lists
@@ -382,9 +387,9 @@ The body of a function is a list of blocks, where each block is a list of IELE i
 -   A special private function named `@init` should be defined for every contract and will be called when an account is created with this contract.
 
 ```k
-  syntax IeleName ::= "deposit" [token]
+  syntax IeleNameToken ::= "deposit" [token]
 
-  syntax IeleName ::= "init" [token]
+  syntax IeleNameToken ::= "init" [token]
 ```
 
 #### Macros

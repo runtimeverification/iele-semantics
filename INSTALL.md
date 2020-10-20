@@ -6,15 +6,16 @@ In a nutshell, to install IELE on an Ubuntu 16.04 machine, run:
 ```
 
 sudo apt-get update
-sudo apt-get install make gcc maven curl openjdk-8-jdk flex opam pkg-config libmpfr-dev autoconf libtool pandoc build-essential libffi-dev
+sudo apt-get install make gcc maven curl openjdk-8-jdk flex opam pkg-config libmpfr-dev autoconf libtool pandoc build-essential libffi-dev protobuf-compiler libprotobuf-dev libcrypto++-dev libssl-dev libprocps-dev
 git clone git@github.com:runtimeverification/iele-semantics.git
 cd iele-semantics
 git submodule update --init --recursive # Initialize submodules
 curl -sSL https://get.haskellstack.org/ | sh # Install stack
 cd .build/secp256k1 && ./autogen.sh && ./configure --enable-module-recovery --enable-module-ecdh --enable-experimental && make && sudo make install # install secp256k1 from bitcoin-core
 cd ../..
-./.build/k/k-distribution/src/main/scripts/bin/k-configure-opam-dev # install user-level ocaml dependencies
-make deps # build remaining submodule dependencies
+cd .build/ff && mkdir build && cd build && CC=clang-6.0 CXX=clang++-6.0 cmake .. -DCMAKE_BUILD_TYPE=Release && make && sudo make install
+cd ../../..
+make deps # Build dependencies not installed by package manager
 eval `opam config env` # add OCAML installation to path
 make # Build project
 make install # install to ~/.local

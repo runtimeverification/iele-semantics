@@ -51,7 +51,7 @@ module IELE-NODE
     rule #exec REG = call @iele.blockhash ( N ) => #load REG 0
       requires N <Int 0 orBool N >=Int 256
 
-    syntax IELESimulation ::= runVM(iscreate: Bool, to: Int, from: Int, code: String, args: List, value: Int, gasprice: Int, gas: Int, beneficiary: Int, difficulty: Int, number: Int, gaslimit: Int, timestamp: Int, function: String)
+    syntax IELESimulation ::= runVM(iscreate: Bool, to: Int, from: Int, code: String, args: JSONs, value: Int, gasprice: Int, gas: Int, beneficiary: Int, difficulty: Int, number: Int, gaslimit: Int, timestamp: Int, function: String) [symbol]
 
     rule <k> (.K => #loadAccount ACCTFROM) ~> runVM(... from: ACCTFROM) ... </k>
          <activeAccounts> .Set </activeAccounts>
@@ -139,9 +139,9 @@ module IELE-NODE
     rule #toInts(.List) => .Ints
     rule #toInts(ListItem(I:Int) L) => I , #toInts(L)
 
-    syntax Ints ::= #toInts(JSONList) [function, klabel(JSONListToInts)]
+    syntax Ints ::= #toInts(JSONs) [function, klabel(JSONsToInts)]
  // --------------------------------------------------------------------
-    rule #toInts(.JSONList) => .Ints
+    rule #toInts(.JSONs) => .Ints
     rule #toInts(S:String, L) => Bytes2Int(String2Bytes(S), BE, Signed) , #toInts(L)
 
 
