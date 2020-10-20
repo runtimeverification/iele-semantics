@@ -39,7 +39,7 @@ PROTO=$(abspath proto)
 all: build split-vm-tests testnode
 
 clean:
-	rm -rf .build/standalone .build/llvm .build/node .build/check .build/plugin-node .build/plugin-standalone .build/vm compiler/.stack-work .build/haskell
+	rm -rf .build
 
 distclean: clean
 	cd .build/k && mvn clean
