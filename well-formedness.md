@@ -388,10 +388,9 @@ Checking LValues
 endmodule
 
 module IELE-WELL-FORMEDNESS-STANDALONE
-    imports DEFAULT-CONFIGURATION
     imports IELE-WELL-FORMEDNESS
 
-    configuration <k/> <well-formedness/> <exit-code exit=""> 1 </exit-code>
+    configuration <k> $PGM:Contract </k> <well-formedness/> <exit-code exit=""> 1 </exit-code>
 
     rule <typeChecking> false => true </typeChecking>
     rule <k> . </k> <exit-code> 1 => 0 </exit-code>
