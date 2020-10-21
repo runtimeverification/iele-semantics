@@ -211,12 +211,12 @@ haskell-deps:
 					--syntax-module IELE-SYNTAX iele-testing.md --directory .build/$* --hook-namespaces KRYPTO \
 	                                --backend llvm -ccopt ${PLUGIN}/plugin-c/crypto.cpp -ccopt ${PLUGIN}/plugin-c/blockchain.cpp -ccopt ${PLUGIN}/plugin-c/world.cpp -ccopt ${PLUGIN}/plugin-c/blake2.cpp -ccopt ${PLUGIN}/plugin-c/plugin_util.cpp -ccopt $(protobuf_out) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
 
-LLVM_KOMPILE_INCLUDE_OPTS := -I $(PLUGIN)/plugin-c/ -I $(BUILD_DIR)/plugin-node -I $(PLUGIN)/vm-c/ -I $(PLUGIN)/vm-c/iele/ -I $(PLUGIN)/client-c -I $(LOCAL_INCLUDE)
+LLVM_KOMPILE_INCLUDE_OPTS := -I $(PLUGIN)/plugin-c/ -I $(BUILD_DIR)/plugin-node -I vm/c/ -I vm/c/iele/ -I $(PLUGIN)/client-c -I $(LOCAL_INCLUDE)
 LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(LOCAL_LIB) -lff -lprotobuf -lgmp -lprocps -lcryptopp -lsecp256k1
 
-.build/vm/iele-vm: .build/node/iele-testing-kompiled/interpreter $(wildcard plugin/vm-c/*.cpp plugin/vm-c/*.h) $(protobuf_out)
+.build/vm/iele-vm: .build/node/iele-testing-kompiled/interpreter $(wildcard vm/c/*.cpp vm/c/*.h) $(protobuf_out)
 	mkdir -p .build/vm
-	llvm-kompile .build/node/iele-testing-kompiled/definition.kore .build/node/iele-testing-kompiled/dt library ${PLUGIN}/vm-c/main.cpp ${PLUGIN}/vm-c/vm.cpp ${PLUGIN}/client-c/init.cpp ${PLUGIN}/plugin-c/crypto.cpp ${PLUGIN}/plugin-c/blockchain.cpp ${PLUGIN}/plugin-c/world.cpp ${PLUGIN}/plugin-c/blake2.cpp ${PLUGIN}/plugin-c/plugin_util.cpp $(protobuf_out) ${PLUGIN}/vm-c/iele/semantics.cpp $(LLVM_KOMPILE_INCLUDE_OPTS) $(LLVM_KOMPILE_LINK_OPTS) -o .build/vm/iele-vm -g
+	llvm-kompile .build/node/iele-testing-kompiled/definition.kore .build/node/iele-testing-kompiled/dt library vm/c/main.cpp vm/c/vm.cpp ${PLUGIN}/client-c/init.cpp ${PLUGIN}/plugin-c/crypto.cpp ${PLUGIN}/plugin-c/blockchain.cpp ${PLUGIN}/plugin-c/world.cpp ${PLUGIN}/plugin-c/blake2.cpp ${PLUGIN}/plugin-c/plugin_util.cpp $(protobuf_out) vm/c/iele/semantics.cpp $(LLVM_KOMPILE_INCLUDE_OPTS) $(LLVM_KOMPILE_LINK_OPTS) -o .build/vm/iele-vm -g
 
 # Ocaml Builds
 # ------------
@@ -225,12 +225,12 @@ LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(LOCAL_LIB) -lff -lprotobuf -
 	mkdir .build/plugin-ocaml
 	eval `opam config env` && ocaml-protoc $< -ml_out .build/plugin-ocaml
 
-.build/vm/iele-test-vm: $(wildcard plugin/vm/*.ml plugin/vm/*.mli) .build/plugin-ocaml/msg_types.ml
+.build/vm/iele-test-vm: $(wildcard vm/*.ml vm/*.mli) .build/plugin-ocaml/msg_types.ml
 	mkdir -p .build/vm
-	cp ${PLUGIN}/vm/*.ml ${PLUGIN}/vm/*.mli .build/plugin-ocaml/*.ml .build/plugin-ocaml/*.mli .build/vm
+	cp vm/*.ml vm/*.mli .build/plugin-ocaml/*.ml .build/plugin-ocaml/*.mli .build/vm
 	cd .build/vm && eval `opam config env` && ocamlfind $(OCAMLC) -g -o iele-test-vm msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml ieleClientUtils.ml ieleVmTest.ml -package dynlink -package zarith -package str -package uuidm -package unix -package rlp -package yojson -package hex -package cryptokit -package ocaml-protoc -linkpkg -linkall -thread -safe-string
 
-.build/vm/iele-test-client: $(wildcard plugin/vm/*.ml plugin/vm/*.mli) .build/plugin-ocaml/msg_types.ml
+.build/vm/iele-test-client: $(wildcard vm/*.ml vm/*.mli) .build/plugin-ocaml/msg_types.ml
 	mkdir -p .build/vm
-	cp ${PLUGIN}/vm/*.ml ${PLUGIN}/vm/*.mli .build/plugin-ocaml/*.ml .build/plugin-ocaml/*.mli .build/vm
+	cp vm/*.ml vm/*.mli .build/plugin-ocaml/*.ml .build/plugin-ocaml/*.mli .build/vm
 	cd .build/vm && eval `opam config env` && ocamlfind $(OCAMLC) -g -o iele-test-client msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml ieleClientUtils.ml ieleApi.mli ieleApi.ml ieleApiClient.ml -package dynlink -package zarith -package str -package uuidm -package unix -package rlp -package yojson -package hex -package cryptokit -package ocaml-protoc -linkpkg -linkall -thread -safe-string $(PREDICATES)
