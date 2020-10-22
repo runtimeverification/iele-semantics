@@ -32,7 +32,7 @@ LOCAL_INCLUDE  := $(BUILD_LOCAL)/include
 
 PLUGIN=$(abspath plugin)
 
-.PHONY: all clean distclean build tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode install kore libff protobuf
+.PHONY: all clean distclean build build-haskell tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode install kore libff protobuf
 .SECONDARY:
 
 all: build split-vm-tests testnode
@@ -44,7 +44,7 @@ distclean: clean
 	cd .build/k && mvn clean
 	cd .build/kore && stack clean
 
-build: tangle .build/standalone/iele-testing-kompiled/interpreter .build/vm/iele-vm assembler .build/check/well-formedness-kompiled/interpreter
+build: tangle .build/standalone/iele-testing-kompiled/interpreter .build/vm/iele-vm assembler .build/check/well-formedness-kompiled/interpreter build-haskell
 
 llvm: tangle .build/llvm/iele-testing.kore
 
@@ -217,6 +217,23 @@ LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(LOCAL_LIB) -lff -lprotobuf -
 .build/vm/iele-vm: .build/node/iele-testing-kompiled/interpreter $(wildcard plugin/vm-c/*.cpp plugin/vm-c/*.h) $(protobuf_out)
 	mkdir -p .build/vm
 	llvm-kompile .build/node/iele-testing-kompiled/definition.kore .build/node/iele-testing-kompiled/dt library ${PLUGIN}/vm-c/main.cpp ${PLUGIN}/vm-c/vm.cpp ${PLUGIN}/client-c/init.cpp ${PLUGIN}/plugin-c/crypto.cpp ${PLUGIN}/plugin-c/blockchain.cpp ${PLUGIN}/plugin-c/world.cpp ${PLUGIN}/plugin-c/blake2.cpp ${PLUGIN}/plugin-c/plugin_util.cpp $(protobuf_out) ${PLUGIN}/vm-c/iele/semantics.cpp $(LLVM_KOMPILE_INCLUDE_OPTS) $(LLVM_KOMPILE_LINK_OPTS) -o .build/vm/iele-vm -g
+
+# Haskell Build
+# -------------
+
+haskell_dir            := $(BUILD_DIR)/haskell
+haskell_main_module    := IELE-TESTING
+haskell_syntax_module  := IELE-SYNTAX
+haskell_main_file      := iele-testing.md
+haskell_main_filename  := $(basename $(notdir $(haskell_main_file)))
+haskell_kompiled       := $(haskell_dir)/$(haskell_main_filename)-kompiled/definition.kore
+
+build-haskell: $(haskell_kompiled)
+
+$(haskell_kompiled): MD_SELECTOR="(k & ! node) | standalone"
+
+$(haskell_kompiled):
+	$(KOMPILE) --directory $(haskell_dir) --backend haskell --main-module $(haskell_main_module) --syntax-module $(haskell_syntax_module) --md-selector $(MD_SELECTOR) --hook-namespaces "KRYPTO JSON" $(haskell_main_file)
 
 # Ocaml Builds
 # ------------
