@@ -31,6 +31,7 @@ LOCAL_LIB      := $(BUILD_LOCAL)/lib
 LOCAL_INCLUDE  := $(BUILD_LOCAL)/include
 
 PLUGIN=$(abspath plugin)
+PROTO=$(abspath proto)
 
 .PHONY: all clean distclean build tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode install kore libff protobuf
 .SECONDARY:
@@ -95,9 +96,9 @@ protobuf_out := $(BUILD_DIR)/plugin-node/proto/msg.pb.cc
 
 protobuf: $(protobuf_out)
 
-$(protobuf_out): $(PLUGIN)/plugin-c/proto/msg.proto
+$(protobuf_out): $(PROTO)/proto/msg.proto
 	mkdir -p .build/plugin-node
-	protoc --cpp_out=.build/plugin-node -I $(PLUGIN)/plugin-c $<
+	protoc --cpp_out=.build/plugin-node -I $(PROTO) $<
 
 # Tests
 # -----
@@ -186,7 +187,7 @@ tests/ethereum-tests/%.json:
 
 KOMPILE=kompile
 
-KOMPILE_INCLUDE_OPTS := -ccopt -I -ccopt $(PLUGIN)/plugin-c -ccopt -I -ccopt $(BUILD_DIR)/plugin-node -ccopt -I -ccopt $(LOCAL_INCLUDE)
+KOMPILE_INCLUDE_OPTS := -ccopt -I -ccopt $(PLUGIN)/plugin-c -ccopt -I -ccopt $(PROTO) -ccopt -I -ccopt $(BUILD_DIR)/plugin-node -ccopt -I -ccopt $(LOCAL_INCLUDE)
 KOMPILE_LINK_OPTS    := -ccopt -L -ccopt /usr/local/lib -ccopt -L -ccopt $(LOCAL_LIB) -ccopt -lprotobuf -ccopt -lff -ccopt -lcryptopp -ccopt -lsecp256k1 -ccopt -lprocps
 
 coverage:
@@ -200,7 +201,7 @@ haskell-deps:
 .build/check/well-formedness-kompiled/interpreter: $(checker_files) $(protobuf_out) $(libff_out)
 	${KOMPILE} --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE --md-selector "(k & ! node) | standalone" \
 	                                --syntax-module IELE-SYNTAX well-formedness.md --directory .build/check --hook-namespaces KRYPTO \
-	                                --backend llvm -ccopt ${PLUGIN}/plugin-c/crypto.cpp -ccopt ${PLUGIN}/plugin-c/blockchain.cpp -ccopt ${PLUGIN}/plugin-c/world.cpp -ccopt ${PLUGIN}/plugin-c/blake2.cpp -ccopt ${PLUGIN}/plugin-c/plugin_util.cpp -ccopt $(protobuf_out) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
+	                                --backend llvm -ccopt ${PLUGIN}/plugin-c/crypto.cpp -ccopt $(PROTO)/blockchain.cpp -ccopt $(PROTO)/world.cpp -ccopt ${PLUGIN}/plugin-c/blake2.cpp -ccopt ${PLUGIN}/plugin-c/plugin_util.cpp -ccopt $(protobuf_out) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
 
 .build/standalone/iele-testing-kompiled/interpreter: MD_SELECTOR="(k & ! node) | standalone"
 .build/node/iele-testing-kompiled/interpreter: MD_SELECTOR="(k & ! standalone) | node"
@@ -209,19 +210,19 @@ haskell-deps:
 	@echo "== kompile: $@"
 	${KOMPILE} --debug --main-module IELE-TESTING --verbose --md-selector ${MD_SELECTOR} \
 					--syntax-module IELE-SYNTAX iele-testing.md --directory .build/$* --hook-namespaces KRYPTO \
-	                                --backend llvm -ccopt ${PLUGIN}/plugin-c/crypto.cpp -ccopt ${PLUGIN}/plugin-c/blockchain.cpp -ccopt ${PLUGIN}/plugin-c/world.cpp -ccopt ${PLUGIN}/plugin-c/blake2.cpp -ccopt ${PLUGIN}/plugin-c/plugin_util.cpp -ccopt $(protobuf_out) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
+	                                --backend llvm -ccopt ${PLUGIN}/plugin-c/crypto.cpp -ccopt $(PROTO)/blockchain.cpp -ccopt $(PROTO)/world.cpp -ccopt ${PLUGIN}/plugin-c/blake2.cpp -ccopt ${PLUGIN}/plugin-c/plugin_util.cpp -ccopt $(protobuf_out) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
 
-LLVM_KOMPILE_INCLUDE_OPTS := -I $(PLUGIN)/plugin-c/ -I $(BUILD_DIR)/plugin-node -I vm/c/ -I vm/c/iele/ -I $(PLUGIN)/client-c -I $(LOCAL_INCLUDE)
+LLVM_KOMPILE_INCLUDE_OPTS := -I $(PLUGIN)/plugin-c/ -I $(PROTO) -I $(BUILD_DIR)/plugin-node -I vm/c/ -I vm/c/iele/ -I $(PLUGIN)/client-c -I $(LOCAL_INCLUDE)
 LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(LOCAL_LIB) -lff -lprotobuf -lgmp -lprocps -lcryptopp -lsecp256k1
 
 .build/vm/iele-vm: .build/node/iele-testing-kompiled/interpreter $(wildcard vm/c/*.cpp vm/c/*.h) $(protobuf_out)
 	mkdir -p .build/vm
-	llvm-kompile .build/node/iele-testing-kompiled/definition.kore .build/node/iele-testing-kompiled/dt library vm/c/main.cpp vm/c/vm.cpp ${PLUGIN}/client-c/init.cpp ${PLUGIN}/plugin-c/crypto.cpp ${PLUGIN}/plugin-c/blockchain.cpp ${PLUGIN}/plugin-c/world.cpp ${PLUGIN}/plugin-c/blake2.cpp ${PLUGIN}/plugin-c/plugin_util.cpp $(protobuf_out) vm/c/iele/semantics.cpp $(LLVM_KOMPILE_INCLUDE_OPTS) $(LLVM_KOMPILE_LINK_OPTS) -o .build/vm/iele-vm -g
+	llvm-kompile .build/node/iele-testing-kompiled/definition.kore .build/node/iele-testing-kompiled/dt library vm/c/main.cpp vm/c/vm.cpp ${PLUGIN}/client-c/init.cpp ${PLUGIN}/plugin-c/crypto.cpp $(PROTO)/blockchain.cpp $(PROTO)/world.cpp ${PLUGIN}/plugin-c/blake2.cpp ${PLUGIN}/plugin-c/plugin_util.cpp $(protobuf_out) vm/c/iele/semantics.cpp $(LLVM_KOMPILE_INCLUDE_OPTS) $(LLVM_KOMPILE_LINK_OPTS) -o .build/vm/iele-vm -g
 
 # Ocaml Builds
 # ------------
 
-.build/plugin-ocaml/msg_types.ml: plugin/plugin-c/proto/msg.proto
+.build/plugin-ocaml/msg_types.ml: $(PROTO)/msg.proto
 	mkdir .build/plugin-ocaml
 	eval `opam config env` && ocaml-protoc $< -ml_out .build/plugin-ocaml
 
