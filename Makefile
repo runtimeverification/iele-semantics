@@ -239,7 +239,7 @@ $(haskell_kompiled):
 # Ocaml Builds
 # ------------
 
-.build/plugin-ocaml/msg_types.ml: $(PROTO)/msg.proto
+.build/plugin-ocaml/msg_types.ml: $(PROTO)/proto/msg.proto
 	mkdir .build/plugin-ocaml
 	eval `opam config env` && ocaml-protoc $< -ml_out .build/plugin-ocaml
 
