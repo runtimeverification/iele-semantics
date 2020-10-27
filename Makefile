@@ -137,7 +137,7 @@ passing_blockchain_targets=${passing_blockchain_tests:=.test}
 
 iele_tests=$(wildcard tests/iele/*/*/*.iele.json)
 iele_targets=${iele_tests:=.test}
-iele_node_targets=#${iele_tests:=.nodetest}
+iele_node_targets=${iele_tests:=.nodetest}
 
 iele_haskell_failing=$(shell cat tests/iele/failing.haskell)
 iele_haskell_passing=$(filter-out $(iele_haskell_failing), $(iele_tests))
@@ -156,9 +156,9 @@ iele-test-node: ${iele_node_targets}
 well-formed-test: ${well_formedness_targets}
 
 test-bad-packet:
-#	netcat 127.0.0.1 $(PORT) -q 2 < tests/bad-packet
-#	netcat 127.0.0.1 $(PORT) -q 2 < tests/bad-packet-2
-#	.build/vm/iele-test-vm tests/iele/albe/sum/sum_zero.iele.json $(PORT)
+	netcat 127.0.0.1 $(PORT) -q 2 < tests/bad-packet
+	netcat 127.0.0.1 $(PORT) -q 2 < tests/bad-packet-2
+	.build/vm/iele-test-vm tests/iele/albe/sum/sum_zero.iele.json $(PORT)
 
 tests/VMTests/%.json.test: tests/VMTests/%.json | .build/standalone/iele-testing-kompiled/interpreter
 	./vmtest $<
