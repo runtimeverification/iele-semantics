@@ -247,7 +247,7 @@ $(haskell_kompiled):
 # ------------
 
 .build/plugin-ocaml/msg_types.ml: $(PROTO)/proto/msg.proto
-	mkdir .build/plugin-ocaml
+	mkdir -p .build/plugin-ocaml
 	eval `opam config env` && ocaml-protoc $< -ml_out .build/plugin-ocaml
 
 .build/vm/iele-test-vm: $(wildcard vm/*.ml vm/*.mli) .build/plugin-ocaml/msg_types.ml
