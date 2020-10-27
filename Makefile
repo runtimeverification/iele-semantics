@@ -216,7 +216,7 @@ haskell-deps:
 .build/%/iele-testing-kompiled/interpreter: $(k_files) $(protobuf_out) $(libff_out)
 	@echo "== kompile: $@"
 	${KOMPILE} --debug --main-module IELE-TESTING --verbose --md-selector ${MD_SELECTOR} \
-					--syntax-module IELE-SYNTAX iele-testing.md --directory .build/$* --hook-namespaces KRYPTO \
+					--syntax-module IELE-SYNTAX iele-testing.md --directory .build/$* --hook-namespaces "KRYPTO BLOCKCHAIN" \
 	                                --backend llvm -ccopt ${PLUGIN}/plugin-c/crypto.cpp -ccopt $(PROTO)/blockchain.cpp -ccopt $(PROTO)/world.cpp -ccopt ${PLUGIN}/plugin-c/blake2.cpp -ccopt ${PLUGIN}/plugin-c/plugin_util.cpp -ccopt $(protobuf_out) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
 
 LLVM_KOMPILE_INCLUDE_OPTS := -I $(PLUGIN)/plugin-c/ -I $(PROTO) -I $(BUILD_DIR)/plugin-node -I vm/c/ -I vm/c/iele/ -I $(PLUGIN)/client-c -I $(LOCAL_INCLUDE)
