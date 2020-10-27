@@ -158,7 +158,7 @@ well-formed-test: ${well_formedness_targets}
 test-bad-packet:
 	netcat 127.0.0.1 $(PORT) -q 2 < tests/bad-packet
 	netcat 127.0.0.1 $(PORT) -q 2 < tests/bad-packet-2
-	.build/vm/iele-test-vm tests/iele/albe/sum/sum_zero.iele.json $(PORT)
+	.build/vm/iele-test-vm tests/iele/danse/sum/sum_zero.iele.json $(PORT)
 
 tests/VMTests/%.json.test: tests/VMTests/%.json | .build/standalone/iele-testing-kompiled/interpreter
 	./vmtest $<
