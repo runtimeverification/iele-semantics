@@ -1,12 +1,20 @@
 #!/bin/sh
 
-KRUN_BINARY=".build/k/k-distribution/target/release/k/bin/krun"
-KOMPILED_DEF=".build/haskell/"
-HASKELL_BACKEND_CMD=".build/kore/bin/kore-exec"
-
-cSCHEDULE=DEFAULT
-cMODE=VMTESTS
-
 PGM=$1
 
-$KRUN_BINARY --directory "$KOMPILED_DEF" -cSCHEDULE="$cSCHEDULE" -cMODE="$cMODE" "$PGM" --haskell-backend-command "$HASKELL_BACKEND_CMD"
+assembled="$(mktemp)"
+kast="$(mktemp)"
+output="$(mktemp)"
+trap "rm -rf $kast $output $assembled" INT TERM EXIT
+"$(dirname "$0")/assemble-iele-test" "$PGM" > "$assembled" || exit $?
+"$(dirname "$0")/kore-json.py" "$assembled" '`DEFAULT`(.KList)' '`VMTESTS`(.KList)' > "$kast"
+
+kore-exec .build/haskell/iele-testing-kompiled/definition.kore --pattern "$kast" --module IELE-TESTING --smt none --output "$output"
+
+exit=$?
+if [ $exit -eq 0 ]; then
+  exit 0
+fi
+kprint "$(dirname "$interpreter")" "$output"
+printf "\n"
+exit $exit
