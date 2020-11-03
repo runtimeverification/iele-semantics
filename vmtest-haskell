@@ -1,4 +1,6 @@
-#!/bin/sh
+#!/usr/bin/env bash
+
+set -euo pipefail
 
 PGM=$1
 
@@ -6,15 +8,15 @@ assembled="$(mktemp)"
 kast="$(mktemp)"
 output="$(mktemp)"
 trap "rm -rf $kast $output $assembled" INT TERM EXIT
-"$(dirname "$0")/assemble-iele-test" "$PGM" > "$assembled" || exit $?
+"$(dirname "$0")/assemble-iele-test" "$PGM" > "$assembled"
 "$(dirname "$0")/kore-json.py" "$assembled" '`DEFAULT`(.KList)' '`VMTESTS`(.KList)' > "$kast"
 
-kore-exec .build/haskell/iele-testing-kompiled/definition.kore --pattern "$kast" --module IELE-TESTING --smt none --output "$output"
+exit=0
+kore-exec .build/haskell/iele-testing-kompiled/definition.kore --pattern "$kast" --module IELE-TESTING --smt none --output "$output" || exit=$?
 
-exit=$?
-if [ $exit -eq 0 ]; then
-  exit 0
-fi
-kprint "$(dirname "$interpreter")" "$output"
+[[ $exit == 0 ]] && exit 0
+
+kprint ".build/haskell/iele-testing-kompiled" "$output"
 printf "\n"
+
 exit $exit
