@@ -18,7 +18,6 @@ module IELE-CONFIGURATION
     imports IELE-COMMON
     imports IELE-WELL-FORMEDNESS
     imports DEFAULT-CONFIGURATION
-    imports DEFAULT-STRATEGY
 ```
 
 Configuration
@@ -29,7 +28,6 @@ In the comments next to each cell, we explain the purpose of the cell.
 
 ```k
     configuration <k/>                                               // Current computation
-                  <s/>                                               // Current strategy
                   <exit-code exit=""> 1 </exit-code>                 // Exit code of interpreter process
                   <mode> $MODE:Mode </mode>                          // Execution mode: VMTESTS or NORMAL
                   <schedule> $SCHEDULE:Schedule </schedule>          // Gas Schedule: DEFAULT or ALBE
@@ -1378,7 +1376,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
 
     rule <k> . => #illFormed ... </k>
          <typeChecking> true </typeChecking>
-         <s> #STUCK() => . ...</s>
+         [owise]
 
     rule <k> #illFormed ~> (K:KItem => .) ... </k>
       requires K =/=K #finishTypeChecking
