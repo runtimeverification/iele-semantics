@@ -14,7 +14,7 @@ trap "rm -rf $kast $output $assembled" INT TERM EXIT
 exit=0
 kore-exec .build/haskell/iele-testing-kompiled/definition.kore --pattern "$kast" --module IELE-TESTING --smt none --output "$output" || exit=$?
 
-[[ $exit == 0 ]] && exit 0
+[[ $exit != 0 ]] || exit 0
 
 kprint ".build/haskell/iele-testing-kompiled" "$output"
 printf "\n"
