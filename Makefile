@@ -33,13 +33,13 @@ LOCAL_INCLUDE  := $(BUILD_LOCAL)/include
 PLUGIN=$(abspath plugin)
 PROTO=$(abspath proto)
 
-.PHONY: all clean distclean build build-haskell tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode install kore libff protobuf
+.PHONY: all clean distclean build build-haskell tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-haskell iele-test-node node testnode install kore libff protobuf
 .SECONDARY:
 
 all: build split-vm-tests testnode
 
 clean:
-	rm -rf .build/standalone .build/llvm .build/node .build/check .build/plugin-node .build/plugin-standalone .build/vm compiler/.stack-work .build/haskell
+	rm -rf .build
 
 distclean: clean
 	cd .build/k && mvn clean
@@ -137,7 +137,8 @@ passing_blockchain_targets=${passing_blockchain_tests:=.test}
 
 iele_tests=$(wildcard tests/iele/*/*/*.iele.json)
 iele_targets=${iele_tests:=.test}
-iele_node_targets=${iele_tests:=.nodetest}
+iele_haskell_targets=${iele_tests:=.test-haskell}
+iele_node_targets=#${iele_tests:=.nodetest}
 
 iele_contracts=$(wildcard iele-examples/*.iele tests/iele/*/*/*.iele)
 well_formed_contracts=$(filter-out $(wildcard tests/iele/*/ill-formed/*.iele), ${iele_contracts})
@@ -147,13 +148,14 @@ test: $(passing_targets) ${iele_targets} ${iele_node_targets} ${well_formedness_
 vm-test: $(passing_vm_targets)
 blockchain-test: $(passing_blockchain_targets)
 iele-test: ${iele_targets}
+iele-test-haskell: $(iele_haskell_targets)
 iele-test-node: ${iele_node_targets}
 well-formed-test: ${well_formedness_targets}
 
 test-bad-packet:
-	netcat 127.0.0.1 $(PORT) -q 2 < tests/bad-packet
-	netcat 127.0.0.1 $(PORT) -q 2 < tests/bad-packet-2
-	.build/vm/iele-test-vm tests/iele/albe/sum/sum_zero.iele.json $(PORT)
+#	netcat 127.0.0.1 $(PORT) -q 2 < tests/bad-packet
+#	netcat 127.0.0.1 $(PORT) -q 2 < tests/bad-packet-2
+#	.build/vm/iele-test-vm tests/iele/albe/sum/sum_zero.iele.json $(PORT)
 
 tests/VMTests/%.json.test: tests/VMTests/%.json | .build/standalone/iele-testing-kompiled/interpreter
 	./vmtest $<
@@ -161,6 +163,8 @@ tests/BlockchainTests/%.json.test: tests/BlockchainTests/%.json | .build/standal
 	./blockchaintest $<
 tests/iele/%.json.test: tests/iele/%.json | .build/standalone/iele-testing-kompiled/interpreter 
 	./blockchaintest $<
+tests/iele/%.json.test-haskell: tests/iele/%.json | $(haskell_kompiled)
+	./vmtest-haskell $<
 
 %.iele.test: %.iele | .build/check/well-formedness-kompiled/interpreter
 	./check-iele $<
