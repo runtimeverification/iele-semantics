@@ -2,9 +2,7 @@
 interpreter="$(dirname "$0")/.build/check/well-formedness-kompiled/interpreter"
 kast="$(mktemp)"
 trap "rm -rf $kast" INT TERM EXIT
-"$(dirname "$0")/.build/k/k-distribution/target/release/k/bin/kast" -s Contract --expand-macros -d "$(dirname "$0")/.build/check" "$1" > "$kast"
-shift
-"$(dirname "$0")/.build/k/k-distribution/target/release/k/bin/krun" -cPGM="$kast" -pPGM=cat -cSCHEDULE=DANSE --output none -d "$(dirname "$0")/.build/check" "$@"
+krun --parser "kast -d $(dirname "$0")/.build/check -s Contract" -cSCHEDULE=DANSE --output none -d "$(dirname "$0")/.build/check" "$@"
 exit=$?
 if [ $exit -eq 0 ]; then
   exit 0
