@@ -45,7 +45,7 @@ distclean: clean
 	cd .build/k && mvn clean
 	cd .build/kore && stack clean
 
-build: tangle .build/standalone/iele-testing-kompiled/interpreter .build/vm/iele-vm assembler .build/check/well-formedness-kompiled/interpreter #build-haskell
+build: tangle .build/standalone/iele-testing-kompiled/interpreter .build/vm/iele-vm assembler .build/check/well-formedness-kompiled/interpreter build-haskell
 
 llvm: tangle .build/llvm/iele-testing.kore
 
