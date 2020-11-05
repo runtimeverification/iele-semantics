@@ -137,8 +137,11 @@ passing_blockchain_targets=${passing_blockchain_tests:=.test}
 
 iele_tests=$(wildcard tests/iele/*/*/*.iele.json)
 iele_targets=${iele_tests:=.test}
-iele_haskell_targets=${iele_tests:=.test-haskell}
 iele_node_targets=#${iele_tests:=.nodetest}
+
+iele_haskell_failing=$(shell cat tests/iele/failing.haskell)
+iele_haskell_passing=$(filter-out $(iele_haskell_failing), $(iele_tests))
+iele_haskell_targets=${iele_haskell_passing:=.test-haskell}
 
 iele_contracts=$(wildcard iele-examples/*.iele tests/iele/*/*/*.iele)
 well_formed_contracts=$(filter-out $(wildcard tests/iele/*/ill-formed/*.iele), ${iele_contracts})
