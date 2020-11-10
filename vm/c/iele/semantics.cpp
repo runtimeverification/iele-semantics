@@ -24,7 +24,7 @@ std::string get_output_data(list *l) {
 }
 
 uint64_t get_schedule(mpz_ptr number, CallContext *ctx) {
-  static uint32_t danse_tag = getTagForSymbolName("LblDANSE'Unds'IELE-CONSTANTS'Unds'{}");
+  static uint32_t danse_tag = getTagForSymbolName("LblDANSE{}");
   uint32_t tag = danse_tag;
   return (((uint64_t)tag) << 32) | 1;
 }
