@@ -24,16 +24,25 @@ pipeline {
       }
     }
     stage('Test') {
-      steps {
-        ansiColor('xterm') {
-          sh '''#!/bin/bash -ex
-            .build/vm/iele-vm 0 127.0.0.1 > port &
-            sleep 3
-            export PORT=`cat port | awk -F ':' '{print $2}'`
-            make test -j`nproc` -k
-            make coverage
-            kill %1
-          '''
+      stages {
+        stage('VM Tests') {
+          steps {
+            ansiColor('xterm') {
+              sh '''#!/bin/bash -ex
+                .build/vm/iele-vm 0 127.0.0.1 > port &
+                sleep 3
+                export PORT=`cat port | awk -F ':' '{print $2}'`
+                make test -j`nproc` -k
+                make coverage
+                kill %1
+              '''
+            }
+          }
+        }
+        stage('Haskell Standalone') {
+          options { timeout(time: 20, unit: 'MINUTES') }
+          failFast true
+          steps { sh 'make -j2 iele-test-haskell' }
         }
       }
     }

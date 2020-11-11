@@ -46,7 +46,7 @@ module IELE-COMMON
   syntax KResult
 
   syntax NumericIeleName ::= Int
-  syntax StringIeleName
+  syntax StringIeleName [token]
   syntax IeleName ::= NumericIeleName
   syntax IeleNameToken [token]
   syntax IeleName ::= IeleNameToken

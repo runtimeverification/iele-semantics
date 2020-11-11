@@ -33,7 +33,7 @@ LOCAL_INCLUDE  := $(BUILD_LOCAL)/include
 PLUGIN=$(abspath plugin)
 PROTO=$(abspath proto)
 
-.PHONY: all clean distclean build build-haskell tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-node node testnode install kore libff protobuf
+.PHONY: all clean distclean build build-haskell tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-haskell iele-test-node node testnode install kore libff protobuf
 .SECONDARY:
 
 all: build split-vm-tests testnode
@@ -45,7 +45,7 @@ distclean: clean
 	cd .build/k && mvn clean
 	cd .build/kore && stack clean
 
-build: tangle .build/standalone/iele-testing-kompiled/interpreter .build/vm/iele-vm assembler .build/check/well-formedness-kompiled/interpreter #build-haskell
+build: tangle .build/standalone/iele-testing-kompiled/interpreter .build/vm/iele-vm assembler .build/check/well-formedness-kompiled/interpreter build-haskell
 
 llvm: tangle .build/llvm/iele-testing.kore
 
@@ -137,7 +137,11 @@ passing_blockchain_targets=${passing_blockchain_tests:=.test}
 
 iele_tests=$(wildcard tests/iele/*/*/*.iele.json)
 iele_targets=${iele_tests:=.test}
-iele_node_targets=#${iele_tests:=.nodetest}
+iele_node_targets=${iele_tests:=.nodetest}
+
+iele_haskell_failing=$(shell cat tests/iele/failing.haskell)
+iele_haskell_passing=$(filter-out $(iele_haskell_failing), $(iele_tests))
+iele_haskell_targets=${iele_haskell_passing:=.test-haskell}
 
 iele_contracts=$(wildcard iele-examples/*.iele tests/iele/*/*/*.iele)
 well_formed_contracts=$(filter-out $(wildcard tests/iele/*/ill-formed/*.iele), ${iele_contracts})
@@ -147,13 +151,14 @@ test: $(passing_targets) ${iele_targets} ${iele_node_targets} ${well_formedness_
 vm-test: $(passing_vm_targets)
 blockchain-test: $(passing_blockchain_targets)
 iele-test: ${iele_targets}
+iele-test-haskell: $(iele_haskell_targets)
 iele-test-node: ${iele_node_targets}
 well-formed-test: ${well_formedness_targets}
 
 test-bad-packet:
-#	netcat 127.0.0.1 $(PORT) -q 2 < tests/bad-packet
-#	netcat 127.0.0.1 $(PORT) -q 2 < tests/bad-packet-2
-#	.build/vm/iele-test-vm tests/iele/albe/sum/sum_zero.iele.json $(PORT)
+	netcat 127.0.0.1 $(PORT) -q 2 < tests/bad-packet
+	netcat 127.0.0.1 $(PORT) -q 2 < tests/bad-packet-2
+	.build/vm/iele-test-vm tests/iele/danse/sum/sum_zero.iele.json $(PORT)
 
 tests/VMTests/%.json.test: tests/VMTests/%.json | .build/standalone/iele-testing-kompiled/interpreter
 	./vmtest $<
@@ -161,6 +166,8 @@ tests/BlockchainTests/%.json.test: tests/BlockchainTests/%.json | .build/standal
 	./blockchaintest $<
 tests/iele/%.json.test: tests/iele/%.json | .build/standalone/iele-testing-kompiled/interpreter 
 	./blockchaintest $<
+tests/iele/%.json.test-haskell: tests/iele/%.json | $(haskell_kompiled)
+	./vmtest-haskell $<
 
 %.iele.test: %.iele | .build/check/well-formedness-kompiled/interpreter
 	./check-iele $<
@@ -209,7 +216,7 @@ haskell-deps:
 .build/%/iele-testing-kompiled/interpreter: $(k_files) $(protobuf_out) $(libff_out)
 	@echo "== kompile: $@"
 	${KOMPILE} --debug --main-module IELE-TESTING --verbose --md-selector ${MD_SELECTOR} \
-					--syntax-module IELE-SYNTAX iele-testing.md --directory .build/$* --hook-namespaces KRYPTO \
+					--syntax-module IELE-SYNTAX iele-testing.md --directory .build/$* --hook-namespaces "KRYPTO BLOCKCHAIN" \
 	                                --backend llvm -ccopt ${PLUGIN}/plugin-c/crypto.cpp -ccopt $(PROTO)/blockchain.cpp -ccopt $(PROTO)/world.cpp -ccopt ${PLUGIN}/plugin-c/blake2.cpp -ccopt ${PLUGIN}/plugin-c/plugin_util.cpp -ccopt $(protobuf_out) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
 
 LLVM_KOMPILE_INCLUDE_OPTS := -I $(PLUGIN)/plugin-c/ -I $(PROTO) -I $(BUILD_DIR)/plugin-node -I vm/c/ -I vm/c/iele/ -I $(PLUGIN)/client-c -I $(LOCAL_INCLUDE)
@@ -240,7 +247,7 @@ $(haskell_kompiled):
 # ------------
 
 .build/plugin-ocaml/msg_types.ml: $(PROTO)/proto/msg.proto
-	mkdir .build/plugin-ocaml
+	mkdir -p .build/plugin-ocaml
 	eval `opam config env` && ocaml-protoc $< -ml_out .build/plugin-ocaml
 
 .build/vm/iele-test-vm: $(wildcard vm/*.ml vm/*.mli) .build/plugin-ocaml/msg_types.ml
