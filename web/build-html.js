@@ -11,6 +11,7 @@ const md = new MarkdownIt({
   html: true,
   linkify: true,
   highlight: function (str, lang) {
+    lang = lang.replace(/^\{\./, "").replace(/\}$/, "").trim();
     if (lang && hljs.getLanguage(lang)) {
       try {
         return (
