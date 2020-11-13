@@ -5,6 +5,8 @@ const glob = require("glob");
 const cheerio = require("cheerio");
 const hljs = require("highlight.js"); // https://highlightjs.org/
 const k = require("./highlight.js/k");
+const G = require("glob");
+const url = require("url");
 hljs.registerLanguage("k", k);
 
 const md = new MarkdownIt({
@@ -27,6 +29,7 @@ const md = new MarkdownIt({
     );
   },
 });
+md.use(require("markdown-it-anchor"));
 
 const files = {
   "./static_content/html/404.html": "404.html",
@@ -82,18 +85,21 @@ function generateOutputWebpage(sourceHTML, targetFilePath, variables = {}) {
 }
 
 /**
- *
+ * @param {string} globPattern
+ * @param {G.IOptions} globOptions
  * @param {string} sourceDirectory
  * @param {string} outputDirectory
  * @param {string} template
  */
-function generatePagesFromMarkdownFiles(
-  pattern,
+function generatePagesFromMarkdownFiles({
+  globPattern,
+  globOptions = {},
+  origin = "",
   sourceDirectory,
   outputDirectory,
-  template = ""
-) {
-  const files = glob.sync(pattern);
+  template = "",
+}) {
+  const files = glob.sync(globPattern, globOptions);
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     const targetFilePath = path.resolve(
@@ -125,16 +131,22 @@ function generatePagesFromMarkdownFiles(
         if (href.match(/^(https?|mailto):/)) {
           $(anchorElement).attr("target", "_blank");
           $(anchorElement).attr("rel", "noopener");
-        } else if (href.match(/\.md$/)) {
-          if (href.startsWith("../") && !href.match(/(index|README)\.md$/)) {
+        } else if (href.match(/\.md(#|$)/)) {
+          // might be ./README.md or ./README.md#tag
+          if (
+            href.startsWith("../") &&
+            !href.match(/(index|README)\.md(#|$)/)
+          ) {
             href = "../" + href;
           }
           $(anchorElement).attr(
             "href",
-            href.match(/(index|README)\.md$/)
-              ? href.replace(/(index|README)\.md$/, "")
-              : href.replace(/\.md$/, "/")
+            href.match(/(index|README)\.md(#|$)/)
+              ? href.replace(/(index|README)\.md/, "")
+              : href.replace(/(?:\/|^)(.+?)\.md/, ($0, name) => `../${name}/`)
           );
+        } else {
+          $(anchorElement).attr("href", url.resolve(origin, href));
         }
       } catch (error) {}
     });
@@ -184,9 +196,11 @@ const pageTemplate = fs
 //  path.resolve(__dirname, "./public_content/"),
 //  pageTemplate
 //);
-generatePagesFromMarkdownFiles(
-  path.resolve(__dirname, "../") + "/**/*.md",
-  path.resolve(__dirname, "../"),
-  path.resolve(__dirname, "./public_content/"),
-  pageTemplate
-);
+generatePagesFromMarkdownFiles({
+  globPattern: path.resolve(__dirname, "../") + "/**/*.md",
+  globOptions: { ignore: [path.resolve(__dirname, "../web/**/*")] },
+  origin: "https://github.com/runtimeverification/iele-semantics/tree/master/",
+  sourceDirectory: path.resolve(__dirname, "../"),
+  outputDirectory: path.resolve(__dirname, "./public_content/"),
+  template: pageTemplate,
+});
