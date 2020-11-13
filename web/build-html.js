@@ -143,7 +143,13 @@ function generatePagesFromMarkdownFiles({
             "href",
             href.match(/(index|README)\.md(#|$)/)
               ? href.replace(/(index|README)\.md/, "")
-              : href.replace(/(?:\/|^)(.+?)\.md/, ($0, name) => `../${name}/`)
+              : href.replace(/(?:\/|^)(.+?)\.md/, ($0, name) => {
+                  if (path.basename(file).match(/^(index|README)\.md$/i)) {
+                    return `./${name}/`;
+                  } else {
+                    return `../${name}/`;
+                  }
+                })
           );
         } else {
           $(anchorElement).attr("href", url.resolve(origin, href));
