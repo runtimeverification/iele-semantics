@@ -76,7 +76,7 @@ pipeline {
           sshagent(['2b3d8d6b-0855-4b59-864a-6b3ddf9c9d1a']) {
             sh '''
               git clone 'ssh://github.com/runtimeverification/iele-semantics.git' --depth 1 --no-single-branch --branch master --branch gh-pages
-              cd k
+              cd iele-semantics
               git checkout -B gh-pages origin/master
               cd web
               npm install
