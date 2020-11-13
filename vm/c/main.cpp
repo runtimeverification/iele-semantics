@@ -5,6 +5,7 @@
 #include "proto/msg.pb.h"
 #include "runtime/alloc.h"
 #include "version.h"
+#include "k.h"
 
 extern FILE *vm_out_chan;
 extern FILE *vm_in_chan;
