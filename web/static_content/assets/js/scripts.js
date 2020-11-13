@@ -31,7 +31,7 @@
         window.open(
           `https://www.google.com/search?q=site:${
             location.hostname.match(/\.github\.io/)
-              ? location.hostname + "/k"
+              ? location.hostname + "/iele-semantics"
               : location.hostname
           }%20${encodeURIComponent($("#search-box").val())}`,
           "_blank"
