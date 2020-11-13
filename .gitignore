@@ -27,3 +27,7 @@
 /tmp
 
 # TODO: The RVK make recipie should be putting these in .build
+
+/.kompile*
+/.kprove*
+/.krun*
