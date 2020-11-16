@@ -10,6 +10,8 @@ const loadLanguages = require("prismjs/components/");
 loadLanguages();
 const defineK = require("./prismjs/k");
 defineK(Prism);
+const defineIELE = require("./prismjs/iele");
+defineIELE(Prism);
 
 const md = new MarkdownIt({
   html: true,
