@@ -3,30 +3,33 @@ const path = require("path");
 const MarkdownIt = require("markdown-it");
 const glob = require("glob");
 const cheerio = require("cheerio");
-const hljs = require("highlight.js"); // https://highlightjs.org/
-const k = require("./highlight.js/k");
 const G = require("glob");
 const url = require("url");
-hljs.registerLanguage("k", k);
+const Prism = require("prismjs");
+const loadLanguages = require("prismjs/components/");
+loadLanguages();
+const defineK = require("./prismjs/k");
+defineK(Prism);
 
 const md = new MarkdownIt({
   html: true,
   linkify: true,
+  breaks: true,
   highlight: function (str, lang) {
-    lang = lang.replace(/^\{\./, "").replace(/\}$/, "").trim();
-    if (lang && hljs.getLanguage(lang)) {
-      try {
-        return (
-          '<pre class="hljs"><code>' +
-          hljs.highlight(lang, str, true).value +
-          "</code></pre>"
-        );
-      } catch (__) {}
+    lang = lang
+      .trim()
+      .replace(/^{\.(.+?)}?/, (_, $1) => $1)
+      .trim();
+    try {
+      const html = Prism.highlight(str, Prism.languages[lang], lang);
+      return `<pre class="language-${lang}"><code>` + html + "</code></pre>";
+    } catch (error) {
+      return (
+        '<pre class="language-text"><code>' +
+        md.utils.escapeHtml(str) +
+        "</code></pre>"
+      );
     }
-
-    return (
-      '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + "</code></pre>"
-    );
   },
 });
 md.use(require("markdown-it-anchor"));
