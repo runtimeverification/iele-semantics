@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+<meta charset="utf-8" />
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+/>
+<meta
+  name="description"
+  content="Design and implement your programming language and software analysis tools with mathematical rigor."
+/>
+<meta name="keywords" content="runtime, verification, rv, k" />
+<meta name="author" content="IELE Semantics | Runtime Verification Inc" />
+<meta name="robots" content="index, follow" />
+
+<!--favicon icon-->
+<link rel="icon" type="image/png" href="../assets/img/favicon.ico" />
+
+<title>IELE Semantics | Runtime Verification Inc</title>
+
+<!-- <base href="/k/" /> -->
+
+<!--web fonts-->
+<link
+  href="https://fonts.googleapis.com/css?family=Nunito:300,400,600,700,800"
+  rel="stylesheet"
+/>
+<link
+  href="https://fonts.googleapis.com/css?family=Lora:400i"
+  rel="stylesheet"
+/>
+
+<link
+  href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css"
+  rel="stylesheet"
+/>
+
+<link href="../assets/css/index.css" rel="stylesheet" />
+
+<!--[if (gt IE 9) |!(IE)]><!-->
+<!--<link rel="stylesheet" href="/assets/vendor/custom-nav/css/effects/fade-menu.css"/>-->
+<!-- <link rel="stylesheet" href="../assets/k/vl-nav/css/effects/slide-menu.css" /> -->
+<!--<![endif]-->
+
+  </head>
+
+  <body>
+<header
+  class="navbar navbar-expand navbar-dark flex-column flex-md-row bd-navbar"
+>
+  <a class="logo-link" href="../index.html"> IELE Semantics </a>
+  <ul class="navbar-nav ml-md-auto">
+    <li class="nav-item">
+      <a
+        class="nav-link pl-2 pr-1 mx-1 py-3 my-n2"
+        href="https://github.com/runtimeverification/iele-semantics"
+        target="_blank"
+        rel="noopener"
+        aria-label="GitHub"
+      >
+        <i class="fab fa-github"></i>
+      </a>
+    </li>
+  </ul>
+  <!--
+  <a
+    class="btn btn-rv-blue d-none d-lg-inline-block mb-3 mb-md-0 ml-md-3"
+    href="../downloads"
+    >Download</a
+  >
+  -->
+</header>
+
+
+    <div class="container-fluid">
+      <div class="row flex-xl-nowrap">
+<div class="col-12 col-md-3 col-xl-2 bd-sidebar mb-3">
+  <form
+    role="search"
+    class="bd-search d-flex align-items-center justify-content-between"
+  >
+    <input
+      type="search"
+      class="form-control"
+      placeholder="Search..."
+      aria-label="Search for..."
+      autocomplete="false"
+      id="search-box"
+    />
+    <button
+      class="btn bd-search-docs-toggle d-md-none p-0 ml-3 collapsed"
+      type="button"
+      aria-label="Toggle docs navigation"
+      style="font-size: 1.4rem"
+    >
+      <i class="fas fa-bars"></i>
+    </button>
+  </form>
+  <nav class="collapse bd-links" aria-label="Main navigation">
+    <div class="bd-toc-item">
+      <a class="bd-toc-link" href="../">Homepage</a>
+      <a class="bd-toc-link" href="../INSTALL">Install</a>
+      <a class="bd-toc-link" href="../Design">Design</a>
+    </div>
+  </nav>
+</div>
+
+        <main
+          class="col-12 col-md-9 col-xl-8 py-md-3 pl-md-5 bd-content"
+          role="main"
+        >
+          <div class="markdown-preview"><html><head></head><body><h1 id="iele-words">IELE Words</h1>
+<p>IELE uses arbitrary-precision integers, and sometimes also bytes (8 bit words).
+Here we provide the arithmetic of these words, as well as some data-structures over them.
+Both are implemented using K&apos;s <code>Int</code>.</p>
+<pre class="hljs"><code><span class="hljs-keyword">requires</span> <span class="hljs-string">&quot;plugin/plugin/krypto.md&quot;</span><span class="hljs-keyword">
+requires</span> <span class="hljs-string">&quot;domains.md&quot;</span><span class="hljs-keyword">
+requires</span> <span class="hljs-string">&quot;json.md&quot;</span><span class="hljs-keyword">
+
+module</span> IELE-DATA<span class="hljs-keyword">
+    imports</span> KRYPTO<span class="hljs-keyword">
+    imports</span> STRING-BUFFER<span class="hljs-keyword">
+    imports</span> ARRAY<span class="hljs-keyword">
+    imports</span> BYTES<span class="hljs-keyword">
+    imports</span> IELE-CONSTANTS<span class="hljs-keyword">
+    imports</span> IELE-COMMON<span class="hljs-keyword">
+    imports</span> COLLECTIONS<span class="hljs-keyword">
+    imports</span> JSON<span class="hljs-keyword">
+
+    syntax</span> KResult ::=<span class="hljs-keyword"> Int</span>
+</code></pre>
+<p>Some important numbers that are referred to often during execution:</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> Int</span> ::= <span class="hljs-string">&quot;pow30&quot;</span>  [function]
+                 | <span class="hljs-string">&quot;pow160&quot;</span> [function]
+                 | <span class="hljs-string">&quot;pow256&quot;</span> [function]
+ <span class="hljs-comment">// ----------------------------------</span><span class="hljs-keyword">
+    rule</span> pow30  =&gt; <span class="hljs-number">2</span> ^<span class="hljs-keyword">Int</span> <span class="hljs-number">30</span><span class="hljs-keyword">
+    rule</span> pow160 =&gt; <span class="hljs-number">2</span> ^<span class="hljs-keyword">Int</span> <span class="hljs-number">160</span><span class="hljs-keyword">
+    rule</span> pow256 =&gt; <span class="hljs-number">2</span> ^<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span>
+</code></pre>
+<h2 id="primitives">Primitives</h2>
+<p>Primitives provide the basic conversion from K&apos;s sorts <code>Int</code> and <code>Bool</code> to IELE&apos;s words.</p>
+<ul>
+<li><code>chop</code> interperets an integers modulo $2^256$. This is used when interpreting
+arbitrary precision integers as memory indices.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> Int</span> ::= chop (<span class="hljs-keyword"> Int</span> ) [function]
+ <span class="hljs-comment">// --------------------------------------</span><span class="hljs-keyword">
+    rule</span> chop ( I:<span class="hljs-keyword">Int</span> ) =&gt; bitRangeInt(I, <span class="hljs-number">0</span>, <span class="hljs-number">256</span>)<span class="hljs-keyword"> requires</span> I &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span>  orBool I &gt;=<span class="hljs-keyword">Int</span> pow256<span class="hljs-keyword">
+    rule</span> chop ( I:<span class="hljs-keyword">Int</span> ) =&gt; I<span class="hljs-keyword">               requires</span> I &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> andBool I &lt;<span class="hljs-keyword">Int</span> pow256
+</code></pre>
+<ul>
+<li><code>bool2Word</code> interperets a <code>Bool</code> as a <code>Int</code>.</li>
+<li><code>word2Bool</code> interperets a <code>Int</code> as a <code>Bool</code>.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> Int</span> ::= bool2Word (<span class="hljs-keyword"> Bool</span> ) [function]
+ <span class="hljs-comment">// --------------------------------------------</span><span class="hljs-keyword">
+    rule</span> bool2Word(true)  =&gt; <span class="hljs-number">1</span><span class="hljs-keyword">
+    rule</span> bool2Word(false) =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Bool</span> ::= word2Bool (<span class="hljs-keyword"> Int</span> ) [function]
+ <span class="hljs-comment">// --------------------------------------------</span><span class="hljs-keyword">
+    rule</span> word2Bool( <span class="hljs-number">0</span> ) =&gt; false<span class="hljs-keyword">
+    rule</span> word2Bool( W ) =&gt; true<span class="hljs-keyword">  requires</span> W =/=K <span class="hljs-number">0</span>
+</code></pre>
+<h3 id="empty-account">Empty Account</h3>
+<ul>
+<li><code>.Account</code> represents the case when an account ID is needed, but
+the actual value of the account ID is the empty set. This is used, for example, when
+referring to the destination of a message which creates a new contract.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> Account ::= <span class="hljs-string">&quot;.Account&quot;</span> |<span class="hljs-keyword"> Int</span>
+</code></pre>
+<h3 id="register-operations">Register Operations</h3>
+<ul>
+<li><code>#sizeRegs(R)</code> returns the number of registers in a list of Operands.</li>
+<li><code>#sizeLVals(R)</code> returns the number of registers in a list of LValues.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> Int</span> ::= #sizeRegs ( Operands ) [function]
+                 | #sizeRegs ( Operands ,<span class="hljs-keyword"> Int</span> ) [function, klabel(#sizeRegsAux)]
+ <span class="hljs-comment">// ----------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #sizeRegs(REGS) =&gt; #sizeRegs(REGS, <span class="hljs-number">0</span>)<span class="hljs-keyword">
+    rule</span> #sizeRegs(REG , REGS, N) =&gt; #sizeRegs(REGS, N +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>)<span class="hljs-keyword">
+    rule</span> #sizeRegs(.Operands, N) =&gt; N<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Int</span> ::= #sizeLVals ( LValues ) [function]
+                 | #sizeLVals ( LValues ,<span class="hljs-keyword"> Int</span> ) [function, klabel(#sizeLValuesAux)]
+ <span class="hljs-comment">// -------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #sizeLVals(REGS) =&gt; #sizeLVals(REGS, <span class="hljs-number">0</span>)<span class="hljs-keyword">
+    rule</span> #sizeLVals(REG , REGS, N) =&gt; #sizeLVals(REGS, N +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>)<span class="hljs-keyword">
+    rule</span> #sizeLVals(.LValues, N) =&gt; N<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> String</span> ::= IeleName2String ( IeleName ) [function]
+                    | IeleNameToken2String ( IeleNameToken ) [function, hook(STRING.<span class="hljs-literal">token</span>2string)]<span class="hljs-keyword">
+    syntax</span> IeleNameToken ::= String2IeleName (<span class="hljs-keyword"> String</span> ) [function, hook(STRING.string2token)]
+ <span class="hljs-comment">// -----------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> IeleName2String(I:<span class="hljs-keyword">Int</span>) =&gt; Int2String(I)<span class="hljs-keyword">
+    rule</span> IeleName2String(N) =&gt; IeleNameToken2String(N) [owise]<span class="hljs-keyword">
+    syntax</span><span class="hljs-keyword"> String</span> ::= StringIeleName2String ( StringIeleName ) [function, hook(STRING.<span class="hljs-literal">token</span>2string)]
+ <span class="hljs-comment">// ------------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Int</span> ::= getInt(K) [function]<span class="hljs-keyword">
+    syntax</span> IeleName ::= getIeleName(K) [function]
+ <span class="hljs-comment">// ---------------------------------------------</span><span class="hljs-keyword">
+    rule</span> getInt(I:<span class="hljs-keyword">Int</span>) =&gt; I<span class="hljs-keyword">
+    rule</span> getIeleName(X:IeleName) =&gt; X
+
+</code></pre>
+<h2 id="arithmetic">Arithmetic</h2>
+<ul>
+<li><code>up/Int</code> performs integer division but rounds up instead of down.</li>
+</ul>
+<p>NOTE: Here, we choose to add <code>I2 -Int 1</code> to the numerator beforing doing the division to mimic the C++ implementation.
+You could alternatively calculate <code>I1 %Int I2</code>, then add one to the normal integer division afterward depending on the result.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> Int</span> ::=<span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;up/Int&quot;</span><span class="hljs-keyword"> Int</span> [function, klabel(ceilDiv)]
+ <span class="hljs-comment">// -----------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> I1 up/<span class="hljs-keyword">Int</span> I2 =&gt; (I1 +<span class="hljs-keyword">Int</span> (I2 -<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>)) /<span class="hljs-keyword">Int</span> I2<span class="hljs-keyword"> requires</span> I2 &gt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span>
+
+</code></pre>
+<ul>
+<li><code>intSize</code> returns the size in words of an integer.</li>
+<li><code>bitsInWords</code> converts a number of bits to a number of words.</li>
+<li><code>bytesInWords</code> ocnverts a number of bytes to a number of words.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> Int</span> ::= intSize (<span class="hljs-keyword"> Int</span> ) [function]
+ <span class="hljs-comment">// -----------------------------------------</span><span class="hljs-keyword">
+    rule</span> intSize(N) =&gt; (log2Int(N) +<span class="hljs-keyword">Int</span> <span class="hljs-number">2</span>) up/<span class="hljs-keyword">Int</span> <span class="hljs-number">64</span><span class="hljs-keyword"> requires</span> N &gt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> intSize(<span class="hljs-number">0</span>) =&gt; <span class="hljs-number">1</span><span class="hljs-keyword">
+    rule</span> intSize(N) =&gt; intSize(~<span class="hljs-keyword">Int</span> N)<span class="hljs-keyword"> requires</span> N &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Int</span> ::= intSizes ( Ints ) [function]
+ <span class="hljs-comment">// -------------------------------------------</span><span class="hljs-keyword">
+    rule</span> intSizes(.Ints) =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> intSizes(I , INTS) =&gt; intSize(I) +<span class="hljs-keyword">Int</span> intSizes(INTS)<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Int</span> ::= intSizes ( Array ,<span class="hljs-keyword"> Int</span> , Schedule ) [function, klabel(intSizesArr)]
+                 | intSizes ( Array ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> , Schedule ) [function, klabel(intSizesAux)]
+ <span class="hljs-comment">// -----------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> intSizes(ARR::Array, I, SCHED) =&gt; intSizes(ARR, I, <span class="hljs-number">0</span>, SCHED)<span class="hljs-keyword">
+    rule</span> intSizes(ARR::Array, I, I, _) =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> intSizes(ARR, I, J, SCHED) =&gt; intSize(getInt(ARR [ J ])) +<span class="hljs-keyword">Int</span> intSizes(ARR, I, J +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, SCHED)<span class="hljs-keyword">
+      requires</span> SCHED =/=K ALBE [owise]<span class="hljs-keyword">
+    rule</span> intSizes(ARR, I, J, ALBE) =&gt; getInt(ARR [ J ]) +<span class="hljs-keyword">Int</span> intSizes(ARR, I, J +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, ALBE) [owise]<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Int</span> ::= bitsInWords (<span class="hljs-keyword"> Int</span> , Schedule ) [function]
+ <span class="hljs-comment">// ---------------------------------------------</span><span class="hljs-keyword">
+    rule</span> bitsInWords(I, ALBE) =&gt; I up/<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span><span class="hljs-keyword">
+    rule</span> bitsInWords(I, _) =&gt; I up/<span class="hljs-keyword">Int</span> <span class="hljs-number">64</span> [owise]<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Int</span> ::= bytesInWords (<span class="hljs-keyword"> Int</span> ) [function]
+ <span class="hljs-comment">// ----------------------------------------------</span><span class="hljs-keyword">
+    rule</span> bytesInWords(I) =&gt; I up/<span class="hljs-keyword">Int</span> <span class="hljs-number">8</span>
+</code></pre>
+<p>Here we provide simple syntactic sugar over our power-modulus operator.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> Int</span> ::= powmod(<span class="hljs-keyword">Int</span>,<span class="hljs-keyword"> Int</span>,<span class="hljs-keyword"> Int</span>) [function]
+ <span class="hljs-comment">// -----------------------------------------------</span><span class="hljs-keyword">
+    rule</span> powmod(W0, W1, W2) =&gt; W0 ^%<span class="hljs-keyword">Int</span> W1 W2<span class="hljs-keyword"> requires</span> W2 =/=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span>
+</code></pre>
+<ul>
+<li><code>gcdInt</code> computes the gcd of two integers.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> Int</span> ::= gcdInt(<span class="hljs-keyword">Int</span>,<span class="hljs-keyword"> Int</span>)  [function]
+                 | #gcdInt(<span class="hljs-keyword">Int</span>,<span class="hljs-keyword"> Int</span>) [function]
+ <span class="hljs-comment">// -------------------------------------------</span><span class="hljs-keyword">
+    rule</span> gcdInt(A, B) =&gt; #gcdInt(absInt(A), absInt(B))<span class="hljs-keyword"> requires</span> absInt(A) &gt;=<span class="hljs-keyword">Int</span> absInt(B)<span class="hljs-keyword">
+    rule</span> gcdInt(A, B) =&gt; #gcdInt(absInt(B), absInt(A)) [owise]<span class="hljs-keyword">
+    rule</span> #gcdInt(A, <span class="hljs-number">0</span>) =&gt; A<span class="hljs-keyword">
+    rule</span> #gcdInt(A, B) =&gt; #gcdInt(B, A modInt B) [owise]
+</code></pre>
+<h2 id="bitwise-operators">Bitwise Operators</h2>
+<ul>
+<li><code>byte</code> gets byte $N$ (0 being the LSB).</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> Int</span> ::= byte (<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ) [function]
+ <span class="hljs-comment">// --------------------------------------------</span><span class="hljs-keyword">
+    rule</span> byte(N, W) =&gt; bitRangeInt(W, N &lt;&lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">3</span>, <span class="hljs-number">8</span>)
+</code></pre>
+<ul>
+<li><code>_&lt;&lt;Byte_</code> shifts an integer 8 bits to the left.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> Int</span> ::=<span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;&lt;&lt;Byte&quot;</span><span class="hljs-keyword"> Int</span> [function]
+ <span class="hljs-comment">// ------------------------------------------</span><span class="hljs-keyword">
+    rule</span> N &lt;&lt;Byte M =&gt; N &lt;&lt;<span class="hljs-keyword">Int</span> (<span class="hljs-number">8</span> *<span class="hljs-keyword">Int</span> M)
+</code></pre>
+<ul>
+<li><code>signextend(N, W)</code> sign-extends from byte $N$ of $W$ (0 being LSB).</li>
+<li><code>twos(N, W)</code> converts a signed integer from byte $N$ of $W$ to twos-complement representation (0 being LSB).</li>
+<li><code>bswap(N, W)</code> converts a signed integer from byte $N$ of $W$ from little endian to big endian representation (or back).</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> Int</span> ::= signextend (<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ) [function]
+                 | twos (<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> )       [function]
+                 | bswap (<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> )      [function]
+ <span class="hljs-comment">// --------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> signextend(N, W) =&gt; signExtendBitRangeInt(W, <span class="hljs-number">0</span>, N &lt;&lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">3</span>)<span class="hljs-keyword">
+
+    rule</span> twos(N, W) =&gt; bitRangeInt(W, <span class="hljs-number">0</span>, N &lt;&lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">3</span>)<span class="hljs-keyword">
+
+    rule</span> bswap(N, W) =&gt; Bytes2Int(Int2Bytes(N, twos(N, W), BE), LE, Unsigned)
+</code></pre>
+<ul>
+<li><code>keccak</code> serves as a wrapper around the <code>Keccak256</code> in <code>KRYPTO</code>.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> Int</span> ::= keccak ( Bytes ) [function]
+ <span class="hljs-comment">// ----------------------------------------------</span><span class="hljs-keyword">
+    rule</span> keccak(WS) =&gt; #parseHexWord(Keccak256(Bytes2String(WS)))
+</code></pre>
+<h1 id="data-structures">Data Structures</h1>
+<p>Several data-structures and operations over <code>Int</code> are useful to have around.</p>
+<h2 id="word-stack">Word Stack</h2>
+<p>IELE makes use of a stack in some places in order to represent lists of integers.
+The stack and some standard operations over it are provided here.
+This stack also serves as a cons-list, so we provide some standard cons-list manipulation tools.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> WordStack [flatPredicate]<span class="hljs-keyword">
+    syntax</span> WordStack ::= <span class="hljs-string">&quot;.WordStack&quot;</span> |<span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;:&quot;</span> WordStack
+ <span class="hljs-comment">// -----------------------------------------------------</span>
+</code></pre>
+<ul>
+<li><code>_++_</code> acts as <code>WordStack</code> append.</li>
+<li><code>#rev</code> reverses a <code>WordStack</code>.</li>
+<li><code>#take(N , WS)</code> keeps the first $N$ elements of a <code>WordStack</code> (passing with zeros as needed).</li>
+<li><code>#drop(N , WS)</code> removes the first $N$ elements of a <code>WordStack</code>.</li>
+<li><code>WS [ N .. W ]</code> access the range of <code>WS</code> beginning with <code>N</code> of width <code>W</code>.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> WordStack ::= WordStack <span class="hljs-string">&quot;++&quot;</span> WordStack [function, <span class="hljs-literal">right</span>]
+ <span class="hljs-comment">// ---------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> .WordStack ++ WS&apos; =&gt; WS&apos;<span class="hljs-keyword">
+    rule</span> (W : WS)   ++ WS&apos; =&gt; W : (WS ++ WS&apos;)<span class="hljs-keyword">
+
+    syntax</span> WordStack ::= #rev ( WordStack , WordStack ) [function]
+ <span class="hljs-comment">// --------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #rev ( .WordStack , WS ) =&gt; WS<span class="hljs-keyword">
+    rule</span> #rev ( W : WS1 , WS2 ) =&gt; #rev(WS1, W : WS2)<span class="hljs-keyword">
+
+    syntax</span> WordStack ::= #take (<span class="hljs-keyword"> Int</span> , WordStack ) [function]
+                       | #take (<span class="hljs-keyword"> Int</span> , WordStack , WordStack ) [function, klabel(#takeAux)]
+ <span class="hljs-comment">// ---------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #take(N, WS)             =&gt; #take(N, WS, .WordStack)<span class="hljs-keyword">
+    rule</span> #take(<span class="hljs-number">0</span>, _, WS)          =&gt; #rev(WS, .WordStack)<span class="hljs-keyword">
+    rule</span> #take(N, .WordStack, WS) =&gt; #take(N -<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, .WordStack, <span class="hljs-number">0</span> : WS)<span class="hljs-keyword">  requires</span> N &gt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> #take(N, (W : WS1), WS2) =&gt; #take(N -<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, WS1,        W : WS2)<span class="hljs-keyword"> requires</span> N &gt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+
+    syntax</span> WordStack ::= #drop (<span class="hljs-keyword"> Int</span> , WordStack ) [function]
+ <span class="hljs-comment">// ---------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #drop(<span class="hljs-number">0</span>, WS)         =&gt; WS<span class="hljs-keyword">
+    rule</span> #drop(N, .WordStack) =&gt; .WordStack<span class="hljs-keyword">
+    rule</span> #drop(N, (W : WS))   =&gt; #drop(N -<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, WS) [owise]<span class="hljs-keyword">
+
+    syntax</span> WordStack ::= WordStack <span class="hljs-string">&quot;[&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;..&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;]&quot;</span> [function]
+ <span class="hljs-comment">// --------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> WS::WordStack [ START .. WIDTH ] =&gt; #take(chop(WIDTH), #drop(chop(START), WS))
+</code></pre>
+<ul>
+<li><code>WS [ N := WS&apos; ]</code> sets elements starting at $N$ of $WS$ to $WS&apos;$ (padding with zeros as needed).</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> WordStack ::= WordStack <span class="hljs-string">&quot;[&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;:=&quot;</span> WordStack <span class="hljs-string">&quot;]&quot;</span> [function, klabel(assignWordStackRange)]
+ <span class="hljs-comment">// --------------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> WS1::WordStack [ N := WS2::WordStack ] =&gt; #take(N, WS1) ++ WS2 ++ #drop(N +<span class="hljs-keyword">Int</span> #sizeWordStack(WS2), WS1)
+</code></pre>
+<ul>
+<li><code>#sizeWordStack</code> calculates the size of a <code>WordStack</code>.</li>
+<li><code>_in_</code> determines if a <code>Int</code> occurs in a <code>WordStack</code>.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> Int</span> ::= #sizeWordStack ( WordStack )       [function, smtlib(sizeWordStack)]
+                 | #sizeWordStack ( WordStack ,<span class="hljs-keyword"> Int</span> ) [function, klabel(sizeWordStackAux), smtlib(sizeWordStackAux)]
+ <span class="hljs-comment">// ----------------------------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #sizeWordStack ( WS ) =&gt; #sizeWordStack(WS, <span class="hljs-number">0</span>)<span class="hljs-keyword">
+    rule</span> #sizeWordStack ( .WordStack, SIZE ) =&gt; SIZE<span class="hljs-keyword">
+    rule</span> #sizeWordStack ( W : WS, SIZE )     =&gt; #sizeWordStack(WS, SIZE +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>)
+</code></pre>
+<ul>
+<li><code>#padToWidth(N, WS)</code> makes sure that a <code>WordStack</code> is the correct size.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> WordStack ::= #padToWidth (<span class="hljs-keyword"> Int</span> , WordStack ) [function]
+ <span class="hljs-comment">// ---------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #padToWidth(N, WS) =&gt; WS<span class="hljs-keyword">                     requires</span> notBool #sizeWordStack(WS) &lt;<span class="hljs-keyword">Int</span> N<span class="hljs-keyword">
+    rule</span> #padToWidth(N, WS) =&gt; #padToWidth(N, <span class="hljs-number">0</span> : WS)<span class="hljs-keyword"> requires</span> #sizeWordStack(WS) &lt;<span class="hljs-keyword">Int</span> N
+</code></pre>
+<h2 id="memory">Memory</h2>
+<ul>
+<li><code>.Array</code> is an arbitrary length array of zeroes.</li>
+<li><code>.Memory</code> is an arbitrary length array of byte buffers.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">
+    syntax</span> Array ::= <span class="hljs-string">&quot;.Array&quot;</span> [function]
+ <span class="hljs-comment">// ---------------------------------------------</span><span class="hljs-keyword">
+    rule</span> .Array =&gt; makeArray(pow30, <span class="hljs-number">0</span>)
+</code></pre>
+<h2 id="byte-arrays">Byte Arrays</h2>
+<p>The local memory of execution is a byte-array (instead of a word-array).</p>
+<ul>
+<li><code>#asUnsigned</code> will interpret a WordStack as a single unsigned integer (with MSB first).</li>
+<li><code>#asAccount</code> will interpret a Bytes as a single account id (with MSB first).
+Differs from <code>Bytes2Int</code> only in that an empty stack represents the empty account, not account zero.</li>
+<li><code>B [ N .. W ]</code> access the range of <code>B</code> beginning with <code>N</code> of width <code>W</code> (padding with zeros as needed).</li>
+<li><code>B [ N := B&apos; ]</code> sets elements starting at $N$ of $B$ to $B&apos;$ (padding with zeros as needed).</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> Int</span> ::= #asUnsigned ( WordStack ) [function]
+ <span class="hljs-comment">// ---------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #asUnsigned( .WordStack )    =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> #asUnsigned( W : .WordStack) =&gt; W<span class="hljs-keyword">
+    rule</span> #asUnsigned( W0 : W1 : WS )  =&gt; #asUnsigned(((W0 &lt;&lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">8</span>) |<span class="hljs-keyword">Int</span> W1) : WS)<span class="hljs-keyword">
+
+    syntax</span> Account ::= #asAccount (<span class="hljs-keyword"> String</span> ) [function]
+ <span class="hljs-comment">// ------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #asAccount(<span class="hljs-string">&quot;&quot;</span>) =&gt; .Account<span class="hljs-keyword">
+    rule</span> #asAccount(<span class="hljs-string">&quot;0x&quot;</span>) =&gt; .Account<span class="hljs-keyword">
+    rule</span> #asAccount(S::<span class="hljs-keyword">String</span>) =&gt; #parseHexWord(S) [owise]<span class="hljs-keyword">
+
+    syntax</span> Bytes ::= Bytes <span class="hljs-string">&quot;[&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;..&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;]&quot;</span> [function, klabel(bytesRange)]
+ <span class="hljs-comment">// --------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> B::Bytes [ I .. J ] =&gt; padRightBytes(substrBytes(B, I, minInt(lengthBytes(B), I +<span class="hljs-keyword">Int</span> J)), J, <span class="hljs-number">0</span>)<span class="hljs-keyword">
+      requires</span> I &lt;<span class="hljs-keyword">Int</span> lengthBytes(B)<span class="hljs-keyword">
+    rule</span> B::Bytes [ I .. J ] =&gt; padRightBytes(.Bytes, J, <span class="hljs-number">0</span>) [owise]<span class="hljs-keyword">
+
+    syntax</span> Bytes ::= Bytes <span class="hljs-string">&quot;[&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;:=&quot;</span> Bytes <span class="hljs-string">&quot;]&quot;</span> [function, klabel(assignBytesRange)]
+ <span class="hljs-comment">// ----------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> B::Bytes [ I := B&apos;::Bytes ] =&gt; replaceAtBytes(padRightBytes(B, I +<span class="hljs-keyword">Int</span> lengthBytes(B&apos;), <span class="hljs-number">0</span>), I, B&apos;)<span class="hljs-keyword">
+      requires</span> B&apos; =/=K .Bytes<span class="hljs-keyword">
+    rule</span> B::Bytes [ I := B&apos;::Bytes ] =&gt; B<span class="hljs-keyword">
+      requires</span> B&apos; ==K .Bytes
+</code></pre>
+<h2 id="addresses">Addresses</h2>
+<ul>
+<li><code>#addr</code> turns a IELE arbitrary-precision word into the corresponding IELE address (modulo 2^160).</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> Int</span> ::= #addr (<span class="hljs-keyword"> Int</span> ) [function]
+ <span class="hljs-comment">// ---------------------------------------</span><span class="hljs-keyword">
+    rule</span> #addr(W) =&gt; W modInt pow160
+</code></pre>
+<ul>
+<li><code>#newAddr</code> computes the address of a new account given the address and nonce of the creating account.</li>
+<li><code>#sender</code> computes the sender of the transaction from its data and signature.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> Int</span> ::= #newAddr (<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ) [function]
+ <span class="hljs-comment">// ------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #newAddr(ACCT, NONCE) =&gt; #addr(#parseHexWord(Keccak256(#rlpEncodeLength(#rlpEncodeBytes(ACCT, <span class="hljs-number">20</span>) +<span class="hljs-keyword">String</span> #rlpEncodeWord(NONCE), <span class="hljs-number">192</span>))))<span class="hljs-keyword">
+
+    syntax</span> Account ::= #sender (<span class="hljs-keyword"> String</span> ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> String</span> ,<span class="hljs-keyword"> String</span> )                                         [function, klabel(#senderAux)]
+                     | #sender (<span class="hljs-keyword"> String</span> )                                                                 [function, klabel(#senderAux2)]
+ <span class="hljs-comment">// ---------------------------------------------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #sender(HT, TW, TR, TS) =&gt; #sender(ECDSARecover(HT, TW, TR, TS))<span class="hljs-keyword">
+
+    rule</span> #sender(<span class="hljs-string">&quot;&quot;</span>)  =&gt; .Account<span class="hljs-keyword">
+    rule</span> #sender(STR) =&gt; #addr(#parseHexWord(Keccak256(STR)))<span class="hljs-keyword"> requires</span> STR =/=<span class="hljs-keyword">String</span> <span class="hljs-string">&quot;&quot;</span>
+</code></pre>
+<h2 id="word-map">Word Map</h2>
+<ul>
+<li><code>#removeZeros</code> removes any entries in a map with zero values.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> Map ::= #removeZeros ( Map ) [function]
+                 | #removeZeros ( List , Map ) [function, klabel(#removeZerosAux)]
+ <span class="hljs-comment">// ------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #removeZeros( M )                                   =&gt; #removeZeros(Set2List(keys(M)), M)<span class="hljs-keyword">
+    rule</span> #removeZeros( .List, .Map )                         =&gt; .Map<span class="hljs-keyword">
+    rule</span> #removeZeros( ListItem(KEY) L, KEY |-&gt; <span class="hljs-number">0</span> REST )     =&gt; #removeZeros(L, REST)<span class="hljs-keyword">
+    rule</span> #removeZeros( ListItem(KEY) L, KEY |-&gt; VALUE REST ) =&gt; KEY |-&gt; VALUE #removeZeros(L, REST)<span class="hljs-keyword"> requires</span> VALUE =/=K <span class="hljs-number">0</span>
+</code></pre>
+<h1 id="parsing%2Funparsing">Parsing/Unparsing</h1>
+<p>The IELE test-sets are represented in JSON format with hex-encoding of the data and programs.
+Here we provide some standard parser/unparser functions for that format.</p>
+<h2 id="parsing">Parsing</h2>
+<p>These parsers can interperet hex-encoded strings as <code>Int</code>s, <code>WordStack</code>s, and <code>Map</code>s.</p>
+<ul>
+<li><code>#parseHexWord</code> interperets a string as a single hex-encoded <code>Word</code>.</li>
+<li><code>#parseByteStack</code> interperets a string as a hex-encoded stack of bytes, but makes sure to remove the leading &quot;0x&quot;.</li>
+<li><code>#parseByteStackRaw</code> inteprets a string as a stack of bytes.</li>
+<li><code>#parseMap</code> interperets a JSON key/value object as a map from <code>Word</code> to <code>Word</code>.</li>
+<li><code>#parseAddr</code> interperets a string as a 160 bit hex-endcoded address.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> Int</span> ::= #parseHexWord (<span class="hljs-keyword"> String</span> ) [function]
+                 | #parseWord    (<span class="hljs-keyword"> String</span> ) [function]
+ <span class="hljs-comment">// --------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #parseHexWord(<span class="hljs-string">&quot;&quot;</span>)   =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> #parseHexWord(<span class="hljs-string">&quot;0x&quot;</span>) =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> #parseHexWord(S)    =&gt; String2Base(replaceAll(S, <span class="hljs-string">&quot;0x&quot;</span>, <span class="hljs-string">&quot;&quot;</span>), <span class="hljs-number">16</span>)<span class="hljs-keyword"> requires</span> (S =/=<span class="hljs-keyword">String</span> <span class="hljs-string">&quot;&quot;</span>) andBool (S =/=<span class="hljs-keyword">String</span> <span class="hljs-string">&quot;0x&quot;</span>)<span class="hljs-keyword">
+
+    rule</span> #parseWord(<span class="hljs-string">&quot;&quot;</span>) =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> #parseWord(S)  =&gt; #parseHexWord(S)<span class="hljs-keyword"> requires</span> lengthString(S) &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">2</span> andBool substrString(S, <span class="hljs-number">0</span>, <span class="hljs-number">2</span>) ==<span class="hljs-keyword">String</span> <span class="hljs-string">&quot;0x&quot;</span><span class="hljs-keyword">
+    rule</span> #parseWord(S)  =&gt; String2Int(S) [owise]<span class="hljs-keyword">
+
+    syntax</span> WordStack ::= #parseByteStack (<span class="hljs-keyword"> String</span> )    [function]
+                       | #parseByteStack (<span class="hljs-keyword"> String</span> , WordStack ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ) [function, klabel(#parseByteStackAux)]
+                       | #parseByteStackRaw (<span class="hljs-keyword"> String</span> ) [function]
+                       | #parseByteStackRaw (<span class="hljs-keyword"> String</span> , WordStack ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ) [function, klabel(#parseByteStackRawAux)]
+ <span class="hljs-comment">// --------------------------------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #parseByteStack(S) =&gt; #fun(STR =&gt; #parseByteStack(STR, .WordStack, <span class="hljs-number">0</span>, lengthString(STR)))(replaceAll(S, <span class="hljs-string">&quot;0x&quot;</span>, <span class="hljs-string">&quot;&quot;</span>))<span class="hljs-keyword">
+    rule</span> #parseByteStack(_, WS, LEN, LEN) =&gt; #rev(WS, .WordStack)<span class="hljs-keyword">
+    rule</span> #parseByteStack(S, WS, I, LEN)  =&gt; #parseByteStack(S, #parseHexWord(substrString(S, I, I +<span class="hljs-keyword">Int</span> <span class="hljs-number">2</span>)) : WS, I +<span class="hljs-keyword">Int</span> <span class="hljs-number">2</span>, LEN) [owise]<span class="hljs-keyword">
+    rule</span> #parseByteStackRaw(S) =&gt; #parseByteStackRaw(S, .WordStack, <span class="hljs-number">0</span>, lengthString(S))<span class="hljs-keyword">
+    rule</span> #parseByteStackRaw(S, WS, LEN, LEN) =&gt; #rev(WS, .WordStack)<span class="hljs-keyword">
+    rule</span> #parseByteStackRaw(S, WS, I, LEN) =&gt; #parseByteStackRaw(S, ordChar(substrString(S, I, I +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>)) : WS, I +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, LEN) [owise]<span class="hljs-keyword">
+
+    syntax</span> Map ::= #parseMap ( JSON ) [function]
+ <span class="hljs-comment">// --------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #parseMap( { .JSONs                   } ) =&gt; .Map<span class="hljs-keyword">
+    rule</span> #parseMap( { _   : (VALUE:<span class="hljs-keyword">String</span>) , REST } ) =&gt; #parseMap({ REST })<span class="hljs-keyword">                                                requires</span> #parseHexWord(VALUE) ==K <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> #parseMap( { KEY : (VALUE:<span class="hljs-keyword">String</span>) , REST } ) =&gt; #parseMap({ REST }) [ #parseHexWord(KEY) &lt;- #parseHexWord(VALUE) ]<span class="hljs-keyword"> requires</span> #parseHexWord(VALUE) =/=K <span class="hljs-number">0</span><span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Int</span> ::= #parseAddr (<span class="hljs-keyword"> String</span> ) [function]
+ <span class="hljs-comment">// -----------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #parseAddr(S) =&gt; #addr(#parseHexWord(S))
+</code></pre>
+<h2 id="unparsing">Unparsing</h2>
+<p>We need to interperet a <code>WordStack</code> as a <code>String</code> again so that we can call <code>Keccak256</code> on it from <code>KRYPTO</code>.</p>
+<ul>
+<li><code>#unparseByteStack</code> turns a stack of bytes (as a <code>WordStack</code>) into a <code>String</code>.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> String</span> ::= #unparseByteStack ( WordStack )                [function]
+                    | #unparseByteStack ( WordStack , StringBuffer ) [function, klabel(#unparseByteStackAux)]
+ <span class="hljs-comment">// ---------------------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #unparseByteStack ( WS ) =&gt; #unparseByteStack(WS, .StringBuffer)<span class="hljs-keyword">
+
+    rule</span> #unparseByteStack( .WordStack, BUFFER ) =&gt; StringBuffer2String(BUFFER)<span class="hljs-keyword">
+    rule</span> #unparseByteStack( W : WS, BUFFER )     =&gt; #unparseByteStack(WS, BUFFER +<span class="hljs-keyword">String</span> chrChar(W))
+</code></pre>
+<h1 id="recursive-length-prefix-(rlp)">Recursive Length Prefix (RLP)</h1>
+<p>RLP encoding is used extensively for executing the blocks of a transaction.
+For details about RLP encoding, see the <a href="http://gavwood.com/paper.pdf" target="_blank" rel="noopener">YellowPaper Appendix B</a>.
+This is included only for compatibility with the EVM test suite.</p>
+<h2 id="encoding">Encoding</h2>
+<ul>
+<li><code>#rlpEncodeWord</code> RLP encodes a single EVM word.</li>
+<li><code>#rlpEncodeBytes</code> RLP encodes a single integer as a fixed-width unsigned byte buffer.</li>
+<li><code>#rlpEncodeString</code> RLP encodes a single <code>String</code>.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> String</span> ::= #rlpEncodeWord (<span class="hljs-keyword"> Int</span> )            [function]
+                    | #rlpEncodeBytes (<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> )     [function]
+                    | #rlpEncodeString (<span class="hljs-keyword"> String</span> )       [function]
+                    | #rlpEncodeInts ( Ints ) [function, klabel(rlpEncodeInts), symbol]
+                    | #rlpEncodeInts ( StringBuffer, Ints ) [function, klabel(#rlpEncodeIntsAux)]
+ <span class="hljs-comment">// ---------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #rlpEncodeWord(<span class="hljs-number">0</span>) =&gt; <span class="hljs-string">&quot;\x80&quot;</span><span class="hljs-keyword">
+    rule</span> #rlpEncodeWord(WORD) =&gt; chrChar(WORD)<span class="hljs-keyword"> requires</span> WORD &gt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> andBool WORD &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">128</span><span class="hljs-keyword">
+    rule</span> #rlpEncodeWord(WORD) =&gt; #rlpEncodeLength(Bytes2String(Int2Bytes(WORD, BE, Unsigned)), <span class="hljs-number">128</span>)<span class="hljs-keyword"> requires</span> WORD &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">128</span><span class="hljs-keyword">
+
+    rule</span> #rlpEncodeBytes(WORD, LEN) =&gt; #rlpEncodeString(Bytes2String(Int2Bytes(LEN, WORD, BE)))<span class="hljs-keyword">
+
+    rule</span> #rlpEncodeString(STR) =&gt; STR<span class="hljs-keyword">                        requires</span> lengthString(STR) ==<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span> andBool ordChar(STR) &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">128</span><span class="hljs-keyword">
+    rule</span> #rlpEncodeString(STR) =&gt; #rlpEncodeLength(STR, <span class="hljs-number">128</span>) [owise]<span class="hljs-keyword">
+
+    rule</span> #rlpEncodeInts(INTS) =&gt; #rlpEncodeInts(.StringBuffer, INTS)<span class="hljs-keyword">
+    rule</span> #rlpEncodeInts(BUF =&gt; BUF +<span class="hljs-keyword">String</span> #rlpEncodeString(Bytes2String(Int2Bytes(I, BE, Signed))), (I , INTS) =&gt; INTS)<span class="hljs-keyword"> requires</span> I =/=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> #rlpEncodeInts(BUF =&gt; BUF +<span class="hljs-keyword">String</span> #rlpEncodeString(<span class="hljs-string">&quot;\x00&quot;</span>), (<span class="hljs-number">0</span>, INTS) =&gt; INTS)<span class="hljs-keyword">
+    rule</span> #rlpEncodeInts(BUF, .Ints) =&gt; #rlpEncodeLength(StringBuffer2String(BUF), <span class="hljs-number">192</span>)<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> String</span> ::= #rlpEncodeLength (<span class="hljs-keyword"> String</span> ,<span class="hljs-keyword"> Int</span> )          [function]
+                    | #rlpEncodeLength (<span class="hljs-keyword"> String</span> ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> String</span> ) [function, klabel(#rlpEncodeLengthAux)]
+ <span class="hljs-comment">// ----------------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #rlpEncodeLength(STR, OFFSET) =&gt; chrChar(lengthString(STR) +<span class="hljs-keyword">Int</span> OFFSET) +<span class="hljs-keyword">String</span> STR<span class="hljs-keyword"> requires</span> lengthString(STR) &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">56</span><span class="hljs-keyword">
+    rule</span> #rlpEncodeLength(STR, OFFSET) =&gt; #rlpEncodeLength(STR, OFFSET, Bytes2String(Int2Bytes(lengthString(STR), BE, Unsigned)))<span class="hljs-keyword"> requires</span> lengthString(STR) &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">56</span><span class="hljs-keyword">
+    rule</span> #rlpEncodeLength(STR, OFFSET, BL) =&gt; chrChar(lengthString(BL) +<span class="hljs-keyword">Int</span> OFFSET +<span class="hljs-keyword">Int</span> <span class="hljs-number">55</span>) +<span class="hljs-keyword">String</span> BL +<span class="hljs-keyword">String</span> STR
+</code></pre>
+<h2 id="decoding">Decoding</h2>
+<ul>
+<li><code>#loadLen</code> and <code>#loadOffset</code> decode a <code>WordStack</code> into a single string in an RLP-like encoding which does not allow lists in its structure.</li>
+<li><code>#rlpDecode</code> RLP decodes a single <code>String</code> into a <code>JSON</code>.</li>
+<li><code>#rlpDecodeList</code> RLP decodes a single <code>String</code> into a <code>JSONs</code>, interpereting the string as the RLP encoding of a list.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> LengthPrefixType ::= <span class="hljs-string">&quot;#str&quot;</span> | <span class="hljs-string">&quot;#list&quot;</span><span class="hljs-keyword">
+    syntax</span> LengthPrefix ::= LengthPrefixType <span class="hljs-string">&quot;(&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;,&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;)&quot;</span>
+ <span class="hljs-comment">// ------------------------------------------------------------</span><span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Int</span> ::= #loadLen ( WordStack ) [function]
+ <span class="hljs-comment">// ------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #loadLen ( B0 : WS ) =&gt; <span class="hljs-number">1</span><span class="hljs-keyword">                               requires</span> B0  &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">128</span> orBool  B0 &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">192</span><span class="hljs-keyword">
+    rule</span> #loadLen ( B0 : WS ) =&gt; B0 -<span class="hljs-keyword">Int</span> <span class="hljs-number">128</span><span class="hljs-keyword">                     requires</span> B0 &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">128</span> andBool B0  &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">184</span><span class="hljs-keyword">
+    rule</span> #loadLen ( B0 : WS ) =&gt; #asUnsigned(#take(B0 -<span class="hljs-keyword">Int</span> <span class="hljs-number">183</span>, WS))<span class="hljs-keyword"> requires</span> B0 &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">184</span> andBool B0  &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">192</span><span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Int</span> ::= #loadOffset ( WordStack ) [function]
+ <span class="hljs-comment">// ---------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #loadOffset ( B0 : WS ) =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">           requires</span> B0  &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">128</span> orBool  B0 &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">192</span><span class="hljs-keyword">
+    rule</span> #loadOffset ( B0 : WS ) =&gt; <span class="hljs-number">1</span><span class="hljs-keyword">           requires</span> B0 &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">128</span> andBool B0  &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">184</span><span class="hljs-keyword">
+    rule</span> #loadOffset ( B0 : WS ) =&gt; B0 -<span class="hljs-keyword">Int</span> <span class="hljs-number">182</span><span class="hljs-keyword"> requires</span> B0 &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">184</span> andBool B0  &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">192</span><span class="hljs-keyword">
+
+    syntax</span> JSON ::= #rlpDecode(<span class="hljs-keyword">String</span>)               [function, klabel(rlpDecode), symbol]
+                  | #rlpDecode(<span class="hljs-keyword">String</span>, LengthPrefix) [function, klabel(#rlpDecodeAux)]
+ <span class="hljs-comment">// ----------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #rlpDecode(STR) =&gt; #rlpDecode(STR, #decodeLengthPrefix(STR, <span class="hljs-number">0</span>))<span class="hljs-keyword">
+    rule</span> #rlpDecode(STR, #str(LEN, POS))  =&gt; substrString(STR, POS, POS +<span class="hljs-keyword">Int</span> LEN)<span class="hljs-keyword">
+    rule</span> #rlpDecode(STR, #list(LEN, POS)) =&gt; [#rlpDecodeList(STR, POS)]<span class="hljs-keyword">
+
+    syntax</span> JSONs ::= #rlpDecodeList(<span class="hljs-keyword">String</span>,<span class="hljs-keyword"> Int</span>)               [function]
+                      | #rlpDecodeList(<span class="hljs-keyword">String</span>,<span class="hljs-keyword"> Int</span>, LengthPrefix) [function, klabel(#rlpDecodeListAux)]
+ <span class="hljs-comment">// ---------------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #rlpDecodeList(STR, POS) =&gt; #rlpDecodeList(STR, POS, #decodeLengthPrefix(STR, POS))<span class="hljs-keyword"> requires</span> POS &lt;<span class="hljs-keyword">Int</span> lengthString(STR)<span class="hljs-keyword">
+    rule</span> #rlpDecodeList(STR, POS) =&gt; .JSONs [owise]<span class="hljs-keyword">
+    rule</span> #rlpDecodeList(STR, POS, _:LengthPrefixType(L, P)) =&gt; #rlpDecode(substrString(STR, POS, L +<span class="hljs-keyword">Int</span> P)) , #rlpDecodeList(STR, L +<span class="hljs-keyword">Int</span> P)<span class="hljs-keyword">
+
+    syntax</span> LengthPrefixType ::= <span class="hljs-string">&quot;#str&quot;</span> | <span class="hljs-string">&quot;#list&quot;</span><span class="hljs-keyword">
+    syntax</span> LengthPrefix ::= LengthPrefixType <span class="hljs-string">&quot;(&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;,&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;)&quot;</span>
+                          | #decodeLengthPrefix (<span class="hljs-keyword"> String</span> ,<span class="hljs-keyword"> Int</span> )                                [function]
+                          | #decodeLengthPrefix (<span class="hljs-keyword"> String</span> ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> )                          [function, klabel(#decodeLengthPrefixAux)]
+                          | #decodeLengthPrefixLength ( LengthPrefixType ,<span class="hljs-keyword"> String</span> ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ) [function]
+                          | #decodeLengthPrefixLength ( LengthPrefixType ,<span class="hljs-keyword"> Int</span>    ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ) [function, klabel(#decodeLengthPrefixLengthAux)]
+ <span class="hljs-comment">// --------------------------------------------------------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #decodeLengthPrefix(STR, START) =&gt; #decodeLengthPrefix(STR, START, ordChar(substrString(STR, START, START +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>)))<span class="hljs-keyword">
+
+    rule</span> #decodeLengthPrefix(STR, START, B0) =&gt; #str(<span class="hljs-number">1</span>, START)<span class="hljs-keyword">                                   requires</span> B0 &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">128</span><span class="hljs-keyword">
+    rule</span> #decodeLengthPrefix(STR, START, B0) =&gt; #str(B0 -<span class="hljs-keyword">Int</span> <span class="hljs-number">128</span>, START +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>)<span class="hljs-keyword">                  requires</span> B0 &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">128</span> andBool B0 &lt;<span class="hljs-keyword">Int</span> (<span class="hljs-number">128</span> +<span class="hljs-keyword">Int</span> <span class="hljs-number">56</span>)<span class="hljs-keyword">
+    rule</span> #decodeLengthPrefix(STR, START, B0) =&gt; #decodeLengthPrefixLength(#str, STR, START, B0)<span class="hljs-keyword">  requires</span> B0 &gt;=<span class="hljs-keyword">Int</span> (<span class="hljs-number">128</span> +<span class="hljs-keyword">Int</span> <span class="hljs-number">56</span>) andBool B0 &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">192</span><span class="hljs-keyword">
+    rule</span> #decodeLengthPrefix(STR, START, B0) =&gt; #list(B0 -<span class="hljs-keyword">Int</span> <span class="hljs-number">192</span>, START +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>)<span class="hljs-keyword">                 requires</span> B0 &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">192</span> andBool B0 &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">192</span> +<span class="hljs-keyword">Int</span> <span class="hljs-number">56</span><span class="hljs-keyword">
+    rule</span> #decodeLengthPrefix(STR, START, B0) =&gt; #decodeLengthPrefixLength(#list, STR, START, B0) [owise]<span class="hljs-keyword">
+
+    rule</span> #decodeLengthPrefixLength(#str,  STR, START, B0) =&gt; #decodeLengthPrefixLength(#str,  START, B0 -<span class="hljs-keyword">Int</span> <span class="hljs-number">128</span> -<span class="hljs-keyword">Int</span> <span class="hljs-number">56</span> +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, Bytes2Int(String2Bytes(substrString(STR, START +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, START +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span> +<span class="hljs-keyword">Int</span> (B0 -<span class="hljs-keyword">Int</span> <span class="hljs-number">128</span> -<span class="hljs-keyword">Int</span> <span class="hljs-number">56</span> +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>))), BE, Unsigned))<span class="hljs-keyword">
+    rule</span> #decodeLengthPrefixLength(#list, STR, START, B0) =&gt; #decodeLengthPrefixLength(#list, START, B0 -<span class="hljs-keyword">Int</span> <span class="hljs-number">192</span> -<span class="hljs-keyword">Int</span> <span class="hljs-number">56</span> +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, Bytes2Int(String2Bytes(substrString(STR, START +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, START +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span> +<span class="hljs-keyword">Int</span> (B0 -<span class="hljs-keyword">Int</span> <span class="hljs-number">192</span> -<span class="hljs-keyword">Int</span> <span class="hljs-number">56</span> +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>))), BE, Unsigned))<span class="hljs-keyword">
+    rule</span> #decodeLengthPrefixLength(TYPE, START, LL, L) =&gt; TYPE(L, START +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span> +<span class="hljs-keyword">Int</span> LL)<span class="hljs-keyword">
+
+endmodule</span>
+</code></pre>
+</body></html></div>
+        </main>
+      </div>
+    </div>
+<footer class="app-footer text-md-left text-center">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-2 mb-md-0 mb-4">
+        <span class="pr-md-5 pr-0 py-3">
+          <a href="https://runtimeverification.com" target="_blank">
+            <picture>
+              <source
+                srcset="../assets/img/rv-logo-dark.png"
+                media="(prefers-color-scheme: dark)"
+              />
+              <img
+                class="pr-3 footer-logo"
+                src="../assets/img/rv-logo.png"
+                alt="Runtime Verification Inc logo"
+              />
+            </picture>
+          </a>
+        </span>
+      </div>
+      <div class="col-md-6 mb-md-0 mb-4"></div>
+      <div class="col-md-4 text-md-right">
+        <p class="copyright">
+          &copy; 2020 Runtime Verification Inc. All right reserved.
+        </p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script
+  async
+  src="https://www.googletagmanager.com/gtag/js?id=UA-163311512-1"
+></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag("js", new Date());
+  gtag("config", "UA-163311512-1");
+</script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Typist/1.2/typist.min.js"></script>
+    <script src="../assets/js/index.js"></script>
+  </body>
+</html>

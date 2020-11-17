@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+<meta charset="utf-8" />
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+/>
+<meta
+  name="description"
+  content="Design and implement your programming language and software analysis tools with mathematical rigor."
+/>
+<meta name="keywords" content="runtime, verification, rv, k" />
+<meta name="author" content="IELE Semantics | Runtime Verification Inc" />
+<meta name="robots" content="index, follow" />
+
+<!--favicon icon-->
+<link rel="icon" type="image/png" href="../assets/img/favicon.ico" />
+
+<title>IELE Semantics | Runtime Verification Inc</title>
+
+<!-- <base href="/k/" /> -->
+
+<!--web fonts-->
+<link
+  href="https://fonts.googleapis.com/css?family=Nunito:300,400,600,700,800"
+  rel="stylesheet"
+/>
+<link
+  href="https://fonts.googleapis.com/css?family=Lora:400i"
+  rel="stylesheet"
+/>
+
+<link
+  href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css"
+  rel="stylesheet"
+/>
+
+<link href="../assets/css/index.css" rel="stylesheet" />
+
+<!--[if (gt IE 9) |!(IE)]><!-->
+<!--<link rel="stylesheet" href="/assets/vendor/custom-nav/css/effects/fade-menu.css"/>-->
+<!-- <link rel="stylesheet" href="../assets/k/vl-nav/css/effects/slide-menu.css" /> -->
+<!--<![endif]-->
+
+  </head>
+
+  <body>
+<header
+  class="navbar navbar-expand navbar-dark flex-column flex-md-row bd-navbar"
+>
+  <a class="logo-link" href="../index.html"> IELE Semantics </a>
+  <ul class="navbar-nav ml-md-auto">
+    <li class="nav-item">
+      <a
+        class="nav-link pl-2 pr-1 mx-1 py-3 my-n2"
+        href="https://github.com/runtimeverification/iele-semantics"
+        target="_blank"
+        rel="noopener"
+        aria-label="GitHub"
+      >
+        <i class="fab fa-github"></i>
+      </a>
+    </li>
+  </ul>
+  <!--
+  <a
+    class="btn btn-rv-blue d-none d-lg-inline-block mb-3 mb-md-0 ml-md-3"
+    href="../downloads"
+    >Download</a
+  >
+  -->
+</header>
+
+
+    <div class="container-fluid">
+      <div class="row flex-xl-nowrap">
+<div class="col-12 col-md-3 col-xl-2 bd-sidebar mb-3">
+  <form
+    role="search"
+    class="bd-search d-flex align-items-center justify-content-between"
+  >
+    <input
+      type="search"
+      class="form-control"
+      placeholder="Search..."
+      aria-label="Search for..."
+      autocomplete="false"
+      id="search-box"
+    />
+    <button
+      class="btn bd-search-docs-toggle d-md-none p-0 ml-3 collapsed"
+      type="button"
+      aria-label="Toggle docs navigation"
+      style="font-size: 1.4rem"
+    >
+      <i class="fas fa-bars"></i>
+    </button>
+  </form>
+  <nav class="collapse bd-links" aria-label="Main navigation">
+    <div class="bd-toc-item">
+      <a class="bd-toc-link" href="../">Homepage</a>
+      <a class="bd-toc-link" href="../INSTALL">Install</a>
+      <a class="bd-toc-link" href="../Design">Design</a>
+    </div>
+  </nav>
+</div>
+
+        <main
+          class="col-12 col-md-9 col-xl-8 py-md-3 pl-md-5 bd-content"
+          role="main"
+        >
+          <div class="markdown-preview"><html><head></head><body><h1 id="iele-testing">IELE Testing</h1>
+<p>Here we define a test harness for the new IELE VM.
+Actual execution of IELE is defined in <a href="../iele/">the IELE file</a>.</p>
+<pre class="hljs"><code><span class="hljs-keyword">requires</span> <span class="hljs-string">&quot;iele.md&quot;</span><span class="hljs-keyword">
+requires</span> <span class="hljs-string">&quot;iele-binary.md&quot;</span>
+</code></pre>
+<pre class="hljs"><code><span class="hljs-keyword">requires</span> <span class="hljs-string">&quot;iele-node.md&quot;</span>
+</code></pre>
+<pre class="hljs"><code><span class="hljs-keyword">module</span> IELE-TESTING<span class="hljs-keyword">
+    imports</span> IELE<span class="hljs-keyword">
+    imports</span> IELE-BINARY<span class="hljs-keyword">
+    imports</span> K-REFLECTION
+</code></pre>
+<pre class="hljs"><code><span class="hljs-keyword">    imports</span> IELE-NODE
+</code></pre>
+<p>A IELE simulation is a list of IELE commands.
+Some IELE commands take a specification of IELE state (eg. for an account or transaction).</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> IELESimulation ::= <span class="hljs-string">&quot;.IELESimulation&quot;</span>
+                                | IELECommand IELESimulation
+ <span class="hljs-comment">// --------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> .IELESimulation =&gt; .<span class="hljs-keyword">
+    rule</span> IEC:IELECommand IES:IELESimulation =&gt; IEC ~&gt; IES<span class="hljs-keyword">
+
+    syntax</span> IELESimulation ::= JSON
+ <span class="hljs-comment">// ------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; JSONINPUT:JSON =&gt; run JSONINPUT success .IELESimulation &lt;/k&gt;
+</code></pre>
+<p>For verification purposes, it&apos;s much easier to specify a program in terms of its op-codes and not the hex-encoding that the tests use.
+To do so, we&apos;ll extend sort <code>JSON</code> with some IELE specific syntax, and provide a &quot;pretti-fication&quot; to the nicer input form.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> JSON ::=<span class="hljs-keyword"> Int</span> | WordStack | Bytes | Map | SubstateLogEntry | Account<span class="hljs-keyword">
+    syntax</span> JSONKey ::=<span class="hljs-keyword"> Int</span>
+ <span class="hljs-comment">// ------------------------------------------------------------------</span><span class="hljs-keyword">
+
+    syntax</span> JSONs ::= #sortJSONList ( JSONs )            [function]
+                      | #sortJSONList ( JSONs , JSONs ) [function, klabel(#sortJSONListAux)]
+ <span class="hljs-comment">// ----------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #sortJSONList(JS) =&gt; #sortJSONList(JS, .JSONs)<span class="hljs-keyword">
+    rule</span> #sortJSONList(.JSONs, LS)            =&gt; LS<span class="hljs-keyword">
+    rule</span> #sortJSONList(((KEY : VAL:JSON) , REST), LS) =&gt; #insertJSONKey((KEY : VAL), #sortJSONList(REST, LS))<span class="hljs-keyword">
+
+    syntax</span> JSONs ::= #insertJSONKey ( JSON , JSONs ) [function]
+ <span class="hljs-comment">// -----------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #insertJSONKey( JS , .JSONs ) =&gt; JS , .JSONs<span class="hljs-keyword">
+    rule</span> #insertJSONKey( (KEY : VAL) , ((KEY&apos; : VAL&apos;) , REST) ) =&gt; (KEY : VAL)   , (KEY&apos; : VAL&apos;)              , REST<span class="hljs-keyword">  requires</span> KEY &lt;<span class="hljs-keyword">String</span> KEY&apos;<span class="hljs-keyword">
+    rule</span> #insertJSONKey( (KEY : VAL) , ((KEY&apos; : VAL&apos;) , REST) ) =&gt; (KEY&apos; : VAL&apos;) , #insertJSONKey((KEY : VAL) , REST)<span class="hljs-keyword"> requires</span> KEY &gt;=<span class="hljs-keyword">String</span> KEY&apos;<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Bool</span> ::= #isSorted ( JSONs ) [function]
+ <span class="hljs-comment">// -------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #isSorted( .JSONs ) =&gt; true<span class="hljs-keyword">
+    rule</span> #isSorted( KEY : _:JSON )   =&gt; true<span class="hljs-keyword">
+    rule</span> #isSorted( (KEY : _) , (KEY&apos; : VAL) , REST ) =&gt; KEY &lt;=<span class="hljs-keyword">String</span> KEY&apos; andThenBool #isSorted((KEY&apos; : VAL) , REST)
+</code></pre>
+<h3 id="driving-execution">Driving Execution</h3>
+<ul>
+<li><code>start</code> places <code>#next</code> on the <code>&lt;k&gt;</code> cell so that execution of the loaded state begin.</li>
+<li><code>flush</code> places <code>#finalize</code> on the <code>&lt;k&gt;</code> cell once it sees <code>#end</code> in the <code>&lt;k&gt;</code> cell, clearing any exceptions it finds.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> IELECommand ::= <span class="hljs-string">&quot;start&quot;</span>
+ <span class="hljs-comment">// ------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;mode&gt; NORMAL     &lt;/mode&gt; &lt;k&gt; start =&gt; #loads #regRange(#sizeRegs(VALUES)) VALUES ~&gt; #execute    ... &lt;/k&gt; &lt;callData&gt; VALUES &lt;/callData&gt; &lt;fid&gt; _ =&gt; deposit &lt;/fid&gt;<span class="hljs-keyword">
+    rule</span> &lt;mode&gt; VMTESTS    &lt;/mode&gt; &lt;k&gt; start =&gt; #loads #regRange(#sizeRegs(VALUES)) VALUES ~&gt; #execute    ... &lt;/k&gt; &lt;callData&gt; VALUES &lt;/callData&gt; &lt;fid&gt; _ =&gt; deposit &lt;/fid&gt;
+ <span class="hljs-comment">// rule &lt;mode&gt; GASANALYZE &lt;/mode&gt; &lt;k&gt; start =&gt; #loads #regRange(#sizeRegs(VALUES)) VALUES ~&gt; #gasAnalyze ... &lt;/k&gt; &lt;callData&gt; VALUES &lt;/callData&gt; &lt;fid&gt; _ =&gt; deposit &lt;/fid&gt;</span><span class="hljs-keyword">
+
+    syntax</span> IELECommand ::= <span class="hljs-string">&quot;flush&quot;</span>
+ <span class="hljs-comment">// ------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #end       ~&gt; flush =&gt; #finalizeTx(false)               ... &lt;/k&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exception CODE ~&gt; flush =&gt; #finalizeTx(false) ~&gt; #exception CODE ... &lt;/k&gt;
+</code></pre>
+<ul>
+<li><code>startTx</code> computes the sender of the transaction, and places loadTx on the <code>k</code> cell.</li>
+<li><code>loadTx(_)</code> loads the next transaction to be executed into the current state.</li>
+<li><code>#adjustGas</code> fakes the gas usage of the transaction since the EVM-to-IELE conversion does not preserve gas usage.</li>
+<li><code>finishTx</code> is a place-holder for performing necessary cleanup after a transaction.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> IELECommand ::= <span class="hljs-string">&quot;startTx&quot;</span>
+ <span class="hljs-comment">// --------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; startTx =&gt; #finalizeBlock ... &lt;/k&gt;
+         &lt;txPending&gt; .List &lt;/txPending&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; startTx =&gt; loadTx(TS) ... &lt;/k&gt;
+         &lt;txPending&gt; ListItem(TXID:<span class="hljs-keyword">Int</span>) ... &lt;/txPending&gt;
+         &lt;message&gt;
+           &lt;msgID&gt;      TXID &lt;/msgID&gt;
+           &lt;txNonce&gt;    TN   &lt;/txNonce&gt;
+           &lt;txGasPrice&gt; TP   &lt;/txGasPrice&gt;
+           &lt;txGasLimit&gt; TG   &lt;/txGasLimit&gt;
+           &lt;sendto&gt;     TT   &lt;/sendto&gt;
+           &lt;value&gt;      TV   &lt;/value&gt;
+           &lt;from&gt;       TS   &lt;/from&gt;
+           &lt;data&gt;       DATA &lt;/data&gt;
+           ...
+         &lt;/message&gt;<span class="hljs-keyword">
+
+    syntax</span> IELECommand ::= loadTx (<span class="hljs-keyword"> Int</span> )
+ <span class="hljs-comment">// -------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; loadTx(ACCTFROM)
+          =&gt; #fun(CONTRACT =&gt;
+             #checkContract CONTRACT
+          ~&gt; #create ACCTFROM #newAddr(ACCTFROM, NONCE) ((GLIMIT -<span class="hljs-keyword">Int</span> G0(SCHED, CODE, ARGS))*<span class="hljs-keyword">Int</span> Sgasdivisor &lt; SCHED &gt;) VALUE CONTRACT ARGS
+          ~&gt; #codeDeposit #newAddr(ACCTFROM, NONCE) #sizeWordStack(CODE) CONTRACT %<span class="hljs-number">0</span> %<span class="hljs-number">1</span> true ~&gt; #adjustGas ~&gt; #finalizeTx(false) ~&gt; startTx)(#if #isValidContract(CODE) #then #dasmContract(CODE, Main) #else #illFormed #fi)
+         ...
+         &lt;/k&gt;
+         &lt;schedule&gt; SCHED &lt;/schedule&gt;
+         &lt;gasPrice&gt; _ =&gt; GPRICE &lt;/gasPrice&gt;
+         &lt;origin&gt; _ =&gt; ACCTFROM &lt;/origin&gt;
+         &lt;callDepth&gt; _ =&gt; <span class="hljs-number">-1</span> &lt;/callDepth&gt;
+         &lt;gas&gt; _ =&gt; <span class="hljs-number">0</span> &lt;/gas&gt;
+         &lt;refund&gt; _ =&gt; <span class="hljs-number">0</span> &lt;/refund&gt;
+         &lt;logData&gt; _ =&gt; .List &lt;/logData&gt;
+         &lt;txPending&gt; ListItem(TXID:<span class="hljs-keyword">Int</span>) ... &lt;/txPending&gt;
+         &lt;message&gt;
+           &lt;msgID&gt;      TXID     &lt;/msgID&gt;
+           &lt;txGasPrice&gt; GPRICE   &lt;/txGasPrice&gt;
+           &lt;txGasLimit&gt; GLIMIT   &lt;/txGasLimit&gt;
+           &lt;sendto&gt;     .Account &lt;/sendto&gt;
+           &lt;value&gt;      VALUE    &lt;/value&gt;
+           &lt;data&gt;       CODE     &lt;/data&gt;
+           &lt;args&gt;       ARGS     &lt;/args&gt;
+           ...
+         &lt;/message&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCTFROM &lt;/acctID&gt;
+           &lt;balance&gt; BAL =&gt; BAL -<span class="hljs-keyword">Int</span> (GLIMIT *<span class="hljs-keyword">Int</span> GPRICE) &lt;/balance&gt;
+           &lt;nonce&gt; NONCE =&gt; NONCE +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span> &lt;/nonce&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; loadTx(ACCTFROM)
+          =&gt; #call ACCTFROM ACCTTO @ FUNC ((GLIMIT -<span class="hljs-keyword">Int</span> G0(SCHED, IeleName2String(FUNC), ARGS))*<span class="hljs-keyword">Int</span> Sgasdivisor &lt; SCHED &gt;) VALUE ARGS false
+          ~&gt; #finishTx ~&gt; #adjustGas ~&gt; #finalizeTx(false) ~&gt; startTx
+         ...
+         &lt;/k&gt;
+         &lt;schedule&gt; SCHED &lt;/schedule&gt;
+         &lt;gasPrice&gt; _ =&gt; GPRICE &lt;/gasPrice&gt;
+         &lt;origin&gt; _ =&gt; ACCTFROM &lt;/origin&gt;
+         &lt;callDepth&gt; _ =&gt; <span class="hljs-number">-1</span> &lt;/callDepth&gt;
+         &lt;gas&gt; _ =&gt; <span class="hljs-number">0</span> &lt;/gas&gt;
+         &lt;refund&gt; _ =&gt; <span class="hljs-number">0</span> &lt;/refund&gt;
+         &lt;logData&gt; _ =&gt; .List &lt;/logData&gt;
+         &lt;txPending&gt; ListItem(TXID:<span class="hljs-keyword">Int</span>) ... &lt;/txPending&gt;
+         &lt;message&gt;
+           &lt;msgID&gt;      TXID   &lt;/msgID&gt;
+           &lt;txGasPrice&gt; GPRICE &lt;/txGasPrice&gt;
+           &lt;txGasLimit&gt; GLIMIT &lt;/txGasLimit&gt;
+           &lt;sendto&gt;     ACCTTO &lt;/sendto&gt;
+           &lt;value&gt;      VALUE  &lt;/value&gt;
+           &lt;args&gt;       ARGS   &lt;/args&gt;
+           &lt;func&gt;       FUNC   &lt;/func&gt;
+           ...
+         &lt;/message&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCTFROM &lt;/acctID&gt;
+           &lt;balance&gt; BAL =&gt; BAL -<span class="hljs-keyword">Int</span> (GLIMIT *<span class="hljs-keyword">Int</span> GPRICE) &lt;/balance&gt;
+           &lt;nonce&gt; NONCE =&gt; NONCE +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span> &lt;/nonce&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+      requires</span> ACCTTO =/=K .Account<span class="hljs-keyword">
+
+    syntax</span> IELECommand ::= <span class="hljs-string">&quot;#adjustGas&quot;</span>
+ <span class="hljs-comment">// -----------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #adjustGas =&gt; . ... &lt;/k&gt;
+         &lt;checkGas&gt; false &lt;/checkGas&gt;
+         &lt;gas&gt; _ =&gt; GLIMIT -<span class="hljs-keyword">Int</span> GUSED &lt;/gas&gt;
+         &lt;refund&gt; _ =&gt; <span class="hljs-number">0</span> &lt;/refund&gt;
+         &lt;gasUsed&gt; GUSED &lt;/gasUsed&gt;
+         &lt;txPending&gt; ListItem(TXID:<span class="hljs-keyword">Int</span>) ... &lt;/txPending&gt;
+         &lt;message&gt;
+           &lt;msgID&gt; TXID &lt;/msgID&gt;
+           &lt;txGasLimit&gt; GLIMIT &lt;/txGasLimit&gt;
+           ...
+         &lt;/message&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #adjustGas =&gt; . ... &lt;/k&gt; &lt;checkGas&gt; true &lt;/checkGas&gt; &lt;gas&gt; GAVAIL =&gt; GAVAIL up/<span class="hljs-keyword">Int</span> Sgasdivisor &lt; SCHED &gt; &lt;/gas&gt; &lt;schedule&gt; SCHED &lt;/schedule&gt;<span class="hljs-keyword">
+    rule</span> STATUS:<span class="hljs-keyword">Int</span> ~&gt; #adjustGas =&gt; #load %<span class="hljs-number">0</span> STATUS ~&gt; #adjustGas<span class="hljs-keyword">
+
+    syntax</span> IELECommand ::= <span class="hljs-string">&quot;#finishTx&quot;</span>
+ <span class="hljs-comment">// ----------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exception STATUS ~&gt; #finishTx =&gt; #popCallStack ~&gt; #popWorldState ~&gt; #popSubstate ~&gt; #load %<span class="hljs-number">0</span> STATUS ... &lt;/k&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #revert STATUS    ~&gt; #finishTx =&gt; #popCallStack ~&gt; #popWorldState ~&gt; #popSubstate ~&gt; #refund GAVAIL ~&gt; #load %<span class="hljs-number">0</span> STATUS ... &lt;/k&gt; &lt;gas&gt; GAVAIL &lt;/gas&gt;<span class="hljs-keyword">       
+
+    rule</span> &lt;k&gt; #end ~&gt; #finishTx =&gt; #popCallStack ~&gt; #dropWorldState ~&gt; #dropSubstate ~&gt; #refund GAVAIL ~&gt; #load %<span class="hljs-number">0</span> <span class="hljs-number">0</span> ... &lt;/k&gt;
+         &lt;gas&gt; GAVAIL &lt;/gas&gt;
+         &lt;txPending&gt; ListItem(TXID:<span class="hljs-keyword">Int</span>) ... &lt;/txPending&gt;
+         &lt;message&gt;
+           &lt;msgID&gt;  TXID &lt;/msgID&gt;
+           &lt;sendto&gt; TT   &lt;/sendto&gt;
+           ...
+         &lt;/message&gt;<span class="hljs-keyword">
+      requires</span> TT =/=K .Account
+</code></pre>
+<ul>
+<li><code>#finalizeBlock</code> is used to signal that block finalization procedures should take place (after transactions have executed).</li>
+<li><code>#rewardOmmers(_)</code> pays out the reward to uncle blocks so that blocks are orphaned less often.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> IELECommand ::= <span class="hljs-string">&quot;#finalizeBlock&quot;</span>
+ <span class="hljs-comment">// ---------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #finalizeBlock =&gt; . ... &lt;/k&gt;
+         &lt;schedule&gt; SCHED &lt;/schedule&gt;
+         &lt;beneficiary&gt; MINER &lt;/beneficiary&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; MINER &lt;/acctID&gt;
+           &lt;balance&gt; MINBAL =&gt; MINBAL +<span class="hljs-keyword">Int</span> Rb &lt; SCHED &gt; &lt;/balance&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; (.K =&gt; #loadAccount MINER) ~&gt; #finalizeBlock ... &lt;/k&gt;
+         &lt;beneficiary&gt; MINER &lt;/beneficiary&gt;
+         &lt;activeAccounts&gt; ACCTS &lt;/activeAccounts&gt;<span class="hljs-keyword">
+      requires</span> notBool MINER in ACCTS
+</code></pre>
+<ul>
+<li><code>exception</code> only clears from the <code>&lt;k&gt;</code> cell if there is an exception preceding it.</li>
+<li><code>failure_</code> holds the name of a test that failed if a test does fail.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> IELECommand ::= <span class="hljs-string">&quot;exception&quot;</span> | <span class="hljs-string">&quot;failure&quot;</span><span class="hljs-keyword"> String</span> | <span class="hljs-string">&quot;success&quot;</span>
+ <span class="hljs-comment">// -----------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exception _ ~&gt; exception =&gt; . ... &lt;/k&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; success =&gt; . ... &lt;/k&gt; &lt;exit-code&gt; _ =&gt; <span class="hljs-number">0</span> &lt;/exit-code&gt;<span class="hljs-keyword">
+    rule</span> failure _ =&gt; .
+</code></pre>
+<h3 id="running-tests">Running Tests</h3>
+<ul>
+<li><code>run</code> runs a given set of IELE tests (from the test-set).</li>
+</ul>
+<p>Note that <code>TEST</code> is sorted here so that key <code>&quot;network&quot;</code> comes before key <code>&quot;pre&quot;</code>.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> IELECommand ::= <span class="hljs-string">&quot;run&quot;</span> JSON
+ <span class="hljs-comment">// ---------------------------------</span><span class="hljs-keyword">
+    rule</span> run { .JSONs } =&gt; .<span class="hljs-keyword">
+    rule</span> run { TESTID : { TEST:JSONs } , TESTS }
+      =&gt; run ( TESTID : { #sortJSONList(TEST) } )
+      ~&gt; #if #hasPost?( { TEST } ) #then .K #else exception #fi
+      ~&gt; clear
+      ~&gt; run { TESTS }<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Bool</span> ::= <span class="hljs-string">&quot;#hasPost?&quot;</span> <span class="hljs-string">&quot;(&quot;</span> JSON <span class="hljs-string">&quot;)&quot;</span> [function]
+ <span class="hljs-comment">// ---------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #hasPost? ({ .JSONs }) =&gt; false<span class="hljs-keyword">
+    rule</span> #hasPost? ({ (KEY:<span class="hljs-keyword">String</span>) : _ , REST }) =&gt; (KEY in #postKeys) orBool #hasPost? ({ REST })
+</code></pre>
+<ul>
+<li><code>#loadKeys</code> are all the JSON nodes which should be considered as loads before execution.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> Set ::= <span class="hljs-string">&quot;#loadKeys&quot;</span> [function]
+ <span class="hljs-comment">// -------------------------------------</span><span class="hljs-keyword">
+    rule</span> #loadKeys =&gt; ( SetItem(<span class="hljs-string">&quot;env&quot;</span>) SetItem(<span class="hljs-string">&quot;pre&quot;</span>) SetItem(<span class="hljs-string">&quot;blockHeader&quot;</span>) SetItem(<span class="hljs-string">&quot;transactions&quot;</span>) SetItem(<span class="hljs-string">&quot;uncleHeaders&quot;</span>) SetItem(<span class="hljs-string">&quot;network&quot;</span>) SetItem(<span class="hljs-string">&quot;blockhashes&quot;</span>) SetItem(<span class="hljs-string">&quot;checkGas&quot;</span>) )<span class="hljs-keyword">
+
+    rule</span> run TESTID : { KEY : (VAL:JSON) , REST } =&gt; load KEY : VAL ~&gt; run TESTID : { REST }<span class="hljs-keyword"> requires</span> KEY in #loadKeys<span class="hljs-keyword">
+
+    rule</span> run TESTID : { <span class="hljs-string">&quot;blocks&quot;</span> : [ { KEY : VAL:JSON , REST1 =&gt; REST1 }, .JSONs ] , ( REST2 =&gt; KEY : VAL , REST2 ) }<span class="hljs-keyword">
+    rule</span> run TESTID : { <span class="hljs-string">&quot;blocks&quot;</span> : [ { .JSONs }, .JSONs ] , REST } =&gt; run TESTID : { REST }
+</code></pre>
+<ul>
+<li><code>#execKeys</code> are all the JSON nodes which should be considered for execution (between loading and checking).</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> Set ::= <span class="hljs-string">&quot;#execKeys&quot;</span> [function]
+ <span class="hljs-comment">// -------------------------------------</span><span class="hljs-keyword">
+    rule</span> #execKeys =&gt; ( SetItem(<span class="hljs-string">&quot;exec&quot;</span>) SetItem(<span class="hljs-string">&quot;lastblockhash&quot;</span>) )<span class="hljs-keyword">
+
+    rule</span> run TESTID : { KEY : (VAL:JSON) , NEXT , REST } =&gt; run TESTID : { NEXT , KEY : VAL , REST }<span class="hljs-keyword"> requires</span> KEY in #execKeys<span class="hljs-keyword">
+
+    rule</span> run TESTID : { <span class="hljs-string">&quot;exec&quot;</span> : (EXEC:JSON) } =&gt; load <span class="hljs-string">&quot;exec&quot;</span> : EXEC ~&gt; start ~&gt; flush<span class="hljs-keyword">
+    rule</span> run TESTID : { <span class="hljs-string">&quot;lastblockhash&quot;</span> : (HASH:<span class="hljs-keyword">String</span>) } =&gt; startTx<span class="hljs-keyword">
+    rule</span> run TESTID : { .JSONs } =&gt; startTx
+</code></pre>
+<ul>
+<li><code>#postKeys</code> are a subset of <code>#checkKeys</code> which correspond to post-state account checks.</li>
+<li><code>#checkKeys</code> are all the JSON nodes which should be considered as checks after execution.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> Set ::= <span class="hljs-string">&quot;#postKeys&quot;</span> [function] | <span class="hljs-string">&quot;#allPostKeys&quot;</span> [function] | <span class="hljs-string">&quot;#checkKeys&quot;</span> [function]
+ <span class="hljs-comment">// -------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #postKeys    =&gt; ( SetItem(<span class="hljs-string">&quot;post&quot;</span>) SetItem(<span class="hljs-string">&quot;postState&quot;</span>) )<span class="hljs-keyword">
+    rule</span> #allPostKeys =&gt; ( #postKeys SetItem(<span class="hljs-string">&quot;expect&quot;</span>) SetItem(<span class="hljs-string">&quot;export&quot;</span>) SetItem(<span class="hljs-string">&quot;expet&quot;</span>) )<span class="hljs-keyword">
+    rule</span> #checkKeys   =&gt; ( #allPostKeys SetItem(<span class="hljs-string">&quot;logs&quot;</span>) SetItem(<span class="hljs-string">&quot;callcreates&quot;</span>) SetItem(<span class="hljs-string">&quot;out&quot;</span>) SetItem(<span class="hljs-string">&quot;gas&quot;</span>)
+                           SetItem(<span class="hljs-string">&quot;genesisBlockHeader&quot;</span>) SetItem(<span class="hljs-string">&quot;results&quot;</span>)
+                         )<span class="hljs-keyword">
+
+    rule</span> run TESTID : { KEY : (VAL:JSON) , REST } =&gt; run TESTID : { REST } ~&gt; check TESTID : { <span class="hljs-string">&quot;post&quot;</span> : VAL }<span class="hljs-keyword"> requires</span> KEY in #allPostKeys<span class="hljs-keyword">
+    rule</span> run TESTID : { KEY : (VAL:JSON) , REST } =&gt; run TESTID : { REST } ~&gt; check TESTID : { KEY    : VAL }<span class="hljs-keyword"> requires</span> KEY in #checkKeys andBool notBool KEY in #allPostKeys
+</code></pre>
+<ul>
+<li><code>#discardKeys</code> are all the JSON nodes in the tests which should just be ignored.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> Set ::= <span class="hljs-string">&quot;#discardKeys&quot;</span> [function]
+ <span class="hljs-comment">// ----------------------------------------</span><span class="hljs-keyword">
+    rule</span> #discardKeys =&gt; ( SetItem(<span class="hljs-string">&quot;//&quot;</span>) SetItem(<span class="hljs-string">&quot;_info&quot;</span>) SetItem(<span class="hljs-string">&quot;rlp&quot;</span>) )<span class="hljs-keyword">
+
+    rule</span> run TESTID : { KEY : _:JSON , REST } =&gt; run TESTID : { REST }<span class="hljs-keyword"> requires</span> KEY in #discardKeys
+</code></pre>
+<h2 id="state-manipulation">State Manipulation</h2>
+<h3 id="clearing-state">Clearing State</h3>
+<ul>
+<li><code>clear</code> clears all the execution state of the machine.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> IELECommand ::= <span class="hljs-string">&quot;clear&quot;</span>
+ <span class="hljs-comment">// ------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; clear =&gt; . ... &lt;/k&gt;
+         &lt;schedule&gt; _ =&gt; DEFAULT &lt;/schedule&gt;
+         (&lt;iele&gt; _ &lt;/iele&gt; =&gt; &lt;iele&gt; ... .Bag &lt;/iele&gt;)
+
+</code></pre>
+<h3 id="loading-state">Loading State</h3>
+<ul>
+<li><code>mkAcct_</code> creates an account with the supplied ID (assuming it&apos;s already been chopped to 160 bits).</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> IELECommand ::= <span class="hljs-string">&quot;mkAcct&quot;</span><span class="hljs-keyword"> Int</span>
+ <span class="hljs-comment">// -----------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; mkAcct ACCT =&gt; #loadAccount ACCT ... &lt;/k&gt;
+</code></pre>
+<ul>
+<li><code>load</code> loads an account or transaction into the world state.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> IELECommand ::= <span class="hljs-string">&quot;load&quot;</span> JSON
+ <span class="hljs-comment">// ----------------------------------</span><span class="hljs-keyword">
+    rule</span> load DATA : { .JSONs } =&gt; .<span class="hljs-keyword">
+    rule</span> load DATA : { KEY : VALUE:JSON , REST } =&gt; load DATA : { KEY : VALUE } ~&gt; load DATA : { REST }<span class="hljs-keyword">
+      requires</span> REST =/=K .JSONs andBool DATA =/=<span class="hljs-keyword">String</span> <span class="hljs-string">&quot;transactions&quot;</span><span class="hljs-keyword">
+
+    rule</span> load DATA : [ .JSONs ] =&gt; .<span class="hljs-keyword">
+    rule</span> load DATA : [ { TEST } , REST ] =&gt; load DATA : { TEST } ~&gt; load DATA : [ REST ]
+</code></pre>
+<p>Here we perform pre-proccesing on account data which allows &quot;pretty&quot; specification of input.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> load <span class="hljs-string">&quot;pre&quot;</span> : { (ACCTID:<span class="hljs-keyword">String</span>) : ACCT } =&gt; mkAcct #parseAddr(ACCTID) ~&gt; load <span class="hljs-string">&quot;account&quot;</span> : { ACCTID : ACCT }<span class="hljs-keyword">
+    rule</span> load <span class="hljs-string">&quot;account&quot;</span> : { ACCTID: { KEY : VALUE:JSON , REST } } =&gt; load <span class="hljs-string">&quot;account&quot;</span> : { ACCTID : { KEY : VALUE } } ~&gt; load <span class="hljs-string">&quot;account&quot;</span> : { ACCTID : { REST } }<span class="hljs-keyword"> requires</span> REST =/=K .JSONs<span class="hljs-keyword">
+
+    rule</span> load <span class="hljs-string">&quot;account&quot;</span> : { ((ACCTID:<span class="hljs-keyword">String</span>) =&gt; #parseAddr(ACCTID)) : ACCT }<span class="hljs-keyword">
+    rule</span> load <span class="hljs-string">&quot;account&quot;</span> : { (ACCT:<span class="hljs-keyword">Int</span>) : { <span class="hljs-string">&quot;balance&quot;</span> : ((VAL:<span class="hljs-keyword">String</span>)         =&gt; #parseWord(VAL)) } }<span class="hljs-keyword">
+    rule</span> load <span class="hljs-string">&quot;account&quot;</span> : { (ACCT:<span class="hljs-keyword">Int</span>) : { <span class="hljs-string">&quot;nonce&quot;</span>   : ((VAL:<span class="hljs-keyword">String</span>)         =&gt; #parseWord(VAL)) } }<span class="hljs-keyword">
+    rule</span> load <span class="hljs-string">&quot;account&quot;</span> : { (ACCT:<span class="hljs-keyword">Int</span>) : { <span class="hljs-string">&quot;code&quot;</span>    : ((CODE:<span class="hljs-keyword">String</span>)        =&gt; #parseByteStack(CODE)) } }<span class="hljs-keyword">
+    rule</span> load <span class="hljs-string">&quot;account&quot;</span> : { (ACCT:<span class="hljs-keyword">Int</span>) : { <span class="hljs-string">&quot;storage&quot;</span> : ({ STORAGE:JSONs } =&gt; #parseMap({ STORAGE })) } }
+
+</code></pre>
+<p>The individual fields of the accounts are dealt with here.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;account&quot;</span> : { ACCT : { <span class="hljs-string">&quot;balance&quot;</span> : (BAL:<span class="hljs-keyword">Int</span>) } } =&gt; . ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;balance&gt; _ =&gt; BAL &lt;/balance&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;account&quot;</span> : { ACCT : { <span class="hljs-string">&quot;code&quot;</span> : (CODE:WordStack) } } =&gt; . ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;code&gt; _ =&gt; #dasmContract(CODE, Main) &lt;/code&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;account&quot;</span> : { ACCT : { <span class="hljs-string">&quot;nonce&quot;</span> : (NONCE:<span class="hljs-keyword">Int</span>) } } =&gt; . ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;nonce&gt; _ =&gt; NONCE &lt;/nonce&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;account&quot;</span> : { ACCT : { <span class="hljs-string">&quot;storage&quot;</span> : (STORAGE:Map) } } =&gt; . ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;storage&gt; _ =&gt; STORAGE &lt;/storage&gt;
+           ...
+         &lt;/account&gt;
+</code></pre>
+<p>Here we load the environmental information.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> load <span class="hljs-string">&quot;env&quot;</span> : { KEY : ((VAL:<span class="hljs-keyword">String</span>) =&gt; #parseWord(VAL)) }<span class="hljs-keyword">
+      requires</span> KEY in (SetItem(<span class="hljs-string">&quot;currentTimestamp&quot;</span>) SetItem(<span class="hljs-string">&quot;currentGasLimit&quot;</span>) SetItem(<span class="hljs-string">&quot;currentNumber&quot;</span>) SetItem(<span class="hljs-string">&quot;currentDifficulty&quot;</span>))<span class="hljs-keyword">
+    rule</span> load <span class="hljs-string">&quot;env&quot;</span> : { KEY : ((VAL:<span class="hljs-keyword">String</span>) =&gt; #parseHexWord(VAL)) }<span class="hljs-keyword">
+      requires</span> KEY in (SetItem(<span class="hljs-string">&quot;currentCoinbase&quot;</span>) SetItem(<span class="hljs-string">&quot;previousHash&quot;</span>))
+ <span class="hljs-comment">// ----------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;env&quot;</span> : { <span class="hljs-string">&quot;currentCoinbase&quot;</span>   : (CB:<span class="hljs-keyword">Int</span>)     } =&gt; . ... &lt;/k&gt; &lt;beneficiary&gt;     _ =&gt; CB     &lt;/beneficiary&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;env&quot;</span> : { <span class="hljs-string">&quot;currentDifficulty&quot;</span> : (DIFF:<span class="hljs-keyword">Int</span>)   } =&gt; . ... &lt;/k&gt; &lt;difficulty&gt;   _ =&gt; DIFF   &lt;/difficulty&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;env&quot;</span> : { <span class="hljs-string">&quot;currentGasLimit&quot;</span>   : (GLIMIT:<span class="hljs-keyword">Int</span>) } =&gt; . ... &lt;/k&gt; &lt;gasLimit&gt;     _ =&gt; GLIMIT &lt;/gasLimit&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;env&quot;</span> : { <span class="hljs-string">&quot;currentNumber&quot;</span>     : (NUM:<span class="hljs-keyword">Int</span>)    } =&gt; . ... &lt;/k&gt; &lt;number&gt;       _ =&gt; NUM    &lt;/number&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;env&quot;</span> : { <span class="hljs-string">&quot;previousHash&quot;</span>      : (HASH:<span class="hljs-keyword">Int</span>)   } =&gt; . ... &lt;/k&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;env&quot;</span> : { <span class="hljs-string">&quot;currentTimestamp&quot;</span>  : (TS:<span class="hljs-keyword">Int</span>)     } =&gt; . ... &lt;/k&gt; &lt;timestamp&gt;    _ =&gt; TS     &lt;/timestamp&gt;<span class="hljs-keyword">
+
+    rule</span> load <span class="hljs-string">&quot;exec&quot;</span> : { KEY : ((VAL:<span class="hljs-keyword">String</span>) =&gt; #parseWord(VAL)) }<span class="hljs-keyword">
+      requires</span> KEY in (SetItem(<span class="hljs-string">&quot;gas&quot;</span>) SetItem(<span class="hljs-string">&quot;gasPrice&quot;</span>) SetItem(<span class="hljs-string">&quot;value&quot;</span>))<span class="hljs-keyword">
+    rule</span> load <span class="hljs-string">&quot;exec&quot;</span> : { KEY : ((VAL:<span class="hljs-keyword">String</span>) =&gt; #parseHexWord(VAL)) }<span class="hljs-keyword">
+      requires</span> KEY in (SetItem(<span class="hljs-string">&quot;address&quot;</span>) SetItem(<span class="hljs-string">&quot;caller&quot;</span>) SetItem(<span class="hljs-string">&quot;origin&quot;</span>))
+ <span class="hljs-comment">// --------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;exec&quot;</span> : { <span class="hljs-string">&quot;gasPrice&quot;</span> : (GPRICE:<span class="hljs-keyword">Int</span>)   } =&gt; . ... &lt;/k&gt; &lt;gasPrice&gt;  _ =&gt; GPRICE   &lt;/gasPrice&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;exec&quot;</span> : { <span class="hljs-string">&quot;gas&quot;</span>      : (GAVAIL:<span class="hljs-keyword">Int</span>)   } =&gt; . ... &lt;/k&gt; &lt;gas&gt;       _ =&gt; GAVAIL   &lt;/gas&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;exec&quot;</span> : { <span class="hljs-string">&quot;address&quot;</span>  : (ACCTTO:<span class="hljs-keyword">Int</span>)   } =&gt; . ... &lt;/k&gt; &lt;id&gt;        _ =&gt; ACCTTO   &lt;/id&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;exec&quot;</span> : { <span class="hljs-string">&quot;caller&quot;</span>   : (ACCTFROM:<span class="hljs-keyword">Int</span>) } =&gt; . ... &lt;/k&gt; &lt;caller&gt;    _ =&gt; ACCTFROM &lt;/caller&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;exec&quot;</span> : { <span class="hljs-string">&quot;gas&quot;</span>      : (GAVAIL:<span class="hljs-keyword">Int</span>)   } =&gt; . ... &lt;/k&gt; &lt;gas&gt;       _ =&gt; GAVAIL   &lt;/gas&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;exec&quot;</span> : { <span class="hljs-string">&quot;value&quot;</span>    : (VALUE:<span class="hljs-keyword">Int</span>)    } =&gt; . ... &lt;/k&gt; &lt;callValue&gt; _ =&gt; VALUE    &lt;/callValue&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;exec&quot;</span> : { <span class="hljs-string">&quot;origin&quot;</span>   : (ORIG:<span class="hljs-keyword">Int</span>)     } =&gt; . ... &lt;/k&gt; &lt;origin&gt;    _ =&gt; ORIG     &lt;/origin&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;exec&quot;</span> : { <span class="hljs-string">&quot;code&quot;</span>     : ((CODE:<span class="hljs-keyword">String</span>)   =&gt; #parseByteStack(CODE)) } ... &lt;/k&gt;<span class="hljs-keyword">
+
+    rule</span> load <span class="hljs-string">&quot;exec&quot;</span> : { <span class="hljs-string">&quot;data&quot;</span> : ((DATA:<span class="hljs-keyword">String</span>) =&gt; #parseByteStack(DATA)) }<span class="hljs-keyword">
+    rule</span> load <span class="hljs-string">&quot;exec&quot;</span> : { <span class="hljs-string">&quot;data&quot;</span> : ((DATA:WordStack) =&gt; [#asUnsigned(DATA), #sizeWordStack(DATA)]) }
+ <span class="hljs-comment">// -----------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;exec&quot;</span> : { <span class="hljs-string">&quot;data&quot;</span> : [DATA:<span class="hljs-keyword">Int</span>, LEN:<span class="hljs-keyword">Int</span>] } =&gt; . ... &lt;/k&gt; &lt;callData&gt; _ =&gt; LEN , DATA , .Ints &lt;/callData&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;exec&quot;</span> : { <span class="hljs-string">&quot;code&quot;</span> : (CODE:WordStack) } =&gt; . ... &lt;/k&gt;
+         (&lt;program&gt;  _ &lt;/program&gt; =&gt; #loadCode(#dasmContract(CODE, Main)))
+         &lt;schedule&gt; SCHED &lt;/schedule&gt;
+</code></pre>
+<p>The <code>&quot;network&quot;</code> key allows setting the fee schedule inside the test.
+Since IELE is a new language with no hard forks yet, we only support the latest EVM gas schedule.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;network&quot;</span> : SCHEDSTRING =&gt; . ... &lt;/k&gt;
+         &lt;schedule&gt; _ =&gt; #asScheduleString(SCHEDSTRING) &lt;/schedule&gt;<span class="hljs-keyword">
+
+    syntax</span> Schedule ::= #asScheduleString (<span class="hljs-keyword"> String</span> ) [function]
+ <span class="hljs-comment">// -----------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #asScheduleString(<span class="hljs-string">&quot;Albe&quot;</span>)      =&gt; ALBE<span class="hljs-keyword">
+    rule</span> #asScheduleString(<span class="hljs-string">&quot;Danse&quot;</span>)     =&gt; DANSE<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;checkGas&quot;</span> : CHECKGAS =&gt; . ... &lt;/k&gt;
+         &lt;checkGas&gt; _ =&gt; CHECKGAS &lt;/checkGas&gt;
+</code></pre>
+<p>The <code>&quot;blockHeader&quot;</code> key loads the block information.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> load <span class="hljs-string">&quot;blockHeader&quot;</span> : { <span class="hljs-string">&quot;nonce&quot;</span> : (HN:<span class="hljs-keyword">String</span>) } =&gt; .<span class="hljs-keyword">
+    rule</span> load <span class="hljs-string">&quot;blockHeader&quot;</span> : { <span class="hljs-string">&quot;receiptTrie&quot;</span> : (HE:<span class="hljs-keyword">String</span>) } =&gt; .<span class="hljs-keyword">
+    rule</span> load <span class="hljs-string">&quot;blockHeader&quot;</span> : { <span class="hljs-string">&quot;hash&quot;</span> : _ } =&gt; .<span class="hljs-keyword">
+    rule</span> load <span class="hljs-string">&quot;blockHeader&quot;</span> : { <span class="hljs-string">&quot;uncleHash&quot;</span> : (HO:<span class="hljs-keyword">String</span>) } =&gt; .<span class="hljs-keyword">
+    rule</span> load <span class="hljs-string">&quot;blockHeader&quot;</span> : { <span class="hljs-string">&quot;mixHash&quot;</span> : (HM:<span class="hljs-keyword">String</span>) } =&gt; .<span class="hljs-keyword">
+    rule</span> load <span class="hljs-string">&quot;blockHeader&quot;</span> : { <span class="hljs-string">&quot;parentHash&quot;</span> : (HP:<span class="hljs-keyword">String</span>) } =&gt; .<span class="hljs-keyword">
+    rule</span> load <span class="hljs-string">&quot;blockHeader&quot;</span> : { <span class="hljs-string">&quot;extraData&quot;</span> : (HX:<span class="hljs-keyword">String</span>) } =&gt; .<span class="hljs-keyword">
+    rule</span> load <span class="hljs-string">&quot;blockHeader&quot;</span> : { <span class="hljs-string">&quot;stateRoot&quot;</span> : (HR:<span class="hljs-keyword">String</span>) } =&gt; .<span class="hljs-keyword">
+    rule</span> load <span class="hljs-string">&quot;blockHeader&quot;</span> : { <span class="hljs-string">&quot;transactionsTrie&quot;</span> : (HT:<span class="hljs-keyword">String</span>) } =&gt; .<span class="hljs-keyword">
+    rule</span> load <span class="hljs-string">&quot;blockHeader&quot;</span> : { <span class="hljs-string">&quot;bloom&quot;</span> : (HB:<span class="hljs-keyword">String</span>) } =&gt; .<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;blockHeader&quot;</span> : { <span class="hljs-string">&quot;gasLimit&quot;</span> : (HL:<span class="hljs-keyword">String</span>) } =&gt; . ...&lt;/k&gt; 
+         &lt;gasLimit&gt; _ =&gt; #parseHexWord(HL) &lt;/gasLimit&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;blockHeader&quot;</span> : { <span class="hljs-string">&quot;number&quot;</span> : (HI:<span class="hljs-keyword">String</span>) } =&gt; . ...&lt;/k&gt; 
+         &lt;number&gt; _ =&gt; #parseHexWord(HI) &lt;/number&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;blockHeader&quot;</span> : { <span class="hljs-string">&quot;difficulty&quot;</span> : (HD:<span class="hljs-keyword">String</span>) } =&gt; . ...&lt;/k&gt; 
+         &lt;difficulty&gt; _ =&gt; #parseHexWord(HD) &lt;/difficulty&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;blockHeader&quot;</span> : { <span class="hljs-string">&quot;timestamp&quot;</span> : (HS:<span class="hljs-keyword">String</span>) } =&gt; . ...&lt;/k&gt; 
+         &lt;timestamp&gt; _ =&gt; #parseHexWord(HS) &lt;/timestamp&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;blockHeader&quot;</span> : { <span class="hljs-string">&quot;coinbase&quot;</span> : (HC:<span class="hljs-keyword">String</span>) } =&gt; . ...&lt;/k&gt; 
+         &lt;beneficiary&gt; _ =&gt; #parseHexWord(HC) &lt;/beneficiary&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;blockHeader&quot;</span> : { <span class="hljs-string">&quot;gasUsed&quot;</span> : (HG:<span class="hljs-keyword">String</span>) } =&gt; . ...&lt;/k&gt; 
+         &lt;gasUsed&gt; _ =&gt; #parseHexWord(HG) &lt;/gasUsed&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;blockhashes&quot;</span> : [ VAL:<span class="hljs-keyword">String</span> , VALS ] =&gt; . ...&lt;/k&gt;
+         &lt;blockhash&gt;... .List =&gt; ListItem(#parseHexWord(VAL)) &lt;/blockhash&gt;
+</code></pre>
+<p>The <code>&quot;transactions&quot;</code> key loads the transactions.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> load <span class="hljs-string">&quot;transactions&quot;</span> : { TX } =&gt; load <span class="hljs-string">&quot;transactions&quot;</span> : { #sortJSONList(TX) }<span class="hljs-keyword">
+         requires</span> notBool #isSorted(TX)<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; load <span class="hljs-string">&quot;transactions&quot;</span> : { <span class="hljs-string">&quot;arguments&quot;</span> : [ ARGS ],  <span class="hljs-string">&quot;contractCode&quot;</span> : TI , <span class="hljs-string">&quot;from&quot;</span> : FROM, <span class="hljs-string">&quot;function&quot;</span> : FUNC, <span class="hljs-string">&quot;gasLimit&quot;</span> : TG , <span class="hljs-string">&quot;gasPrice&quot;</span> : TP , <span class="hljs-string">&quot;nonce&quot;</span> : TN , <span class="hljs-string">&quot;to&quot;</span> : TT , <span class="hljs-string">&quot;value&quot;</span> : TV , .JSONs } =&gt; . ... &lt;/k&gt;
+         &lt;txOrder&gt;   ... .List =&gt; ListItem(!ID) &lt;/txOrder&gt;
+         &lt;txPending&gt; ... .List =&gt; ListItem(!ID) &lt;/txPending&gt;
+         &lt;messages&gt;
+           ( .Bag
+          =&gt; &lt;message&gt;
+               &lt;msgID&gt;      !ID:<span class="hljs-keyword">Int</span>               &lt;/msgID&gt;
+               &lt;txNonce&gt;    #parseHexWord(TN)     &lt;/txNonce&gt;
+               &lt;txGasPrice&gt; #parseHexWord(TP)     &lt;/txGasPrice&gt;
+               &lt;txGasLimit&gt; #parseHexWord(TG)     &lt;/txGasLimit&gt;
+               &lt;sendto&gt;     #asAccount(TT)        &lt;/sendto&gt;
+               &lt;func&gt;       String2IeleName(FUNC) &lt;/func&gt;
+               &lt;value&gt;      #parseHexWord(TV)     &lt;/value&gt;
+               &lt;from&gt;       #parseHexWord(FROM)   &lt;/from&gt;
+               &lt;data&gt;       #parseByteStack(TI)   &lt;/data&gt;
+               &lt;args&gt;       #toInts(ARGS)         &lt;/args&gt;
+             &lt;/message&gt;
+           )
+           ...
+         &lt;/messages&gt;<span class="hljs-keyword">
+
+    syntax</span> Ints ::= #toInts ( JSONs ) [function]
+ <span class="hljs-comment">// -----------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #toInts(.JSONs) =&gt; .Ints<span class="hljs-keyword">
+    rule</span> #toInts(WORD:<span class="hljs-keyword">String</span> , ARGS) =&gt; #parseHexWord(WORD) , #toInts(ARGS)
+</code></pre>
+<h3 id="checking-state">Checking State</h3>
+<ul>
+<li><code>check_</code> checks if an account/transaction appears in the world-state as stated.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> IELECommand ::= <span class="hljs-string">&quot;check&quot;</span> JSON
+ <span class="hljs-comment">// -----------------------------------</span><span class="hljs-keyword">
+    rule</span> #exception CODE ~&gt; check J:JSON =&gt; check J ~&gt; #exception CODE<span class="hljs-keyword">
+    rule</span> check DATA : { .JSONs } =&gt; .<span class="hljs-keyword"> requires</span> DATA =/=<span class="hljs-keyword">String</span> <span class="hljs-string">&quot;transactions&quot;</span><span class="hljs-keyword">
+    rule</span> check DATA : { (KEY:<span class="hljs-keyword">String</span>) : VALUE , REST } =&gt; check DATA : { KEY : VALUE } ~&gt; check DATA : { REST }<span class="hljs-keyword">
+      requires</span> REST =/=K .JSONs andBool notBool DATA in (SetItem(<span class="hljs-string">&quot;callcreates&quot;</span>) SetItem(<span class="hljs-string">&quot;transactions&quot;</span>))<span class="hljs-keyword">
+
+    rule</span> check DATA : [ .JSONs ] =&gt; .<span class="hljs-keyword"> requires</span> DATA =/=<span class="hljs-keyword">String</span> <span class="hljs-string">&quot;ommerHeaders&quot;</span> andBool DATA =/=<span class="hljs-keyword">String</span> <span class="hljs-string">&quot;out&quot;</span><span class="hljs-keyword">
+    rule</span> check DATA : [ { TEST } , REST ] =&gt; check DATA : { TEST } ~&gt; check DATA : [ REST ]<span class="hljs-keyword"> requires</span> DATA =/=<span class="hljs-keyword">String</span> <span class="hljs-string">&quot;transactions&quot;</span><span class="hljs-keyword">
+
+    rule</span> check (KEY:<span class="hljs-keyword">String</span>) : { JS:JSONs =&gt; #sortJSONList(JS) }<span class="hljs-keyword">
+      requires</span> KEY in (SetItem(<span class="hljs-string">&quot;callcreates&quot;</span>)) andBool notBool #isSorted(JS)<span class="hljs-keyword">
+
+    rule</span> check TESTID : { <span class="hljs-string">&quot;post&quot;</span> : POST } =&gt; check <span class="hljs-string">&quot;account&quot;</span> : POST ~&gt; failure TESTID<span class="hljs-keyword">
+    rule</span> check <span class="hljs-string">&quot;account&quot;</span> : { ACCTID: { KEY : VALUE:JSON , REST } } =&gt; check <span class="hljs-string">&quot;account&quot;</span> : { ACCTID : { KEY : VALUE } } ~&gt; check <span class="hljs-string">&quot;account&quot;</span> : { ACCTID : { REST } }<span class="hljs-keyword"> requires</span> REST =/=K .JSONs
+ <span class="hljs-comment">// -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> check <span class="hljs-string">&quot;account&quot;</span> : { ((ACCTID:<span class="hljs-keyword">String</span>) =&gt; #parseAddr(ACCTID)) : ACCT }<span class="hljs-keyword">
+    rule</span> check <span class="hljs-string">&quot;account&quot;</span> : { (ACCT:<span class="hljs-keyword">Int</span>) : { <span class="hljs-string">&quot;balance&quot;</span> : ((VAL:<span class="hljs-keyword">String</span>)         =&gt; #parseWord(VAL)) } }<span class="hljs-keyword">
+    rule</span> check <span class="hljs-string">&quot;account&quot;</span> : { (ACCT:<span class="hljs-keyword">Int</span>) : { <span class="hljs-string">&quot;nonce&quot;</span>   : ((VAL:<span class="hljs-keyword">String</span>)         =&gt; #parseWord(VAL)) } }<span class="hljs-keyword">
+    rule</span> check <span class="hljs-string">&quot;account&quot;</span> : { (ACCT:<span class="hljs-keyword">Int</span>) : { <span class="hljs-string">&quot;code&quot;</span>    : ((CODE:<span class="hljs-keyword">String</span>)        =&gt; #parseByteStack(CODE)) } }<span class="hljs-keyword">
+    rule</span> check <span class="hljs-string">&quot;account&quot;</span> : { (ACCT:<span class="hljs-keyword">Int</span>) : { <span class="hljs-string">&quot;storage&quot;</span> : ({ STORAGE:JSONs } =&gt; #parseMap({ STORAGE })) } }<span class="hljs-keyword">
+
+
+    rule</span> &lt;k&gt; check <span class="hljs-string">&quot;account&quot;</span> : { ACCT : { <span class="hljs-string">&quot;balance&quot;</span> : (BAL:<span class="hljs-keyword">Int</span>) } } =&gt; . ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;balance&gt; BAL &lt;/balance&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; check <span class="hljs-string">&quot;account&quot;</span> : { ACCT : { <span class="hljs-string">&quot;nonce&quot;</span> : (NONCE:<span class="hljs-keyword">Int</span>) } } =&gt; . ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;nonce&gt; NONCE &lt;/nonce&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; check <span class="hljs-string">&quot;account&quot;</span> : { ACCT : { <span class="hljs-string">&quot;storage&quot;</span> : (STORAGE:Map) } } =&gt; . ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;storage&gt; ACCTSTORAGE &lt;/storage&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+      requires</span> #removeZeros(ACCTSTORAGE) ==K STORAGE<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; check <span class="hljs-string">&quot;account&quot;</span> : { ACCT : { <span class="hljs-string">&quot;code&quot;</span> : (CODE:WordStack) } } =&gt; . ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;code&gt; CONTRACT &lt;/code&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+         requires</span> #dasmContract(CODE, #mainContract(CONTRACT)) ==K CONTRACT<span class="hljs-keyword">
+    rule</span> &lt;k&gt; check <span class="hljs-string">&quot;account&quot;</span> : { ACCT : { <span class="hljs-string">&quot;code&quot;</span> : .WordStack } } =&gt; . ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           ...
+         &lt;/account&gt;
+</code></pre>
+<p>Here we check the other post-conditions associated with an EVM test.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> check TESTID : { <span class="hljs-string">&quot;results&quot;</span> : [ _ , A , REST =&gt; A , REST ] }<span class="hljs-keyword">
+    rule</span> check TESTID : { <span class="hljs-string">&quot;results&quot;</span> : [ A , .JSONs ] } =&gt; check TESTID : A<span class="hljs-keyword">
+
+    rule</span> check TESTID : { <span class="hljs-string">&quot;out&quot;</span> : OUT } =&gt; check <span class="hljs-string">&quot;out&quot;</span> : OUT ~&gt; failure TESTID
+ <span class="hljs-comment">// --------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> check <span class="hljs-string">&quot;out&quot;</span> : ((OUT:<span class="hljs-keyword">String</span>) =&gt; #parseHexWord(OUT))<span class="hljs-keyword">
+    rule</span> &lt;k&gt; check <span class="hljs-string">&quot;out&quot;</span> : OUT:<span class="hljs-keyword">Int</span> =&gt; . ... &lt;/k&gt; &lt;output&gt; OUT , .Ints &lt;/output&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; check <span class="hljs-string">&quot;out&quot;</span> : <span class="hljs-number">0</span>   =&gt; . ... &lt;/k&gt; &lt;output&gt; .Ints &lt;/output&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; check <span class="hljs-string">&quot;out&quot;</span> : [ OUT ] =&gt; . ... &lt;/k&gt; &lt;output&gt; OUTPUT &lt;/output&gt;<span class="hljs-keyword"> requires</span> #toInts(OUT) ==K OUTPUT<span class="hljs-keyword">
+
+    rule</span> check TESTID : { <span class="hljs-string">&quot;logs&quot;</span> : LOGS } =&gt; check <span class="hljs-string">&quot;logs&quot;</span> : LOGS ~&gt; failure TESTID
+ <span class="hljs-comment">// ------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; check <span class="hljs-string">&quot;logs&quot;</span> : HASH:<span class="hljs-keyword">String</span> =&gt; . ... &lt;/k&gt; &lt;logData&gt; SL &lt;/logData&gt;<span class="hljs-keyword"> requires</span> #parseByteStack(Keccak256(#rlpEncodeLogs(SL))) ==K #parseByteStack(HASH)<span class="hljs-keyword">
+
+    rule</span> check TESTID : { <span class="hljs-string">&quot;status&quot;</span> : STATUS } =&gt; check <span class="hljs-string">&quot;status&quot;</span> : STATUS ~&gt; failure TESTID
+ <span class="hljs-comment">// --------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> check <span class="hljs-string">&quot;status&quot;</span> : (STATUS:<span class="hljs-keyword">String</span> =&gt; #parseHexWord(STATUS))<span class="hljs-keyword">
+    rule</span> &lt;k&gt; check <span class="hljs-string">&quot;status&quot;</span> : STATUS:<span class="hljs-keyword">Int</span> =&gt; . ... &lt;/k&gt; &lt;regs&gt; REGS &lt;/regs&gt;<span class="hljs-keyword"> requires</span> REGS [ <span class="hljs-number">0</span> ] ==K STATUS<span class="hljs-keyword">
+
+    rule</span> check TESTID : { <span class="hljs-string">&quot;refund&quot;</span> : REFUND } =&gt; check <span class="hljs-string">&quot;refund&quot;</span> : REFUND ~&gt; failure TESTID
+ <span class="hljs-comment">// --------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> check <span class="hljs-string">&quot;refund&quot;</span> : (REFUND:<span class="hljs-keyword">String</span> =&gt; #parseHexWord(REFUND))<span class="hljs-keyword">
+    rule</span> &lt;k&gt; check <span class="hljs-string">&quot;refund&quot;</span> : REFUND:<span class="hljs-keyword">Int</span> =&gt; . ... &lt;/k&gt; &lt;refund&gt; REFUND &lt;/refund&gt;<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> String</span> ::= #rlpEncodeLogs(List)        [function]
+                    | #rlpEncodeLogsAux(List)     [function]
+                    | #rlpEncodeTopics(List) [function]
+ <span class="hljs-comment">// --------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #rlpEncodeLogs(SL) =&gt; #rlpEncodeLength(#rlpEncodeLogsAux(SL), <span class="hljs-number">192</span>)<span class="hljs-keyword">
+    rule</span> #rlpEncodeLogsAux(ListItem({ ACCT | TOPICS | DATA }) SL) =&gt; #rlpEncodeLength(#rlpEncodeBytes(ACCT, <span class="hljs-number">20</span>) +<span class="hljs-keyword">String</span> #rlpEncodeLength(#rlpEncodeTopics(TOPICS), <span class="hljs-number">192</span>) +<span class="hljs-keyword">String</span> #rlpEncodeString(Bytes2String(DATA)), <span class="hljs-number">192</span>) +<span class="hljs-keyword">String</span> #rlpEncodeLogsAux(SL)<span class="hljs-keyword">
+    rule</span> #rlpEncodeLogsAux(.List) =&gt; <span class="hljs-string">&quot;&quot;</span><span class="hljs-keyword">
+    rule</span> #rlpEncodeTopics(ListItem(TOPIC) TOPICS) =&gt; #rlpEncodeBytes(chop(TOPIC), <span class="hljs-number">32</span>) +<span class="hljs-keyword">String</span> #rlpEncodeTopics(TOPICS)<span class="hljs-keyword">
+    rule</span> #rlpEncodeTopics(.List) =&gt; <span class="hljs-string">&quot;&quot;</span><span class="hljs-keyword">
+
+    rule</span> check TESTID : { <span class="hljs-string">&quot;gas&quot;</span> : GLEFT } =&gt; check <span class="hljs-string">&quot;gas&quot;</span> : GLEFT ~&gt; failure TESTID
+ <span class="hljs-comment">// ------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> check <span class="hljs-string">&quot;gas&quot;</span> : ((GLEFT:<span class="hljs-keyword">String</span>) =&gt; #parseWord(GLEFT))<span class="hljs-keyword">
+    rule</span> &lt;k&gt; check <span class="hljs-string">&quot;gas&quot;</span> : GLEFT =&gt; . ... &lt;/k&gt; &lt;checkGas&gt; false &lt;/checkGas&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; check <span class="hljs-string">&quot;gas&quot;</span> : GLEFT =&gt; . ... &lt;/k&gt; &lt;checkGas&gt; true  &lt;/checkGas&gt; &lt;gas&gt; GLEFT &lt;/gas&gt;<span class="hljs-keyword">
+
+    rule</span> check TESTID : { <span class="hljs-string">&quot;callcreates&quot;</span> : CCREATES } =&gt; check <span class="hljs-string">&quot;callcreates&quot;</span> : CCREATES ~&gt; failure TESTID
+ <span class="hljs-comment">// ----------------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> check <span class="hljs-string">&quot;callcreates&quot;</span> : { (<span class="hljs-string">&quot;data&quot;</span> : (DATA:<span class="hljs-keyword">String</span>)) , (<span class="hljs-string">&quot;destination&quot;</span> : (ACCTTO:<span class="hljs-keyword">String</span>)) , (<span class="hljs-string">&quot;gasLimit&quot;</span> : (GLIMIT:<span class="hljs-keyword">String</span>)) , (<span class="hljs-string">&quot;value&quot;</span> : (VAL:<span class="hljs-keyword">String</span>)) , .JSONs }
+      =&gt; .<span class="hljs-keyword">
+
+    rule</span> check TESTID : { <span class="hljs-string">&quot;genesisBlockHeader&quot;</span> : BLOCKHEADER } =&gt; check <span class="hljs-string">&quot;genesisBlockHeader&quot;</span> : BLOCKHEADER ~&gt; failure TESTID
+ <span class="hljs-comment">// ------------------------------------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> check <span class="hljs-string">&quot;genesisBlockHeader&quot;</span> : { KEY : VALUE:JSON , REST } =&gt; check <span class="hljs-string">&quot;genesisBlockHeader&quot;</span> : { KEY : VALUE } ~&gt; check <span class="hljs-string">&quot;genesisBlockHeader&quot;</span> : { REST }<span class="hljs-keyword"> requires</span> REST =/=K .JSONs<span class="hljs-keyword">
+    rule</span> check <span class="hljs-string">&quot;genesisBlockHeader&quot;</span> : { KEY : VALUE } =&gt; .K<span class="hljs-keyword"> requires</span> KEY =/=<span class="hljs-keyword">String</span> <span class="hljs-string">&quot;hash&quot;</span><span class="hljs-keyword">
+
+    rule</span> check <span class="hljs-string">&quot;genesisBlockHeader&quot;</span> : { <span class="hljs-string">&quot;hash&quot;</span>: (HASH:<span class="hljs-keyword">String</span> =&gt; #parseHexWord(HASH)) }<span class="hljs-keyword">
+    rule</span> &lt;k&gt; check <span class="hljs-string">&quot;genesisBlockHeader&quot;</span> : { <span class="hljs-string">&quot;hash&quot;</span>: HASH } =&gt; . ... &lt;/k&gt;
+         &lt;blockhash&gt; ... ListItem(HASH) ListItem(_) &lt;/blockhash&gt;
+</code></pre>
+<pre class="hljs"><code><span class="hljs-keyword">endmodule</span>
+</code></pre>
+</body></html></div>
+        </main>
+      </div>
+    </div>
+<footer class="app-footer text-md-left text-center">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-2 mb-md-0 mb-4">
+        <span class="pr-md-5 pr-0 py-3">
+          <a href="https://runtimeverification.com" target="_blank">
+            <picture>
+              <source
+                srcset="../assets/img/rv-logo-dark.png"
+                media="(prefers-color-scheme: dark)"
+              />
+              <img
+                class="pr-3 footer-logo"
+                src="../assets/img/rv-logo.png"
+                alt="Runtime Verification Inc logo"
+              />
+            </picture>
+          </a>
+        </span>
+      </div>
+      <div class="col-md-6 mb-md-0 mb-4"></div>
+      <div class="col-md-4 text-md-right">
+        <p class="copyright">
+          &copy; 2020 Runtime Verification Inc. All right reserved.
+        </p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script
+  async
+  src="https://www.googletagmanager.com/gtag/js?id=UA-163311512-1"
+></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag("js", new Date());
+  gtag("config", "UA-163311512-1");
+</script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Typist/1.2/typist.min.js"></script>
+    <script src="../assets/js/index.js"></script>
+  </body>
+</html>

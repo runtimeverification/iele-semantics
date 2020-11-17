@@ -1,0 +1,1934 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+<meta charset="utf-8" />
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+/>
+<meta
+  name="description"
+  content="Design and implement your programming language and software analysis tools with mathematical rigor."
+/>
+<meta name="keywords" content="runtime, verification, rv, k" />
+<meta name="author" content="IELE Semantics | Runtime Verification Inc" />
+<meta name="robots" content="index, follow" />
+
+<!--favicon icon-->
+<link rel="icon" type="image/png" href="../assets/img/favicon.ico" />
+
+<title>IELE Semantics | Runtime Verification Inc</title>
+
+<!-- <base href="/k/" /> -->
+
+<!--web fonts-->
+<link
+  href="https://fonts.googleapis.com/css?family=Nunito:300,400,600,700,800"
+  rel="stylesheet"
+/>
+<link
+  href="https://fonts.googleapis.com/css?family=Lora:400i"
+  rel="stylesheet"
+/>
+
+<link
+  href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css"
+  rel="stylesheet"
+/>
+
+<link href="../assets/css/index.css" rel="stylesheet" />
+
+<!--[if (gt IE 9) |!(IE)]><!-->
+<!--<link rel="stylesheet" href="/assets/vendor/custom-nav/css/effects/fade-menu.css"/>-->
+<!-- <link rel="stylesheet" href="../assets/k/vl-nav/css/effects/slide-menu.css" /> -->
+<!--<![endif]-->
+
+  </head>
+
+  <body>
+<header
+  class="navbar navbar-expand navbar-dark flex-column flex-md-row bd-navbar"
+>
+  <a class="logo-link" href="../index.html"> IELE Semantics </a>
+  <ul class="navbar-nav ml-md-auto">
+    <li class="nav-item">
+      <a
+        class="nav-link pl-2 pr-1 mx-1 py-3 my-n2"
+        href="https://github.com/runtimeverification/iele-semantics"
+        target="_blank"
+        rel="noopener"
+        aria-label="GitHub"
+      >
+        <i class="fab fa-github"></i>
+      </a>
+    </li>
+  </ul>
+  <!--
+  <a
+    class="btn btn-rv-blue d-none d-lg-inline-block mb-3 mb-md-0 ml-md-3"
+    href="../downloads"
+    >Download</a
+  >
+  -->
+</header>
+
+
+    <div class="container-fluid">
+      <div class="row flex-xl-nowrap">
+<div class="col-12 col-md-3 col-xl-2 bd-sidebar mb-3">
+  <form
+    role="search"
+    class="bd-search d-flex align-items-center justify-content-between"
+  >
+    <input
+      type="search"
+      class="form-control"
+      placeholder="Search..."
+      aria-label="Search for..."
+      autocomplete="false"
+      id="search-box"
+    />
+    <button
+      class="btn bd-search-docs-toggle d-md-none p-0 ml-3 collapsed"
+      type="button"
+      aria-label="Toggle docs navigation"
+      style="font-size: 1.4rem"
+    >
+      <i class="fas fa-bars"></i>
+    </button>
+  </form>
+  <nav class="collapse bd-links" aria-label="Main navigation">
+    <div class="bd-toc-item">
+      <a class="bd-toc-link" href="../">Homepage</a>
+      <a class="bd-toc-link" href="../INSTALL">Install</a>
+      <a class="bd-toc-link" href="../Design">Design</a>
+    </div>
+  </nav>
+</div>
+
+        <main
+          class="col-12 col-md-9 col-xl-8 py-md-3 pl-md-5 bd-content"
+          role="main"
+        >
+          <div class="markdown-preview"><html><head></head><body><h1 id="iele-execution">IELE Execution</h1>
+<p>IELE is a register-based abstract machine over some simple opcodes.
+Most of the opcodes are &quot;local&quot; to the execution state of the machine, but some of them must interact with the world state.
+This file only defines the local execution operations. A separate <code>cardano.md</code> will eventually be created to describe the remainder
+of the transaction protocol.</p>
+<pre class="hljs"><code><span class="hljs-keyword">requires</span> <span class="hljs-string">&quot;data.md&quot;</span><span class="hljs-keyword">
+requires</span> <span class="hljs-string">&quot;iele-syntax.md&quot;</span><span class="hljs-keyword">
+requires</span> <span class="hljs-string">&quot;iele-gas.md&quot;</span><span class="hljs-keyword">
+requires</span> <span class="hljs-string">&quot;well-formedness.md&quot;</span><span class="hljs-keyword">
+
+module</span> IELE-CONFIGURATION<span class="hljs-keyword">
+    imports</span> STRING<span class="hljs-keyword">
+    imports</span> IELE-DATA<span class="hljs-keyword">
+    imports</span> IELE-COMMON<span class="hljs-keyword">
+    imports</span> IELE-WELL-FORMEDNESS<span class="hljs-keyword">
+    imports</span> DEFAULT-CONFIGURATION
+</code></pre>
+<h2 id="configuration">Configuration</h2>
+<p>We&apos;ve broken up the configuration into two components; those parts of the state that mutate during execution of a single transaction and those that are static throughout.
+In the comments next to each cell, we explain the purpose of the cell.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    configuration</span> &lt;k/&gt;                                               <span class="hljs-comment">// Current computation</span>
+                  &lt;exit-code exit=<span class="hljs-string">&quot;&quot;</span>&gt; <span class="hljs-number">1</span> &lt;/exit-code&gt;                 <span class="hljs-comment">// Exit code of interpreter process</span>
+                  &lt;mode&gt; $MODE:Mode &lt;/mode&gt;                          <span class="hljs-comment">// Execution mode: VMTESTS or NORMAL</span>
+                  &lt;schedule&gt; $SCHEDULE:Schedule &lt;/schedule&gt;          <span class="hljs-comment">// Gas Schedule: DEFAULT or ALBE</span>
+                  &lt;checkGas&gt; true &lt;/checkGas&gt;                        <span class="hljs-comment">// Enables/disables gas check in test driver</span>
+
+                  &lt;well-formedness/&gt;
+
+                  <span class="hljs-comment">// IELE Specific</span>
+                  <span class="hljs-comment">// =============</span>
+
+                  &lt;iele&gt;
+
+                    <span class="hljs-comment">// Mutable during a single transaction</span>
+                    <span class="hljs-comment">// -----------------------------------</span>
+
+                    &lt;output&gt;        .Ints &lt;/output&gt;                  <span class="hljs-comment">// Return registers of current call frame</span>
+                    &lt;callStack&gt;     .List &lt;/callStack&gt;               <span class="hljs-comment">// Inter-contract call stack</span>
+                    &lt;interimStates&gt; .List &lt;/interimStates&gt;           <span class="hljs-comment">// Checkpointed network state for rollback</span>
+                    &lt;substateStack&gt; .List &lt;/substateStack&gt;           <span class="hljs-comment">// Checkpointed substate for rollback</span>
+
+                    <span class="hljs-comment">// A single contract call frame</span>
+                    <span class="hljs-comment">// ----------------------------</span>
+                    &lt;callFrame&gt;
+                      <span class="hljs-comment">// The loaded state of a IELE program</span>
+                      <span class="hljs-comment">// ----------------------------------</span>
+                      &lt;program&gt;
+                        &lt;functions&gt;
+                          &lt;function multiplicity=<span class="hljs-string">&quot;*&quot;</span> type=<span class="hljs-string">&quot;Map&quot;</span>&gt;
+                            &lt;funcId&gt;       deposit:IeleName &lt;/funcId&gt;         <span class="hljs-comment">// The name of the function</span>
+                            &lt;nparams&gt;      <span class="hljs-number">0</span>       &lt;/nparams&gt;        <span class="hljs-comment">// The number of parameters of the function</span>
+                            &lt;instructions&gt; (.Instructions .LabeledBlocks):Blocks &lt;/instructions&gt; <span class="hljs-comment">// The blocks of the function</span>
+                            &lt;jumpTable&gt;    .Map    &lt;/jumpTable&gt;      <span class="hljs-comment">// Map from jump label to blocks, for branch instruction</span>
+                            &lt;nregs&gt;        <span class="hljs-number">0</span>       &lt;/nregs&gt;          <span class="hljs-comment">// Number of registers used by this function</span>
+                          &lt;/function&gt;
+                        &lt;/functions&gt;
+                        &lt;funcIds&gt;     .Set &lt;/funcIds&gt;                <span class="hljs-comment">// Set of all names of functions in &lt;functions&gt; cell</span>
+                        &lt;funcLabels&gt;  .Map &lt;/funcLabels&gt;             <span class="hljs-comment">// Map of integer function IDS to all function names in the &lt;functions&gt; cell</span>
+                        &lt;exported&gt;    .Set &lt;/exported&gt;               <span class="hljs-comment">// Set of all names of functions defined with define public</span>
+                        &lt;programSize&gt; <span class="hljs-number">0</span>    &lt;/programSize&gt;            <span class="hljs-comment">// Size in bytes of currently loaded contract</span>
+                        &lt;contractCode&gt; .Contract &lt;/contractCode&gt;     <span class="hljs-comment">// Disassembled entire contract</span>
+                      &lt;/program&gt;
+                      &lt;callDepth&gt;    <span class="hljs-number">0</span>          &lt;/callDepth&gt;         <span class="hljs-comment">// Inter-contract call stack depth</span>
+                      &lt;localCalls&gt;   .List      &lt;/localCalls&gt;        <span class="hljs-comment">// Intra-contract call stack</span>
+
+                      <span class="hljs-comment">// I_*</span>
+                      &lt;id&gt;        <span class="hljs-number">0</span>     &lt;/id&gt;                         <span class="hljs-comment">// Currently executing contract</span>
+                      &lt;caller&gt;    <span class="hljs-number">0</span>     &lt;/caller&gt;                     <span class="hljs-comment">// Contract that called current contract</span>
+                      &lt;callData&gt;  .Ints &lt;/callData&gt;                   <span class="hljs-comment">// Copy of register arguments</span>
+                      &lt;callValue&gt; <span class="hljs-number">0</span>     &lt;/callValue&gt;                  <span class="hljs-comment">// Value in funds passed to contract</span>
+
+                      <span class="hljs-comment">// \mu_*</span>
+                      &lt;regs&gt;          .Array  &lt;/regs&gt;                 <span class="hljs-comment">// Current values of registers</span>
+                      &lt;localMem&gt;      .Map    &lt;/localMem&gt;             <span class="hljs-comment">// Current values of local memory</span>
+                      &lt;peakMemory&gt;    <span class="hljs-number">0</span>       &lt;/peakMemory&gt;           <span class="hljs-comment">// Maximum memory used so far in call frame</span>
+                      &lt;currentMemory&gt; <span class="hljs-number">0</span>       &lt;/currentMemory&gt;        <span class="hljs-comment">// Current memory used in call frame</span>
+                      &lt;fid&gt;           deposit:IeleName &lt;/fid&gt;                  <span class="hljs-comment">// Name of currently executing function</span>
+                      &lt;gas&gt;           <span class="hljs-number">0</span>       &lt;/gas&gt;                  <span class="hljs-comment">// Current gas remaining</span>
+                      &lt;previousGas&gt;   <span class="hljs-number">0</span>       &lt;/previousGas&gt;          <span class="hljs-comment">// Gas remaining prior to last decrease</span>
+
+                      &lt;static&gt; false &lt;/static&gt;                        <span class="hljs-comment">// Whether the call frame came from a staticcall</span>
+                    &lt;/callFrame&gt;
+
+                    <span class="hljs-comment">// A_* (execution substate)</span>
+                    &lt;substate&gt;
+                      &lt;selfDestruct&gt; .Set  &lt;/selfDestruct&gt;            <span class="hljs-comment">// Set of contract ids that were destroyed by this transaction</span>
+                      &lt;logData&gt;  .List &lt;/logData&gt;                     <span class="hljs-comment">// Log entries for this transaction</span>
+                      &lt;refund&gt;       <span class="hljs-number">0</span>     &lt;/refund&gt;                  <span class="hljs-comment">// Refund for this transaction</span>
+                    &lt;/substate&gt;
+
+                    <span class="hljs-comment">// Immutable during a single transaction</span>
+                    <span class="hljs-comment">// -------------------------------------</span>
+
+                    &lt;gasPrice&gt; <span class="hljs-number">0</span> &lt;/gasPrice&gt;                          <span class="hljs-comment">// Price of gas for this transaction</span>
+                    &lt;origin&gt;   <span class="hljs-number">0</span> &lt;/origin&gt;                            <span class="hljs-comment">// Sender of current transaction</span>
+
+                    <span class="hljs-comment">// I_H* (block information)</span>
+                    &lt;beneficiary&gt;      <span class="hljs-number">0</span>          &lt;/beneficiary&gt;      <span class="hljs-comment">// Miner of current block</span>
+                    &lt;difficulty&gt;       <span class="hljs-number">0</span>          &lt;/difficulty&gt;       <span class="hljs-comment">// Difficulty of current block</span>
+                    &lt;number&gt;           <span class="hljs-number">0</span>          &lt;/number&gt;           <span class="hljs-comment">// Number of current block</span>
+                    &lt;gasLimit&gt;         <span class="hljs-number">0</span>          &lt;/gasLimit&gt;         <span class="hljs-comment">// Gas limit of current block</span>
+                    &lt;gasUsed&gt;          <span class="hljs-number">0</span>          &lt;/gasUsed&gt;          <span class="hljs-comment">// Gas used by current block</span>
+                    &lt;timestamp&gt;        <span class="hljs-number">0</span>          &lt;/timestamp&gt;        <span class="hljs-comment">// Timestamp of current block</span>
+                    &lt;blockhash&gt;         .List     &lt;/blockhash&gt;        <span class="hljs-comment">// List of previous block&apos;s hashes</span>
+
+                  &lt;/iele&gt;
+
+                  <span class="hljs-comment">// IELE Network Layer</span>
+                  <span class="hljs-comment">// ==================</span>
+
+                  &lt;network&gt;
+
+                    <span class="hljs-comment">// Accounts Record</span>
+                    <span class="hljs-comment">// ---------------</span>
+
+                    &lt;activeAccounts&gt; .Set &lt;/activeAccounts&gt; <span class="hljs-comment">// Set of keys in the accounts cell.</span>
+                    &lt;accounts&gt;
+                      &lt;account multiplicity=<span class="hljs-string">&quot;*&quot;</span> type=<span class="hljs-string">&quot;Map&quot;</span>&gt;
+                        &lt;acctID&gt;   <span class="hljs-number">0</span>          &lt;/acctID&gt;     <span class="hljs-comment">// ID of account</span>
+                        &lt;balance&gt;  <span class="hljs-number">0</span>          &lt;/balance&gt;    <span class="hljs-comment">// Balance of funds in account</span>
+                        &lt;code&gt;     #emptyCode &lt;/code&gt;       <span class="hljs-comment">// Disassembled contract of account</span>
+                        &lt;storage&gt;  .Map       &lt;/storage&gt;    <span class="hljs-comment">// Permanent storage of account (for sload/sstore)</span>
+                        &lt;nonce&gt;    <span class="hljs-number">0</span>          &lt;/nonce&gt;      <span class="hljs-comment">// Nonce of account</span>
+                      &lt;/account&gt;
+                    &lt;/accounts&gt;
+
+                    <span class="hljs-comment">// Transactions Record</span>
+                    <span class="hljs-comment">// -------------------</span>
+
+                    &lt;txOrder&gt;   .List &lt;/txOrder&gt;            <span class="hljs-comment">// Order of transactions in block</span>
+                    &lt;txPending&gt; .List &lt;/txPending&gt;          <span class="hljs-comment">// Remaining transactions in block</span>
+
+                    &lt;messages&gt;
+                      &lt;message multiplicity=<span class="hljs-string">&quot;*&quot;</span> type=<span class="hljs-string">&quot;Map&quot;</span>&gt;
+                        &lt;msgID&gt;      <span class="hljs-number">0</span>          &lt;/msgID&gt;              <span class="hljs-comment">// Unique ID of transaction</span>
+                        &lt;txNonce&gt;    <span class="hljs-number">0</span>          &lt;/txNonce&gt;            <span class="hljs-comment">// Nonce of transaction (not checked)</span>
+                        &lt;txGasPrice&gt; <span class="hljs-number">0</span>          &lt;/txGasPrice&gt;         <span class="hljs-comment">// Gas price of transaction</span>
+                        &lt;txGasLimit&gt; <span class="hljs-number">0</span>          &lt;/txGasLimit&gt;         <span class="hljs-comment">// Gas limit of transaction</span>
+                        &lt;sendto&gt;     .Account   &lt;/sendto&gt;             <span class="hljs-comment">// Destination of transaction (.Account for account creation)</span>
+                        &lt;func&gt;       deposit:IeleName    &lt;/func&gt;               <span class="hljs-comment">// Function to call by transaction</span>
+                        &lt;value&gt;      <span class="hljs-number">0</span>          &lt;/value&gt;              <span class="hljs-comment">// Value in funds to transfer by transaction</span>
+                        &lt;from&gt;       <span class="hljs-number">0</span>          &lt;/from&gt;               <span class="hljs-comment">// Sender of transaction</span>
+                        &lt;data&gt;       .WordStack &lt;/data&gt;               <span class="hljs-comment">// Arguments to function called by transaction</span>
+                        &lt;args&gt;       .Ints      &lt;/args&gt;
+                      &lt;/message&gt;
+                    &lt;/messages&gt;
+
+                  &lt;/network&gt;<span class="hljs-keyword">
+
+    syntax</span> IELESimulation<span class="hljs-keyword">
+    syntax</span> Mode<span class="hljs-keyword">
+    syntax</span> Schedule<span class="hljs-keyword">
+    syntax</span> Contract ::= <span class="hljs-string">&quot;#emptyCode&quot;</span>
+ <span class="hljs-comment">// --------------------------------</span>
+</code></pre>
+<h3 id="uninitialized-accounts">Uninitialized Accounts</h3>
+<p>An account to which code has never been deployed has a size in bytes of zero, but contains an implicit public function <code>@deposit</code> which takes
+no arguments, returns no values, and does nothing. This function exists to allow accounts to receive payment even if they do not have a contract
+deployed to them. Note that a contract can forbid payments by refusing to declare the <code>@deposit</code> function, and explicitly raising an exception
+if any of its entry points are invoked with a balance transfer.</p>
+<p>Note that the syntax used in the following <code>#emptyCode</code> macro is desugared IELE syntax, where contracts have a size in bytes metadata attachment (<code>!0</code> here) and argument lists are replaced with an integer value representing arity (<code>0</code> here).</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> IeleNameToken ::= <span class="hljs-string">&quot;Main&quot;</span> [<span class="hljs-literal">token</span>]
+                      | <span class="hljs-string">&quot;iele.Wallet&quot;</span> [<span class="hljs-literal">token</span>]<span class="hljs-keyword">
+    syntax</span> ContractDefinition ::= <span class="hljs-string">&quot;contract&quot;</span> IeleName <span class="hljs-string">&quot;!&quot;</span> <span class="hljs-comment">/* size in bytes */</span><span class="hljs-keyword"> Int</span> <span class="hljs-comment">/* byte string */</span><span class="hljs-keyword"> String</span> <span class="hljs-string">&quot;{&quot;</span> TopLevelDefinitions <span class="hljs-string">&quot;}&quot;</span> <span class="hljs-comment">/* when desugared to include the code size */</span>
+ <span class="hljs-comment">// --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #emptyCode =&gt; contract iele.Wallet <span class="hljs-literal">!0 &quot;&quot; { define public @deposit ( 0 ) { ret .NonEmptyOperands .Instructions .LabeledBlocks } } .Contract [macro]
+
+endmodule
+</span></code></pre>
+<p>The network state is closely based on the EVM blockchain,
+with the state mainly consisting of information on a set of
+accounts, and funds being held by accounts rather than following
+the Bitcoin &quot;UTXO&quot; model.</p>
+<p>Accounts are divided into smart contracts, which accept calls
+and disburse funds according only to their code,
+and simple wallets which can receive deposits but
+contain no smart contract code, and are operated by a person
+off-chain system holding a corresponding private key.</p>
+<p>There is no clear division in the address space between
+smart contracts and wallets, but it is intended to be
+impossible for a smart contract to exist at an address for
+which anybody knows a corresponding private key, so that
+clients of that contract can be sure that its funds will
+only be used according to the contract code.</p>
+<p>When calling a function on an account, the caller may
+include funds to be given to the receiver. In the syntax
+of the <code>call</code> instruction this quantity comes after the
+<code>send</code> keyword.
+This is also the only way to transfer funds between accounts.
+To allow sending funds to simple wallets, those accounts
+act as if they have a single public function named <code>deposit</code>
+which takes no arguments and immediately returns successfully
+when called (thus keeping any funds which were sent).</p>
+<p>To allow people to set up a simple wallet without needing
+to send any blockchain transactions, we need to allow <code>deposit</code>
+to be called on accounts that have never previously been
+mentioned on the blockchain.
+In this case the account is initialized as an &quot;empty&quot; account,
+which has a balance but no contract code.</p>
+<p>A complication is that a call to <code>deposit</code> can create such
+an &quot;empty account&quot; at the address where a new smart contract
+will later be created, because it is sometimes feasible
+to predict the addresses of new contracts.
+The prevent this from being a possible denial of service attack,
+we allow the new smart contract to be created anyway in this case,
+setting up its code an persistent storage and inheriting any
+funds which were already held at that address.
+This is a bit unfortunate but it doesn&apos;t compromise the
+security guarantee that a smart contract account never exists at
+an address for which anybody knows a private key.</p>
+<pre class="hljs"><code><span class="hljs-keyword">module</span> IELE-INFRASTRUCTURE<span class="hljs-keyword">
+    imports</span> IELE-CONFIGURATION<span class="hljs-keyword">
+    imports</span> IELE-CONSTANTS
+</code></pre>
+<h2 id="hardware">Hardware</h2>
+<p>The <code>callStack</code> cell stores a list of previous VM execution states.</p>
+<ul>
+<li><code>#pushCallStack</code> saves a copy of VM execution state on the <code>callStack</code>.</li>
+<li><code>#popCallStack</code> restores the top element of the <code>callStack</code>.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> InternalOp ::= <span class="hljs-string">&quot;#pushCallStack&quot;</span>
+ <span class="hljs-comment">// --------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #pushCallStack =&gt; . ... &lt;/k&gt;
+         &lt;callFrame&gt; FRAME &lt;/callFrame&gt;
+         &lt;callStack&gt; (.List =&gt; ListItem(&lt;callFrame&gt; FRAME &lt;/callFrame&gt;)) ... &lt;/callStack&gt;<span class="hljs-keyword">
+
+    syntax</span> InternalOp ::= <span class="hljs-string">&quot;#popCallStack&quot;</span>
+ <span class="hljs-comment">// -------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #popCallStack =&gt; . ... &lt;/k&gt;
+         &lt;callFrame&gt; _ =&gt; FRAME &lt;/callFrame&gt;
+         &lt;callStack&gt; (ListItem(&lt;callFrame&gt; FRAME &lt;/callFrame&gt;) =&gt; .List) ... &lt;/callStack&gt;
+</code></pre>
+<p>The <code>interimStates</code> cell stores a list of previous world states.</p>
+<ul>
+<li><code>#pushWorldState</code> stores a copy of the current accounts at the top of the <code>interimStates</code> cell.</li>
+<li><code>#popWorldState</code> restores the top element of the <code>interimStates</code>.</li>
+<li><code>#dropWorldState</code> removes the top element of the <code>interimStates</code>.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> Accounts ::= <span class="hljs-string">&quot;{&quot;</span> AccountsCell <span class="hljs-string">&quot;|&quot;</span> Set <span class="hljs-string">&quot;}&quot;</span>
+ <span class="hljs-comment">// ------------------------------------------------</span><span class="hljs-keyword">
+
+    syntax</span> InternalOp ::= <span class="hljs-string">&quot;#pushWorldState&quot;</span>
+ <span class="hljs-comment">// ---------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #pushWorldState =&gt; .K ... &lt;/k&gt;
+         &lt;activeAccounts&gt; ACCTS &lt;/activeAccounts&gt;
+         &lt;accounts&gt; ACCTDATA &lt;/accounts&gt;
+         &lt;interimStates&gt; (.List =&gt; ListItem({ &lt;accounts&gt; ACCTDATA &lt;/accounts&gt; | ACCTS })) ... &lt;/interimStates&gt;<span class="hljs-keyword">
+
+    syntax</span> InternalOp ::= <span class="hljs-string">&quot;#popWorldState&quot;</span>
+ <span class="hljs-comment">// --------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #popWorldState =&gt; .K ... &lt;/k&gt;
+         &lt;interimStates&gt; (ListItem({ &lt;accounts&gt; ACCTDATA &lt;/accounts&gt; | ACCTS }) =&gt; .List) ... &lt;/interimStates&gt;
+         &lt;activeAccounts&gt; _ =&gt; ACCTS &lt;/activeAccounts&gt;
+         &lt;accounts&gt; _ =&gt; ACCTDATA &lt;/accounts&gt;<span class="hljs-keyword">
+
+    syntax</span> InternalOp ::= <span class="hljs-string">&quot;#dropWorldState&quot;</span>
+ <span class="hljs-comment">// ---------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #dropWorldState =&gt; . ... &lt;/k&gt; &lt;interimStates&gt; (ListItem(_) =&gt; .List) ... &lt;/interimStates&gt;
+</code></pre>
+<p>The <code>substateStack</code> cell stores a list of previous substate logs.</p>
+<ul>
+<li><code>#pushSubstate</code> stores a copy of the current substate at the top of the <code>substateStack</code> cell.</li>
+<li><code>#popSubstate</code> restores the top element of the <code>substateStack</code>.</li>
+<li><code>#dropSubstate</code> removes the top element of the <code>substateStack</code>.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> InternalOp ::= <span class="hljs-string">&quot;#pushSubstate&quot;</span>
+ <span class="hljs-comment">// -------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #pushSubstate =&gt; .K ... &lt;/k&gt;
+         &lt;substate&gt; SUBSTATE &lt;/substate&gt;
+         &lt;substateStack&gt; (.List =&gt; ListItem(&lt;substate&gt; SUBSTATE &lt;/substate&gt;)) ... &lt;/substateStack&gt;<span class="hljs-keyword">
+
+    syntax</span> InternalOp ::= <span class="hljs-string">&quot;#popSubstate&quot;</span>
+ <span class="hljs-comment">// ------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #popSubstate =&gt; .K ... &lt;/k&gt;
+         &lt;substate&gt; _ =&gt; SUBSTATE &lt;/substate&gt;
+         &lt;substateStack&gt; (ListItem(&lt;substate&gt; SUBSTATE &lt;/substate&gt;) =&gt; .List) ... &lt;/substateStack&gt;<span class="hljs-keyword">
+
+    syntax</span> InternalOp ::= <span class="hljs-string">&quot;#dropSubstate&quot;</span>
+ <span class="hljs-comment">// -------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #dropSubstate =&gt; .K ... &lt;/k&gt; &lt;substateStack&gt; (ListItem(_) =&gt; .List) ... &lt;/substateStack&gt;
+</code></pre>
+<p>Simple commands controlling exceptions provide control-flow.</p>
+<ul>
+<li><code>#end</code> is used to indicate the (non-exceptional) end of execution.</li>
+<li><code>#exception</code> is used to indicate exceptional states (it consumes any operations to be performed after it).</li>
+<li><code>#revert</code> is used to indicate the contract terminated with the revert instruction (exceptional return with error message, refunding gas).</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> KItem ::= Exception<span class="hljs-keyword">
+    syntax</span> Exception ::= <span class="hljs-string">&quot;#exception&quot;</span><span class="hljs-keyword"> Int</span> | <span class="hljs-string">&quot;#end&quot;</span> | <span class="hljs-string">&quot;#revert&quot;</span><span class="hljs-keyword"> Int</span>
+ <span class="hljs-comment">// --------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; EX:Exception ~&gt; (_:<span class="hljs-keyword">Int</span>    =&gt; .)      ... &lt;/k&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; EX:Exception ~&gt; (_:Instruction =&gt; .) ... &lt;/k&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; EX:Exception ~&gt; (_:Blocks =&gt; .)      ... &lt;/k&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; EX:Exception ~&gt; (_:InternalOp =&gt; .)  ... &lt;/k&gt;<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Int</span> ::= <span class="hljs-string">&quot;FUNC_NOT_FOUND&quot;</span>
+                 | <span class="hljs-string">&quot;FUNC_WRONG_SIG&quot;</span>
+                 | <span class="hljs-string">&quot;CONTRACT_NOT_FOUND&quot;</span>
+                 | <span class="hljs-string">&quot;USER_ERROR&quot;</span>
+                 | <span class="hljs-string">&quot;OUT_OF_GAS&quot;</span>
+                 | <span class="hljs-string">&quot;ACCT_COLLISION&quot;</span>
+                 | <span class="hljs-string">&quot;OUT_OF_FUNDS&quot;</span>
+                 | <span class="hljs-string">&quot;CALL_STACK_OVERFLOW&quot;</span>
+                 | <span class="hljs-string">&quot;CONTRACT_INVALID&quot;</span>
+ <span class="hljs-comment">// ------------------------------------</span><span class="hljs-keyword">
+    rule</span> FUNC_NOT_FOUND      =&gt; <span class="hljs-number">1</span> [<span class="hljs-literal">macro</span>]<span class="hljs-keyword">
+    rule</span> FUNC_WRONG_SIG      =&gt; <span class="hljs-number">2</span> [<span class="hljs-literal">macro</span>]<span class="hljs-keyword">
+    rule</span> CONTRACT_NOT_FOUND  =&gt; <span class="hljs-number">3</span> [<span class="hljs-literal">macro</span>]<span class="hljs-keyword">
+    rule</span> USER_ERROR          =&gt; <span class="hljs-number">4</span> [<span class="hljs-literal">macro</span>]<span class="hljs-keyword">
+    rule</span> OUT_OF_GAS          =&gt; <span class="hljs-number">5</span> [<span class="hljs-literal">macro</span>]<span class="hljs-keyword">
+    rule</span> ACCT_COLLISION      =&gt; <span class="hljs-number">6</span> [<span class="hljs-literal">macro</span>]<span class="hljs-keyword">
+    rule</span> OUT_OF_FUNDS        =&gt; <span class="hljs-number">7</span> [<span class="hljs-literal">macro</span>]<span class="hljs-keyword">
+    rule</span> CALL_STACK_OVERFLOW =&gt; <span class="hljs-number">8</span> [<span class="hljs-literal">macro</span>]<span class="hljs-keyword">
+    rule</span> CONTRACT_INVALID    =&gt; <span class="hljs-number">9</span> [<span class="hljs-literal">macro</span>]
+</code></pre>
+<p>Description of registers.</p>
+<ul>
+<li>Registers begin with <code>%</code></li>
+<li>Registers are evaluated using heating to the values they contain.</li>
+<li><code>#regRange(N)</code> generates the registers 0 to N-1.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">
+    syntax</span> KResult ::= Constant
+ <span class="hljs-comment">// ---------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; % REG:<span class="hljs-keyword">Int</span> =&gt; REGS [ REG ] ... &lt;/k&gt; &lt;regs&gt; REGS &lt;/regs&gt; &lt;typeChecking&gt; false &lt;/typeChecking&gt;<span class="hljs-keyword">
+
+    syntax</span> KResult ::= Ints
+ <span class="hljs-comment">// -----------------------</span><span class="hljs-keyword">
+    rule</span> isKResult(.Operands) =&gt; true<span class="hljs-keyword">
+
+    syntax</span> NonEmptyInts ::= lookupRegisters(Operands, Array) [function]
+ <span class="hljs-comment">// -----------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; % REG:<span class="hljs-keyword">Int</span> , OPS =&gt; lookupRegisters(% REG, OPS, REGS) ... &lt;/k&gt; &lt;regs&gt; REGS &lt;/regs&gt; &lt;typeChecking&gt; false &lt;/typeChecking&gt;<span class="hljs-keyword">
+    rule</span> lookupRegisters(% REG:<span class="hljs-keyword">Int</span>, OPS, REGS) =&gt; getInt(REGS [ REG ]) , lookupRegisters(OPS, REGS)<span class="hljs-keyword">
+    rule</span> lookupRegisters(.Operands, _) =&gt; .NonEmptyInts<span class="hljs-keyword">
+
+    syntax</span> LValues ::= #regRange (<span class="hljs-keyword"> Int</span> ) [function]
+                     | #regRange (<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ) [function, klabel(#regRangeAux)]
+ <span class="hljs-comment">// ---------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #regRange(N) =&gt; #regRange(<span class="hljs-number">0</span>, N)<span class="hljs-keyword">
+    rule</span> #regRange(_, <span class="hljs-number">0</span>) =&gt; .LValues<span class="hljs-keyword">
+    rule</span> #regRange(N, <span class="hljs-number">1</span>) =&gt; % N , .LValues<span class="hljs-keyword">
+    rule</span> #regRange(N, M) =&gt; % N , #regRange(N +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, M -<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>) [owise]
+</code></pre>
+<h3 id="execution-step">Execution Step</h3>
+<p>When an instruction reaches the top of the K cell, we first heat its registers, then compute gas cost, then execute the instruction itself.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> InternalOp ::= <span class="hljs-string">&quot;#exec&quot;</span> Instruction
+                        | <span class="hljs-string">&quot;#gas&quot;</span> <span class="hljs-string">&quot;[&quot;</span> Instruction <span class="hljs-string">&quot;]&quot;</span> 
+ <span class="hljs-comment">// ------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; OP:Instruction =&gt; #gas [ #addr?(OP) ] ~&gt; #exec #addr?(OP) ... &lt;/k&gt;<span class="hljs-keyword"> requires</span> isKResult(OP)
+</code></pre>
+<p>The following types of instructions do not require any register heating.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> KResult ::= AssignInst<span class="hljs-keyword">
+    syntax</span> KResult ::= JumpInst
+</code></pre>
+<p>Some instructions require an argument to be interpreted as an address (modulo 160 bits) or a memory cell (modulo 256 bits), so the <code>#addr?</code> function performs that check.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> Instruction ::= <span class="hljs-string">&quot;#addr?&quot;</span> <span class="hljs-string">&quot;(&quot;</span> Instruction <span class="hljs-string">&quot;)&quot;</span> [function]
+ <span class="hljs-comment">// --------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #addr?(REG = call @iele.balance(W))                                =&gt; REG = call @iele.balance(#addr(W))<span class="hljs-keyword">
+    rule</span> #addr?(REG = call @iele.extcodesize(W))                            =&gt; REG = call @iele.extcodesize(#addr(W))<span class="hljs-keyword">
+    rule</span> #addr?(REG1 , REG2 = copycreate W0 (REGS1) send W1)                =&gt; REG1 , REG2 = copycreate #addr(W0) (REGS1) send W1<span class="hljs-keyword">
+    rule</span> #addr?(selfdestruct W)                                             =&gt; selfdestruct #addr(W)<span class="hljs-keyword">
+    rule</span> #addr?(REGS1 = call LABEL at W0 (REGS2) send W1 , gaslimit W2)     =&gt; REGS1 = call LABEL at #addr(W0) (REGS2) send W1 , gaslimit W2<span class="hljs-keyword">
+    rule</span> #addr?(REGS1 = staticcall LABEL at W0 (REGS2) gaslimit W1)         =&gt; REGS1 = staticcall LABEL at #addr(W0) (REGS2) gaslimit W1<span class="hljs-keyword">
+    rule</span> #addr?(REG = calladdress LABEL at W0)                              =&gt; REG = calladdress LABEL at #addr(W0)<span class="hljs-keyword">
+    rule</span> #addr?(REG = load CELL, OFFSET, WIDTH)                             =&gt; REG = load chop(CELL), OFFSET, WIDTH<span class="hljs-keyword">
+    rule</span> #addr?(REG = load CELL)                                            =&gt; REG = load chop(CELL)<span class="hljs-keyword">
+    rule</span> #addr?(store VALUE, CELL, OFFSET, WIDTH)                           =&gt; store VALUE, chop(CELL), OFFSET, WIDTH<span class="hljs-keyword">
+    rule</span> #addr?(store VALUE, CELL)                                          =&gt; store VALUE, chop(CELL)<span class="hljs-keyword">
+    rule</span> #addr?(REG = sha3 CELL)                                            =&gt; REG = sha3 chop(CELL)<span class="hljs-keyword">
+    rule</span> #addr?(log CELL)                                                   =&gt; log chop(CELL)<span class="hljs-keyword">
+    rule</span> #addr?(log CELL, ARGS)                                             =&gt; log chop(CELL), ARGS<span class="hljs-keyword">
+    rule</span> #addr?(OP)                                                         =&gt; OP [owise]
+</code></pre>
+<h3 id="internal-operations">Internal Operations</h3>
+<ul>
+<li><code>#loadAccount_</code> allows declaring a new empty account with the given address (and assumes the rounding to 160 bits has already occured).
+If the account already exists with non-zero nonce or non-empty code, an exception is thrown.
+Otherwise, if the account already exists, the storage is cleared.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> InternalOp ::= <span class="hljs-string">&quot;#loadAccount&quot;</span><span class="hljs-keyword"> Int</span>
+                        | <span class="hljs-string">&quot;#initAccount&quot;</span><span class="hljs-keyword"> Int</span>
+ <span class="hljs-comment">// ----------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #initAccount ACCT =&gt; #exception ACCT_COLLISION ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT  &lt;/acctID&gt;
+           &lt;code&gt;   CODE  &lt;/code&gt;
+           &lt;nonce&gt;  NONCE &lt;/nonce&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+      requires</span> CODE =/=K #emptyCode orBool NONCE =/=K <span class="hljs-number">0</span><span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #initAccount ACCT =&gt; . ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt;  ACCT       &lt;/acctID&gt;
+           &lt;code&gt;    #emptyCode &lt;/code&gt;
+           &lt;nonce&gt;   <span class="hljs-number">0</span>          &lt;/nonce&gt;
+           &lt;storage&gt; _ =&gt; .Map  &lt;/storage&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; (.K =&gt; #loadAccount ACCT) ~&gt; #initAccount ACCT ... &lt;/k&gt;
+         &lt;activeAccounts&gt; ACCTS &lt;/activeAccounts&gt;<span class="hljs-keyword">
+      requires</span> notBool ACCT in ACCTS
+</code></pre>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #loadAccount ACCT =&gt; . ... &lt;/k&gt;
+         &lt;activeAccounts&gt; ACCTS (.Set =&gt; SetItem(ACCT)) &lt;/activeAccounts&gt;
+         &lt;accounts&gt;
+           ( .Bag
+          =&gt; &lt;account&gt;
+               &lt;acctID&gt;    ACCT       &lt;/acctID&gt;
+               ...
+             &lt;/account&gt;
+           )
+           ...
+         &lt;/accounts&gt;<span class="hljs-keyword">
+      requires</span> notBool ACCT in ACCTS
+</code></pre>
+<ul>
+<li><code>#lookupStorage</code> loads the <code>&lt;storage&gt;</code> cell with the storage value for a particular key in the account.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> InternalOp ::= #lookupStorage (<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> )
+ <span class="hljs-comment">// --------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #lookupStorage(ACCT, INDEX) =&gt; . ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt;  ACCT    &lt;/acctID&gt;
+           &lt;storage&gt; STORAGE &lt;/storage&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+      requires</span> INDEX in_keys(STORAGE)
+</code></pre>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #lookupStorage(ACCT, INDEX) =&gt; . ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt;  ACCT                              &lt;/acctID&gt;
+           &lt;storage&gt; STORAGE =&gt; STORAGE [ INDEX &lt;- <span class="hljs-number">0</span> ] &lt;/storage&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+      requires</span> notBool INDEX in_keys(STORAGE)
+</code></pre>
+<ul>
+<li><code>#lookupCode</code> loads the <code>&lt;code&gt;</code> cell with the code for a particular account.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> InternalOp ::= #lookupCode (<span class="hljs-keyword"> Int</span> )
+ <span class="hljs-comment">// -----------------------------------------</span>
+</code></pre>
+<ul>
+<li><code>#transferFunds</code> moves money from one account into another, creating the destination account if it doesn&apos;t exist.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> InternalOp ::= <span class="hljs-string">&quot;#transferFunds&quot;</span><span class="hljs-keyword"> Int</span><span class="hljs-keyword"> Int</span><span class="hljs-keyword"> Int</span>
+ <span class="hljs-comment">// --------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #transferFunds ACCTFROM ACCTTO VALUE =&gt; . ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCTFROM &lt;/acctID&gt;
+           &lt;balance&gt; ORIGFROM =&gt; ORIGFROM -<span class="hljs-keyword">Int</span> VALUE &lt;/balance&gt;
+           ...
+         &lt;/account&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCTTO &lt;/acctID&gt;
+           &lt;balance&gt; ORIGTO =&gt; ORIGTO +<span class="hljs-keyword">Int</span> VALUE &lt;/balance&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+      requires</span> ACCTFROM =/=K ACCTTO andBool VALUE &lt;=<span class="hljs-keyword">Int</span> ORIGFROM<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #transferFunds ACCTFROM ACCTTO VALUE =&gt; #exception OUT_OF_FUNDS ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCTFROM &lt;/acctID&gt;
+           &lt;balance&gt; ORIGFROM &lt;/balance&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+      requires</span> VALUE &gt;<span class="hljs-keyword">Int</span> ORIGFROM<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; (. =&gt; #loadAccount ACCTTO) ~&gt; #transferFunds ACCTFROM ACCTTO VALUE ... &lt;/k&gt;
+         &lt;activeAccounts&gt; ACCTS &lt;/activeAccounts&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCTFROM &lt;/acctID&gt;
+           &lt;balance&gt; ORIGFROM &lt;/balance&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+      requires</span> ACCTFROM =/=K ACCTTO andBool notBool ACCTTO in ACCTS andBool VALUE &lt;=<span class="hljs-keyword">Int</span> ORIGFROM<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #transferFunds ACCT ACCT VALUE =&gt; . ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;balance&gt; ORIGFROM &lt;/balance&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+      requires</span> VALUE &lt;=<span class="hljs-keyword">Int</span> ORIGFROM<span class="hljs-keyword">
+endmodule</span>
+</code></pre>
+<h2 id="instruction-execution-cycle">Instruction Execution Cycle</h2>
+<ul>
+<li><code>#execute</code> loads the code of the currently-executing function into the <code>k</code> cell, where it executes until the function returns.
+It is an exception if we try to execute a function that does not exist.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">module</span> IELE<span class="hljs-keyword">
+    imports</span> IELE-GAS<span class="hljs-keyword">
+    imports</span> IELE-PRECOMPILED<span class="hljs-keyword">
+    imports</span> IELE-PROGRAM-LOADING<span class="hljs-keyword">
+    imports</span> IELE-INFRASTRUCTURE<span class="hljs-keyword">
+
+    syntax</span> KItem ::= <span class="hljs-string">&quot;#execute&quot;</span>
+ <span class="hljs-comment">// ---------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #execute =&gt; CODE                      ... &lt;/k&gt; &lt;fid&gt; FUNC &lt;/fid&gt; &lt;funcId&gt; FUNC &lt;/funcId&gt; &lt;instructions&gt; CODE &lt;/instructions&gt;
+</code></pre>
+<p>Execution follows a simple cycle where first the state is checked for exceptions, then if no exceptions will be thrown the opcode is run.</p>
+<ul>
+<li>If we reach the end of the function, we execute an implicit <code>ret void</code> instruction.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; .LabeledBlocks =&gt; ret .NonEmptyOperands .Instructions .LabeledBlocks ... &lt;/k&gt;
+         &lt;typeChecking&gt; false &lt;/typeChecking&gt;
+</code></pre>
+<ul>
+<li>The rule for sequential composition checks if the instruction is exceptional, runs it if not, then executes the next instruction (assuming
+the instruction doesn&apos;t execute a transfer of control flow).</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; OP::Instruction OPS::Instructions BLOCKS::LabeledBlocks
+          =&gt; #exceptional? [ OP ] ~&gt; OP
+          ~&gt; OPS BLOCKS
+         ...
+         &lt;/k&gt;
+         &lt;typeChecking&gt; false &lt;/typeChecking&gt;
+</code></pre>
+<p>When execution reaches the end of a block, we fall through to the immediately next block.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; .Instructions BLOCKS::LabeledBlocks =&gt; BLOCKS ... &lt;/k&gt;
+         &lt;typeChecking&gt; false &lt;/typeChecking&gt;
+</code></pre>
+<h3 id="exceptional-ops">Exceptional Ops</h3>
+<p>Some checks if an opcode will throw an exception are relatively quick and done up front.</p>
+<ul>
+<li><code>#exceptional?</code> checks if the operator is invalid.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> InternalOp ::= <span class="hljs-string">&quot;#exceptional?&quot;</span> <span class="hljs-string">&quot;[&quot;</span> Instruction <span class="hljs-string">&quot;]&quot;</span>
+ <span class="hljs-comment">// ---------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exceptional? [ OP ] =&gt; #invalid? [ OP ] ~&gt; #static? [ OP ] ~&gt; #negativeCall? [ OP ] ... &lt;/k&gt;
+</code></pre>
+<ul>
+<li><code>#invalid?</code> checks if it&apos;s the designated invalid opcode.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> K ::= <span class="hljs-string">&quot;#invalid?&quot;</span> <span class="hljs-string">&quot;[&quot;</span> Instruction <span class="hljs-string">&quot;]&quot;</span> [function]
+ <span class="hljs-comment">// -------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #invalid? [ _ = call @iele.invalid(.Operands) ] =&gt; #exception USER_ERROR<span class="hljs-keyword">
+    rule</span> #invalid? [ OP ] =&gt; . [owise]
+</code></pre>
+<ul>
+<li><code>#static?</code> determines if the opcode should throw an exception due to the static flag (i.e., an attempt to change state inside a contract called with <code>staticcall</code>)</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> InternalOp ::= <span class="hljs-string">&quot;#static?&quot;</span> <span class="hljs-string">&quot;[&quot;</span> Instruction <span class="hljs-string">&quot;]&quot;</span>
+ <span class="hljs-comment">// ----------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #static? [ OP ] =&gt; .                     ... &lt;/k&gt;                     &lt;static&gt; false &lt;/static&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #static? [ OP ] =&gt; .                     ... &lt;/k&gt; &lt;regs&gt; REGS &lt;/regs&gt; &lt;static&gt; true  &lt;/static&gt;<span class="hljs-keyword"> requires</span> notBool #changesState(OP, REGS)<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #static? [ OP ] =&gt; #exception USER_ERROR ... &lt;/k&gt; &lt;regs&gt; REGS &lt;/regs&gt; &lt;static&gt; true  &lt;/static&gt;<span class="hljs-keyword"> requires</span>         #changesState(OP, REGS)<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Bool</span> ::= #changesState ( Instruction , Array ) [function]
+ <span class="hljs-comment">// ----------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #changesState(log _, _) =&gt; true<span class="hljs-keyword">
+    rule</span> #changesState(log _ , _, _) =&gt; true<span class="hljs-keyword">
+    rule</span> #changesState(sstore _ , _, _) =&gt; true<span class="hljs-keyword">
+    rule</span> #changesState(_ = call _ at _ (_) send % VALUE , gaslimit _, REGS) =&gt; true<span class="hljs-keyword"> requires</span> REGS [ VALUE ] =/=K <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> #changesState(_ , _ = create _ (_) send _, _) =&gt; true<span class="hljs-keyword">
+    rule</span> #changesState(_ , _ = copycreate _ (_) send _, _) =&gt; true<span class="hljs-keyword">
+    rule</span> #changesState(selfdestruct _, _) =&gt; true<span class="hljs-keyword">
+    rule</span> #changesState(...) =&gt; false [owise]
+</code></pre>
+<ul>
+<li><code>#negativeCall?</code> throws an exception if we are making a contract call with negative value or gas limit.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> InternalOp ::= <span class="hljs-string">&quot;#negativeCall?&quot;</span> <span class="hljs-string">&quot;[&quot;</span> Instruction <span class="hljs-string">&quot;]&quot;</span>
+ <span class="hljs-comment">// ----------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #negativeCall? [ OP ] =&gt; . ... &lt;/k&gt;<span class="hljs-keyword"> requires</span> notBool isAccountCallInst(OP) andBool notBool isCreateInst(OP)<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #negativeCall? [ _     = call       _ at _ ( _ ) send % REG1 , gaslimit % REG2 ] =&gt; #if getInt(REGS [ REG1 ]) &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> orBool getInt(REGS [ REG2 ]) &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> #then #exception USER_ERROR #else . #fi ... &lt;/k&gt; &lt;regs&gt; REGS &lt;/regs&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #negativeCall? [ _     = staticcall _ at _ ( _ ) gaslimit % REG ] =&gt; #if getInt(REGS [ REG ]) &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> #then #exception USER_ERROR #else . #fi ... &lt;/k&gt; &lt;regs&gt; REGS &lt;/regs&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #negativeCall? [ _ , _ = create     _ ( _ ) send % REG ]          =&gt; #if getInt(REGS [ REG ]) &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> #then #exception USER_ERROR #else . #fi ... &lt;/k&gt; &lt;regs&gt; REGS &lt;/regs&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #negativeCall? [ _ , _ = copycreate _ ( _ ) send % REG ]          =&gt; #if getInt(REGS [ REG ]) &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> #then #exception USER_ERROR #else . #fi ... &lt;/k&gt; &lt;regs&gt; REGS &lt;/regs&gt;
+</code></pre>
+<h3 id="substate-log">Substate Log</h3>
+<p>After executing a transaction, it&apos;s necessary to have the effect of the substate log recorded.</p>
+<ul>
+<li><code>#finalizeTx</code> makes the substate log actually have an effect on the state.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> InternalOp ::= #finalizeTx (<span class="hljs-keyword"> Bool</span> )
+                        | #deleteAccounts ( List )
+ <span class="hljs-comment">// ----------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #finalizeTx(true) =&gt; . ... &lt;/k&gt;
+         &lt;selfDestruct&gt; .Set &lt;/selfDestruct&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #finalizeTx(false =&gt; true) ... &lt;/k&gt;
+         &lt;mode&gt; VMTESTS &lt;/mode&gt;
+         &lt;id&gt; ACCT &lt;/id&gt;
+         &lt;refund&gt; BAL =&gt; <span class="hljs-number">0</span> &lt;/refund&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;balance&gt; CURRBAL =&gt; CURRBAL +<span class="hljs-keyword">Int</span> BAL &lt;/balance&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; (.K =&gt; #loadAccount MINER) ~&gt; #finalizeTx(_)... &lt;/k&gt;
+         &lt;mode&gt; NORMAL &lt;/mode&gt;
+         &lt;beneficiary&gt; MINER &lt;/beneficiary&gt;
+         &lt;activeAccounts&gt; ACCTS &lt;/activeAccounts&gt;<span class="hljs-keyword">
+      requires</span> notBool MINER in ACCTS<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #finalizeTx(false =&gt; true) ... &lt;/k&gt;
+         &lt;mode&gt; NORMAL &lt;/mode&gt;
+         &lt;txPending&gt; ListItem(_) =&gt; .List ... &lt;/txPending&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; (. =&gt; #deleteAccounts(Set2List(ACCTS))) ~&gt; #finalizeTx(true) ... &lt;/k&gt;
+         &lt;selfDestruct&gt; ACCTS =&gt; .Set &lt;/selfDestruct&gt;<span class="hljs-keyword">
+      requires</span> size(ACCTS) &gt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #deleteAccounts(ListItem(ACCT) ACCTS) =&gt; #deleteAccounts(ACCTS) ... &lt;/k&gt;
+         &lt;activeAccounts&gt; ... (SetItem(ACCT) =&gt; .Set) &lt;/activeAccounts&gt;
+         &lt;accounts&gt;
+           ( &lt;account&gt;
+               &lt;acctID&gt; ACCT &lt;/acctID&gt;
+               ...
+             &lt;/account&gt;
+          =&gt; .Bag
+           )
+           ...
+         &lt;/accounts&gt;<span class="hljs-keyword">
+
+    rule</span> #deleteAccounts(.List) =&gt; .
+</code></pre>
+<h1 id="iele-programs">IELE Programs</h1>
+<p>Lists of instructions form functions in a contract.</p>
+<h2 id="iele-instructions">IELE Instructions</h2>
+<p>Each subsection has a different class of instructions.
+Organization is based roughly on what parts of the execution state are needed to compute the result of each operator.</p>
+<h3 id="invalid-operator">Invalid Operator</h3>
+<p>We use an explicit call to <code>@iele.invalid</code> both for marking the designated invalid operator and for garbage bytes in the input program.
+Executing the INVALID instruction results in an exception.</p>
+<h3 id="register-manipulations">Register Manipulations</h3>
+<p>Some operators don&apos;t calculate anything, they just manipulate the state of registers.</p>
+<ul>
+<li>
+<p>Assigning an integer to a register is used to load immediate values into registers.</p>
+</li>
+<li>
+<p>Assigning one register to another copies the value of the source register into the destination.</p>
+</li>
+<li>
+<p><code>#loads</code> loads a list of integers into a list of registers. It is an exception if the number of values do not match.</p>
+</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #exec REG = W:<span class="hljs-keyword">Int</span> =&gt; #load REG W ... &lt;/k&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec REG1 = % REG2 =&gt; #load REG1 getInt( REGS [ REG2 ] ) ... &lt;/k&gt; &lt;regs&gt; REGS &lt;/regs&gt;<span class="hljs-keyword">
+
+    syntax</span> InternalOp ::= <span class="hljs-string">&quot;#load&quot;</span> LValue<span class="hljs-keyword"> Int</span>
+                        | <span class="hljs-string">&quot;#load&quot;</span><span class="hljs-keyword"> Int</span><span class="hljs-keyword"> Int</span><span class="hljs-keyword"> Int</span> [klabel(#loadAux)]
+ <span class="hljs-comment">// ------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #load % REG VALUE =&gt; #load REG VALUE getInt(REGS [ REG ]) ... &lt;/k&gt; &lt;regs&gt; REGS &lt;/regs&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #load REG VALUE OLD =&gt; . ... &lt;/k&gt; &lt;regs&gt; REGS =&gt; REGS [ REG &lt;- VALUE ] &lt;/regs&gt; &lt;currentMemory&gt; CURR =&gt; CURR -<span class="hljs-keyword">Int</span> intSize(OLD) +<span class="hljs-keyword">Int</span> intSize(VALUE) &lt;/currentMemory&gt;<span class="hljs-keyword">
+
+    syntax</span> InternalOp ::= <span class="hljs-string">&quot;#loads&quot;</span> LValues Ints
+ <span class="hljs-comment">// -------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #loads (REG , REGS) (VALUE , VALUES) =&gt; #load REG VALUE ~&gt; #loads REGS VALUES ... &lt;/k&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #loads .LValues     .Ints            =&gt; .K                                    ... &lt;/k&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #loads (REG , REGS) .Ints            =&gt; #exception FUNC_WRONG_SIG             ... &lt;/k&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #loads .LValues     (VALUE , VALUES) =&gt; #exception FUNC_WRONG_SIG             ... &lt;/k&gt;
+</code></pre>
+<h3 id="local-memory">Local Memory</h3>
+<p>These operations are getters/setters of the local execution memory.</p>
+<ul>
+<li><code>REG = load CELL, OFFSET, WIDTH</code> loads WIDTH bytes starting at OFFSET in the specified memory CELL into REG, interpreted as a signed integer.</li>
+<li><code>REG = load CELL</code> loads the entire value in CELL into REG, interpreted as a signed integer.</li>
+<li><code>REG = store VALUE, CELL, OFFSET, WIDTH</code> stores VALUE into the specified memory CELL at OFFSET, interpreting it modulo 256^WIDTH.</li>
+<li><code>REG = store VALUE, CELL</code> stores VALUE into the specified memory CELL, overwriting the previous value of the entire cell.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #exec REG = load CELL , OFFSET , WIDTH =&gt; #load REG Bytes2Int(LM [ OFFSET .. WIDTH ], LE, Unsigned) ... &lt;/k&gt;
+         &lt;localMem&gt;... CELL |-&gt; LM ...&lt;/localMem&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec REG = load CELL , OFFSET , WIDTH =&gt; #load REG <span class="hljs-number">0</span> ... &lt;/k&gt;
+         &lt;localMem&gt; LM &lt;/localMem&gt;<span class="hljs-keyword">
+      requires</span> notBool CELL in_keys(LM)<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec REG = load CELL =&gt; #load REG Bytes2Int(LM, LE, Signed) ... &lt;/k&gt;
+         &lt;localMem&gt;... CELL |-&gt; LM ...&lt;/localMem&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec REG = load CELL =&gt; #load REG <span class="hljs-number">0</span> ... &lt;/k&gt;
+         &lt;localMem&gt; LM &lt;/localMem&gt;<span class="hljs-keyword">
+      requires</span> notBool CELL in_keys(LM)<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec store VALUE , CELL , OFFSET , WIDTH =&gt; . ... &lt;/k&gt;
+         &lt;localMem&gt;... CELL |-&gt; (LM =&gt; LM [ OFFSET := Int2Bytes(chop(WIDTH), twos(chop(WIDTH), VALUE), LE) ]) &lt;/localMem&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec store _ , CELL , _ , WIDTH ... &lt;/k&gt;
+         &lt;localMem&gt; LM (.Map =&gt; CELL |-&gt; .Bytes) &lt;/localMem&gt;<span class="hljs-keyword">
+      requires</span> notBool CELL in_keys(LM) andBool WIDTH =/=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec store _ , CELL , _ , <span class="hljs-number">0</span> =&gt; . ... &lt;/k&gt;
+         &lt;localMem&gt; LM &lt;/localMem&gt;<span class="hljs-keyword">
+      requires</span> notBool CELL in_keys(LM)<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec store VALUE , CELL =&gt; . ... &lt;/k&gt;
+         &lt;localMem&gt; LM =&gt; #if VALUE ==<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> andBool notBool CELL in_keys(LM) #then LM #else LM [ CELL &lt;- Int2Bytes(VALUE, LE, Signed) ] #fi &lt;/localMem&gt;
+</code></pre>
+<h3 id="expressions">Expressions</h3>
+<p>Expression calculations are simple and don&apos;t require anything but the arguments from the <code>regs</code> to operate.</p>
+<ul>
+<li>
+<p><code>REG = iszero W</code> performs boolean negation on W.</p>
+</li>
+<li>
+<p><code>REG = not W</code> performs bitwise negation on W.</p>
+</li>
+<li>
+<p><code>REG = add W0, W1</code> performs arbitrary-precision addition on W0 and W1.</p>
+</li>
+<li>
+<p><code>REG = sub W0, W1</code> performs arbitrary-precision subtraction on W0 and W1.</p>
+</li>
+<li>
+<p><code>REG = mul W0, W1</code> performs arbitrary-precision multiplication on W0 and W1.</p>
+</li>
+<li>
+<p><code>REG = div W0, W1</code> performs arbitrary-precision t-division on W0 and W1. It is an exception to divide by zero.</p>
+</li>
+<li>
+<p><code>REG = mod W0, W1</code> performs arbitrary-precision t-modulus on W0 and W1. It is an exception to modulus by zero.</p>
+</li>
+<li>
+<p><code>REG = exp W0, W1</code> performs arbitrary-precision exponentiation on W0 and W1. It is an exception to exponentiate by a negative number.</p>
+</li>
+<li>
+<p><code>REG = addmod W0, W1, W2</code> performs addition of W0 and W1 modulo W2. It is an exception to modulus by zero.</p>
+</li>
+<li>
+<p><code>REG = mulmod W0, W1, W2</code> performs multiplication of W0 and W1 modulo W2. It is an exception to modulus by zero.</p>
+</li>
+<li>
+<p><code>REG = expmod W0, W1, W2</code> performs exponentiation of W0 and W1 modulo W2. It is an exception to exponentiate by a negative number or modulus by zero.</p>
+</li>
+<li>
+<p><code>REG = log2 W</code> performs the floored logarithm base 2 of W. It is an exception to compute the logarithm of 0 or of a negative number.</p>
+</li>
+<li>
+<p><code>REG = and W0, W1</code> performs bitwise AND on W0 and W1.</p>
+</li>
+<li>
+<p><code>REG = or W0, W1</code> performs bitwise inclusive OR on W0 and W1.</p>
+</li>
+<li>
+<p><code>REG = xor W0, W1</code> performs bitwise exclusive OR on W0 and W1.</p>
+</li>
+<li>
+<p><code>REG = shift W0, W1</code> performs bitwise shifting of W0 by W1 bits. If W1 is positive, a left shift occurs; if W1 is negative, a right shift occurs.</p>
+</li>
+<li>
+<p><code>REG = cmp lt W0, W1</code> computes if W0 is less than W1.</p>
+</li>
+<li>
+<p><code>REG = cmp le W0, W1</code> computes if W0 is less than or equal to W1.</p>
+</li>
+<li>
+<p><code>REG = cmp gt W0, W1</code> computes if W0 is greater than W1.</p>
+</li>
+<li>
+<p><code>REG = cmp ge W0, W1</code> computes if W0 is greater than or equal to W1.</p>
+</li>
+<li>
+<p><code>REG = cmp eq W0, W1</code> computes if W0 is equal to W1.</p>
+</li>
+<li>
+<p><code>REG = cmp ne W0, W1</code> computes if W0 is not equal to W1.</p>
+</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #exec REG = iszero <span class="hljs-number">0</span> =&gt; #load REG <span class="hljs-number">1</span>      ... &lt;/k&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = iszero W =&gt; #load REG <span class="hljs-number">0</span>      ... &lt;/k&gt;<span class="hljs-keyword"> requires</span> W =/=K <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = not W    =&gt; #load REG ~<span class="hljs-keyword">Int</span> W ... &lt;/k&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec REG = add W0 , W1 =&gt; #load REG W0 +<span class="hljs-keyword">Int</span> W1  ... &lt;/k&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = mul W0 , W1 =&gt; #load REG W0 *<span class="hljs-keyword">Int</span> W1  ... &lt;/k&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = sub W0 , W1 =&gt; #load REG W0 -<span class="hljs-keyword">Int</span> W1  ... &lt;/k&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = div W0 , W1 =&gt; #load REG W0 /<span class="hljs-keyword">Int</span> W1  ... &lt;/k&gt;<span class="hljs-keyword"> requires</span> W1 =/=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = div W0 ,  <span class="hljs-number">0</span> =&gt; #exception USER_ERROR ... &lt;/k&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = exp W0 , W1 =&gt; #load REG W0 ^<span class="hljs-keyword">Int</span> W1  ... &lt;/k&gt;<span class="hljs-keyword"> requires</span> W1 &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = exp W0 , W1 =&gt; #exception USER_ERROR ... &lt;/k&gt;<span class="hljs-keyword"> requires</span> W1 &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = mod W0 , W1 =&gt; #load REG W0 %<span class="hljs-keyword">Int</span> W1  ... &lt;/k&gt;<span class="hljs-keyword"> requires</span> W1 =/=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = mod W0 ,  <span class="hljs-number">0</span> =&gt; #exception USER_ERROR ... &lt;/k&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec REG = addmod W0 , W1 , W2 =&gt; #load REG (W0 +<span class="hljs-keyword">Int</span> W1) %<span class="hljs-keyword">Int</span> W2 ... &lt;/k&gt;<span class="hljs-keyword"> requires</span> W2 =/=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = addmod W0 , W1 ,  <span class="hljs-number">0</span> =&gt; #exception USER_ERROR          ... &lt;/k&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = mulmod W0 , W1 , W2 =&gt; #load REG (W0 *<span class="hljs-keyword">Int</span> W1) %<span class="hljs-keyword">Int</span> W2 ... &lt;/k&gt;<span class="hljs-keyword"> requires</span> W2 =/=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = mulmod W0 , W1 ,  <span class="hljs-number">0</span> =&gt; #exception USER_ERROR          ... &lt;/k&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = expmod W0 , W1 , W2 =&gt; #load REG powmod(W0,W1,W2)     ... &lt;/k&gt;<span class="hljs-keyword"> requires</span> W2 =/=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> andBool (W1 &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> orBool gcdInt(W0, W2) ==<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>)<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = expmod W0 , W1 ,  <span class="hljs-number">0</span> =&gt; #exception USER_ERROR          ... &lt;/k&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = expmod W0 , W1 , W2 =&gt; #exception USER_ERROR          ... &lt;/k&gt;<span class="hljs-keyword"> requires</span> W1 &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> andBool gcdInt(W0, W2) =/=<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span><span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec REG = byte  INDEX , W =&gt; #load REG byte(chop(INDEX), W)       ... &lt;/k&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = sext  WIDTH , W =&gt; #load REG signextend(chop(WIDTH), W) ... &lt;/k&gt;<span class="hljs-keyword"> requires</span> W &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = sext  WIDTH , W =&gt; #exception USER_ERROR                ... &lt;/k&gt;<span class="hljs-keyword"> requires</span> W &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = twos  WIDTH , W =&gt; #load REG twos(chop(WIDTH), W)       ... &lt;/k&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = bswap WIDTH , W =&gt; #load REG bswap(chop(WIDTH), W)      ... &lt;/k&gt;<span class="hljs-keyword"> requires</span> W &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = bswap WIDTH , W =&gt; #exception USER_ERROR                ... &lt;/k&gt;<span class="hljs-keyword"> requires</span> W &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec REG = log2 W =&gt; #load REG log2Int(W)  ... &lt;/k&gt;<span class="hljs-keyword"> requires</span> W &gt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = log2 W =&gt; #exception USER_ERROR ... &lt;/k&gt;<span class="hljs-keyword"> requires</span> W &lt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec REG = and   W0 , W1 =&gt; #load REG W0 &amp;<span class="hljs-keyword">Int</span> W1   ... &lt;/k&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = or    W0 , W1 =&gt; #load REG W0 |<span class="hljs-keyword">Int</span> W1   ... &lt;/k&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = xor   W0 , W1 =&gt; #load REG W0 xorInt W1 ... &lt;/k&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = shift W0 , W1 =&gt; #load REG W0 &lt;&lt;<span class="hljs-keyword">Int</span> W1 ... &lt;/k&gt;<span class="hljs-keyword"> requires</span> W1 &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = shift W0 , W1 =&gt; #load REG W0 &gt;&gt;<span class="hljs-keyword">Int</span> (<span class="hljs-number">0</span> -<span class="hljs-keyword">Int</span> W1) ... &lt;/k&gt;<span class="hljs-keyword"> requires</span> W1 &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec REG = cmp lt W0 , W1 =&gt; #load REG <span class="hljs-number">1</span> ... &lt;/k&gt;<span class="hljs-keyword">  requires</span> W0 &lt;<span class="hljs-keyword">Int</span>   W1<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = cmp lt W0 , W1 =&gt; #load REG <span class="hljs-number">0</span> ... &lt;/k&gt;<span class="hljs-keyword">  requires</span> W0 &gt;=<span class="hljs-keyword">Int</span>  W1<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = cmp le W0 , W1 =&gt; #load REG <span class="hljs-number">1</span> ... &lt;/k&gt;<span class="hljs-keyword">  requires</span> W0 &lt;=<span class="hljs-keyword">Int</span>  W1<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = cmp le W0 , W1 =&gt; #load REG <span class="hljs-number">0</span> ... &lt;/k&gt;<span class="hljs-keyword">  requires</span> W0 &gt;<span class="hljs-keyword">Int</span>   W1<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = cmp gt W0 , W1 =&gt; #load REG <span class="hljs-number">1</span> ... &lt;/k&gt;<span class="hljs-keyword">  requires</span> W0 &gt;<span class="hljs-keyword">Int</span>   W1<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = cmp gt W0 , W1 =&gt; #load REG <span class="hljs-number">0</span> ... &lt;/k&gt;<span class="hljs-keyword">  requires</span> W0 &lt;=<span class="hljs-keyword">Int</span>  W1<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = cmp ge W0 , W1 =&gt; #load REG <span class="hljs-number">1</span> ... &lt;/k&gt;<span class="hljs-keyword">  requires</span> W0 &gt;=<span class="hljs-keyword">Int</span>  W1<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = cmp ge W0 , W1 =&gt; #load REG <span class="hljs-number">0</span> ... &lt;/k&gt;<span class="hljs-keyword">  requires</span> W0 &lt;<span class="hljs-keyword">Int</span>   W1<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = cmp eq W0 , W1 =&gt; #load REG <span class="hljs-number">1</span> ... &lt;/k&gt;<span class="hljs-keyword">  requires</span> W0 ==<span class="hljs-keyword">Int</span>  W1<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = cmp eq W0 , W1 =&gt; #load REG <span class="hljs-number">0</span> ... &lt;/k&gt;<span class="hljs-keyword">  requires</span> W0 =/=<span class="hljs-keyword">Int</span> W1<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = cmp ne W0 , W1 =&gt; #load REG <span class="hljs-number">1</span> ... &lt;/k&gt;<span class="hljs-keyword">  requires</span> W0 =/=<span class="hljs-keyword">Int</span> W1<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = cmp ne W0 , W1 =&gt; #load REG <span class="hljs-number">0</span> ... &lt;/k&gt;<span class="hljs-keyword">  requires</span> W0 ==<span class="hljs-keyword">Int</span>  W1
+
+</code></pre>
+<h3 id="hashing">Hashing</h3>
+<p>The sha3 instruction computes the keccak256 hash of an entire memory cell.</p>
+<pre class="hljs"><code><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = sha3 MEMINDEX =&gt; #load REG keccak(LM) ... &lt;/k&gt;
+         &lt;localMem&gt;... MEMINDEX |-&gt; LM ...&lt;/localMem&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = sha3 MEMINDEX =&gt; #load REG keccak(.Bytes) ... &lt;/k&gt;
+         &lt;localMem&gt; LM &lt;/localMem&gt;<span class="hljs-keyword">
+      requires</span> notBool MEMINDEX in_keys(LM)
+</code></pre>
+<h3 id="local-state">Local State</h3>
+<p>These operators make queries about the current execution state.</p>
+<ul>
+<li><code>REG = call @iele.gas()</code> returns the gas remaining after executing the current instruction.</li>
+<li><code>REG = call @iele.gasprice()</code> returns the gas price of the transaction. This will be removed when we migrate to Cardano.</li>
+<li><code>REG = call @iele.gaslimit()</code> returns the gas limit of the current block.</li>
+<li><code>REG = call @iele.beneficiary()</code> returns the account who receives payment for mining the current transaction.</li>
+<li><code>REG = call @iele.timestamp()</code> returns the time stamp of the current block.</li>
+<li><code>REG = call @iele.number()</code> returns the block number of the current block.</li>
+<li><code>REG = call @iele.difficulty()</code> returns the difficulty of the current block. This will be removed when we migrate to Cardano.</li>
+<li><code>REG = call @iele.address()</code> returns the address of the currently executing account.</li>
+<li><code>REG = call @iele.origin()</code> returns the original sender of the current transaction.</li>
+<li><code>REG = call @iele.caller()</code> returns the caller of the current contract call.</li>
+<li><code>REG = call @iele.callvalue()</code> returns the value transfer of the current contract call.</li>
+<li><code>REG = call @iele.msize()</code> returns the current peak memory usage of the current contract call.</li>
+<li><code>REG = call @iele.codesize()</code> returns the size in bytes of the currently executing contract.</li>
+<li><code>REG = call @iele.blockhash(N)</code> returns the hash of the block header of the Nth previous block.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #exec REG = call @iele.gas      ( .Ints )  =&gt; #load REG (GAVAIL /<span class="hljs-keyword">Int</span> Sgasdivisor &lt; SCHED &gt;) ... &lt;/k&gt; &lt;gas&gt; GAVAIL &lt;/gas&gt; &lt;schedule&gt; SCHED &lt;/schedule&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = call @iele.gasprice ( .Ints )  =&gt; #load REG GPRICE ... &lt;/k&gt; &lt;gasPrice&gt; GPRICE &lt;/gasPrice&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = call @iele.gaslimit ( .Ints )  =&gt; #load REG GLIMIT ... &lt;/k&gt; &lt;gasLimit&gt; GLIMIT &lt;/gasLimit&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec REG = call @iele.beneficiary ( .Ints )  =&gt; #load REG CB   ... &lt;/k&gt; &lt;beneficiary&gt; CB &lt;/beneficiary&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = call @iele.timestamp   ( .Ints )  =&gt; #load REG TS   ... &lt;/k&gt; &lt;timestamp&gt; TS &lt;/timestamp&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = call @iele.number      ( .Ints )  =&gt; #load REG NUMB ... &lt;/k&gt; &lt;number&gt; NUMB &lt;/number&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = call @iele.difficulty  ( .Ints )  =&gt; #load REG DIFF ... &lt;/k&gt; &lt;difficulty&gt; DIFF &lt;/difficulty&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec REG = call @iele.address   ( .Ints )  =&gt; #load REG ACCT ... &lt;/k&gt; &lt;id&gt; ACCT &lt;/id&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = call @iele.origin    ( .Ints )  =&gt; #load REG ORG  ... &lt;/k&gt; &lt;origin&gt; ORG &lt;/origin&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = call @iele.caller    ( .Ints )  =&gt; #load REG CL   ... &lt;/k&gt; &lt;caller&gt; CL &lt;/caller&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = call @iele.callvalue ( .Ints )  =&gt; #load REG CV   ... &lt;/k&gt; &lt;callValue&gt; CV &lt;/callValue&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec REG = call @iele.msize    ( .Ints ) =&gt; #load REG (MU &lt;&lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">3</span>) ... &lt;/k&gt; &lt;peakMemory&gt; MU &lt;/peakMemory&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = call @iele.codesize ( .Ints ) =&gt; #load REG SIZE         ... &lt;/k&gt; &lt;programSize&gt; SIZE &lt;/programSize&gt;
+</code></pre>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #exec REG = call @iele.blockhash ( N ) =&gt; #load REG #if N &gt;=<span class="hljs-keyword">Int</span> HI orBool HI -<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> &gt;<span class="hljs-keyword">Int</span> N orBool N &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> #then <span class="hljs-number">0</span> #else #parseHexWord(Keccak256(Int2String(N))) #fi ... &lt;/k&gt; &lt;number&gt; HI &lt;/number&gt; &lt;mode&gt; VMTESTS &lt;/mode&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec REG = call @iele.blockhash ( N ) =&gt; #load REG #blockhash(HASHES, N, HI -<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, <span class="hljs-number">0</span>) ... &lt;/k&gt; &lt;number&gt; HI &lt;/number&gt; &lt;blockhash&gt; HASHES &lt;/blockhash&gt; &lt;mode&gt; NORMAL &lt;/mode&gt;<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Int</span> ::= #blockhash ( List ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ) [function]
+ <span class="hljs-comment">// ---------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #blockhash(_, N, HI, _) =&gt; <span class="hljs-number">0</span><span class="hljs-keyword"> requires</span> N &gt;<span class="hljs-keyword">Int</span> HI orBool N &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> #blockhash(_, _, _, <span class="hljs-number">256</span>) =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> #blockhash(ListItem(<span class="hljs-number">0</span>) _, _, _, _) =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> #blockhash(ListItem(H) _, N, N, _) =&gt; H<span class="hljs-keyword">
+    rule</span> #blockhash(ListItem(_) L, N, HI, A) =&gt; #blockhash(L, N, HI -<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, A +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>) [owise]
+</code></pre>
+<h3 id="branch-and-local-call">Branch and Local Call</h3>
+<p>The <code>br</code> instruction jumps to a specified label, either unconditionally, or if its argument is nonzero.</p>
+<p>The call instruction for local calls (i.e. the form which does not specify an account, value, or gas limit), calls a function in the current contract.
+The called function executes in the same contract call frame (i.e. with the same value, gas limit, and memory), but with a fresh set of local registers.
+When execution of the callee reaches a <code>ret</code> instruction, control returns to the instruction following the call, and local registers are restored.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; _:IeleName : INSTRS BLOCKS::LabeledBlocks =&gt; INSTRS BLOCKS ... &lt;/k&gt;
+         &lt;typeChecking&gt; false &lt;/typeChecking&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec br LABEL ~&gt; _:Blocks =&gt; CODE ... &lt;/k&gt; &lt;fid&gt; FUNC &lt;/fid&gt; &lt;function&gt;... &lt;funcId&gt; FUNC &lt;/funcId&gt; &lt;jumpTable&gt; ... LABEL |-&gt; CODE &lt;/jumpTable&gt; &lt;/function&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec br I:<span class="hljs-keyword">Int</span> , LABEL ~&gt; _:Blocks =&gt; CODE ... &lt;/k&gt; &lt;fid&gt; FUNC &lt;/fid&gt; &lt;function&gt;... &lt;funcId&gt; FUNC &lt;/funcId&gt; &lt;jumpTable&gt; ... LABEL |-&gt; CODE &lt;/jumpTable&gt; &lt;/function&gt;<span class="hljs-keyword"> requires</span> I =/=K <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec br <span class="hljs-number">0</span>, LABEL          =&gt; .    ... &lt;/k&gt;<span class="hljs-keyword">
+
+    syntax</span> LocalCall ::= <span class="hljs-string">&quot;{&quot;</span> Blocks <span class="hljs-string">&quot;|&quot;</span> IeleName <span class="hljs-string">&quot;|&quot;</span> LValues <span class="hljs-string">&quot;|&quot;</span> Array <span class="hljs-string">&quot;}&quot;</span>
+ <span class="hljs-comment">// ----------------------------------------------------------------------</span><span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec RETURNS = call @ LABEL ( ARGS ) ~&gt; OPS:Blocks =&gt; #loads #regRange(#sizeRegs(ARGS)) ARGS ~&gt; #execute ... &lt;/k&gt;
+         &lt;fid&gt; FUNC =&gt; LABEL &lt;/fid&gt;
+         &lt;regs&gt; REGS =&gt; .Array &lt;/regs&gt;
+         &lt;localCalls&gt; .List =&gt; ListItem({ OPS | FUNC | RETURNS | REGS }) ... &lt;/localCalls&gt;<span class="hljs-keyword">
+      requires</span> notBool isIeleBuiltin(LABEL)<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec _ = call (IDX:<span class="hljs-keyword">Int</span> =&gt; @ LABEL) ( ARGS ) ... &lt;/k&gt;
+         &lt;funcLabels&gt; ... IDX |-&gt; LABEL ... &lt;/funcLabels&gt;
+         &lt;funcId&gt; LABEL &lt;/funcId&gt;
+         &lt;nparams&gt; NPARAMS &lt;/nparams&gt;<span class="hljs-keyword">
+      requires</span> #sizeRegs(ARGS) ==<span class="hljs-keyword">Int</span> NPARAMS<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec _ = call IDX:<span class="hljs-keyword">Int</span> ( _ ) =&gt; #exception FUNC_NOT_FOUND ...&lt;/k&gt;
+         &lt;funcLabels&gt; LBLS &lt;/funcLabels&gt;<span class="hljs-keyword">
+      requires</span> notBool IDX in_keys(LBLS)<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec _ = call IDX:<span class="hljs-keyword">Int</span> ( ARGS ) =&gt; #if LABEL ==K init andBool SCHED =/=K ALBE #then FUNC_NOT_FOUND #else #exception FUNC_WRONG_SIG #fi ... &lt;/k&gt;
+         &lt;funcLabels&gt; ... IDX |-&gt; LABEL ... &lt;/funcLabels&gt;
+         &lt;funcId&gt; LABEL &lt;/funcId&gt;
+         &lt;nparams&gt; NPARAMS &lt;/nparams&gt;
+         &lt;schedule&gt; SCHED &lt;/schedule&gt;<span class="hljs-keyword">
+      requires</span> #sizeRegs(ARGS) =/=<span class="hljs-keyword">Int</span> NPARAMS orBool (LABEL ==K init andBool SCHED =/=K ALBE)<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Bool</span> ::= isIeleBuiltin(IeleName) [function]
+ <span class="hljs-comment">// --------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> isIeleBuiltin(iele.invalid) =&gt; true<span class="hljs-keyword">
+    rule</span> isIeleBuiltin(iele.gas) =&gt; true<span class="hljs-keyword">
+    rule</span> isIeleBuiltin(iele.gasprice) =&gt; true<span class="hljs-keyword">
+    rule</span> isIeleBuiltin(iele.gaslimit) =&gt; true<span class="hljs-keyword">
+    rule</span> isIeleBuiltin(iele.beneficiary) =&gt; true<span class="hljs-keyword">
+    rule</span> isIeleBuiltin(iele.timestamp) =&gt; true<span class="hljs-keyword">
+    rule</span> isIeleBuiltin(iele.number) =&gt; true<span class="hljs-keyword">
+    rule</span> isIeleBuiltin(iele.difficulty) =&gt; true<span class="hljs-keyword">
+    rule</span> isIeleBuiltin(iele.address) =&gt; true<span class="hljs-keyword">
+    rule</span> isIeleBuiltin(iele.origin) =&gt; true<span class="hljs-keyword">
+    rule</span> isIeleBuiltin(iele.caller) =&gt; true<span class="hljs-keyword">
+    rule</span> isIeleBuiltin(iele.callvalue) =&gt; true<span class="hljs-keyword">
+    rule</span> isIeleBuiltin(iele.msize) =&gt; true<span class="hljs-keyword">
+    rule</span> isIeleBuiltin(iele.codesize) =&gt; true<span class="hljs-keyword">
+    rule</span> isIeleBuiltin(iele.blockhash) =&gt; true<span class="hljs-keyword">
+    rule</span> isIeleBuiltin(iele.balance) =&gt; true<span class="hljs-keyword">
+    rule</span> isIeleBuiltin(iele.extcodesize) =&gt; true<span class="hljs-keyword">
+    rule</span> isIeleBuiltin(iele.ecrec) =&gt; true<span class="hljs-keyword">
+    rule</span> isIeleBuiltin(iele.sha256) =&gt; true<span class="hljs-keyword">
+    rule</span> isIeleBuiltin(iele.rip160) =&gt; true<span class="hljs-keyword">
+    rule</span> isIeleBuiltin(iele.id) =&gt; true<span class="hljs-keyword">
+    rule</span> isIeleBuiltin(iele.ecadd) =&gt; true<span class="hljs-keyword">
+    rule</span> isIeleBuiltin(iele.ecmul) =&gt; true<span class="hljs-keyword">
+    rule</span> isIeleBuiltin(iele.ecpairing) =&gt; true<span class="hljs-keyword">
+    rule</span> isIeleBuiltin( ... ) =&gt; false [owise]
+</code></pre>
+<h3 id="ret-and-revert"><code>ret</code> and <code>revert</code></h3>
+<ul>
+<li><code>ret</code> returns the values contained in the specified list of registers to the caller.
+If we are executing inside a previous local call, the contract call frame persists unchanged, and only the instruction position and local register are affected.
+If we are executing at the top-level local call of a contract call frame, we return to the contract call&apos;s caller.</li>
+<li><code>revert</code> returns the value of the single specified register to the contract call&apos;s caller, but signifies that the contract has failed, which rolls back state changes and returns an error code to the caller.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #exec ret VALUES =&gt; #end ... &lt;/k&gt;
+         &lt;output&gt; _ =&gt; VALUES &lt;/output&gt;
+         &lt;localCalls&gt; .List &lt;/localCalls&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec ret VALUES ~&gt; _:Blocks =&gt; #registerDeltas(RETURNS, VALUES) ~&gt; #loads RETURNS VALUES ~&gt; OPS ... &lt;/k&gt;
+         &lt;fid&gt; _ =&gt; FUNC &lt;/fid&gt;
+         &lt;regs&gt; _ =&gt; REGS &lt;/regs&gt;
+         &lt;localCalls&gt; ListItem({ OPS | FUNC | RETURNS | REGS }) =&gt; .List ... &lt;/localCalls&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec revert VALUE =&gt; #revert VALUE ... &lt;/k&gt;
+         &lt;output&gt; _ =&gt; .Ints &lt;/output&gt;
+</code></pre>
+<h3 id="log-operations">Log Operations</h3>
+<p>During execution of a transaction some things are recorded in the substate log.
+This is a right cons-list of <code>SubstateLogEntry</code> (which contains the account ID along with the specified portions of the <code>wordStack</code> and <code>localMem</code>).</p>
+<p>The <code>log</code> instruction logs an entire memory cell to the substate log with zero to four log topics.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> SubstateLogEntry ::= <span class="hljs-string">&quot;{&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;|&quot;</span> List <span class="hljs-string">&quot;|&quot;</span> Bytes <span class="hljs-string">&quot;}&quot;</span> [klabel(logEntry)]
+ <span class="hljs-comment">// ---------------------------------------------------------------------------------</span>
+</code></pre>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> #exec log MEMINDEX                     =&gt; #log MEMINDEX .List<span class="hljs-keyword">
+    rule</span> #exec log MEMINDEX , W0                =&gt; #log MEMINDEX ListItem(chop(W0))<span class="hljs-keyword">
+    rule</span> #exec log MEMINDEX , W0 , W1           =&gt; #log MEMINDEX ListItem(chop(W0)) ListItem(chop(W1))<span class="hljs-keyword">
+    rule</span> #exec log MEMINDEX , W0 , W1 , W2      =&gt; #log MEMINDEX ListItem(chop(W0)) ListItem(chop(W1)) ListItem(chop(W2))<span class="hljs-keyword">
+    rule</span> #exec log MEMINDEX , W0 , W1 , W2 , W3 =&gt; #log MEMINDEX ListItem(chop(W0)) ListItem(chop(W1)) ListItem(chop(W2)) ListItem(chop(W3))<span class="hljs-keyword">
+
+    syntax</span> InternalOp ::= <span class="hljs-string">&quot;#log&quot;</span><span class="hljs-keyword"> Int</span> List
+ <span class="hljs-comment">// -------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #log MEMINDEX TOPICS =&gt; . ... &lt;/k&gt;
+         &lt;id&gt; ACCT &lt;/id&gt;
+         &lt;localMem&gt;... MEMINDEX |-&gt; LM ...&lt;/localMem&gt;
+         &lt;logData&gt; ... (.List =&gt; ListItem({ ACCT | TOPICS | LM })) &lt;/logData&gt;
+</code></pre>
+<h2 id="network-ops">Network Ops</h2>
+<p>Operators that require access to the rest of the IELE network world-state can be taken as a first draft of a &quot;blockchain generic&quot; language.</p>
+<h3 id="account-queries">Account Queries</h3>
+<ul>
+<li><code>REG = call @iele.balance(ACCT)</code> returns the balance of the specified account (zero if the account does not exist).</li>
+<li><code>REG = call @iele.extcodesize(ACCT)</code> returns the code si of the specified account (zero if the account does not exist).</li>
+<li><code>REG = calladdress NAME at ACCT</code> returns the function pointer pointing to the function named NAME on the specified account (zero if the function does not exist)</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #exec REG = call @iele.balance ( ACCT ) =&gt; #load REG BAL ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;balance&gt; BAL &lt;/balance&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; (.K =&gt; #loadAccount ACCT) ~&gt; #exec REG = call @iele.balance ( ACCT ) ... &lt;/k&gt;
+         &lt;activeAccounts&gt; ACCTS &lt;/activeAccounts&gt;<span class="hljs-keyword">
+      requires</span> notBool ACCT in ACCTS<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec REG = call @iele.extcodesize ( ACCT ) =&gt; #load REG #contractSize(CODE, #mainContract(CODE)) ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;code&gt; CODE &lt;/code&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+       requires</span> CODE =/=K .Contract<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; (.K =&gt; #lookupCode(ACCT)) ~&gt; #exec _ = call @iele.extcodesize ( ACCT ) ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;code&gt; .Contract &lt;/code&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; (.K =&gt; #loadAccount ACCT) ~&gt; #exec _ = call @iele.extcodesize ( ACCT ) ... &lt;/k&gt;
+         &lt;activeAccounts&gt; ACCTS &lt;/activeAccounts&gt;<span class="hljs-keyword">
+      requires</span> notBool ACCT in ACCTS<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; (.K =&gt; #loadAccount ACCT) ~&gt; #exec _ = calladdress _ at ACCT ... &lt;/k&gt;
+         &lt;activeAccounts&gt; ACCTS &lt;/activeAccounts&gt;<span class="hljs-keyword">
+      requires</span> notBool ACCT in ACCTS<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; (.K =&gt; #lookupCode(ACCT)) ~&gt; #exec _ = calladdress _ at ACCT ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;code&gt; .Contract &lt;/code&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec REG = calladdress @ NAME at ACCT =&gt; #load REG #callAddress(CODE, #mainContract(CODE), NAME) ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;code&gt; CODE &lt;/code&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+       requires</span> CODE =/=K .Contract
+</code></pre>
+<h3 id="account-storage-operations">Account Storage Operations</h3>
+<p>These operations interact with the account storage.</p>
+<ul>
+<li><code>REG = sload INDEX</code> loads the word at INDEX from the account storage.</li>
+<li><code>sstore VALUE, INDEX</code> stores the VALUE at INDEX in the account storage.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #exec REG = sload INDEX =&gt; #load REG VALUE ... &lt;/k&gt;
+         &lt;id&gt; ACCT &lt;/id&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;storage&gt; ... INDEX |-&gt; VALUE ... &lt;/storage&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec sstore VALUE , INDEX =&gt; . ... &lt;/k&gt;
+         &lt;id&gt; ACCT &lt;/id&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;storage&gt; ... (INDEX |-&gt; (OLD =&gt; VALUE)) ... &lt;/storage&gt;
+           ...
+         &lt;/account&gt;
+         &lt;refund&gt; R =&gt; R +<span class="hljs-keyword">Int</span> Rsstoreset &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> maxInt(<span class="hljs-number">0</span>, intSize(OLD) -<span class="hljs-keyword">Int</span> intSize(VALUE)) &lt;/refund&gt;
+         &lt;schedule&gt; SCHED &lt;/schedule&gt;
+</code></pre>
+<h3 id="call-operations">Call Operations</h3>
+<p>The various <code>call*</code> (and other inter-contract control flow) operations will be desugared into these <code>InternalOp</code>s.</p>
+<ul>
+<li><code>#checkCall</code> checks that the current account has the balance necessary to invoke the contract call, and that the contract call stack depth limit has not been reached.</li>
+<li><code>#call_____</code> takes the calling account, the account to execute as, the account whose code should execute, the gas limit, the amount to transfer, the function to call, and the arguments.</li>
+<li><code>#callWithCode______</code> takes the calling account, the accout to execute as, the code to execute (as a map), the gas limit, the amount to transfer, the function to call, and the arguments.</li>
+<li><code>#return__</code> is a placeholder for the calling program, specifying where to place the returned data in registers.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> InternalOp ::= <span class="hljs-string">&quot;#checkCall&quot;</span><span class="hljs-keyword"> Int</span><span class="hljs-keyword"> Int</span><span class="hljs-keyword"> Int</span>
+                        | <span class="hljs-string">&quot;#call&quot;</span><span class="hljs-keyword"> Int</span><span class="hljs-keyword"> Int</span> Constant Operand<span class="hljs-keyword"> Int</span> Ints<span class="hljs-keyword"> Bool</span> [<span class="hljs-literal">strict</span>(<span class="hljs-number">4</span>)]
+                        | <span class="hljs-string">&quot;#callWithCode&quot;</span><span class="hljs-keyword"> Int</span><span class="hljs-keyword"> Int</span> ProgramCell Constant<span class="hljs-keyword"> Int</span><span class="hljs-keyword"> Int</span> Ints<span class="hljs-keyword"> Bool</span>
+                        | <span class="hljs-string">&quot;#mkCall&quot;</span><span class="hljs-keyword"> Int</span><span class="hljs-keyword"> Int</span> ProgramCell IeleName<span class="hljs-keyword"> Int</span><span class="hljs-keyword"> Int</span> Ints<span class="hljs-keyword"> Bool</span>
+ <span class="hljs-comment">// ----------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #checkCall ACCT VALUE GCAP ~&gt; #call _ _ _ GLIMIT _ _ _ =&gt; #refund GLIMIT ~&gt; #pushCallStack ~&gt; #pushWorldState ~&gt; #pushSubstate ~&gt; #exception (#if VALUE &gt;<span class="hljs-keyword">Int</span> BAL #then OUT_OF_FUNDS #else CALL_STACK_OVERFLOW #fi) ... &lt;/k&gt;
+         &lt;callDepth&gt; CD &lt;/callDepth&gt;
+         &lt;output&gt; _ =&gt; .Ints &lt;/output&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;balance&gt; BAL &lt;/balance&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+      requires</span> VALUE &gt;<span class="hljs-keyword">Int</span> BAL orBool CD &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">1024</span><span class="hljs-keyword">
+
+     rule</span> &lt;k&gt; #checkCall ACCT VALUE GCAP =&gt; . ... &lt;/k&gt;
+         &lt;callDepth&gt; CD &lt;/callDepth&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;balance&gt; BAL &lt;/balance&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+      requires</span> notBool (VALUE &gt;<span class="hljs-keyword">Int</span> BAL orBool CD &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">1024</span>)<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #call ACCTFROM ACCTTO FUNC GLIMIT:<span class="hljs-keyword">Int</span> VALUE ARGS STATIC
+          =&gt; #callWithCode ACCTFROM ACCTTO #precompiled FUNC GLIMIT VALUE ARGS STATIC
+         ...
+         &lt;/k&gt;<span class="hljs-keyword">
+      requires</span> ACCTTO ==<span class="hljs-keyword">Int</span> #precompiledAccount<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #call ACCTFROM ACCTTO FUNC GLIMIT:<span class="hljs-keyword">Int</span> VALUE ARGS STATIC
+          =&gt; #callWithCode ACCTFROM ACCTTO #loadCode(CODE) FUNC GLIMIT VALUE ARGS STATIC
+         ...
+         &lt;/k&gt;
+         &lt;acctID&gt; ACCTTO &lt;/acctID&gt;
+         &lt;code&gt; CODE &lt;/code&gt;<span class="hljs-keyword">
+      requires</span> ACCTTO =/=<span class="hljs-keyword">Int</span> #precompiledAccount andBool CODE =/=K .Contract<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; (.K =&gt; #lookupCode(ACCT)) ~&gt; #call _ ACCT _ _ _ _ _ ... &lt;/k&gt;
+         &lt;acctID&gt; ACCT &lt;/acctID&gt;
+         &lt;code&gt; .Contract &lt;/code&gt;<span class="hljs-keyword">
+      requires</span> ACCT =/=<span class="hljs-keyword">Int</span> #precompiledAccount<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; (.K =&gt; #loadAccount ACCT) ~&gt; #call _ ACCT _ _ _ _ _ ... &lt;/k&gt;
+         &lt;activeAccounts&gt; ACCTS &lt;/activeAccounts&gt;<span class="hljs-keyword">
+      requires</span> ACCT =/=<span class="hljs-keyword">Int</span> #precompiledAccount andBool notBool ACCT in ACCTS<span class="hljs-keyword">
+
+    rule</span> #callWithCode ACCTFROM ACCTTO CODE @ FUNC GLIMIT VALUE ARGS STATIC
+      =&gt; #pushCallStack ~&gt; #pushWorldState ~&gt; #pushSubstate
+      ~&gt; #transferFunds ACCTFROM ACCTTO VALUE
+      ~&gt; #mkCall ACCTFROM ACCTTO CODE FUNC GLIMIT VALUE ARGS STATIC<span class="hljs-keyword">
+
+    rule</span> #callWithCode ACCTFROM ACCTTO &lt;program&gt;... &lt;funcLabels&gt; LBLS &lt;/funcLabels&gt; ...&lt;/program&gt; IDX:<span class="hljs-keyword">Int</span> GLIMIT VALUE ARGS STATIC
+      =&gt; #pushCallStack ~&gt; #pushWorldState ~&gt; #pushSubstate ~&gt; #exception FUNC_NOT_FOUND<span class="hljs-keyword">
+      requires</span> notBool IDX in_keys(LBLS)<span class="hljs-keyword">
+
+    rule</span> #callWithCode ACCTFROM ACCTTO (&lt;program&gt;... &lt;funcLabels&gt;... IDX |-&gt; FUNC &lt;/funcLabels&gt; ...&lt;/program&gt; #as CODE) IDX:<span class="hljs-keyword">Int</span> GLIMIT VALUE ARGS STATIC
+      =&gt; #pushCallStack ~&gt; #pushWorldState ~&gt; #pushSubstate
+      ~&gt; #transferFunds ACCTFROM ACCTTO VALUE
+      ~&gt; #mkCall ACCTFROM ACCTTO CODE FUNC GLIMIT VALUE ARGS STATIC<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #mkCall ACCTFROM ACCTTO CODE FUNC GLIMIT VALUE ARGS STATIC:<span class="hljs-keyword">Bool</span>
+          =&gt; #initVM(ARGS) ~&gt; #initFun(FUNC, #sizeRegs(ARGS), false)
+         ...
+         &lt;/k&gt;
+         &lt;callDepth&gt; CD =&gt; CD +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span> &lt;/callDepth&gt;
+         &lt;callData&gt; _ =&gt; ARGS &lt;/callData&gt;
+         &lt;callValue&gt; _ =&gt; VALUE &lt;/callValue&gt;
+         &lt;id&gt; _ =&gt; ACCTTO &lt;/id&gt;
+         &lt;gas&gt; _ =&gt; GLIMIT &lt;/gas&gt;
+         &lt;caller&gt; _ =&gt; ACCTFROM &lt;/caller&gt;
+         (&lt;program&gt; _ &lt;/program&gt; =&gt; CODE:ProgramCell)
+         &lt;static&gt; OLDSTATIC:<span class="hljs-keyword">Bool</span> =&gt; OLDSTATIC orBool STATIC &lt;/static&gt;
+
+</code></pre>
+<p>The VM starts out with empty memory, output, registers, and local call stack.
+If the function being called is not public, does not exist, or has the wrong number of arguments, an exception is raised.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> KItem ::= #initVM ( Ints )
+                   | #initFun ( IeleName ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Bool</span> )
+ <span class="hljs-comment">// ---------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #initVM(ARGS) =&gt; #loads #regRange(#sizeRegs(ARGS)) ARGS ... &lt;/k&gt;
+         &lt;currentMemory&gt; _ =&gt; <span class="hljs-number">0</span>      &lt;/currentMemory&gt;
+         &lt;peakMemory&gt;    _ =&gt; <span class="hljs-number">0</span>      &lt;/peakMemory&gt;
+         &lt;output&gt;        _ =&gt; .Ints  &lt;/output&gt;
+         &lt;regs&gt;          _ =&gt; .Array &lt;/regs&gt;
+         &lt;localMem&gt;      _ =&gt; .Map   &lt;/localMem&gt;
+         &lt;localCalls&gt;    _ =&gt; .List  &lt;/localCalls&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #initFun(LABEL, _, false) =&gt; #exception FUNC_NOT_FOUND ... &lt;/k&gt;
+         &lt;exported&gt; FUNCS &lt;/exported&gt;
+         &lt;funcIds&gt; LABELS &lt;/funcIds&gt;<span class="hljs-keyword">
+      requires</span> notBool LABEL in FUNCS
+               andBool LABEL in LABELS<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #initFun(LABEL, _, _) =&gt; #exception (#if SIZE ==<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> #then CONTRACT_NOT_FOUND #else FUNC_NOT_FOUND #fi) ... &lt;/k&gt;
+         &lt;funcIds&gt; LABELS &lt;/funcIds&gt;
+         &lt;programSize&gt; SIZE &lt;/programSize&gt;<span class="hljs-keyword">
+      requires</span> notBool LABEL in LABELS<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #initFun(LABEL, NARGS, _) =&gt; #exception FUNC_WRONG_SIG ... &lt;/k&gt;
+         &lt;id&gt; ACCT &lt;/id&gt;
+         &lt;funcId&gt; LABEL &lt;/funcId&gt;
+         &lt;nparams&gt; NPARAMS &lt;/nparams&gt;<span class="hljs-keyword">
+      requires</span> NARGS =/=<span class="hljs-keyword">Int</span> NPARAMS<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #initFun(LABEL, NARGS, ISCREATE:<span class="hljs-keyword">Bool</span>) =&gt; #if EXECMODE ==K VMTESTS #then #end #else #execute #fi ... &lt;/k&gt;
+         &lt;mode&gt; EXECMODE &lt;/mode&gt;
+         &lt;id&gt; ACCT &lt;/id&gt;
+         &lt;funcIds&gt; ... SetItem(LABEL) &lt;/funcIds&gt;
+         &lt;exported&gt; FUNCS &lt;/exported&gt;
+         &lt;fid&gt; _ =&gt; LABEL &lt;/fid&gt;
+         &lt;nregs&gt; REGISTERS &lt;/nregs&gt;
+         &lt;currentMemory&gt; _ =&gt; REGISTERS &lt;/currentMemory&gt;
+         &lt;peakMemory&gt; _ =&gt; REGISTERS &lt;/peakMemory&gt;
+         &lt;funcId&gt; LABEL &lt;/funcId&gt;
+         &lt;nparams&gt; NPARAMS &lt;/nparams&gt;<span class="hljs-keyword">
+      requires</span> (LABEL in FUNCS orBool ISCREATE) andBool (NPARAMS ==<span class="hljs-keyword">Int</span> NARGS)<span class="hljs-keyword">
+
+    syntax</span> KItem ::= <span class="hljs-string">&quot;#return&quot;</span> LValues LValue
+ <span class="hljs-comment">// -----------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exception STATUS ~&gt; #return _ REG
+          =&gt; #popCallStack ~&gt; #popWorldState ~&gt; #popSubstate ~&gt; #registerDelta(REG, <span class="hljs-number">1</span>) ~&gt; #load REG STATUS
+         ...
+         &lt;/k&gt;
+         &lt;output&gt; _ =&gt; .Ints &lt;/output&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #revert OUT ~&gt; #return _ REG
+           =&gt; #popCallStack
+           ~&gt; #popWorldState
+           ~&gt; #popSubstate
+           ~&gt; #registerDelta(REG, intSize(OUT))
+           ~&gt; #load REG OUT ~&gt; #refund GAVAIL
+          ...
+         &lt;/k&gt;
+         &lt;gas&gt; GAVAIL &lt;/gas&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;mode&gt; EXECMODE &lt;/mode&gt;
+         &lt;k&gt; #end ~&gt; #return REGS REG
+          =&gt; #popCallStack
+          ~&gt; #if EXECMODE ==K VMTESTS #then #popWorldState #else #dropWorldState #fi
+          ~&gt; #dropSubstate
+          ~&gt; #registerDelta(REG, <span class="hljs-number">1</span>)
+          ~&gt; #registerDeltas(REGS, OUT)
+          ~&gt; #load REG <span class="hljs-number">0</span> ~&gt; #refund GAVAIL ~&gt; #if EXECMODE ==K VMTESTS #then .K #else #loads REGS OUT #fi
+         ...
+         &lt;/k&gt;
+         &lt;output&gt; OUT &lt;/output&gt;
+         &lt;gas&gt; GAVAIL &lt;/gas&gt;<span class="hljs-keyword">
+
+    syntax</span> InternalOp ::= <span class="hljs-string">&quot;#refund&quot;</span> Operand [<span class="hljs-literal">strict</span>]
+ <span class="hljs-comment">// -----------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #refund G:<span class="hljs-keyword">Int</span> =&gt; . ... &lt;/k&gt; &lt;gas&gt; GAVAIL =&gt; GAVAIL +<span class="hljs-keyword">Int</span> G &lt;/gas&gt;
+</code></pre>
+<p>For each <code>call*</code> operation, we make a corresponding call to <code>#call</code> and a state-change to setup the custom parts of the calling environment.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #exec REG , REGS = call LABEL at ACCTTO ( ARGS ) send VALUE , gaslimit GCAP
+          =&gt; #checkCall ACCTFROM VALUE GCAP
+          ~&gt; #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, #accountEmpty(ACCTTO), GCAP *<span class="hljs-keyword">Int</span> Sgasdivisor &lt; SCHED &gt;, GAVAIL, VALUE, #sizeLVals(REGS), Ccallarg(SCHED, ARGS)) VALUE ARGS false
+          ~&gt; #return REGS REG
+         ...
+         &lt;/k&gt;
+         &lt;schedule&gt; SCHED &lt;/schedule&gt;
+         &lt;id&gt; ACCTFROM &lt;/id&gt;
+         &lt;previousGas&gt; GAVAIL &lt;/previousGas&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec REG , REGS = staticcall LABEL at ACCTTO ( ARGS ) gaslimit GCAP
+          =&gt; #checkCall ACCTFROM <span class="hljs-number">0</span> GCAP
+          ~&gt; #call ACCTFROM ACCTTO LABEL Ccallgas(SCHED, #accountEmpty(ACCTTO), GCAP *<span class="hljs-keyword">Int</span> Sgasdivisor &lt; SCHED &gt;, GAVAIL, <span class="hljs-number">0</span>, #sizeLVals(REGS), Ccallarg(SCHED, ARGS)) <span class="hljs-number">0</span> ARGS true
+          ~&gt; #return REGS REG
+         ...
+         &lt;/k&gt;
+         &lt;schedule&gt; SCHED &lt;/schedule&gt;
+         &lt;id&gt; ACCTFROM &lt;/id&gt;
+         &lt;previousGas&gt; GAVAIL &lt;/previousGas&gt;
+</code></pre>
+<h3 id="account-creation%2Fdeletion">Account Creation/Deletion</h3>
+<ul>
+<li><code>#create____</code> transfers the endowment to the new account and triggers the execution of the initialization code.</li>
+<li><code>#codeDeposit_</code> checks the result of initialization code and whether the code deposit can be paid, indicating an error if not.</li>
+<li><code>#checkCreate</code> checks that the account has sufficient balance for the balance transfer, that the call depth limit is not reached, and increments the nonce of the creator account.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> InternalOp ::= <span class="hljs-string">&quot;#create&quot;</span><span class="hljs-keyword"> Int</span><span class="hljs-keyword"> Int</span><span class="hljs-keyword"> Int</span><span class="hljs-keyword"> Int</span> Contract Ints
+                        | <span class="hljs-string">&quot;#mkCreate&quot;</span><span class="hljs-keyword"> Int</span><span class="hljs-keyword"> Int</span> Contract<span class="hljs-keyword"> Int</span><span class="hljs-keyword"> Int</span> Ints
+                        | <span class="hljs-string">&quot;#checkCreate&quot;</span><span class="hljs-keyword"> Int</span><span class="hljs-keyword"> Int</span>
+                        | <span class="hljs-string">&quot;#checkContract&quot;</span> Contract
+                        | <span class="hljs-string">&quot;#finishTypeChecking&quot;</span><span class="hljs-keyword">
+    syntax</span> Contract ::= <span class="hljs-string">&quot;#illFormed&quot;</span>
+ <span class="hljs-comment">// --------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #checkCreate ACCT VALUE ~&gt; #create _ _ GAVAIL _ _ _ =&gt; #refund GAVAIL ~&gt; #pushCallStack ~&gt; #pushWorldState ~&gt; #pushSubstate ~&gt; #exception (#if VALUE &gt;<span class="hljs-keyword">Int</span> BAL #then OUT_OF_FUNDS #else CALL_STACK_OVERFLOW #fi) ... &lt;/k&gt;
+         &lt;callDepth&gt; CD &lt;/callDepth&gt;
+         &lt;output&gt; _ =&gt; .Ints &lt;/output&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;balance&gt; BAL &lt;/balance&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+      requires</span> VALUE &gt;<span class="hljs-keyword">Int</span> BAL orBool CD &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">1024</span><span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #checkCreate ACCT VALUE =&gt; . ... &lt;/k&gt;
+         &lt;mode&gt; EXECMODE &lt;/mode&gt;
+         &lt;callDepth&gt; CD &lt;/callDepth&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;balance&gt; BAL &lt;/balance&gt;
+           &lt;nonce&gt; NONCE =&gt; #if EXECMODE ==K VMTESTS #then NONCE #else NONCE +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span> #fi &lt;/nonce&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+      requires</span> notBool (VALUE &gt;<span class="hljs-keyword">Int</span> BAL orBool VALUE &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> orBool CD &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">1024</span>)<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #checkContract CONTRACT =&gt; CONTRACT ~&gt; #finishTypeChecking ... &lt;/k&gt;
+         (_:WellFormednessCell =&gt; 
+         &lt;well-formedness&gt;
+           &lt;typeChecking&gt; true &lt;/typeChecking&gt;
+           &lt;well-formedness-schedule&gt; SCHED &lt;/well-formedness-schedule&gt;
+           ...
+         &lt;/well-formedness&gt;)
+         &lt;schedule&gt; SCHED &lt;/schedule&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #finishTypeChecking =&gt; . ... &lt;/k&gt;
+         &lt;typeChecking&gt; _ =&gt; false &lt;/typeChecking&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; . =&gt; #illFormed ... &lt;/k&gt;
+         &lt;typeChecking&gt; true &lt;/typeChecking&gt;
+         [owise]<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #illFormed ~&gt; (K:KItem =&gt; .) ... &lt;/k&gt;<span class="hljs-keyword">
+      requires</span> K =/=K #finishTypeChecking<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #illFormed ~&gt; #finishTypeChecking ~&gt; #create _ _ GAVAIL _ _ _ =&gt; #refund GAVAIL ~&gt; #pushCallStack ~&gt; #pushWorldState ~&gt; #pushSubstate ~&gt; #exception CONTRACT_INVALID ... &lt;/k&gt;
+         &lt;typeChecking&gt; true =&gt; false &lt;/typeChecking&gt;<span class="hljs-keyword">
+
+    rule</span> #create ACCTFROM ACCTTO GAVAIL VALUE CODE ARGS
+      =&gt; #pushCallStack ~&gt; #pushWorldState ~&gt; #pushSubstate
+      ~&gt; #initAccount ACCTTO
+      ~&gt; #transferFunds ACCTFROM ACCTTO VALUE
+      ~&gt; #mkCreate ACCTFROM ACCTTO CODE GAVAIL VALUE ARGS<span class="hljs-keyword">
+
+    rule</span> &lt;mode&gt; EXECMODE &lt;/mode&gt;
+         &lt;k&gt; #mkCreate ACCTFROM ACCTTO CODE GAVAIL VALUE ARGS
+          =&gt; #initVM(ARGS) ~&gt; #initFun(init, #sizeRegs(ARGS), true)
+         ...
+         &lt;/k&gt;
+         &lt;schedule&gt; SCHED &lt;/schedule&gt;
+         &lt;id&gt; ACCT =&gt; ACCTTO &lt;/id&gt;
+         &lt;gas&gt; OLDGAVAIL =&gt; GAVAIL &lt;/gas&gt;
+         (&lt;program&gt; _ &lt;/program&gt; =&gt; #loadCode(CODE))
+         &lt;caller&gt; _ =&gt; ACCTFROM &lt;/caller&gt;
+         &lt;callDepth&gt; CD =&gt; CD +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span> &lt;/callDepth&gt;
+         &lt;callData&gt; _ =&gt; .Ints &lt;/callData&gt;
+         &lt;callValue&gt; _ =&gt; VALUE &lt;/callValue&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCTTO &lt;/acctID&gt;
+           &lt;nonce&gt; NONCE =&gt; NONCE +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span> &lt;/nonce&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+
+    syntax</span> Contract ::= #subcontract ( Contract , IeleName ) [function]
+ <span class="hljs-comment">// -------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #subcontract ( (contract NAME ! _ _ { _ } #as CONTRACT) _, NAME ) =&gt; CONTRACT .Contract<span class="hljs-keyword">
+    rule</span> #subcontract ( CONTRACT CONTRACTS, NAME ) =&gt; CONTRACT #subcontract(CONTRACTS, NAME) [owise]<span class="hljs-keyword">
+
+    syntax</span> KItem ::= <span class="hljs-string">&quot;#codeDeposit&quot;</span><span class="hljs-keyword"> Int</span><span class="hljs-keyword"> Int</span> Contract LValue LValue<span class="hljs-keyword"> Bool</span>
+                   | <span class="hljs-string">&quot;#mkCodeDeposit&quot;</span><span class="hljs-keyword"> Int</span><span class="hljs-keyword"> Int</span> Contract LValue LValue<span class="hljs-keyword"> Bool</span>
+                   | <span class="hljs-string">&quot;#finishCodeDeposit&quot;</span><span class="hljs-keyword"> Int</span> Contract LValue LValue<span class="hljs-keyword"> Bool</span>
+ <span class="hljs-comment">// ----------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exception STATUS ~&gt; #codeDeposit _ _ _ REG _ NEW:<span class="hljs-keyword">Bool</span> =&gt; #popCallStack ~&gt; #popWorldState ~&gt; #popSubstate ~&gt; #if NEW #then STATUS #else #registerDelta(REG, <span class="hljs-number">1</span>) ~&gt; #load REG STATUS #fi ... &lt;/k&gt; &lt;output&gt; _ =&gt; .Ints &lt;/output&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #revert OUT ~&gt; #codeDeposit _ _ _ REG _ NEW:<span class="hljs-keyword">Bool</span> =&gt; #popCallStack ~&gt; #popWorldState ~&gt; #popSubstate ~&gt; #if NEW #then #refund GAVAIL ~&gt; OUT #else #registerDelta(REG, intSize(OUT)) ~&gt; #refund GAVAIL ~&gt; #load REG OUT #fi ... &lt;/k&gt;
+         &lt;gas&gt; GAVAIL &lt;/gas&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;mode&gt; EXECMODE &lt;/mode&gt;
+         &lt;k&gt; #end ~&gt; #codeDeposit ACCT LEN CODE STATUS ACCTOUT NEW =&gt; #mkCodeDeposit ACCT LEN CODE STATUS ACCTOUT NEW ... &lt;/k&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #mkCodeDeposit ACCT LEN CODE STATUS ACCTOUT NEW:<span class="hljs-keyword">Bool</span>
+          =&gt; #if EXECMODE ==K VMTESTS orBool notBool NEW #then . #else Gcodedeposit &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> LEN ~&gt; #deductGas #fi
+          ~&gt; #finishCodeDeposit ACCT CODE STATUS ACCTOUT NEW
+         ...
+         &lt;/k&gt;
+         &lt;mode&gt; EXECMODE &lt;/mode&gt;
+         &lt;schedule&gt; SCHED &lt;/schedule&gt;
+         &lt;output&gt; .Ints &lt;/output&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #finishCodeDeposit ACCT CODE STATUS ACCTOUT NEW:<span class="hljs-keyword">Bool</span>
+          =&gt; #popCallStack ~&gt; #if EXECMODE ==K VMTESTS #then #popWorldState #else #dropWorldState #fi ~&gt; #dropSubstate
+          ~&gt; #if NEW #then #refund GAVAIL ~&gt; <span class="hljs-number">0</span> #else #registerDelta(STATUS, <span class="hljs-number">1</span>) ~&gt; #registerDelta(ACCTOUT, <span class="hljs-number">3</span>) ~&gt; #refund GAVAIL ~&gt; #load STATUS <span class="hljs-number">0</span> ~&gt; #load ACCTOUT ACCT #fi
+         ...
+         &lt;/k&gt;
+         &lt;mode&gt; EXECMODE &lt;/mode&gt;
+         &lt;gas&gt; GAVAIL &lt;/gas&gt;
+         &lt;output&gt; _ =&gt; ACCT , .Ints &lt;/output&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;code&gt; _ =&gt; CODE &lt;/code&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exception STATUS ~&gt; #finishCodeDeposit _ _ REG _ NEW:<span class="hljs-keyword">Bool</span> =&gt; #popCallStack ~&gt; #popWorldState ~&gt; #popSubstate ~&gt; #if NEW #then STATUS #else #registerDelta(REG, <span class="hljs-number">1</span>) ~&gt; #load REG STATUS #fi ... &lt;/k&gt;
+</code></pre>
+<ul>
+<li><code>create</code> will attempt to <code>#create</code> the named contract using the initialization code and cleans up the result with <code>#codeDeposit</code>.</li>
+<li><code>copycreate</code> will attempt to <code>#create</code> a copy of the contract at the specified address using the initialization code and cleans up the result with <code>#codeDeposit</code></li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #exec STATUS , ACCTOUT = create NAME ( ARGS ) send VALUE
+          =&gt; #checkCreate ACCT VALUE
+          ~&gt; #create ACCT #newAddr(ACCT, NONCE) #if Gstaticcalldepth &lt;&lt; SCHED &gt;&gt; #then GAVAIL #else #allBut64th(GAVAIL) #fi VALUE #subcontract(CODE, NAME) ARGS
+          ~&gt; #codeDeposit #newAddr(ACCT, NONCE) #contractSize(CODE, NAME) #subcontract(CODE, NAME) STATUS ACCTOUT false
+         ...
+         &lt;/k&gt;
+         &lt;schedule&gt; SCHED &lt;/schedule&gt;
+         &lt;id&gt; ACCT &lt;/id&gt;
+         &lt;gas&gt; GAVAIL =&gt; #if Gstaticcalldepth &lt;&lt; SCHED &gt;&gt; #then <span class="hljs-number">0</span> #else GAVAIL /<span class="hljs-keyword">Int</span> <span class="hljs-number">64</span> #fi &lt;/gas&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;nonce&gt; NONCE &lt;/nonce&gt;
+           ...
+         &lt;/account&gt;
+         &lt;contractCode&gt; CODE &lt;/contractCode&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec STATUS , ACCTOUT = copycreate ACCTCODE ( ARGS ) send VALUE
+          =&gt; #checkCreate ACCT VALUE
+          ~&gt; #create ACCT #newAddr(ACCT, NONCE) #if Gstaticcalldepth &lt;&lt; SCHED &gt;&gt; #then GAVAIL #else #allBut64th(GAVAIL) #fi VALUE CODE ARGS
+          ~&gt; #codeDeposit #newAddr(ACCT, NONCE) #contractSize(CODE, #mainContract(CODE)) CODE STATUS ACCTOUT false
+         ...
+         &lt;/k&gt;
+         &lt;schedule&gt; SCHED &lt;/schedule&gt;
+         &lt;id&gt; ACCT &lt;/id&gt;
+         &lt;gas&gt; GAVAIL =&gt; #if Gstaticcalldepth &lt;&lt; SCHED &gt;&gt; #then <span class="hljs-number">0</span> #else GAVAIL /<span class="hljs-keyword">Int</span> <span class="hljs-number">64</span> #fi &lt;/gas&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;nonce&gt; NONCE &lt;/nonce&gt;
+           ...
+         &lt;/account&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCTCODE &lt;/acctID&gt;
+           &lt;code&gt; CODE &lt;/code&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+         requires</span> ACCT =/=<span class="hljs-keyword">Int</span> ACCTCODE andBool CODE =/=K .Contract<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; (.K =&gt; #lookupCode(ACCTCODE)) ~&gt; #exec _ , _ = copycreate ACCTCODE ( _ ) send _ ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCTCODE &lt;/acctID&gt;
+           &lt;code&gt; .Contract &lt;/code&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec STATUS , ACCTOUT = copycreate ACCT ( ARGS ) send VALUE
+          =&gt; #checkCreate ACCT VALUE
+          ~&gt; #create ACCT #newAddr(ACCT, NONCE) #if Gstaticcalldepth &lt;&lt; SCHED &gt;&gt; #then GAVAIL #else #allBut64th(GAVAIL) #fi VALUE CODE ARGS
+          ~&gt; #codeDeposit #newAddr(ACCT, NONCE) #contractSize(CODE, #mainContract(CODE)) CODE STATUS ACCTOUT false
+         ...
+         &lt;/k&gt;
+         &lt;schedule&gt; SCHED &lt;/schedule&gt;
+         &lt;id&gt; ACCT &lt;/id&gt;
+         &lt;gas&gt; GAVAIL =&gt; #if Gstaticcalldepth &lt;&lt; SCHED &gt;&gt; #then <span class="hljs-number">0</span> #else GAVAIL /<span class="hljs-keyword">Int</span> <span class="hljs-number">64</span> #fi &lt;/gas&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;nonce&gt; NONCE &lt;/nonce&gt;
+           &lt;code&gt; CODE &lt;/code&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; (.K =&gt; #loadAccount ACCT) ~&gt; #exec _ , _ = copycreate ACCT ( _ ) send _ ... &lt;/k&gt; &lt;activeAccounts&gt; ACCTS &lt;/activeAccounts&gt;<span class="hljs-keyword"> requires</span> notBool ACCT in ACCTS
+</code></pre>
+<p><code>selfdestruct</code> marks the current account for deletion and transfers funds out of the current account.
+Self destructing to yourself, unlike a regular transfer, destroys the balance in the account, irreparably losing it.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #exec selfdestruct ACCTTO =&gt; #transferFunds ACCT ACCTTO BALFROM ~&gt; #end ... &lt;/k&gt;
+         &lt;schedule&gt; SCHED &lt;/schedule&gt;
+         &lt;id&gt; ACCT &lt;/id&gt;
+         &lt;selfDestruct&gt; SDS (.Set =&gt; SetItem(ACCT)) &lt;/selfDestruct&gt;
+         &lt;refund&gt; RF =&gt; #if ACCT in SDS #then RF #else RF +<span class="hljs-keyword">Int</span> Rselfdestruct &lt; SCHED &gt; #fi &lt;/refund&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;balance&gt; BALFROM &lt;/balance&gt;
+           ...
+         &lt;/account&gt;
+         &lt;output&gt; _ =&gt; .Ints &lt;/output&gt;<span class="hljs-keyword">
+      requires</span> ACCT =/=<span class="hljs-keyword">Int</span> ACCTTO<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec selfdestruct ACCT =&gt; #end ... &lt;/k&gt;
+         &lt;schedule&gt; SCHED &lt;/schedule&gt;
+         &lt;id&gt; ACCT &lt;/id&gt;
+         &lt;selfDestruct&gt; SDS (.Set =&gt; SetItem(ACCT)) &lt;/selfDestruct&gt;
+         &lt;refund&gt; RF =&gt; #if ACCT in SDS #then RF #else RF +<span class="hljs-keyword">Int</span> Rselfdestruct &lt; SCHED &gt; #fi &lt;/refund&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;balance&gt; BALFROM =&gt; <span class="hljs-number">0</span> &lt;/balance&gt;
+           ...
+         &lt;/account&gt;
+         &lt;output&gt; _ =&gt; .Ints &lt;/output&gt;<span class="hljs-keyword">
+endmodule</span>
+</code></pre>
+<h1 id="precompiled-contract">Precompiled Contract</h1>
+<ul>
+<li><code>#precompiled</code> is a placeholder for the pre-compiled contracts at addresses 1.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">module</span> IELE-PRECOMPILED<span class="hljs-keyword">
+    imports</span> IELE-DATA<span class="hljs-keyword">
+    imports</span> IELE-CONFIGURATION<span class="hljs-keyword">
+    imports</span> IELE-INFRASTRUCTURE<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Int</span> ::= <span class="hljs-string">&quot;#precompiledAccount&quot;</span> [function]
+ <span class="hljs-comment">// -----------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #precompiledAccount =&gt; <span class="hljs-number">1</span><span class="hljs-keyword">
+
+    syntax</span> ProgramCell ::= <span class="hljs-string">&quot;#precompiled&quot;</span> [function]
+ <span class="hljs-comment">// ------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #precompiled =&gt;
+         &lt;program&gt;
+           &lt;functions&gt;
+             &lt;function&gt; &lt;funcId&gt; iele.ecrec     &lt;/funcId&gt; &lt;instructions&gt; ECREC     .Instructions .LabeledBlocks &lt;/instructions&gt; &lt;nparams&gt; <span class="hljs-number">4</span> &lt;/nparams&gt; ... &lt;/function&gt;
+             &lt;function&gt; &lt;funcId&gt; iele.sha256    &lt;/funcId&gt; &lt;instructions&gt; SHA256    .Instructions .LabeledBlocks &lt;/instructions&gt; &lt;nparams&gt; <span class="hljs-number">2</span> &lt;/nparams&gt; ... &lt;/function&gt;
+             &lt;function&gt; &lt;funcId&gt; iele.rip160    &lt;/funcId&gt; &lt;instructions&gt; RIP160    .Instructions .LabeledBlocks &lt;/instructions&gt; &lt;nparams&gt; <span class="hljs-number">2</span> &lt;/nparams&gt; ... &lt;/function&gt;
+             &lt;function&gt; &lt;funcId&gt; iele.id        &lt;/funcId&gt; &lt;instructions&gt; ID        .Instructions .LabeledBlocks &lt;/instructions&gt; &lt;nparams&gt; <span class="hljs-number">1</span> &lt;/nparams&gt; ... &lt;/function&gt;
+             &lt;function&gt; &lt;funcId&gt; iele.ecadd     &lt;/funcId&gt; &lt;instructions&gt; ECADD     .Instructions .LabeledBlocks &lt;/instructions&gt; &lt;nparams&gt; <span class="hljs-number">4</span> &lt;/nparams&gt; ... &lt;/function&gt;
+             &lt;function&gt; &lt;funcId&gt; iele.ecmul     &lt;/funcId&gt; &lt;instructions&gt; ECMUL     .Instructions .LabeledBlocks &lt;/instructions&gt; &lt;nparams&gt; <span class="hljs-number">3</span> &lt;/nparams&gt; ... &lt;/function&gt;
+             &lt;function&gt; &lt;funcId&gt; iele.ecpairing &lt;/funcId&gt; &lt;instructions&gt; ECPAIRING .Instructions .LabeledBlocks &lt;/instructions&gt; &lt;nparams&gt; <span class="hljs-number">3</span> &lt;/nparams&gt; ... &lt;/function&gt;
+           &lt;/functions&gt;
+           &lt;funcIds&gt;
+             SetItem(iele.ecrec)
+             SetItem(iele.sha256)
+             SetItem(iele.rip160)
+             SetItem(iele.id)
+             SetItem(iele.ecadd)
+             SetItem(iele.ecmul)
+             SetItem(iele.ecpairing)
+           &lt;/funcIds&gt;
+           &lt;exported&gt;
+             SetItem(iele.ecrec)
+             SetItem(iele.sha256)
+             SetItem(iele.rip160)
+             SetItem(iele.id)
+             SetItem(iele.ecadd)
+             SetItem(iele.ecmul)
+             SetItem(iele.ecpairing)
+           &lt;/exported&gt;
+           &lt;funcLabels&gt;
+             <span class="hljs-number">1</span> |-&gt; iele.ecrec
+             <span class="hljs-number">2</span> |-&gt; iele.sha256
+             <span class="hljs-number">3</span> |-&gt; iele.rip160
+             <span class="hljs-number">4</span> |-&gt; iele.id
+             <span class="hljs-number">5</span> |-&gt; iele.ecadd
+             <span class="hljs-number">6</span> |-&gt; iele.ecmul
+             <span class="hljs-number">7</span> |-&gt; iele.ecpairing
+           &lt;/funcLabels&gt;
+           ...
+         &lt;/program&gt;
+</code></pre>
+<ul>
+<li><code>@iele.ecrec</code> performs ECDSA public key recovery.</li>
+<li><code>@iele.sha256</code> performs the SHA2-256 hash function.</li>
+<li><code>@iele.rip160</code> performs the RIPEMD-160 hash function.</li>
+<li><code>@iele.id</code> is the identity function (copies input to output).</li>
+<li><code>@iele.ecadd</code> is the BN128 elliptic curve addition function.</li>
+<li><code>@iele.ecmul</code> is the BN128 elliptic curve scalar multiplication function.</li>
+<li><code>@iele.ecpairing</code> is the BN128 elliptic curve pairing check function.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> Instruction ::= PrecompiledOp<span class="hljs-keyword">
+    syntax</span> KResult ::= PrecompiledOp<span class="hljs-keyword">
+
+    syntax</span> PrecompiledOp ::= <span class="hljs-string">&quot;ECREC&quot;</span>
+ <span class="hljs-comment">// --------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec ECREC =&gt; #end ... &lt;/k&gt;
+         &lt;callData&gt; HASH , V , R , S , .Ints &lt;/callData&gt;
+         &lt;output&gt; _ =&gt; #ecrec(#sender(Bytes2String(Int2Bytes(<span class="hljs-number">32</span>, HASH, BE)), V, Bytes2String(Int2Bytes(<span class="hljs-number">32</span>, R, BE)), Bytes2String(Int2Bytes(<span class="hljs-number">32</span>, S, BE)))) &lt;/output&gt;<span class="hljs-keyword">
+         requires</span> HASH &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> andBool V &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> andBool R &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> andBool S &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec ECREC =&gt; #exception USER_ERROR ... &lt;/k&gt;
+         &lt;callData&gt; HASH , V , R , S , .Ints &lt;/callData&gt;<span class="hljs-keyword">
+         requires</span> notBool (HASH &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> andBool V &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> andBool R &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> andBool S &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span>)<span class="hljs-keyword">
+
+    syntax</span> Ints ::= #ecrec ( Account ) [function]
+ <span class="hljs-comment">// ---------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #ecrec(.Account) =&gt; <span class="hljs-number">-1</span> , .Ints<span class="hljs-keyword">
+    rule</span> #ecrec(N:<span class="hljs-keyword">Int</span>)    =&gt;  N , .Ints<span class="hljs-keyword">
+
+    syntax</span> PrecompiledOp ::= <span class="hljs-string">&quot;SHA256&quot;</span>
+ <span class="hljs-comment">// ---------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec SHA256 =&gt; #end ... &lt;/k&gt;
+         &lt;callData&gt; LEN , DATA , .Ints &lt;/callData&gt;
+         &lt;output&gt; _ =&gt; #parseHexWord(Sha256(Bytes2String(Int2Bytes(LEN, DATA, BE)))), .Ints &lt;/output&gt;<span class="hljs-keyword">
+         requires</span> LEN &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> andBool DATA &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec SHA256 =&gt; #exception USER_ERROR ... &lt;/k&gt;
+         &lt;callData&gt; LEN , DATA , .Ints &lt;/callData&gt;<span class="hljs-keyword">
+         requires</span> notBool (LEN &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> andBool DATA &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span>)<span class="hljs-keyword">
+
+    syntax</span> PrecompiledOp ::= <span class="hljs-string">&quot;RIP160&quot;</span>
+ <span class="hljs-comment">// ---------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec RIP160 =&gt; #end ... &lt;/k&gt;
+         &lt;callData&gt; LEN , DATA , .Ints &lt;/callData&gt;
+         &lt;output&gt; _ =&gt; #parseHexWord(RipEmd160(Bytes2String(Int2Bytes(LEN, DATA, BE)))), .Ints &lt;/output&gt;<span class="hljs-keyword">
+         requires</span> LEN &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> andBool DATA &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #exec RIP160 =&gt; #exception USER_ERROR ... &lt;/k&gt;
+         &lt;callData&gt; LEN , DATA , .Ints &lt;/callData&gt;<span class="hljs-keyword">
+         requires</span> notBool (LEN &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> andBool DATA &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span>)<span class="hljs-keyword">
+
+    syntax</span> PrecompiledOp ::= <span class="hljs-string">&quot;ID&quot;</span>
+ <span class="hljs-comment">// -----------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec ID =&gt; #end ... &lt;/k&gt;
+         &lt;callData&gt; DATA &lt;/callData&gt;
+         &lt;output&gt; _ =&gt; DATA &lt;/output&gt;<span class="hljs-keyword">
+
+    syntax</span> PrecompiledOp ::= <span class="hljs-string">&quot;ECADD&quot;</span>
+ <span class="hljs-comment">// --------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec ECADD =&gt; #ecadd((X1, Y1), (X2, Y2)) ... &lt;/k&gt;
+         &lt;callData&gt; X1 , Y1 , X2 , Y2 , .Ints &lt;/callData&gt;<span class="hljs-keyword">
+
+    syntax</span> InternalOp ::= #ecadd(G1Point, G1Point)
+ <span class="hljs-comment">// ----------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #ecadd(P1, P2) =&gt; #exception USER_ERROR<span class="hljs-keyword">
+      requires</span> notBool isValidPoint(P1) orBool notBool isValidPoint(P2)<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #ecadd(P1, P2) =&gt; #end ... &lt;/k&gt; &lt;output&gt; _ =&gt; #point(BN128Add(P1, P2)) &lt;/output&gt;<span class="hljs-keyword">
+      requires</span> isValidPoint(P1) andBool isValidPoint(P2)<span class="hljs-keyword">
+
+    syntax</span> PrecompiledOp ::= <span class="hljs-string">&quot;ECMUL&quot;</span>
+ <span class="hljs-comment">// --------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec ECMUL =&gt; #ecmul((X, Y), S) ... &lt;/k&gt;
+         &lt;callData&gt; X , Y , S , .Ints &lt;/callData&gt;<span class="hljs-keyword">
+
+    syntax</span> InternalOp ::= #ecmul(G1Point,<span class="hljs-keyword"> Int</span>)
+ <span class="hljs-comment">// ------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #ecmul(P, S) =&gt; #exception USER_ERROR<span class="hljs-keyword">
+      requires</span> notBool isValidPoint(P)<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #ecmul(P, S) =&gt; #end ... &lt;/k&gt; &lt;output&gt; _ =&gt; #point(BN128Mul(P, S)) &lt;/output&gt;<span class="hljs-keyword">
+      requires</span> isValidPoint(P)<span class="hljs-keyword">
+
+    syntax</span> Ints ::= #point(G1Point) [function]
+ <span class="hljs-comment">// ------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #point((X, Y)) =&gt; X , Y , .Ints<span class="hljs-keyword">
+
+    syntax</span> PrecompiledOp ::= <span class="hljs-string">&quot;ECPAIRING&quot;</span>
+ <span class="hljs-comment">// ------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exec ECPAIRING =&gt; #ecpairing(.List, .List, Int2Bytes(chop(LEN) *<span class="hljs-keyword">Int</span> <span class="hljs-number">64</span>, G1, LE), Int2Bytes(chop(LEN) *<span class="hljs-keyword">Int</span> <span class="hljs-number">128</span>, G2, LE), LEN) ... &lt;/k&gt;
+         &lt;callData&gt; LEN, G1, G2, .Ints &lt;/callData&gt;<span class="hljs-keyword">
+
+    syntax</span> InternalOp ::= #ecpairing(List, List, Bytes, Bytes,<span class="hljs-keyword"> Int</span>)
+ <span class="hljs-comment">// -----------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> (.K =&gt; #checkPoint) ~&gt; #ecpairing((.List =&gt; ListItem((Bytes2Int(G1 [ <span class="hljs-number">0</span> .. <span class="hljs-number">32</span> ], BE, Unsigned), Bytes2Int(G1 [ <span class="hljs-number">32</span> .. <span class="hljs-number">32</span> ], BE, Unsigned))::G1Point)) _, (.List =&gt; ListItem((Bytes2Int(G2 [ <span class="hljs-number">32</span> .. <span class="hljs-number">32</span> ], BE, Unsigned) x Bytes2Int(G2 [ <span class="hljs-number">0</span> .. <span class="hljs-number">32</span> ], BE, Unsigned) , Bytes2Int(G2 [ <span class="hljs-number">96</span> .. <span class="hljs-number">32</span> ], BE, Unsigned) x Bytes2Int(G2 [ <span class="hljs-number">64</span> .. <span class="hljs-number">32</span> ], BE, Unsigned)))) _, G1 =&gt; G1 [ <span class="hljs-number">64</span> .. lengthBytes(G1) ], G2 =&gt; G2 [ <span class="hljs-number">128</span> .. lengthBytes(G2) ], LEN =&gt; LEN -<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>)<span class="hljs-keyword">
+      requires</span> LEN &gt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #ecpairing(A, B, _, _, <span class="hljs-number">0</span>) =&gt; #end ... &lt;/k&gt;
+         &lt;output&gt; _ =&gt; bool2Word(BN128AtePairing(A, B)) , .Ints &lt;/output&gt;<span class="hljs-keyword">
+
+    syntax</span> InternalOp ::= <span class="hljs-string">&quot;#checkPoint&quot;</span>
+ <span class="hljs-comment">// -----------------------------------</span><span class="hljs-keyword">
+    rule</span> (#checkPoint =&gt; .) ~&gt; #ecpairing(ListItem(AK::G1Point) _, ListItem(BK::G2Point) _, _, _, _)<span class="hljs-keyword">
+      requires</span> isValidPoint(AK) andBool isValidPoint(BK)<span class="hljs-keyword">
+    rule</span> #checkPoint ~&gt; #ecpairing(ListItem(AK::G1Point) _, ListItem(BK::G2Point) _, _, _, _) =&gt; #exception USER_ERROR<span class="hljs-keyword">
+      requires</span> notBool isValidPoint(AK) orBool notBool isValidPoint(BK)<span class="hljs-keyword">
+endmodule</span>
+</code></pre>
+<h1 id="iele-program-representations">IELE Program Representations</h1>
+<p>The following code processes a <code>Contract</code> and loads it into the <code>&lt;program&gt;</code> cell.</p>
+<pre class="hljs"><code><span class="hljs-keyword">module</span> IELE-PROGRAM-LOADING<span class="hljs-keyword">
+    imports</span> IELE-COMMON<span class="hljs-keyword">
+    imports</span> IELE-CONFIGURATION
+
+    <span class="hljs-comment">// when type checking contracts</span><span class="hljs-keyword">
+    rule</span> contract NAME ! _ _ { DEFS } =&gt; contract NAME { DEFS }<span class="hljs-keyword">
+
+    syntax</span> FunctionParameters ::=<span class="hljs-keyword"> Int</span> <span class="hljs-comment">/* when desugared to just the number of parameters */</span><span class="hljs-keyword">
+
+    syntax</span> ProgramCell ::= #loadCode ( Contract ) [function]
+                         | #loadCode ( Contract , Contract ) [klabel(#loadCodeAux), function]
+ <span class="hljs-comment">// -----------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #loadCode(contract _ ! _ _ { _ } CONTRACTS, CONTRACT) =&gt; #loadCode(CONTRACTS, CONTRACT)<span class="hljs-keyword">
+      requires</span> CONTRACTS =/=K .Contract<span class="hljs-keyword">
+    rule</span> #loadCode(contract _ ! SIZE _ { DEFS }, CONTRACT)
+      =&gt; #loadDeclarations(DEFS,
+         &lt;program&gt;
+           &lt;functions&gt; .Bag &lt;/functions&gt;
+           &lt;funcIds&gt; .Set &lt;/funcIds&gt;
+           &lt;funcLabels&gt; .Map &lt;/funcLabels&gt;
+           &lt;programSize&gt; SIZE &lt;/programSize&gt;
+           &lt;exported&gt; .Set &lt;/exported&gt;
+           &lt;contractCode&gt; CONTRACT &lt;/contractCode&gt;
+         &lt;/program&gt;, <span class="hljs-number">1</span>)
+      [owise]<span class="hljs-keyword">
+     rule</span> #loadCode(CONTRACT) =&gt; #loadCode(CONTRACT, CONTRACT)<span class="hljs-keyword">
+
+    syntax</span> ProgramCell ::= #loadDeclarations ( TopLevelDefinitions , ProgramCell ,<span class="hljs-keyword"> Int</span> ) [function]
+                         | #loadFunction  ( TopLevelDefinitions , Blocks , ProgramCell , IeleName , FunctionCell ,<span class="hljs-keyword"> Int</span> ) [function]
+ <span class="hljs-comment">// -------------------------------------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #loadDeclarations(define @ NAME ( NARGS:<span class="hljs-keyword">Int</span> ) { BLOCKS } FUNCS, &lt;program&gt; PROG &lt;/program&gt;, IDX)
+      =&gt; #loadFunction(FUNCS, BLOCKS, &lt;program&gt; PROG &lt;/program&gt;, NAME, &lt;function&gt; &lt;funcId&gt; NAME &lt;/funcId&gt; &lt;nparams&gt; NARGS &lt;/nparams&gt; ... &lt;/function&gt;, IDX)<span class="hljs-keyword">
+    rule</span> #loadDeclarations(define public @ NAME ( NARGS:<span class="hljs-keyword">Int</span> ) { BLOCKS } FUNCS, &lt;program&gt; &lt;exported&gt; EXPORTS &lt;/exported&gt; REST &lt;/program&gt;, IDX)
+      =&gt; #loadFunction(FUNCS, BLOCKS, &lt;program&gt; &lt;exported&gt; SetItem(NAME) EXPORTS &lt;/exported&gt; REST &lt;/program&gt;, NAME, &lt;function&gt; &lt;funcId&gt; NAME &lt;/funcId&gt; &lt;nparams&gt; NARGS &lt;/nparams&gt; ... &lt;/function&gt;, IDX)<span class="hljs-keyword">
+    rule</span> #loadDeclarations(external contract _ FUNCS, &lt;program&gt; PROG &lt;/program&gt;, IDX)
+      =&gt; #loadDeclarations(FUNCS, &lt;program&gt; PROG &lt;/program&gt;, IDX)<span class="hljs-keyword">
+    rule</span> #loadDeclarations(.TopLevelDefinitions, &lt;program&gt; PROG &lt;/program&gt;, _) =&gt; &lt;program&gt; PROG &lt;/program&gt;<span class="hljs-keyword">
+
+    rule</span> #loadFunction(FUNCS, BLOCKS, &lt;program&gt; PROG &lt;functions&gt; REST &lt;/functions&gt; &lt;funcIds&gt; NAMES &lt;/funcIds&gt; &lt;funcLabels&gt; LBLS &lt;/funcLabels&gt; &lt;/program&gt;, NAME, &lt;function&gt; FUNC &lt;instructions&gt; _ &lt;/instructions&gt; &lt;jumpTable&gt; _ &lt;/jumpTable&gt; &lt;nregs&gt; _ &lt;/nregs&gt; &lt;/function&gt;, IDX)
+      =&gt; #loadDeclarations(FUNCS, &lt;program&gt; PROG &lt;funcIds&gt; NAMES SetItem(NAME) &lt;/funcIds&gt; &lt;funcLabels&gt; LBLS #if NAME =/=K init #then IDX |-&gt; NAME #else .Map #fi &lt;/funcLabels&gt; &lt;functions&gt; REST &lt;function&gt; FUNC &lt;instructions&gt; BLOCKS &lt;/instructions&gt; &lt;jumpTable&gt; #computeJumpTable(BLOCKS) &lt;/jumpTable&gt; &lt;nregs&gt; #computeNRegs(BLOCKS) &lt;/nregs&gt; &lt;/function&gt; &lt;/functions&gt; &lt;/program&gt;, #if NAME ==K init #then IDX #else IDX +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span> #fi)<span class="hljs-keyword">
+
+    syntax</span> IeleName ::= #mainContract ( Contract )                       [function]<span class="hljs-keyword">
+    syntax</span><span class="hljs-keyword"> Int</span> ::= #contractSize ( Contract , IeleName )                 [function]<span class="hljs-keyword">
+    syntax</span><span class="hljs-keyword"> String</span> ::= #contractBytes ( Contract )                        [function, klabel(contractBytes), symbol]
+                    | #contractBytes ( Contract , IeleName )             [function, klabel(#contractBytesAux)]<span class="hljs-keyword">
+    syntax</span><span class="hljs-keyword"> Int</span> ::= #callAddress ( Contract , IeleName , IeleName )       [function]
+                 | #callAddress ( TopLevelDefinitions , IeleName ,<span class="hljs-keyword"> Int</span> ) [function, klabel(#callAddressAux)]
+ <span class="hljs-comment">// --------------------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #mainContract(contract NAME ! _ _ { _ }) =&gt; NAME<span class="hljs-keyword">
+    rule</span> #mainContract(contract _ ! _ _ { _ } REST) =&gt; #mainContract(REST) [owise]<span class="hljs-keyword">
+
+    rule</span> #contractSize(contract NAME ! SIZE _ { _ } _, NAME) =&gt; SIZE<span class="hljs-keyword">
+    rule</span> #contractSize(contract _ ! _ _ { _ } REST, NAME) =&gt; #contractSize(REST, NAME) [owise]<span class="hljs-keyword">
+
+    rule</span> #callAddress(contract NAME ! _ _ { FUNCS } _, NAME, FUNC) =&gt; #callAddress(FUNCS, FUNC, <span class="hljs-number">1</span>)<span class="hljs-keyword">
+    rule</span> #callAddress(contract _ ! _ _ { _ } REST, NAME, FUNC) =&gt; #callAddress(REST, NAME, FUNC) [owise]<span class="hljs-keyword">
+    rule</span> #callAddress(define public @ NAME ( _ ) { _ } REST, NAME, IDX) =&gt; IDX<span class="hljs-keyword">
+    rule</span> #callAddress(define @init ( _ ) { _ } REST, FUNC, IDX) =&gt; #callAddress(REST, FUNC, IDX)<span class="hljs-keyword">
+    rule</span> #callAddress(define @ NAME ( _ ) { _ } REST, FUNC, IDX) =&gt; #callAddress(REST, FUNC, IDX +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>)<span class="hljs-keyword">
+      requires</span> NAME =/=K init<span class="hljs-keyword">
+    rule</span> #callAddress(define public @ NAME ( _ ) { _ } REST, FUNC, IDX) =&gt; #callAddress(REST, FUNC, IDX +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>)<span class="hljs-keyword">
+      requires</span> NAME =/=K FUNC<span class="hljs-keyword">
+    rule</span> #callAddress(_::TopLevelDefinition REST, FUNC, IDX) =&gt; #callAddress(REST, FUNC, IDX) [owise]<span class="hljs-keyword">
+    rule</span> #callAddress(.TopLevelDefinitions, _, _) =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    
+    rule</span> #contractBytes(CONTRACT) =&gt; #contractBytes(CONTRACT, #mainContract(CONTRACT))<span class="hljs-keyword">
+      requires</span> CONTRACT =/=K .Contract<span class="hljs-keyword">
+    rule</span> #contractBytes(.Contract) =&gt; <span class="hljs-string">&quot;&quot;</span><span class="hljs-keyword">
+    rule</span> #contractBytes(contract NAME ! _ BYTES { _ } _, NAME) =&gt; BYTES<span class="hljs-keyword">
+    rule</span> #contractBytes(contract _ ! _ _ { _ } REST, NAME) =&gt; #contractBytes(REST, NAME) [owise]<span class="hljs-keyword">
+
+    syntax</span> Map ::= #computeJumpTable ( Blocks )             [function]
+                 | #computeJumpTable ( Blocks , Map , Set ) [function, klabel(#computeJumpTableAux)]
+ <span class="hljs-comment">// ------------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #computeJumpTable(BLOCKS) =&gt; #computeJumpTable(BLOCKS, .Map, .Set)<span class="hljs-keyword">
+
+    rule</span> #computeJumpTable(.LabeledBlocks, JUMPS, _) =&gt; JUMPS<span class="hljs-keyword">
+
+    rule</span> #computeJumpTable(LABEL : INSTRS BLOCKS, JUMPS, LABELS) =&gt; #computeJumpTable(BLOCKS, JUMPS [ LABEL &lt;- INSTRS BLOCKS ], LABELS SetItem(LABEL))<span class="hljs-keyword"> requires</span> notBool LABEL in LABELS<span class="hljs-keyword">
+    rule</span> #computeJumpTable(_::LabeledBlock BLOCKS, JUMPS, LABELS) =&gt; #computeJumpTable(BLOCKS, JUMPS, LABELS) [owise]<span class="hljs-keyword">
+    rule</span> #computeJumpTable(_::UnlabeledBlock BLOCKS, JUMPS, LABELS) =&gt; #computeJumpTable(BLOCKS, JUMPS, LABELS) [owise]<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Int</span> ::= #registers ( Instruction ) [function]
+                 | #registers ( LValues ) [function, klabel(registersLValues)]
+                 | #registers ( Operands ) [function, klabel(registersOperands)]<span class="hljs-keyword">
+    syntax</span><span class="hljs-keyword"> Int</span> ::= #computeNRegs ( Blocks )       [function]
+                 | #computeNRegs ( Blocks ,<span class="hljs-keyword"> Int</span> ) [function, klabel(#computeNRegsAux)]
+ <span class="hljs-comment">// ----------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #computeNRegs(BLOCKS) =&gt; #computeNRegs(BLOCKS, <span class="hljs-number">0</span>)<span class="hljs-keyword">
+
+    rule</span> #computeNRegs(.LabeledBlocks, NREGS) =&gt; NREGS<span class="hljs-keyword">
+    rule</span> #computeNRegs(LABEL : INSTRS BLOCKS, REGS) =&gt; #computeNRegs(INSTRS BLOCKS, REGS)<span class="hljs-keyword">
+    rule</span> #computeNRegs(INSTR INSTRS::Instructions BLOCKS::LabeledBlocks, NREGS) =&gt; #computeNRegs(INSTRS BLOCKS, maxInt(#registers(INSTR) +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, NREGS))<span class="hljs-keyword">
+    rule</span> #computeNRegs(.Instructions BLOCKS, REGS) =&gt; #computeNRegs(BLOCKS, REGS)<span class="hljs-keyword">
+
+    rule</span> #registers(% R1 = _:<span class="hljs-keyword">Int</span>) =&gt; R1<span class="hljs-keyword">
+    rule</span> #registers(% R1 = % R2) =&gt; maxInt(R1, R2)<span class="hljs-keyword">
+    rule</span> #registers(% R1 = load % R2) =&gt; maxInt(R1, R2)<span class="hljs-keyword">
+    rule</span> #registers(% R1 = load % R2, % R3, % R4) =&gt; maxInt(R1, maxInt(R2, maxInt(R3, R4)))<span class="hljs-keyword">
+    rule</span> #registers(store % R1, % R2) =&gt; maxInt(R1, R2)<span class="hljs-keyword">
+    rule</span> #registers(store % R1, % R2, % R3, % R4) =&gt; maxInt(R1, maxInt(R2, maxInt(R3, R4)))<span class="hljs-keyword">
+    rule</span> #registers(% R1 = sload % R2) =&gt; maxInt(R1, R2)<span class="hljs-keyword">
+    rule</span> #registers(sstore % R1, % R2) =&gt; maxInt(R1, R2)<span class="hljs-keyword">
+    rule</span> #registers(% R1 = iszero % R2) =&gt; maxInt(R1, R2)<span class="hljs-keyword">
+    rule</span> #registers(% R1 = not % R2) =&gt; maxInt(R1, R2)<span class="hljs-keyword">
+    rule</span> #registers(% R1 = log2 % R2) =&gt; maxInt(R1, R2)<span class="hljs-keyword">
+    rule</span> #registers(% R1 = add % R2, % R3) =&gt; maxInt(R1, maxInt(R2, R3))<span class="hljs-keyword">
+    rule</span> #registers(% R1 = mul % R2, % R3) =&gt; maxInt(R1, maxInt(R2, R3))<span class="hljs-keyword">
+    rule</span> #registers(% R1 = sub % R2, % R3) =&gt; maxInt(R1, maxInt(R2, R3))<span class="hljs-keyword">
+    rule</span> #registers(% R1 = div % R2, % R3) =&gt; maxInt(R1, maxInt(R2, R3))<span class="hljs-keyword">
+    rule</span> #registers(% R1 = exp % R2, % R3) =&gt; maxInt(R1, maxInt(R2, R3))<span class="hljs-keyword">
+    rule</span> #registers(% R1 = mod % R2, % R3) =&gt; maxInt(R1, maxInt(R2, R3))<span class="hljs-keyword">
+    rule</span> #registers(% R1 = addmod % R2, % R3, % R4) =&gt; maxInt(R1, maxInt(R2, maxInt(R3, R4)))<span class="hljs-keyword">
+    rule</span> #registers(% R1 = mulmod % R2, % R3, % R4) =&gt; maxInt(R1, maxInt(R2, maxInt(R3, R4)))<span class="hljs-keyword">
+    rule</span> #registers(% R1 = expmod % R2, % R3, % R4) =&gt; maxInt(R1, maxInt(R2, maxInt(R3, R4)))<span class="hljs-keyword">
+    rule</span> #registers(% R1 = byte % R2, % R3) =&gt; maxInt(R1, maxInt(R2, R3))<span class="hljs-keyword">
+    rule</span> #registers(% R1 = sext % R2, % R3) =&gt; maxInt(R1, maxInt(R2, R3))<span class="hljs-keyword">
+    rule</span> #registers(% R1 = twos % R2, % R3) =&gt; maxInt(R1, maxInt(R2, R3))<span class="hljs-keyword">
+    rule</span> #registers(% R1 = bswap % R2, % R3) =&gt; maxInt(R1, maxInt(R2, R3))<span class="hljs-keyword">
+    rule</span> #registers(% R1 = and % R2, % R3) =&gt; maxInt(R1, maxInt(R2, R3))<span class="hljs-keyword">
+    rule</span> #registers(% R1 = or % R2, % R3) =&gt; maxInt(R1, maxInt(R2, R3))<span class="hljs-keyword">
+    rule</span> #registers(% R1 = xor % R2, % R3) =&gt; maxInt(R1, maxInt(R2, R3))<span class="hljs-keyword">
+    rule</span> #registers(% R1 = shift % R2, % R3) =&gt; maxInt(R1, maxInt(R2, R3))<span class="hljs-keyword">
+    rule</span> #registers(% R1 = cmp _ % R2, % R3) =&gt; maxInt(R1, maxInt(R2, R3))<span class="hljs-keyword">
+    rule</span> #registers(% R1 = sha3 % R2) =&gt; maxInt(R1, R2)<span class="hljs-keyword">
+    rule</span> #registers(br _) =&gt; <span class="hljs-number">-1</span><span class="hljs-keyword">
+    rule</span> #registers(br % R1, _) =&gt; R1<span class="hljs-keyword">
+    rule</span> #registers(R1 = call @ _ ( R2 )) =&gt; maxInt(#registers(R1), #registers(R2))<span class="hljs-keyword">
+    rule</span> #registers(R1 = call @ _ at % R2 ( R3 ) send % R4, gaslimit % R5) =&gt; maxInt(#registers(R1), maxInt(R2, maxInt(#registers(R3), maxInt(R4, R5))))<span class="hljs-keyword">
+    rule</span> #registers(R1 = staticcall @ _ at % R2 ( R3 ) gaslimit % R4) =&gt; maxInt(#registers(R1), maxInt(R2, maxInt(#registers(R3), R4)))<span class="hljs-keyword">
+    rule</span> #registers(R1 = call % R3 ( R2 )) =&gt; maxInt(R3, maxInt(#registers(R1), #registers(R2)))<span class="hljs-keyword">
+    rule</span> #registers(R1 = call % R6 at % R2 ( R3 ) send % R4, gaslimit % R5) =&gt; maxInt(#registers(R1), maxInt(R2, maxInt(#registers(R3), maxInt(R4, maxInt(R5, R6)))))<span class="hljs-keyword">
+    rule</span> #registers(% R1 = calladdress _ at % R2) =&gt; maxInt(R1, R2)<span class="hljs-keyword">
+    rule</span> #registers(R1 = staticcall % R5 at % R2 ( R3 ) gaslimit % R4) =&gt; maxInt(#registers(R1), maxInt(R2, maxInt(#registers(R3), maxInt(R4, R5))))<span class="hljs-keyword">
+    rule</span> #registers(ret R1::NonEmptyOperands) =&gt; #registers(R1)<span class="hljs-keyword">
+    rule</span> #registers(revert % R1) =&gt; R1<span class="hljs-keyword">
+    rule</span> #registers(log % R1) =&gt; R1<span class="hljs-keyword">
+    rule</span> #registers(log % R1, R2) =&gt; maxInt(R1, #registers(R2))<span class="hljs-keyword">
+    rule</span> #registers(% R1, % R2 = create _ ( R3 ) send % R4) =&gt; maxInt(R1, maxInt(R2, maxInt(#registers(R3), R4)))<span class="hljs-keyword">
+    rule</span> #registers(% R1, % R2 = copycreate % R3 ( R4 ) send % R5) =&gt; maxInt(R1, maxInt(R2, maxInt(R3, maxInt(#registers(R4), R5))))<span class="hljs-keyword">
+    rule</span> #registers(selfdestruct % R1) =&gt; R1<span class="hljs-keyword">
+
+    rule</span> #registers(% REG, REGS::LValues) =&gt; maxInt(REG, #registers(REGS))<span class="hljs-keyword">
+    rule</span> #registers(% REG, REGS::Operands) =&gt; maxInt(REG, #registers(REGS))<span class="hljs-keyword">
+    rule</span> #registers(.LValues) =&gt; <span class="hljs-number">-1</span><span class="hljs-keyword">
+    rule</span> #registers(.Operands) =&gt; <span class="hljs-number">-1</span><span class="hljs-keyword">
+
+endmodule</span>
+</code></pre>
+</body></html></div>
+        </main>
+      </div>
+    </div>
+<footer class="app-footer text-md-left text-center">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-2 mb-md-0 mb-4">
+        <span class="pr-md-5 pr-0 py-3">
+          <a href="https://runtimeverification.com" target="_blank">
+            <picture>
+              <source
+                srcset="../assets/img/rv-logo-dark.png"
+                media="(prefers-color-scheme: dark)"
+              />
+              <img
+                class="pr-3 footer-logo"
+                src="../assets/img/rv-logo.png"
+                alt="Runtime Verification Inc logo"
+              />
+            </picture>
+          </a>
+        </span>
+      </div>
+      <div class="col-md-6 mb-md-0 mb-4"></div>
+      <div class="col-md-4 text-md-right">
+        <p class="copyright">
+          &copy; 2020 Runtime Verification Inc. All right reserved.
+        </p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script
+  async
+  src="https://www.googletagmanager.com/gtag/js?id=UA-163311512-1"
+></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag("js", new Date());
+  gtag("config", "UA-163311512-1");
+</script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Typist/1.2/typist.min.js"></script>
+    <script src="../assets/js/index.js"></script>
+  </body>
+</html>

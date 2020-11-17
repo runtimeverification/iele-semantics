@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+<meta charset="utf-8" />
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+/>
+<meta
+  name="description"
+  content="Design and implement your programming language and software analysis tools with mathematical rigor."
+/>
+<meta name="keywords" content="runtime, verification, rv, k" />
+<meta name="author" content="IELE Semantics | Runtime Verification Inc" />
+<meta name="robots" content="index, follow" />
+
+<!--favicon icon-->
+<link rel="icon" type="image/png" href="../assets/img/favicon.ico" />
+
+<title>IELE Semantics | Runtime Verification Inc</title>
+
+<!-- <base href="/k/" /> -->
+
+<!--web fonts-->
+<link
+  href="https://fonts.googleapis.com/css?family=Nunito:300,400,600,700,800"
+  rel="stylesheet"
+/>
+<link
+  href="https://fonts.googleapis.com/css?family=Lora:400i"
+  rel="stylesheet"
+/>
+
+<link
+  href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css"
+  rel="stylesheet"
+/>
+
+<link href="../assets/css/index.css" rel="stylesheet" />
+
+<!--[if (gt IE 9) |!(IE)]><!-->
+<!--<link rel="stylesheet" href="/assets/vendor/custom-nav/css/effects/fade-menu.css"/>-->
+<!-- <link rel="stylesheet" href="../assets/k/vl-nav/css/effects/slide-menu.css" /> -->
+<!--<![endif]-->
+
+  </head>
+
+  <body>
+<header
+  class="navbar navbar-expand navbar-dark flex-column flex-md-row bd-navbar"
+>
+  <a class="logo-link" href="../index.html"> IELE Semantics </a>
+  <ul class="navbar-nav ml-md-auto">
+    <li class="nav-item">
+      <a
+        class="nav-link pl-2 pr-1 mx-1 py-3 my-n2"
+        href="https://github.com/runtimeverification/iele-semantics"
+        target="_blank"
+        rel="noopener"
+        aria-label="GitHub"
+      >
+        <i class="fab fa-github"></i>
+      </a>
+    </li>
+  </ul>
+  <!--
+  <a
+    class="btn btn-rv-blue d-none d-lg-inline-block mb-3 mb-md-0 ml-md-3"
+    href="../downloads"
+    >Download</a
+  >
+  -->
+</header>
+
+
+    <div class="container-fluid">
+      <div class="row flex-xl-nowrap">
+<div class="col-12 col-md-3 col-xl-2 bd-sidebar mb-3">
+  <form
+    role="search"
+    class="bd-search d-flex align-items-center justify-content-between"
+  >
+    <input
+      type="search"
+      class="form-control"
+      placeholder="Search..."
+      aria-label="Search for..."
+      autocomplete="false"
+      id="search-box"
+    />
+    <button
+      class="btn bd-search-docs-toggle d-md-none p-0 ml-3 collapsed"
+      type="button"
+      aria-label="Toggle docs navigation"
+      style="font-size: 1.4rem"
+    >
+      <i class="fas fa-bars"></i>
+    </button>
+  </form>
+  <nav class="collapse bd-links" aria-label="Main navigation">
+    <div class="bd-toc-item">
+      <a class="bd-toc-link" href="../">Homepage</a>
+      <a class="bd-toc-link" href="../INSTALL">Install</a>
+      <a class="bd-toc-link" href="../Design">Design</a>
+    </div>
+  </nav>
+</div>
+
+        <main
+          class="col-12 col-md-9 col-xl-8 py-md-3 pl-md-5 bd-content"
+          role="main"
+        >
+          <div class="markdown-preview"><html><head></head><body><h1 id="iele-gas-calculation">IELE Gas Calculation</h1>
+<p>The following document describes the gas model of IELE. Note that this gas model should
+be considered a first draft and may be subject to changes before deploying IELE on a live blockchain.
+Gas is consumed either by increasing the amount of memory being used, or by the computational effort to execute instructions.</p>
+<pre class="hljs"><code><span class="hljs-keyword">module</span> IELE-GAS<span class="hljs-keyword">
+    imports</span> IELE-DATA<span class="hljs-keyword">
+    imports</span> IELE-CONFIGURATION<span class="hljs-keyword">
+    imports</span> IELE-COMMON<span class="hljs-keyword">
+    imports</span> IELE-INFRASTRUCTURE<span class="hljs-keyword">
+    imports</span> IELE-PRECOMPILED
+</code></pre>
+<h2 id="overall-gas-calculation">Overall Gas Calculation</h2>
+<p>The gas cost of an instruction is the cost incurred from the memory used by the instruction plus the
+computational cost of executing the instruction.</p>
+<ul>
+<li><code>#gas</code> calculates how much gas this operation costs, and takes into account the memory consumed.</li>
+<li><code>#deductGas</code> deducts a specific integer amount of gas, raising an out of gas exception if insufficient gas remains.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> InternalOp ::= <span class="hljs-string">&quot;#deductGas&quot;</span>
+ <span class="hljs-comment">// ----------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #gas [ OP ] =&gt; #memory [ OP ] ~&gt; #compute [ OP , SCHED ] ~&gt; #deductGas ... &lt;/k&gt; &lt;schedule&gt; SCHED &lt;/schedule&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; G:<span class="hljs-keyword">Int</span> ~&gt; #deductGas =&gt; #exception OUT_OF_GAS ... &lt;/k&gt; &lt;gas&gt; GAVAIL                  &lt;/gas&gt;<span class="hljs-keyword"> requires</span> GAVAIL &lt;<span class="hljs-keyword">Int</span> G<span class="hljs-keyword">
+    rule</span> &lt;k&gt; G:<span class="hljs-keyword">Int</span> ~&gt; #deductGas =&gt; .                     ... &lt;/k&gt; &lt;gas&gt; GAVAIL =&gt; GAVAIL -<span class="hljs-keyword">Int</span> G &lt;/gas&gt; &lt;previousGas&gt; _ =&gt; GAVAIL &lt;/previousGas&gt;<span class="hljs-keyword"> requires</span> GAVAIL &gt;=<span class="hljs-keyword">Int</span> G
+</code></pre>
+<h2 id="memory-consumption">Memory Consumption</h2>
+<p>The current choices in IELE are similar to those for EVM:</p>
+<ul>
+<li>each contract has a default amount of memory within which to execute;</li>
+<li>memory over the limit incurs a quadratic allocation cost</li>
+<li>memory is charged only at allocation time</li>
+</ul>
+<p>However, IELE allows registers and memory cells to refer to these arbitrarily
+large numbers.  Moreover, the amount of memory/storage required for
+representing the value of a register or memory/storage cell, instead of being
+fixed at 256 bits, now varies during its usage.  This was previously only
+considered for permanent storage (resetting a stored value to 0 would generate
+a refund).</p>
+<p>Memory consumed is tracked to determine the appropriate amount of gas to charge
+for each operation.  As noted above, unlike EVM, the amount of used memory in
+IELE can decrease when memory cells are deallocated or resized.</p>
+<ul>
+<li><code>#memory</code> computes the memory variation given the next operator (with its arguments).</li>
+<li><code>#registerDelta</code> computes the memory variation introduced by resizing the return
+register to fit the value computed by the next operator.</li>
+</ul>
+<p>Note that the values returned by the above functions could be negative.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> InternalOp ::= <span class="hljs-string">&quot;#memory&quot;</span> <span class="hljs-string">&quot;[&quot;</span> Instruction <span class="hljs-string">&quot;]&quot;</span>
+ <span class="hljs-comment">// ---------------------------------------------------</span>
+</code></pre>
+<h3 id="expressions">Expressions</h3>
+<p>The size of the result register <code>REG</code> for an arithmetic operation is estimated
+as follows:</p>
+<h4 id="bitwise-arithmetic">Bitwise arithmetic</h4>
+<ul>
+<li><code>REG = not W</code> size of bitwise negation of W is the same as that of W.</li>
+<li><code>REG = and W0, W1</code> Size of result is the minimum of the sizes of W0 and W1,
+because bitwise and-ing with 0 yields 0</li>
+<li><code>REG = or W0, W1</code> and <code>REG = xor W0, W1</code>
+size of the result is the maximum of the sizes of W0 and W1</li>
+<li><code>REG = shift W0, W1</code>
+size of the result is the size of the variable modified by the shift amount (positive for left shift, negative for right shift)</li>
+<li><code>REG = log2 W</code> size of logarithm base 2 is equal to at most 8 * the size in bytes of the number,
+which must be less than 2^64 to fit in memory on a 64-bit processor. We can compute this as a linear cost
+on the word size because it is a floored logarithm and can be computed using bit counting.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> #memory [ REG = not   W       ] =&gt; #registerDelta(REG, intSize(W))<span class="hljs-keyword">
+    rule</span> #memory [ REG = and   W0 , W1 ] =&gt; #registerDelta(REG, minInt(intSize(W0), intSize(W1)))<span class="hljs-keyword">
+    rule</span> #memory [ REG = or    W0 , W1 ] =&gt; #registerDelta(REG, maxInt(intSize(W0), intSize(W1)))<span class="hljs-keyword">
+    rule</span> #memory [ REG = xor   W0 , W1 ] =&gt; #registerDelta(REG, maxInt(intSize(W0), intSize(W1)))<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #memory [ REG = shift W0 , W1 ] =&gt; #registerDelta(REG, maxInt(<span class="hljs-number">1</span>, intSize(W0) +<span class="hljs-keyword">Int</span> bitsInWords(W1, SCHED))) ... &lt;/k&gt; &lt;schedule&gt; SCHED &lt;/schedule&gt;<span class="hljs-keyword">
+    rule</span> #memory [ REG = log2  W       ] =&gt; #registerDelta(REG, <span class="hljs-number">2</span>)
+</code></pre>
+<h4 id="comparison-operators">Comparison operators</h4>
+<p>Since the result is boolean, the result size for all comparison operations is 1.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> #memory [ REG = iszero _     ] =&gt; #registerDelta(REG, <span class="hljs-number">1</span>)<span class="hljs-keyword">
+    rule</span> #memory [ REG = cmp _  _ , _ ] =&gt; #registerDelta(REG, <span class="hljs-number">1</span>)
+</code></pre>
+<h4 id="regular-arithmetic">Regular arithmetic</h4>
+<ul>
+<li><code>REG = add W0, W1</code> and <code>REG = sub W0, W1</code>
+the result can require at most one more memory word than the maximum of the
+sizes of W0 and W1.</li>
+<li><code>REG = mul W0, W1</code> the size of the result of multiplication can be at most
+the sum of the sizes of W0 and W1.</li>
+<li><code>REG = div W0, W1</code> the result of division can require 1 word more than the
+difference between the sizes of W0 and W1.</li>
+<li><code>REG = mod W0, W1</code> the size of the result is at most the minimum of the
+sizes of W0 and W1.</li>
+<li><code>REG = exp W0, W1</code> the size of the result is equal to the size of the base
+multiplied by the exponent.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> #memory [ REG = add W0 , W1 ] =&gt; #registerDelta(REG, maxInt(intSize(W0), intSize(W1)) +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>)<span class="hljs-keyword">
+    rule</span> #memory [ REG = sub W0 , W1 ] =&gt; #registerDelta(REG, maxInt(intSize(W0), intSize(W1)) +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>)<span class="hljs-keyword">
+    rule</span> #memory [ REG = mul W0 , W1 ] =&gt; #registerDelta(REG, intSize(W0) +<span class="hljs-keyword">Int</span> intSize(W1))<span class="hljs-keyword">
+    rule</span> #memory [ REG = div W0 , W1 ] =&gt; #registerDelta(REG, maxInt(<span class="hljs-number">1</span>, intSize(W0) -<span class="hljs-keyword">Int</span> intSize(W1) +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>))<span class="hljs-keyword">
+    rule</span> #memory [ REG = mod W0 , W1 ] =&gt; #registerDelta(REG, minInt(intSize(W0), intSize(W1)))<span class="hljs-keyword">
+    rule</span> #memory [ REG = exp W0 , W1 ] =&gt; #registerDelta(REG, #adjustedBitLength(intSize(W0), W0) *<span class="hljs-keyword">Int</span> W1 /<span class="hljs-keyword">Int</span> <span class="hljs-number">64</span>)
+</code></pre>
+<h4 id="modular-arithmetic">Modular arithmetic</h4>
+<p>For all modular arithmetic operations, the size of the result is at most that
+of the modulo operand (W2).</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> #memory [ REG = addmod _  , _  , W2 ] =&gt; #registerDelta(REG, intSize(W2))<span class="hljs-keyword">
+    rule</span> #memory [ REG = mulmod W0 , W1 , W2 ] =&gt; #registerDelta(REG, intSize(W2))<span class="hljs-keyword">
+    rule</span> #memory [ REG = expmod _  , _  , W2 ] =&gt; #registerDelta(REG, intSize(W2))
+</code></pre>
+<h4 id="sha3">SHA3</h4>
+<p>Result size of SHA3 is 256 bits, i.e., 4 words.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #memory [ REG = sha3 _ ] =&gt; #registerDelta(REG, bitsInWords(<span class="hljs-number">256</span>, SCHED)) ... &lt;/k&gt; &lt;schedule&gt; SCHED &lt;/schedule&gt;
+</code></pre>
+<h4 id="byte-access">Byte access</h4>
+<ul>
+<li><code>REG = byte INDEX, W</code>  the result size is one byte, fitting in one word</li>
+<li><code>REG = sext WIDTH , W</code>, <code>REG = twos WIDTH , W</code>, and <code>REG = bswap WIDTH , W</code>
+the result size is WIDTH bytes, i.e., WIDTH / 8 words.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> #memory [ REG = byte  INDEX , _ ] =&gt; #registerDelta(REG, bytesInWords(<span class="hljs-number">1</span>))<span class="hljs-keyword">
+    rule</span> #memory [ REG = sext  WIDTH , _ ] =&gt; #registerDelta(REG, bytesInWords(chop(WIDTH)))<span class="hljs-keyword">
+    rule</span> #memory [ REG = twos  WIDTH , _ ] =&gt; #registerDelta(REG, bytesInWords(chop(WIDTH)))<span class="hljs-keyword">
+    rule</span> #memory [ REG = bswap WIDTH , _ ] =&gt; #registerDelta(REG, bytesInWords(chop(WIDTH)))
+</code></pre>
+<h4 id="local-state-operations">Local state operations</h4>
+<p>Operations whose result should fit into a word.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> #memory [ REG = call @iele.gas         ( .Ints ) ] =&gt; #registerDelta(REG, <span class="hljs-number">1</span>)<span class="hljs-keyword">
+    rule</span> #memory [ REG = call @iele.gasprice    ( .Ints ) ] =&gt; #registerDelta(REG, <span class="hljs-number">1</span>)<span class="hljs-keyword">
+    rule</span> #memory [ REG = call @iele.gaslimit    ( .Ints ) ] =&gt; #registerDelta(REG, <span class="hljs-number">1</span>)<span class="hljs-keyword">
+    rule</span> #memory [ REG = call @iele.number      ( .Ints ) ] =&gt; #registerDelta(REG, <span class="hljs-number">1</span>)<span class="hljs-keyword">
+    rule</span> #memory [ REG = call @iele.msize       ( .Ints ) ] =&gt; #registerDelta(REG, <span class="hljs-number">1</span>)<span class="hljs-keyword">
+    rule</span> #memory [ REG = call @iele.codesize    ( .Ints ) ] =&gt; #registerDelta(REG, <span class="hljs-number">1</span>)<span class="hljs-keyword">
+    rule</span> #memory [ REG = call @iele.extcodesize ( _     ) ] =&gt; #registerDelta(REG, <span class="hljs-number">1</span>)<span class="hljs-keyword">
+    rule</span> #memory [ REG = calladdress _ at _               ] =&gt; #registerDelta(REG, <span class="hljs-number">1</span>)
+</code></pre>
+<p>Operations whose result is an address:</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> #memory [ REG = call @iele.beneficiary ( .Ints ) ] =&gt; #registerDelta(REG, bytesInWords(<span class="hljs-number">20</span>))<span class="hljs-keyword">
+    rule</span> #memory [ REG = call @iele.address     ( .Ints ) ] =&gt; #registerDelta(REG, bytesInWords(<span class="hljs-number">20</span>))<span class="hljs-keyword">
+    rule</span> #memory [ REG = call @iele.origin      ( .Ints ) ] =&gt; #registerDelta(REG, bytesInWords(<span class="hljs-number">20</span>))<span class="hljs-keyword">
+    rule</span> #memory [ REG = call @iele.caller      ( .Ints ) ] =&gt; #registerDelta(REG, bytesInWords(<span class="hljs-number">20</span>))
+</code></pre>
+<p>Operations whose result should fit into 256 bits.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #memory [ REG = call @iele.timestamp   ( .Ints ) ] =&gt; #registerDelta(REG, bitsInWords(<span class="hljs-number">256</span>, SCHED)) ... &lt;/k&gt; &lt;schedule&gt; SCHED &lt;/schedule&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #memory [ REG = call @iele.difficulty  ( .Ints ) ] =&gt; #registerDelta(REG, bitsInWords(<span class="hljs-number">256</span>, SCHED)) ... &lt;/k&gt; &lt;schedule&gt; SCHED &lt;/schedule&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #memory [ REG = call @iele.callvalue   ( .Ints ) ] =&gt; #registerDelta(REG, bitsInWords(<span class="hljs-number">256</span>, SCHED)) ... &lt;/k&gt; &lt;schedule&gt; SCHED &lt;/schedule&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #memory [ REG = call @iele.blockhash   ( _     ) ] =&gt; #registerDelta(REG, bitsInWords(<span class="hljs-number">256</span>, SCHED)) ... &lt;/k&gt; &lt;schedule&gt; SCHED &lt;/schedule&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #memory [ REG = call @iele.balance     ( _     ) ] =&gt; #registerDelta(REG, bitsInWords(<span class="hljs-number">256</span>, SCHED)) ... &lt;/k&gt; &lt;schedule&gt; SCHED &lt;/schedule&gt;
+</code></pre>
+<h4 id="assignment-operations">Assignment operations</h4>
+<p>The memory cost of assigning a register or immediate to a register is the cost associated with
+resizing the register to equal the value being assigned.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #memory [ DEST = % SRC:<span class="hljs-keyword">Int</span> ] =&gt; #registerDelta(DEST, intSize(getInt(REGS [ SRC ]))) ... &lt;/k&gt;
+         &lt;regs&gt; REGS &lt;/regs&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #memory [ DEST = SRC:<span class="hljs-keyword">Int</span> ] =&gt; #registerDelta(DEST, intSize(SRC)) ... &lt;/k&gt;
+</code></pre>
+<h3 id="function-call%2Freturn">Function Call/Return</h3>
+<p>The memory cost of a function call is the cost of initializing a new set of registers plus the cost of
+saving the return address and other information on the function stack. The latter is a constant.
+For the former, each register used by the function call consumes one word by default, except for the parameters
+to the function, which consume as much as the size of their arguments.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #memory [ REGS = call @ NAME ( ARGS ) ] =&gt; #memoryDelta(REGISTERS -<span class="hljs-keyword">Int</span> #sizeRegs(ARGS) +<span class="hljs-keyword">Int</span> intSizes(ARGS) +<span class="hljs-keyword">Int</span> Gcallmemory &lt; SCHED &gt;) ... &lt;/k&gt;
+         &lt;schedule&gt; SCHED &lt;/schedule&gt;
+         &lt;funcId&gt; NAME &lt;/funcId&gt;
+         &lt;nregs&gt; REGISTERS &lt;/nregs&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #memory [ _ = call (IDX:<span class="hljs-keyword">Int</span> =&gt; @ FUNC) ( _ ) ] ... &lt;/k&gt;
+         &lt;funcLabels&gt; ... IDX |-&gt; FUNC ... &lt;/funcLabels&gt;
+    <span class="hljs-comment">// this will throw an exception, so the gas cost doesn&apos;t really matter</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #memory [ _ = call IDX:<span class="hljs-keyword">Int</span> ( _ ) ] =&gt; . ... &lt;/k&gt;
+         &lt;funcLabels&gt; LABELS &lt;/funcLabels&gt;<span class="hljs-keyword">
+      requires</span> notBool IDX in_keys(LABELS)
+</code></pre>
+<p>The memory cost of returning to a function is negative. Instead of charging a gas cost, memory is reclaimed according to the
+memory freed by returning from the function. In other words, we free the call frame on the stack, as well as each of the registers
+in the callee.</p>
+<p>There is also some memory change associated with assigning <code>ARGS</code> to the
+caller&apos;s registers, but that is handled in <code>iele.md</code>.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #memory [ ret ARGS ] =&gt; #memoryDelta(<span class="hljs-number">0</span> -<span class="hljs-keyword">Int</span> intSizes(REGS, NREGS, SCHED) -<span class="hljs-keyword">Int</span> Gcallmemory &lt; SCHED &gt;) ... &lt;/k&gt;
+         &lt;schedule&gt; SCHED &lt;/schedule&gt;
+         &lt;fid&gt; NAME &lt;/fid&gt;
+         &lt;regs&gt; REGS &lt;/regs&gt;
+         &lt;funcId&gt; NAME &lt;/funcId&gt;
+         &lt;nregs&gt; NREGS &lt;/nregs&gt;
+</code></pre>
+<h3 id="memory-operations">Memory operations</h3>
+<ul>
+<li><code>REG = load INDEX1 , INDEX2 , WIDTH</code>
+We resize the return register to fit the loaded data</li>
+<li><code>REG = store INDEX1 , INDEX2 , WIDTH</code>
+the memory needs to potentially be extended to include the entire segment
+being stored.</li>
+<li><code>REG = load INDEX</code>
+the size of the register needs to be resized to fit the size of the value
+at the INDEX in memory</li>
+<li><code>REG = store VALUE, INDEX</code>
+the memory cell at INDEX needs to be resized to store VALUE</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> #memory [ REG = load INDEX1 , INDEX2 , WIDTH ] =&gt; #registerDelta(REG, bytesInWords(chop(WIDTH)))<span class="hljs-keyword">
+    rule</span> #memory [ store _ ,  INDEX1 , INDEX2 , WIDTH ] =&gt; #memoryExpand(INDEX1, bytesInWords(chop(INDEX2) +<span class="hljs-keyword">Int</span> chop(WIDTH)))<span class="hljs-keyword"> requires</span> chop(WIDTH) &gt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> #memory [ store _ ,  INDEX1 , INDEX2 , WIDTH ] =&gt; .K<span class="hljs-keyword"> requires</span> chop(WIDTH) ==<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #memory [ REG = load INDEX ] =&gt; #registerDelta(REG, bytesInWords(lengthBytes(LM))) ... &lt;/k&gt;
+         &lt;localMem&gt;... INDEX |-&gt; LM ...&lt;/localMem&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #memory [ REG = load INDEX ] =&gt; #registerDelta(REG, <span class="hljs-number">0</span>)... &lt;/k&gt;
+         &lt;localMem&gt; LM &lt;/localMem&gt;<span class="hljs-keyword">
+      requires</span> notBool INDEX in_keys(LM)<span class="hljs-keyword">
+    rule</span> #memory [ store VALUE ,  INDEX ] =&gt; #memoryDelta(INDEX, intSize(VALUE))
+</code></pre>
+<h3 id="storage">Storage</h3>
+<p>Storage contains arbitrary-precision values, therefore the memory cost of loading a value from storage
+is the cost associated with resizing the register to equal the value contained in storage.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #memory [ REG = sload INDEX ] =&gt; #registerDelta(REG, intSize(VALUE)) ... &lt;/k&gt;
+         &lt;id&gt; ACCT &lt;/id&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;storage&gt; ... INDEX |-&gt; VALUE ... &lt;/storage&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; (.K =&gt; #lookupStorage(ACCT, INDEX)) ~&gt; #memory [ _ = sload INDEX ] ... &lt;/k&gt;
+         &lt;id&gt; ACCT &lt;/id&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;storage&gt; STORAGE &lt;/storage&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+      requires</span> notBool INDEX in_keys(STORAGE)
+</code></pre>
+<p>Storing to storage incurs no memory cost (its disk cost is included in its computational cost).</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> #memory [ sstore _ , _   ] =&gt; .
+</code></pre>
+<h3 id="miscellaneous">Miscellaneous</h3>
+<p>The following instructions do not incur any memory costs as they either do not return a value and do not write to memory,
+or else their memory cost is paid after the instruction executes.</p>
+<p>For example, <code>revert</code>, <code>ret</code>, <code>call</code>, <code>staticcall</code>, <code>create</code>, and <code>copycreate</code> each invoke <code>#registerDelta</code> directly
+as part of the process of returning from a contract. For information on how these are used, refer to the usages in <code>iele.md</code>.</p>
+<p>For <code>revert</code> there is some memory change associated with changing the caller&apos;s
+registers, but that is handled in <code>iele.md</code>.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> #memory [ br _           ] =&gt; .<span class="hljs-keyword">
+    rule</span> #memory [ br _ , _       ] =&gt; .<span class="hljs-keyword">
+    rule</span> #memory [ revert _       ] =&gt; .<span class="hljs-keyword">
+    rule</span> #memory [ log _          ] =&gt; .<span class="hljs-keyword">
+    rule</span> #memory [ log _ , _      ] =&gt; .<span class="hljs-keyword">
+    rule</span> #memory [ selfdestruct _ ] =&gt; .<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #memory [ ret _          ] =&gt; . ... &lt;/k&gt; &lt;localCalls&gt; .List &lt;/localCalls&gt;<span class="hljs-keyword">
+
+    rule</span> #memory [ _ = call _ at _ ( _ ) send _ , gaslimit _ ] =&gt; .<span class="hljs-keyword">
+    rule</span> #memory [ _ = staticcall _ at _ ( _ ) gaslimit _ ] =&gt; .<span class="hljs-keyword">
+    rule</span> #memory [ _ , _ = create _ ( _ ) send _ ] =&gt; .<span class="hljs-keyword">
+    rule</span> #memory [ _ , _ = copycreate _ ( _ ) send _ ] =&gt; .<span class="hljs-keyword">
+
+    rule</span> #memory [ ECREC ] =&gt; .<span class="hljs-keyword">
+    rule</span> #memory [ SHA256 ] =&gt; .<span class="hljs-keyword">
+    rule</span> #memory [ RIP160 ] =&gt; .<span class="hljs-keyword">
+    rule</span> #memory [ ID ] =&gt; .<span class="hljs-keyword">
+    rule</span> #memory [ ECADD ] =&gt; .<span class="hljs-keyword">
+    rule</span> #memory [ ECMUL ] =&gt; .<span class="hljs-keyword">
+    rule</span> #memory [ ECPAIRING ] =&gt; .
+</code></pre>
+<p>As the current amount of allocated memory can also decrease in IELE,
+memory costs are computed w.r.t. the peak level of allocated memory.
+Therefore, the configuration also contains a cell for the peak memory level,
+which is maintained by the next rules.</p>
+<ul>
+<li><code>#registerDelta</code> computes the new peak memory usage based on an estimation of the size of the result of the instruction, and incurs gas cost
+if the new peak is greater than the old peak. It does not update <code>&lt;currentMemory</code>, which is updated when registers are actually written by
+<code>#load</code> in <code>iele.md</code>. The delta is the estimated size after the instruction minus the current size before the instruction.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> InternalOp ::= #registerDelta ( LValue ,<span class="hljs-keyword"> Int</span> )
+ <span class="hljs-comment">// -----------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #registerDelta(% REG, NEWSIZE) =&gt; #deductMemory(PEAK) ... &lt;/k&gt;
+         &lt;currentMemory&gt; CURR &lt;/currentMemory&gt;
+         &lt;regs&gt; REGS &lt;/regs&gt;
+         &lt;peakMemory&gt; PEAK =&gt; maxInt(PEAK, CURR +<span class="hljs-keyword">Int</span> NEWSIZE -<span class="hljs-keyword">Int</span> intSize(getInt(REGS [ REG ]))) &lt;/peakMemory&gt;
+</code></pre>
+<ul>
+<li><code>#registerDeltas</code> invokes <code>#registerDelta</code> on a sequence of registers and values, using their exact size. This form is invoked when
+a contract returns and the return registers of an inter-contract call instruction are written.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> InternalOp ::= #registerDeltas ( LValues , Ints )
+ <span class="hljs-comment">// --------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #registerDeltas(REG, REGS, INT, INTS) =&gt; #registerDelta(REG, intSize(INT)) ~&gt; #registerDeltas(REGS, INTS)<span class="hljs-keyword">
+    rule</span> #registerDeltas(.LValues, _) =&gt; .K<span class="hljs-keyword">
+    rule</span> #registerDeltas(_, .Ints) =&gt; .K
+</code></pre>
+<ul>
+<li><code>#memoryExpand</code> updates <code>&lt;currentMemory&gt;</code> and <code>&lt;peakMemory&gt;</code> and incurs the gas cost if peak memory increases.
+It accepts a memory cell and its new size and computes the delta based on the difference in sizes before and after the instruction.
+However, it does not ever decrease the current memory usage, only expanding it up to the new size if it is less than that size currently.</li>
+<li><code>#memoryDelta</code> does the same as <code>#memoryExpand</code> except that it can also decrease the current memory if the new size is less than the old size.</li>
+<li><code>#memoryDelta</code> also takes a one argument form which takes an exact delta. This is used by function call/return and in other places where
+a memory delta occurs despite no write to local memory.</li>
+<li><code>#deductMemory</code> computes the actual gas cost from the old and new peak memory.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> InternalOp ::= #memoryExpand  (<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> )
+                        | #memoryDelta   (<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> )
+                        | #memoryDelta   (<span class="hljs-keyword"> Int</span> ) [klabel(memoryDirectDelta)]
+ <span class="hljs-comment">// ------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #memoryExpand(INDEX, NEWSIZE) =&gt; #deductMemory(PEAK) ... &lt;/k&gt;
+         &lt;localMem&gt;... INDEX |-&gt; LM ...&lt;/localMem&gt;
+         &lt;currentMemory&gt; CURR =&gt; CURR +<span class="hljs-keyword">Int</span> maxInt(<span class="hljs-number">0</span>, NEWSIZE -<span class="hljs-keyword">Int</span> bytesInWords((lengthBytes(LM)))) &lt;/currentMemory&gt;
+         &lt;peakMemory&gt; PEAK =&gt; maxInt(PEAK, CURR +<span class="hljs-keyword">Int</span> maxInt(<span class="hljs-number">0</span>, NEWSIZE -<span class="hljs-keyword">Int</span> bytesInWords((lengthBytes(LM))))) &lt;/peakMemory&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #memoryExpand(INDEX, NEWSIZE) =&gt; #deductMemory(PEAK) ... &lt;/k&gt;
+         &lt;localMem&gt; LM &lt;/localMem&gt;
+         &lt;currentMemory&gt; CURR =&gt; CURR +<span class="hljs-keyword">Int</span> NEWSIZE &lt;/currentMemory&gt;
+         &lt;peakMemory&gt; PEAK =&gt; maxInt(PEAK, CURR +<span class="hljs-keyword">Int</span> NEWSIZE) &lt;/peakMemory&gt;<span class="hljs-keyword">
+      requires</span> notBool INDEX in_keys(LM)<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #memoryDelta(INDEX, NEWSIZE) =&gt; #deductMemory(PEAK) ... &lt;/k&gt;
+         &lt;localMem&gt;... INDEX |-&gt; LM ...&lt;/localMem&gt;
+         &lt;currentMemory&gt; CURR =&gt; CURR +<span class="hljs-keyword">Int</span> NEWSIZE -<span class="hljs-keyword">Int</span> bytesInWords((lengthBytes(LM))) &lt;/currentMemory&gt;
+         &lt;peakMemory&gt; PEAK =&gt; maxInt(PEAK, CURR +<span class="hljs-keyword">Int</span> NEWSIZE -<span class="hljs-keyword">Int</span> bytesInWords((lengthBytes(LM)))) &lt;/peakMemory&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #memoryDelta(INDEX, NEWSIZE) =&gt; #deductMemory(PEAK) ... &lt;/k&gt;
+         &lt;localMem&gt; LM &lt;/localMem&gt;
+         &lt;currentMemory&gt; CURR =&gt; CURR +<span class="hljs-keyword">Int</span> NEWSIZE &lt;/currentMemory&gt;
+         &lt;peakMemory&gt; PEAK =&gt; maxInt(PEAK, CURR +<span class="hljs-keyword">Int</span> NEWSIZE) &lt;/peakMemory&gt;<span class="hljs-keyword">
+      requires</span> notBool INDEX in_keys(LM)<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #memoryDelta(DELTA) =&gt; #deductMemory(PEAK) ... &lt;/k&gt;
+         &lt;currentMemory&gt; CURR =&gt; CURR +<span class="hljs-keyword">Int</span> DELTA &lt;/currentMemory&gt;
+         &lt;peakMemory&gt; PEAK =&gt; maxInt(PEAK, CURR +<span class="hljs-keyword">Int</span> DELTA) &lt;/peakMemory&gt;<span class="hljs-keyword">
+
+    syntax</span> InternalOp ::= #deductMemory (<span class="hljs-keyword"> Int</span> )
+ <span class="hljs-comment">// -------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #deductMemory(OLDPEAK) =&gt; Cmem(SCHED, NEWPEAK) -<span class="hljs-keyword">Int</span> Cmem(SCHED, OLDPEAK) ~&gt; #deductGas ... &lt;/k&gt;
+         &lt;schedule&gt; SCHED &lt;/schedule&gt;
+         &lt;peakMemory&gt; NEWPEAK &lt;/peakMemory&gt;
+</code></pre>
+<ul>
+<li><code>Cmem</code> computes the absolute cost of using N bytes of memory. It scales linearly up to a certain amount and quadratically afterwards.
+A certain amount of memory is also free, as computed by <code>Cpricedmem</code>.</li>
+<li><code>Cpricedmem</code> is the memory that is actually charged, which is the actual memory usage minus the memory allowance, which is an amount of memory
+free in each contract call frame.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> Int</span> ::= Cmem ( Schedule ,<span class="hljs-keyword"> Int</span> )       [function, memo]
+                 | Cpricedmem ( Schedule,<span class="hljs-keyword"> Int</span> )  [function]
+ <span class="hljs-comment">// -------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> Cmem(SCHED, N)  =&gt; (Cpricedmem(SCHED, N) *<span class="hljs-keyword">Int</span> Gmemory &lt; SCHED &gt;) +<span class="hljs-keyword">Int</span> ((Cpricedmem(SCHED, N) *<span class="hljs-keyword">Int</span> Cpricedmem(SCHED, N)) /<span class="hljs-keyword">Int</span> Gquadcoeff &lt; SCHED &gt;)<span class="hljs-keyword">
+    rule</span> Cpricedmem(SCHED, N) =&gt; maxInt(<span class="hljs-number">0</span>, N -<span class="hljs-keyword">Int</span> Smemallowance &lt; SCHED &gt; )
+</code></pre>
+<h2 id="execution-gas">Execution Gas</h2>
+<p>Each opcode has an intrinsic gas cost of execution as well.</p>
+<ul>
+<li><code>#compute</code> loads all the relevant surronding state and uses that to compute the intrinsic execution gas of each opcode.</li>
+</ul>
+<p>Note that, unlike EVM, operations need to take into account the size of the operands.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> InternalOp ::= <span class="hljs-string">&quot;#compute&quot;</span> <span class="hljs-string">&quot;[&quot;</span> Instruction <span class="hljs-string">&quot;,&quot;</span> Schedule <span class="hljs-string">&quot;]&quot;</span>
+ <span class="hljs-comment">// -----------------------------------------------------------------</span>
+</code></pre>
+<h3 id="expressions-1">Expressions</h3>
+<h4 id="bitwise-arithmetic-1">Bitwise arithmetic</h4>
+<p>The bitwise expressions have a constant cost plus a linear factor in the number of words manipulated.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> #compute [ _ = not   W,       SCHED ] =&gt; Gnot &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> intSize(W) *<span class="hljs-keyword">Int</span> Gnotword &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = and   W0 , W1, SCHED ] =&gt; Gbitwise &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> minInt(intSize(W0), intSize(W1)) *<span class="hljs-keyword">Int</span> Gbitwiseword &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = or    W0 , W1, SCHED ] =&gt; Gbitwise &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> maxInt(intSize(W0), intSize(W1)) *<span class="hljs-keyword">Int</span> Gbitwiseword &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = xor   W0 , W1, SCHED ] =&gt; Gnot &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> maxInt(intSize(W0), intSize(W1)) *<span class="hljs-keyword">Int</span> Gnotword &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = shift W0 , W1, SCHED ] =&gt; Gbitwise &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> maxInt(<span class="hljs-number">1</span>, intSize(W0) +<span class="hljs-keyword">Int</span> bitsInWords(W1, SCHED)) *<span class="hljs-keyword">Int</span> Gbitwiseword &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = log2 W,        SCHED ] =&gt; Glogarithm &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> intSize(W) *<span class="hljs-keyword">Int</span> Glogarithmword &lt; SCHED &gt;
+</code></pre>
+<h4 id="comparison-operators-1">Comparison operators</h4>
+<p><code>iszero</code> has a constant cost, whereas <code>cmp</code> has a constant cost and a linear factor in the smaller of the two sizes.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> #compute [ _ = iszero W,      SCHED ] =&gt; Giszero &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = cmp _ W0 , W1, SCHED ] =&gt; Gcmp &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> minInt(intSize(W0), intSize(W1)) *<span class="hljs-keyword">Int</span> Gcmpword &lt; SCHED &gt;
+</code></pre>
+<h4 id="regular-arithmetic-1">Regular arithmetic</h4>
+<ul>
+<li><code>add</code> and <code>sub</code> have a linear cost in the larger of the two sizes.</li>
+<li><code>mul</code>, <code>div</code>, <code>mod</code> and <code>exp</code> have more complicated costs, which are
+detailed elswhere.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> #compute [ _ = add W0 , W1, SCHED ] =&gt; Gadd &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> maxInt(intSize(W0), intSize(W1)) *<span class="hljs-keyword">Int</span> Gaddword &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = sub W0 , W1, SCHED ] =&gt; Gadd &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> maxInt(intSize(W0), intSize(W1)) *<span class="hljs-keyword">Int</span> Gaddword &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = mul W0 , W1, SCHED ] =&gt; Cmul(SCHED, intSize(W0), intSize(W1))<span class="hljs-keyword">
+    rule</span> #compute [ _ = div W0 , W1, SCHED ] =&gt; Cdiv(SCHED, intSize(W0), intSize(W1))<span class="hljs-keyword">
+    rule</span> #compute [ _ = mod W0 , W1, SCHED ] =&gt; Cdiv(SCHED, intSize(W0), intSize(W1))<span class="hljs-keyword">
+    rule</span> #compute [ _ = exp W0 , W1, SCHED ] =&gt; Cexp(SCHED, intSize(W0), W0, W1)
+</code></pre>
+<h4 id="modular-arithmetic-1">Modular arithmetic</h4>
+<ul>
+<li><code>addmod</code> is the cost of an addition plus the cost of the modulus.</li>
+<li><code>mulmod</code> is the cost of two moduli, plus a multiplication, plus another
+modulus.</li>
+<li><code>expmod</code> has a more complicated cost and is defined elswhere.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> #compute [ _ = addmod W0 , W1 , W2, SCHED ] =&gt; Gadd &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> maxInt(intSize(W0), intSize(W1)) *<span class="hljs-keyword">Int</span> Gaddword &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> Cdiv(SCHED, maxInt(intSize(W0), intSize(W1)) +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, intSize(W2))<span class="hljs-keyword">
+    rule</span> #compute [ _ = mulmod W0 , W1 , W2, SCHED ] =&gt; Cmul(SCHED, intSize(W0), intSize(W1)) +<span class="hljs-keyword">Int</span> Cdiv(SCHED, intSize(W0) +<span class="hljs-keyword">Int</span> intSize(W1), intSize(W2))<span class="hljs-keyword">
+    rule</span> #compute [ _ = expmod W0 , W1 , W2, SCHED ] =&gt; Cexpmod(SCHED, intSize(W0), intSize(W1), intSize(W2), W2)
+</code></pre>
+<h4 id="sha3-1">SHA3</h4>
+<p>The cost of hashing a memory cell is equal to a constant plus the size of the cell in words.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #compute [ _ = sha3 W0, SCHED ] =&gt; Gsha3 &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> bytesInWords(lengthBytes(LM)) *<span class="hljs-keyword">Int</span> Gsha3word &lt; SCHED &gt; ... &lt;/k&gt;
+         &lt;localMem&gt;... W0 |-&gt; LM ...&lt;/localMem&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #compute [ _ = sha3 W0, SCHED ] =&gt; Gsha3 &lt; SCHED &gt; ... &lt;/k&gt;
+         &lt;localMem&gt; LM &lt;/localMem&gt;<span class="hljs-keyword">
+      requires</span> notBool W0 in_keys(LM)
+</code></pre>
+<h4 id="byte-access-1">Byte access</h4>
+<ul>
+<li><code>byte</code> has a constant cost.</li>
+<li><code>twos</code>, <code>sext</code>, and <code>bswap</code> have a constant cost plus a linear factor in the <code>WIDTH</code> parameter.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> #compute [ _ = byte _ , _, SCHED ] =&gt; Gbyte &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = twos  WIDTH, _, SCHED ] =&gt; Gtwos  &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> maxInt(<span class="hljs-number">1</span>, bytesInWords(chop(WIDTH))) *<span class="hljs-keyword">Int</span> Gtwosword  &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = sext  WIDTH, _, SCHED ] =&gt; Gsext  &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> maxInt(<span class="hljs-number">1</span>, bytesInWords(chop(WIDTH))) *<span class="hljs-keyword">Int</span> Gsextword  &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = bswap WIDTH, _, SCHED ] =&gt; Gbswap &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> maxInt(<span class="hljs-number">1</span>, bytesInWords(chop(WIDTH))) *<span class="hljs-keyword">Int</span> Gbswapword &lt; SCHED &gt;
+</code></pre>
+<h4 id="local-state-operations-1">Local state operations</h4>
+<p>Each of these operations merely reads a constant value from the execution context.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> #compute [ _ = call @iele.gas         ( _ ), SCHED ] =&gt; Greadstate &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = call @iele.gasprice    ( _ ), SCHED ] =&gt; Greadstate &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = call @iele.gaslimit    ( _ ), SCHED ] =&gt; Greadstate &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = call @iele.number      ( _ ), SCHED ] =&gt; Greadstate &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = call @iele.msize       ( _ ), SCHED ] =&gt; Greadstate &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = call @iele.codesize    ( _ ), SCHED ] =&gt; Greadstate &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = call @iele.beneficiary ( _ ), SCHED ] =&gt; Greadstate &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = call @iele.address     ( _ ), SCHED ] =&gt; Greadstate &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = call @iele.origin      ( _ ), SCHED ] =&gt; Greadstate &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = call @iele.caller      ( _ ), SCHED ] =&gt; Greadstate &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = call @iele.timestamp   ( _ ), SCHED ] =&gt; Greadstate &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = call @iele.difficulty  ( _ ), SCHED ] =&gt; Greadstate &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = call @iele.callvalue   ( _ ), SCHED ] =&gt; Greadstate &lt; SCHED &gt;
+</code></pre>
+<p>The blockhash function looks up state in the blockchain, and is therefore more expensive than the other builtin functions.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> #compute [ _ = call @iele.blockhash   ( _ ), SCHED ] =&gt; Gblockhash &lt; SCHED &gt;
+</code></pre>
+<h4 id="network-state-operations">Network state operations</h4>
+<p>Each of these operations pays a constant cost to look up information about an account on the network.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> #compute [ _ = call @iele.balance     ( _ ), SCHED ] =&gt; Gbalance     &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = call @iele.extcodesize ( _ ), SCHED ] =&gt; Gextcodesize &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ _ = calladdress _ at _,           SCHED ] =&gt; Gcalladdress &lt; SCHED &gt;
+</code></pre>
+<h4 id="assignment-operations-1">Assignment operations</h4>
+<p>The cost to load a value into a register is simply the cost to copy its value.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #compute [ DEST = % SRC:<span class="hljs-keyword">Int</span>, SCHED ] =&gt; Gmove &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> intSize(getInt(REGS [ SRC ])) ... &lt;/k&gt;
+         &lt;regs&gt; REGS &lt;/regs&gt;<span class="hljs-keyword">
+      requires</span> notBool Gnewmove &lt;&lt; SCHED &gt;&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #compute [ DEST = % SRC:<span class="hljs-keyword">Int</span>, SCHED ] =&gt; Gmove &lt; SCHED &gt; ... &lt;/k&gt;
+         &lt;regs&gt; REGS &lt;/regs&gt;<span class="hljs-keyword">
+      requires</span> Gnewmove &lt;&lt; SCHED &gt;&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #compute [ DEST = SRC:<span class="hljs-keyword">Int</span>, SCHED ] =&gt; Gmove &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> intSize(SRC) ... &lt;/k&gt;<span class="hljs-keyword">
+      requires</span> notBool Gnewmove &lt;&lt; SCHED &gt;&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #compute [ DEST = SRC:<span class="hljs-keyword">Int</span>, SCHED ] =&gt; Gmove &lt; SCHED &gt; ... &lt;/k&gt;<span class="hljs-keyword">
+      requires</span> Gnewmove &lt;&lt; SCHED &gt;&gt;
+</code></pre>
+<h3 id="jump-statements">Jump statements</h3>
+<p>The cost of jumping to a label, both conditionally and unconditionally, is a constant,
+but the cost of a conditional jump is slightly higher since it must test the register against zero.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> #compute [ br _, SCHED ] =&gt; Gbr &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ br _ , _, SCHED ] =&gt; Gbrcond &lt; SCHED &gt;
+</code></pre>
+<h3 id="function-call%2Freturn-1">Function Call/Return</h3>
+<p>The cost of an intra-contract call is the cost to initialize the new set of registers, the cost to copy the arguments to the call frame, and the
+constant cost to perform the jump and store the return address.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #compute [ _ = call @ NAME ( ARGS ), SCHED ] =&gt; Gcallreg &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> REGISTERS +<span class="hljs-keyword">Int</span> intSizes(ARGS) *<span class="hljs-keyword">Int</span> Gmove &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> Glocalcall &lt; SCHED &gt; ... &lt;/k&gt;
+         &lt;funcId&gt; NAME &lt;/funcId&gt;
+         &lt;nregs&gt; REGISTERS &lt;/nregs&gt;<span class="hljs-keyword">
+      requires</span> notBool Gnewmove &lt;&lt; SCHED &gt;&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #compute [ _ = call @ NAME ( ARGS ), SCHED ] =&gt; Gcallreg &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> REGISTERS +<span class="hljs-keyword">Int</span> Glocalcall &lt; SCHED &gt; ... &lt;/k&gt;
+         &lt;funcId&gt; NAME &lt;/funcId&gt;
+         &lt;nregs&gt; REGISTERS &lt;/nregs&gt;<span class="hljs-keyword">
+      requires</span> Gnewmove &lt;&lt; SCHED &gt;&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #compute [ _ = call (IDX:<span class="hljs-keyword">Int</span> =&gt; @ FUNC) ( _ ), _ ] ... &lt;/k&gt;
+         &lt;funcLabels&gt; ... IDX |-&gt; FUNC ... &lt;/funcLabels&gt;
+    <span class="hljs-comment">// this will throw an exception, so the gas cost doesn&apos;t really matter</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #compute [ _ = call IDX:<span class="hljs-keyword">Int</span> ( _ ), _ ] =&gt; <span class="hljs-number">0</span> ... &lt;/k&gt;
+         &lt;funcLabels&gt; LABELS &lt;/funcLabels&gt;<span class="hljs-keyword">
+      requires</span> notBool IDX in_keys(LABELS)
+</code></pre>
+<p>The cost to return is folded into the cost of the call instruction.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #compute [ ret ARGS::NonEmptyInts, SCHED ] =&gt; Gmove &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> #sizeRegs(ARGS) +<span class="hljs-keyword">Int</span> <span class="hljs-number">8</span> ... &lt;/k&gt;
+         &lt;localCalls&gt; ListItem(_) ... &lt;/localCalls&gt;<span class="hljs-keyword">
+      requires</span> notBool Gnewmove &lt;&lt; SCHED &gt;&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #compute [ ret _::NonEmptyInts, SCHED ] =&gt; <span class="hljs-number">0</span> ... &lt;/k&gt;
+         &lt;localCalls&gt; .List &lt;/localCalls&gt;<span class="hljs-keyword">
+      requires</span> notBool Gnewmove &lt;&lt; SCHED &gt;&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #compute [ ret _::NonEmptyInts, SCHED ] =&gt; <span class="hljs-number">0</span> ... &lt;/k&gt;<span class="hljs-keyword">
+      requires</span> Gnewmove &lt;&lt; SCHED &gt;&gt;<span class="hljs-keyword">
+    rule</span> #compute [ revert _, SCHED ] =&gt; <span class="hljs-number">0</span>
+</code></pre>
+<p>The cost to call another contract is very similar to the cost in EVM:</p>
+<ul>
+<li>A constant cost for the call itself</li>
+<li>A constant cost if a value is transferred along with the call</li>
+<li>A constant cost if the call creates a new empty account</li>
+<li>The cost of initializing the memory of the called frame with the arguments to the function.</li>
+<li>The gas stipend paid to the callee to execute its code.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #compute [ _, RETS::LValues = call _ at ACCTTO ( ARGS ) send VALUE , gaslimit GCAP, SCHED ] =&gt; Ccall(SCHED, #accountEmpty(ACCTTO), GCAP *<span class="hljs-keyword">Int</span> Sgasdivisor &lt; SCHED &gt;, GAVAIL, VALUE, #sizeLVals(RETS), Ccallarg(SCHED, ARGS)) ... &lt;/k&gt;
+         &lt;gas&gt; GAVAIL &lt;/gas&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #compute [ _, RETS::LValues = staticcall _ at ACCTTO ( ARGS ) gaslimit GCAP, SCHED ] =&gt; Ccall(SCHED, #accountEmpty(ACCTTO), GCAP *<span class="hljs-keyword">Int</span> Sgasdivisor &lt; SCHED &gt;, GAVAIL, <span class="hljs-number">0</span>, #sizeLVals(RETS), Ccallarg(SCHED, ARGS)) ... &lt;/k&gt;
+         &lt;gas&gt; GAVAIL &lt;/gas&gt;
+</code></pre>
+<h3 id="logging">Logging</h3>
+<p>The cost of logging is similar to the cost in EVM: a constant ccost plus a cost per byte of unindexed data plus a cost per indexed log topic.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #compute [ log IDX, SCHED ]                                 =&gt; (Glog &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> (Glogdata &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> bytesInWords(lengthBytes(LM))) +<span class="hljs-keyword">Int</span> (<span class="hljs-number">0</span> *<span class="hljs-keyword">Int</span> Glogtopic &lt; SCHED &gt;)) ... &lt;/k&gt; &lt;localMem&gt;... IDX |-&gt; LM ...&lt;/localMem&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #compute [ log IDX , _:<span class="hljs-keyword">Int</span>, SCHED ]                         =&gt; (Glog &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> (Glogdata &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> bytesInWords(lengthBytes(LM))) +<span class="hljs-keyword">Int</span> (<span class="hljs-number">1</span> *<span class="hljs-keyword">Int</span> Glogtopic &lt; SCHED &gt;)) ... &lt;/k&gt; &lt;localMem&gt;... IDX |-&gt; LM ...&lt;/localMem&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #compute [ log IDX , _:<span class="hljs-keyword">Int</span> , _:<span class="hljs-keyword">Int</span>, SCHED ]                 =&gt; (Glog &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> (Glogdata &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> bytesInWords(lengthBytes(LM))) +<span class="hljs-keyword">Int</span> (<span class="hljs-number">2</span> *<span class="hljs-keyword">Int</span> Glogtopic &lt; SCHED &gt;)) ... &lt;/k&gt; &lt;localMem&gt;... IDX |-&gt; LM ...&lt;/localMem&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #compute [ log IDX , _:<span class="hljs-keyword">Int</span> , _:<span class="hljs-keyword">Int</span> , _:<span class="hljs-keyword">Int</span>, SCHED ]         =&gt; (Glog &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> (Glogdata &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> bytesInWords(lengthBytes(LM))) +<span class="hljs-keyword">Int</span> (<span class="hljs-number">3</span> *<span class="hljs-keyword">Int</span> Glogtopic &lt; SCHED &gt;)) ... &lt;/k&gt; &lt;localMem&gt;... IDX |-&gt; LM ...&lt;/localMem&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #compute [ log IDX , _:<span class="hljs-keyword">Int</span> , _:<span class="hljs-keyword">Int</span> , _:<span class="hljs-keyword">Int</span>,  _:<span class="hljs-keyword">Int</span>, SCHED ] =&gt; (Glog &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> (Glogdata &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> bytesInWords(lengthBytes(LM))) +<span class="hljs-keyword">Int</span> (<span class="hljs-number">4</span> *<span class="hljs-keyword">Int</span> Glogtopic &lt; SCHED &gt;)) ... &lt;/k&gt; &lt;localMem&gt;... IDX |-&gt; LM ...&lt;/localMem&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; #compute [ log IDX, SCHED ] ... &lt;/k&gt;
+         &lt;localMem&gt; LM (.Map =&gt; IDX |-&gt; .Bytes) &lt;/localMem&gt;<span class="hljs-keyword">
+      requires</span> notBool IDX in_keys(LM)<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #compute [ log IDX, _, SCHED ] ... &lt;/k&gt;
+         &lt;localMem&gt; LM (.Map =&gt; IDX |-&gt; .Bytes) &lt;/localMem&gt;<span class="hljs-keyword">
+      requires</span> notBool IDX in_keys(LM)
+</code></pre>
+<h3 id="local-memory">Local Memory</h3>
+<ul>
+<li><code>load</code> pays a constant cost plus a cost per word loaded. The constant cost is higher if we must compute the width to be loaded dynamically.</li>
+<li><code>store</code> pays a constant cost plus a cost per word stored. The constant cost is higher if we must compute the width to be stored dynamically.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #compute [ _ = load INDEX, SCHED ] =&gt; Gloadcell &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> bytesInWords(lengthBytes(LM)) *<span class="hljs-keyword">Int</span> Gloadword &lt; SCHED &gt; ... &lt;/k&gt;
+         &lt;localMem&gt;... INDEX |-&gt; LM ...&lt;/localMem&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #compute [ _ = load INDEX, SCHED ] =&gt; Gloadcell &lt; SCHED &gt; ... &lt;/k&gt;
+         &lt;localMem&gt; LM &lt;/localMem&gt;<span class="hljs-keyword">
+      requires</span> notBool INDEX in_keys(LM)<span class="hljs-keyword">
+
+    rule</span> #compute [ _ = load INDEX , OFFSET , WIDTH, SCHED ] =&gt; Gload &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> bytesInWords(WIDTH) *<span class="hljs-keyword">Int</span> Gloadword &lt; SCHED &gt;<span class="hljs-keyword">
+
+    rule</span> #compute [ store VALUE , INDEX, SCHED ] =&gt; Gstorecell &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> intSize(VALUE) *<span class="hljs-keyword">Int</span> Gstoreword &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ store VALUE , INDEX , OFFSET , WIDTH, SCHED ] =&gt; Gstore &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> bytesInWords(WIDTH) *<span class="hljs-keyword">Int</span> Gstoreword &lt; SCHED &gt;
+</code></pre>
+<h3 id="storage-1">Storage</h3>
+<ul>
+<li><code>sload</code> pays a constant cost plus a cost per word in the key, plus a cost per word loaded.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">        rule</span> &lt;k&gt; #compute [ _ = sload INDEX, SCHED ] =&gt; Gsload &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> Gsloadkey &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> intSize(INDEX) +<span class="hljs-keyword">Int</span> Gsloadword &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> intSize(VALUE) ... &lt;/k&gt;
+         &lt;id&gt; ACCT &lt;/id&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;storage&gt; ... INDEX |-&gt; VALUE ... &lt;/storage&gt;
+           ...
+         &lt;/account&gt;
+</code></pre>
+<ul>
+<li><code>sstore</code> pays a constant cost plus a cost per word in the key and in the value, plus a larger cost for increasing the size of the storage of the account that is partially refunded when the storage is released.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #compute [ sstore VALUE , INDEX, SCHED ] =&gt; Csstore(SCHED, INDEX, VALUE, OLDVALUE) ... &lt;/k&gt;
+         &lt;id&gt; ACCT &lt;/id&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;storage&gt; ... INDEX |-&gt; OLDVALUE ... &lt;/storage&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; (.K =&gt; #lookupStorage(ACCT, INDEX)) ~&gt; #compute [ sstore VALUE , INDEX, _ ] ... &lt;/k&gt;
+         &lt;id&gt; ACCT &lt;/id&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;storage&gt; STORAGE &lt;/storage&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+      requires</span> notBool INDEX in_keys(STORAGE)
+</code></pre>
+<h3 id="contract-creation-and-destruction">Contract creation and destruction</h3>
+<ul>
+<li><code>create</code> pays a constant cost to initialize the account, a cost to copy the arguments of the constructor, plus a stipend to the constructor of 63/64ths of the current gas.</li>
+<li><code>copycreate</code> pays a very similar cost to <code>create</code> but with a slightly higher constant because the account code must be looked up on the blockchain.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> #compute [ _ , _ = create _ ( ARGS ) send _, SCHED ] =&gt; Gcreate &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> Gmove &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> Ccallarg(SCHED, ARGS)<span class="hljs-keyword">
+    rule</span> #compute [ _ , _ = copycreate _ ( ARGS ) send _, SCHED ] =&gt; Gcopycreate &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> Gmove &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> Ccallarg(SCHED, ARGS)
+</code></pre>
+<ul>
+<li><code>selfdestruct</code> costs a fixed amount plus a cost if the account the funds are transferred to must be created.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #compute [ selfdestruct ACCTTO, SCHED ] =&gt; Cselfdestruct(SCHED, #accountEmpty(ACCTTO), BAL) ... &lt;/k&gt;
+         &lt;id&gt; ACCTFROM &lt;/id&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCTFROM &lt;/acctID&gt;
+           &lt;balance&gt; BAL &lt;/balance&gt;
+           ...
+         &lt;/account&gt;
+</code></pre>
+<h3 id="precompiled-contracts">Precompiled Contracts</h3>
+<p>Each of the precompiled contracts pays a fixed cost per word of data passed to the contract plus a constant.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; #compute [ ECREC, SCHED ]  =&gt; Gecrec &lt; SCHED &gt; ... &lt;/k&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #compute [ SHA256, SCHED ] =&gt; Gsha256 &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> Gsha256word &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> bytesInWords(maxInt(LEN, intSize(DATA))) ... &lt;/k&gt; &lt;callData&gt; LEN , DATA , .Ints &lt;/callData&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #compute [ RIP160, SCHED ] =&gt; Grip160 &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> Grip160word &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> bytesInWords(maxInt(LEN, intSize(DATA))) ... &lt;/k&gt; &lt;callData&gt; LEN , DATA , .Ints &lt;/callData&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #compute [ ID, SCHED ]     =&gt; <span class="hljs-number">0</span> ... &lt;/k&gt;<span class="hljs-keyword">
+
+    rule</span> #compute [ ECADD, SCHED ] =&gt; Gecadd &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> #compute [ ECMUL, SCHED ] =&gt; Gecmul &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #compute [ ECPAIRING, SCHED ] =&gt; Gecpairing &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> LEN *<span class="hljs-keyword">Int</span> Gecpairingpair &lt; SCHED &gt; ... &lt;/k&gt; &lt;callData&gt; LEN , _ &lt;/callData&gt;
+</code></pre>
+<p>There are several helpers for calculating gas.</p>
+<p>Note: These are all functions as the operator <code>#compute</code> has already loaded all the relevant state.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> Int</span> ::= Csstore ( Schedule ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ) [function]
+ <span class="hljs-comment">// ----------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> Csstore(SCHED, INDEX, VALUE, OLDVALUE) =&gt; Gsstore &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> Gsstorekey &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> intSize(INDEX) +<span class="hljs-keyword">Int</span> Gsstoreword &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> intSize(VALUE) +<span class="hljs-keyword">Int</span> #if VALUE =/=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> andBool OLDVALUE ==<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> #then Gsstoresetkey &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> intSize(INDEX) +<span class="hljs-keyword">Int</span> Gsstoreset &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> intSize(VALUE) #else maxInt(<span class="hljs-number">0</span>, Gsstoreset &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> (intSize(VALUE) -<span class="hljs-keyword">Int</span> intSize(OLDVALUE))) #fi<span class="hljs-keyword">
+
+    syntax</span> Operand ::= Ccall    ( Schedule , BExp ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ) [<span class="hljs-literal">strict</span>(<span class="hljs-number">2</span>)]
+                     | Ccallgas ( Schedule , BExp ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ) [<span class="hljs-literal">strict</span>(<span class="hljs-number">2</span>)]<span class="hljs-keyword">
+    syntax</span><span class="hljs-keyword"> Int</span> ::= Cgascap  ( Schedule ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> )                        [function]
+                 | Cextra   ( Schedule ,<span class="hljs-keyword"> Bool</span> ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> )                 [function]
+                 | Cxfer    ( Schedule ,<span class="hljs-keyword"> Int</span> )                                    [function]
+                 | Cnew     ( Schedule ,<span class="hljs-keyword"> Bool</span> ,<span class="hljs-keyword"> Int</span> )                             [function]
+                 | Ccallarg ( Schedule , Operands )                               [function]
+ <span class="hljs-comment">// ----------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> Ccall(SCHED, ISEMPTY:<span class="hljs-keyword">Bool</span>, GCAP, GAVAIL, VALUE, RETS, ARGS) =&gt; Cextra(SCHED, ISEMPTY, VALUE, RETS, ARGS) +<span class="hljs-keyword">Int</span> Cgascap(SCHED, GCAP, GAVAIL, Cextra(SCHED, ISEMPTY, VALUE, RETS, ARGS))<span class="hljs-keyword">
+
+    rule</span> Ccallgas(SCHED, ISEMPTY:<span class="hljs-keyword">Bool</span>, GCAP, GAVAIL, <span class="hljs-number">0</span>, RETS, ARGS)     =&gt; Cgascap(SCHED, GCAP, GAVAIL, Cextra(SCHED, ISEMPTY,     <span class="hljs-number">0</span>, RETS, ARGS))<span class="hljs-keyword">
+    rule</span> Ccallgas(SCHED, ISEMPTY:<span class="hljs-keyword">Bool</span>, GCAP, GAVAIL, VALUE, RETS, ARGS) =&gt; Cgascap(SCHED, GCAP, GAVAIL, Cextra(SCHED, ISEMPTY, VALUE, RETS, ARGS)) +<span class="hljs-keyword">Int</span> Gcallstipend &lt; SCHED &gt;<span class="hljs-keyword"> requires</span> VALUE =/=K <span class="hljs-number">0</span><span class="hljs-keyword">
+
+    rule</span> Cgascap(SCHED, GCAP, GAVAIL, GEXTRA) =&gt; minInt(#allBut64th(GAVAIL -<span class="hljs-keyword">Int</span> GEXTRA), GCAP)<span class="hljs-keyword"> requires</span> GAVAIL &gt;=<span class="hljs-keyword">Int</span> GEXTRA andBool notBool Gstaticcalldepth &lt;&lt; SCHED &gt;&gt;<span class="hljs-keyword">
+    rule</span> Cgascap(SCHED, GCAP, GAVAIL, GEXTRA) =&gt; GCAP<span class="hljs-keyword">                                          requires</span> GAVAIL &lt;<span class="hljs-keyword">Int</span>  GEXTRA orBool Gstaticcalldepth &lt;&lt; SCHED &gt;&gt;<span class="hljs-keyword">
+
+    rule</span> Cextra(SCHED, ISEMPTY, VALUE, RETS, ARGS) =&gt; Gcall &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> Cnew(SCHED, ISEMPTY, VALUE) +<span class="hljs-keyword">Int</span> Cxfer(SCHED, VALUE) +<span class="hljs-keyword">Int</span> Gcallreg &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> (RETS +<span class="hljs-keyword">Int</span> ARGS)<span class="hljs-keyword">
+
+    rule</span> Cxfer(SCHED, <span class="hljs-number">0</span>) =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> Cxfer(SCHED, N) =&gt; Gcallvalue &lt; SCHED &gt;<span class="hljs-keyword"> requires</span> N =/=K <span class="hljs-number">0</span><span class="hljs-keyword">
+
+    rule</span> Cnew(SCHED, ISEMPTY:<span class="hljs-keyword">Bool</span>, VALUE) =&gt; Gnewaccount &lt; SCHED &gt;<span class="hljs-keyword">
+      requires</span>         ISEMPTY andBool VALUE =/=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> Cnew(SCHED, ISEMPTY:<span class="hljs-keyword">Bool</span>, VALUE) =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+      requires</span> notBool ISEMPTY orBool  VALUE  ==<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+
+    rule</span> Ccallarg(SCHED, ARGS) =&gt; intSizes(ARGS)<span class="hljs-keyword">
+      requires</span> notBool Gnewmove &lt;&lt; SCHED &gt;&gt;<span class="hljs-keyword">
+    rule</span> Ccallarg(SCHED, ARGS) =&gt; #sizeRegs(ARGS)<span class="hljs-keyword">
+      requires</span> Gnewmove &lt;&lt; SCHED &gt;&gt;<span class="hljs-keyword">
+
+    syntax</span> Operand ::= Cselfdestruct ( Schedule , BExp ,<span class="hljs-keyword"> Int</span> ) [<span class="hljs-literal">strict</span>(<span class="hljs-number">2</span>)]
+ <span class="hljs-comment">// ----------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> Cselfdestruct(SCHED, ISEMPTY:<span class="hljs-keyword">Bool</span>, BAL) =&gt; Gselfdestruct &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> Gnewaccount &lt; SCHED &gt;<span class="hljs-keyword">
+      requires</span> ISEMPTY andBool (        Gselfdestructnewaccount &lt;&lt; SCHED &gt;&gt;) andBool BAL =/=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> Cselfdestruct(SCHED, ISEMPTY:<span class="hljs-keyword">Bool</span>, BAL) =&gt; Gselfdestruct &lt; SCHED &gt;<span class="hljs-keyword">
+      requires</span> ISEMPTY andBool (notBool Gselfdestructnewaccount &lt;&lt; SCHED &gt;&gt;  orBool  BAL  ==<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span>)<span class="hljs-keyword">
+    rule</span> Cselfdestruct(SCHED, ISEMPTY:<span class="hljs-keyword">Bool</span>, BAL) =&gt; Gselfdestruct &lt; SCHED &gt;<span class="hljs-keyword">
+      requires</span> notBool ISEMPTY<span class="hljs-keyword">
+
+    syntax</span> KResult ::=<span class="hljs-keyword"> Bool</span><span class="hljs-keyword">
+    syntax</span> BExp ::=<span class="hljs-keyword"> Bool</span>
+                  | #accountEmpty(<span class="hljs-keyword">Int</span>)<span class="hljs-keyword">
+    syntax</span><span class="hljs-keyword"> Bool</span> ::= #accountEmpty(Contract,<span class="hljs-keyword"> Int</span>,<span class="hljs-keyword"> Int</span>) [klabel(accountEmpty), function, symbol]
+ <span class="hljs-comment">// ------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #accountEmpty(ACCT) =&gt; #accountEmpty(CODE, NONCE, BAL) ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;code&gt; CODE &lt;/code&gt;
+           &lt;nonce&gt; NONCE &lt;/nonce&gt;
+           &lt;balance&gt; BAL &lt;/balance&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; (.K =&gt; #loadAccount ACCT) ~&gt; #accountEmpty(ACCT) ... &lt;/k&gt;
+         &lt;activeAccounts&gt; ACCTS &lt;/activeAccounts&gt;<span class="hljs-keyword">
+      requires</span> notBool ACCT in ACCTS<span class="hljs-keyword">
+
+    rule</span> #accountEmpty(CODE, NONCE, BAL) =&gt; CODE ==K #emptyCode andBool NONCE ==<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> andBool BAL ==<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Int</span> ::= #allBut64th (<span class="hljs-keyword"> Int</span> ) [function]
+ <span class="hljs-comment">// ---------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #allBut64th(N) =&gt; N -<span class="hljs-keyword">Int</span> (N /<span class="hljs-keyword">Int</span> <span class="hljs-number">64</span>)<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Int</span> ::= G0 ( Schedule , WordStack , Ints ) [function, klabel(G0create)]
+                 | G0 ( Schedule ,<span class="hljs-keyword"> String</span> , Ints )    [function, klabel(G0call)]
+                 | G0 ( Schedule , WordStack ,<span class="hljs-keyword"> Bool</span> ) [function, klabel(G0aux)]
+ <span class="hljs-comment">// ---------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> G0(SCHED, .WordStack, true)  =&gt; Gtxcreate    &lt; SCHED &gt;<span class="hljs-keyword">
+    rule</span> G0(SCHED, .WordStack, false) =&gt; Gtransaction &lt; SCHED &gt;<span class="hljs-keyword">
+
+    rule</span> G0(SCHED, WS, ARGS) =&gt; G0(SCHED, #parseByteStackRaw(#rlpEncodeLength(#rlpEncodeString(#unparseByteStack(WS)) +<span class="hljs-keyword">String</span> #rlpEncodeInts(ARGS), <span class="hljs-number">192</span>)), true)<span class="hljs-keyword">
+    rule</span> G0(SCHED, FUNC, ARGS) =&gt; G0(SCHED, #parseByteStackRaw(#rlpEncodeLength(#rlpEncodeString(FUNC) +<span class="hljs-keyword">String</span> #rlpEncodeInts(ARGS), <span class="hljs-number">192</span>)), false)<span class="hljs-keyword">
+
+    rule</span> G0(SCHED, <span class="hljs-number">0</span> : REST, ISCREATE::<span class="hljs-keyword">Bool</span>) =&gt; Gtxdatazero    &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> G0(SCHED, REST, ISCREATE)<span class="hljs-keyword">
+    rule</span> G0(SCHED, N : REST, ISCREATE::<span class="hljs-keyword">Bool</span>) =&gt; Gtxdatanonzero &lt; SCHED &gt; +<span class="hljs-keyword">Int</span> G0(SCHED, REST, ISCREATE)<span class="hljs-keyword"> requires</span> N =/=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Int</span> ::= <span class="hljs-string">&quot;G*&quot;</span> <span class="hljs-string">&quot;(&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;,&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;,&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;)&quot;</span> [function]
+ <span class="hljs-comment">// ----------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> G*(GAVAIL, GLIMIT, REFUND) =&gt; GAVAIL +<span class="hljs-keyword">Int</span> minInt((GLIMIT -<span class="hljs-keyword">Int</span> GAVAIL)/<span class="hljs-keyword">Int</span> <span class="hljs-number">2</span>, REFUND)<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Int</span> ::= Cmul     ( Schedule ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> )             [function]
+                 | Ckara    (<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> )                        [function]
+                 | Cdiv     ( Schedule ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> )             [function]
+                 | Cexp     ( Schedule ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> )       [function]
+                 | Cexpmod  ( Schedule ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ) [function]
+ <span class="hljs-comment">// -----------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> Cmul(SCHED, L1, L2) =&gt; Cmul(SCHED, L2, L1)<span class="hljs-keyword">
+      requires</span> L2 &gt;<span class="hljs-keyword">Int</span> L1<span class="hljs-keyword">
+
+    rule</span> Cmul(SCHED, L1, L2) =&gt;
+        Gmulkara &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> Ckara(L1, L2) +<span class="hljs-keyword">Int</span>
+        Gmulword &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> (L1 +<span class="hljs-keyword">Int</span> L2) +<span class="hljs-keyword">Int</span>
+        Gmul &lt; SCHED &gt;
+      [owise]
+      <span class="hljs-comment">// Note that if L2 is low enough (&lt; 32) then #overApproxKara(L2) = L2 * L2</span><span class="hljs-keyword">
+
+    rule</span> Ckara(L1, L2) =&gt; L1 *<span class="hljs-keyword">Int</span> #overApproxKara(L2) /<span class="hljs-keyword">Int</span> L2<span class="hljs-keyword">
+      requires</span> L1 &gt;=<span class="hljs-keyword">Int</span> L2<span class="hljs-keyword">
+
+    rule</span> Ckara(L1, L2) =&gt; L2 *<span class="hljs-keyword">Int</span> #overApproxKara(L1) /<span class="hljs-keyword">Int</span> L1 [owise]<span class="hljs-keyword">
+
+    rule</span> Cdiv(SCHED, L1, L2) =&gt;
+        Gdivkara &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> Ckara(L1 -<span class="hljs-keyword">Int</span> L2 +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, L2) +<span class="hljs-keyword">Int</span>
+        Gdivword &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> L1 +<span class="hljs-keyword">Int</span>
+        Gdiv &lt; SCHED &gt;<span class="hljs-keyword">
+      requires</span> L1 &gt;=<span class="hljs-keyword">Int</span> L2<span class="hljs-keyword">
+    
+    rule</span> Cdiv(SCHED, L1, L2) =&gt;
+        Gdivword &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> L1 +<span class="hljs-keyword">Int</span>
+        Gdiv &lt; SCHED &gt;<span class="hljs-keyword">
+      requires</span> notBool Gnewarith &lt;&lt; SCHED &gt;&gt;
+      [owise]<span class="hljs-keyword">
+
+    rule</span> Cdiv(SCHED, L1, L2) =&gt;
+        Gdiv &lt; SCHED &gt;<span class="hljs-keyword">
+      requires</span> Gnewarith &lt;&lt; SCHED &gt;&gt;
+      [owise]<span class="hljs-keyword">
+
+    rule</span> Cexp(SCHED, L1, W1, W2) =&gt;
+        Gexpkara &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> #overApproxKara(#adjustedBitLength(L1, W1) *<span class="hljs-keyword">Int</span> W2 /<span class="hljs-keyword">Int</span> <span class="hljs-number">64</span>) +<span class="hljs-keyword">Int</span>
+        Gexpword &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> L1 +<span class="hljs-keyword">Int</span>
+        Gexp &lt; SCHED &gt;<span class="hljs-keyword">
+      requires</span> notBool Gnewarith &lt;&lt; SCHED &gt;&gt;<span class="hljs-keyword">
+
+    rule</span> Cexp(SCHED, L1, W1, W2) =&gt;
+        Gexpkara &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> #overApproxKara(#adjustedBitLength(L1, W1) *<span class="hljs-keyword">Int</span> W2 /<span class="hljs-keyword">Int</span> <span class="hljs-number">64</span>) +<span class="hljs-keyword">Int</span>
+        Gexpword &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> #adjustedBitLength(L1, W1) +<span class="hljs-keyword">Int</span>
+        Gexp &lt; SCHED &gt;<span class="hljs-keyword">
+      requires</span> Gnewarith &lt;&lt; SCHED &gt;&gt;<span class="hljs-keyword">
+
+    rule</span> Cexpmod(SCHED, LB, LEX, LM, EX) =&gt;
+        ((Gexpmodkara &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> #overApproxKara(LM) *<span class="hljs-keyword">Int</span> #adjustedBitLength(LEX, EX)) up/<span class="hljs-keyword">Int</span> <span class="hljs-number">10</span>) +<span class="hljs-keyword">Int</span>
+        Gexpmodmod &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> LM +<span class="hljs-keyword">Int</span>
+        Gexpmodexp &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> #adjustedBitLength(LEX, EX) +<span class="hljs-keyword">Int</span>
+        Gexpmod &lt; SCHED &gt;<span class="hljs-keyword">
+      requires</span> LB &lt;=<span class="hljs-keyword">Int</span> LM<span class="hljs-keyword">
+
+    rule</span> Cexpmod(SCHED, LB, LEX, LM, EX) =&gt;
+        ((Gexpmodkara &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> #overApproxKara(LM) *<span class="hljs-keyword">Int</span> #adjustedBitLength(LEX, EX)) up/<span class="hljs-keyword">Int</span> <span class="hljs-number">10</span>) +<span class="hljs-keyword">Int</span>
+        Gexpmodmod &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> LM +<span class="hljs-keyword">Int</span>
+        Gexpmodexp &lt; SCHED &gt; *<span class="hljs-keyword">Int</span> #adjustedBitLength(LEX, EX) +<span class="hljs-keyword">Int</span>
+        Cdiv(SCHED, LB, LM) +<span class="hljs-keyword">Int</span>
+        Gexpmod &lt; SCHED &gt;
+      [owise]
+
+</code></pre>
+<h4 id="approximating-x%5Elog_2-3">Approximating <code>x^log_2 3</code></h4>
+<p>Say we want to approximate <code>x^log_2 3</code> with a family of quadratic functions, say of the form <code>a2*x^2+a1*x+a0</code>.</p>
+<ul>
+<li>we use the fact that <code>(2^k)^(log 3 / log 2) = 3^k</code></li>
+<li>then, for <code>x = 2^k</code>, it means we want to approximate <code>3^k</code> with <code>a2*4^k(+...)</code>, whence <code>a2 ~= 1/(4/3)^k</code>.</li>
+<li>looking for powers of 2 (to make <code>a2*x^2</code> a shift) which are smaller, but close to <code>(4/3)^k</code>, we see that <code>(4/3)^5 ~= 4.21</code> and<code> (4/3)^10 ~=17.75</code></li>
+<li>we then can take candidates <code>x^2 for x &lt;=32</code>; <code>x^2/4 + a1* x + a0 for 32 &lt;= x &lt;=1024</code>, and  <code>x^2/16 + b1 * x + b0 for x &gt;= 1024 </code></li>
+<li>now, if we want the approximation to be differentiable, its derivative, <code>2* x for x &lt;=32; x/2 + a1 for 32 &lt;= x &lt;=1024, x/8 + b1 for x &gt;= 1024</code>,  must be continuous, so</li>
+<li><code>a1 = 2 * 32 - 32/2 = 48</code>, and <code>b1 = 1024/2 + a1 - 1024 / 8 = 432</code></li>
+<li>next, the approximation must also be continuous, so</li>
+<li><code>a0 = 32^2 - 32^2/4 - 48*32 = -768</code>, and <code>b0 = 1024^2/4+ 48*1024 -768 - 1024^2/16 - 432*1024 = - 197376</code></li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> Int</span> ::= #overApproxKara (<span class="hljs-keyword"> Int</span> )                 [function]
+ <span class="hljs-comment">// -----------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #overApproxKara(N) =&gt; #if N &lt;=<span class="hljs-keyword">Int</span>   <span class="hljs-number">32</span> #then N *<span class="hljs-keyword">Int</span> N
+                         #else #if N &lt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">1024</span> #then N *<span class="hljs-keyword">Int</span> N /<span class="hljs-keyword">Int</span>  <span class="hljs-number">4</span> +<span class="hljs-keyword">Int</span>  <span class="hljs-number">48</span> *<span class="hljs-keyword">Int</span> N -<span class="hljs-keyword">Int</span>    <span class="hljs-number">768</span>
+                         #else                        N *<span class="hljs-keyword">Int</span> N /<span class="hljs-keyword">Int</span> <span class="hljs-number">16</span> +<span class="hljs-keyword">Int</span> <span class="hljs-number">432</span> *<span class="hljs-keyword">Int</span> N -<span class="hljs-keyword">Int</span> <span class="hljs-number">197376</span>
+                         #fi #fi
+</code></pre>
+<h4 id="approximating-exponentiation">Approximating exponentiation</h4>
+<p>Exponentiation algorithms work by sucessively performing at most two multiplication operations per bit in the exponent.</p>
+<p>Because exponents could be very large, we approximate this length by counting the number of words in the exponent and multiplying by 64,
+the number of bits in a word. However, in order to create more precision on smaller inputs, if the number is less than 2^64,
+we compute down to the very last bit, by examining the individual bits of the low order word.</p>
+<p>This same function can be used to approximate the bit size of an exponentiation base for non-modular exponentiation,
+which is used to compute a more accurate approximation of the length of the result than a measurement in words.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> Int</span> ::= #adjustedBitLength(<span class="hljs-keyword">Int</span>,<span class="hljs-keyword"> Int</span>) [function]
+                 | #adjustedBitLength(<span class="hljs-keyword">Int</span>) [function, klabel(#adjustedBitLengthAux)]
+ <span class="hljs-comment">// --------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #adjustedBitLength(LEX, EX) =&gt; maxInt(<span class="hljs-number">1</span>, #if LEX &lt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span> #then <span class="hljs-number">0</span> #else <span class="hljs-number">64</span> *<span class="hljs-keyword">Int</span> (LEX -<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>) #fi +<span class="hljs-keyword">Int</span> #adjustedBitLength(twos(<span class="hljs-number">8</span>, EX)))<span class="hljs-keyword">
+
+    rule</span> #adjustedBitLength(<span class="hljs-number">0</span>) =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> #adjustedBitLength(N) =&gt; log2Int(N) [owise]
+
+</code></pre>
+<h2 id="gas-model-parameters">Gas Model Parameters</h2>
+<p>The IELE semantics is designed to be extensible in future hard forks while still maintaining an accurate semantics of the language prior
+to the fork. As such, we introduce a number of parameters to the gas model which are dependent on the gas schedule used.
+Here we introduce only two gas schedules, the &quot;DEFAULT&quot; schedule, provided solely for backwards-compatibility with the EVM VMTests test suite,
+and the &quot;ALBE&quot; schedule, representing the initial release of IELE. The name Albe is chosen due to its significance as the name for one of the Romanian Iele.
+You can specify which profile is used by passing in the argument <code>-cSCHEDULE=&lt;FEE_SCHEDULE&gt;</code> when calling <code>krun</code> (the available <code>&lt;FEE_SCHEDULE&gt;</code> are supplied here).</p>
+<p>A <code>ScheduleFlag</code> is a boolean determined by the fee schedule; applying a <code>ScheduleFlag</code> to a <code>Schedule</code> yields whether the flag is set or not.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> Bool</span> ::= ScheduleFlag <span class="hljs-string">&quot;&lt;&lt;&quot;</span> Schedule <span class="hljs-string">&quot;&gt;&gt;&quot;</span> [function]
+ <span class="hljs-comment">// ----------------------------------------------------------</span><span class="hljs-keyword">
+
+    syntax</span> ScheduleFlag ::= <span class="hljs-string">&quot;Gselfdestructnewaccount&quot;</span> | <span class="hljs-string">&quot;Gstaticcalldepth&quot;</span>
+                          | <span class="hljs-string">&quot;Gnewmove&quot;</span>                | <span class="hljs-string">&quot;Gnewarith&quot;</span>
+ <span class="hljs-comment">// ---------------------------------------------------------------</span>
+</code></pre>
+<p>A <code>ScheduleConst</code> is a constant determined by the fee schedule; applying a <code>ScheduleConst</code> to a <code>Schedule</code> yields the correct constant for that schedule.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> Int</span> ::= ScheduleConst <span class="hljs-string">&quot;&lt;&quot;</span> Schedule <span class="hljs-string">&quot;&gt;&quot;</span> [function]
+ <span class="hljs-comment">// --------------------------------------------------------</span><span class="hljs-keyword">
+ 
+    syntax</span> ScheduleConst ::= <span class="hljs-string">&quot;Gmove&quot;</span>       | <span class="hljs-string">&quot;Greadstate&quot;</span>  | <span class="hljs-string">&quot;Gadd&quot;</span>        | <span class="hljs-string">&quot;Gaddword&quot;</span>       | <span class="hljs-string">&quot;Gmul&quot;</span>        | <span class="hljs-string">&quot;Gmulword&quot;</span>     | <span class="hljs-string">&quot;Gmulkara&quot;</span>
+                           | <span class="hljs-string">&quot;Gdiv&quot;</span>        | <span class="hljs-string">&quot;Gdivword&quot;</span>    | <span class="hljs-string">&quot;Gdivkara&quot;</span>    | <span class="hljs-string">&quot;Gexpkara&quot;</span>       | <span class="hljs-string">&quot;Gexpword&quot;</span>    | <span class="hljs-string">&quot;Gexp&quot;</span>         | <span class="hljs-string">&quot;Gexpmodkara&quot;</span>    | <span class="hljs-string">&quot;Gexpmodmod&quot;</span>
+                           | <span class="hljs-string">&quot;Gexpmodexp&quot;</span>  | <span class="hljs-string">&quot;Gexpmod&quot;</span>     | <span class="hljs-string">&quot;Gnot&quot;</span>        | <span class="hljs-string">&quot;Gnotword&quot;</span>       | <span class="hljs-string">&quot;Gbitwise&quot;</span>    | <span class="hljs-string">&quot;Gbitwiseword&quot;</span> | <span class="hljs-string">&quot;Glogarithm&quot;</span>     | <span class="hljs-string">&quot;Glogarithmword&quot;</span>
+                           | <span class="hljs-string">&quot;Gbyte&quot;</span>       | <span class="hljs-string">&quot;Gtwos&quot;</span>       | <span class="hljs-string">&quot;Gtwosword&quot;</span>   | <span class="hljs-string">&quot;Gsext&quot;</span>          | <span class="hljs-string">&quot;Gsextword&quot;</span>   | <span class="hljs-string">&quot;Gbswap&quot;</span>       | <span class="hljs-string">&quot;Gbswapword&quot;</span>     | <span class="hljs-string">&quot;Giszero&quot;</span>
+                           | <span class="hljs-string">&quot;Gcmp&quot;</span>        | <span class="hljs-string">&quot;Gcmpword&quot;</span>    | <span class="hljs-string">&quot;Gbr&quot;</span>         | <span class="hljs-string">&quot;Gbrcond&quot;</span>        | <span class="hljs-string">&quot;Gblockhash&quot;</span>  | <span class="hljs-string">&quot;Gsha3&quot;</span>        | <span class="hljs-string">&quot;Gsha3word&quot;</span>      | <span class="hljs-string">&quot;Gloadcell&quot;</span>
+                           | <span class="hljs-string">&quot;Gload&quot;</span>       | <span class="hljs-string">&quot;Gloadword&quot;</span>   | <span class="hljs-string">&quot;Gstorecell&quot;</span>  | <span class="hljs-string">&quot;Gstore&quot;</span>         | <span class="hljs-string">&quot;Gstoreword&quot;</span>  | <span class="hljs-string">&quot;Gbalance&quot;</span>     | <span class="hljs-string">&quot;Gextcodesize&quot;</span>   | <span class="hljs-string">&quot;Gcalladdress&quot;</span>
+                           | <span class="hljs-string">&quot;Glog&quot;</span>        | <span class="hljs-string">&quot;Glogdata&quot;</span>    | <span class="hljs-string">&quot;Glogtopic&quot;</span>   | <span class="hljs-string">&quot;Gsstore&quot;</span>        | <span class="hljs-string">&quot;Gsstoreword&quot;</span> | <span class="hljs-string">&quot;Gsstorekey&quot;</span>   | <span class="hljs-string">&quot;Gsstoreset&quot;</span>     | <span class="hljs-string">&quot;Gsstoresetkey&quot;</span>
+                           | <span class="hljs-string">&quot;Gsload&quot;</span>      | <span class="hljs-string">&quot;Gsloadkey&quot;</span>   | <span class="hljs-string">&quot;Gsloadword&quot;</span>  | <span class="hljs-string">&quot;Gselfdestruct&quot;</span>  | <span class="hljs-string">&quot;Gcallmemory&quot;</span> | <span class="hljs-string">&quot;Gcallreg&quot;</span>     | <span class="hljs-string">&quot;Glocalcall&quot;</span>     | <span class="hljs-string">&quot;Gcallstipend&quot;</span> 
+                           | <span class="hljs-string">&quot;Gcall&quot;</span>       | <span class="hljs-string">&quot;Gcallvalue&quot;</span>  | <span class="hljs-string">&quot;Gnewaccount&quot;</span> | <span class="hljs-string">&quot;Gcreate&quot;</span>        | <span class="hljs-string">&quot;Gcopycreate&quot;</span> | <span class="hljs-string">&quot;Gcodedeposit&quot;</span> | <span class="hljs-string">&quot;Gecrec&quot;</span>         | <span class="hljs-string">&quot;Gsha256word&quot;</span>
+                           | <span class="hljs-string">&quot;Gsha256&quot;</span>     | <span class="hljs-string">&quot;Grip160word&quot;</span> | <span class="hljs-string">&quot;Grip160&quot;</span>     | <span class="hljs-string">&quot;Gecadd&quot;</span>         | <span class="hljs-string">&quot;Gecmul&quot;</span>      | <span class="hljs-string">&quot;Gecpairing&quot;</span>   | <span class="hljs-string">&quot;Gecpairingpair&quot;</span> | <span class="hljs-string">&quot;Gtransaction&quot;</span>
+                           | <span class="hljs-string">&quot;Gtxcreate&quot;</span>   | <span class="hljs-string">&quot;Gmemory&quot;</span>     | <span class="hljs-string">&quot;Gquadcoeff&quot;</span>  | <span class="hljs-string">&quot;Gtxdatanonzero&quot;</span> | <span class="hljs-string">&quot;Gtxdatazero&quot;</span> | <span class="hljs-string">&quot;Rsstoreset&quot;</span>   | <span class="hljs-string">&quot;Rselfdestruct&quot;</span>  | <span class="hljs-string">&quot;Rb&quot;</span>
+                           | <span class="hljs-string">&quot;Sgasdivisor&quot;</span> | <span class="hljs-string">&quot;Smemallowance&quot;</span>
+ <span class="hljs-comment">// ---------------------------------------------------------------------------------------------------------------------------------------------------------------</span>
+</code></pre>
+<h3 id="default-schedule">Default Schedule</h3>
+<p>This schedule is used to execute the EVM VM tests, and contains minor variations from the actual schedule used for execution.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> Schedule ::= <span class="hljs-string">&quot;DEFAULT&quot;</span> [klabel(DEFAULT), symbol] 
+ <span class="hljs-comment">// -------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> Gmove          &lt; DEFAULT &gt; =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> Greadstate     &lt; DEFAULT &gt; =&gt; <span class="hljs-number">2</span><span class="hljs-keyword">
+    rule</span> Gadd           &lt; DEFAULT &gt; =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> Gaddword       &lt; DEFAULT &gt; =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> Gmul           &lt; DEFAULT &gt; =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> Gmulword       &lt; DEFAULT &gt; =&gt; <span class="hljs-number">2</span><span class="hljs-keyword">
+    rule</span> Gmulkara       &lt; DEFAULT &gt; =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> Gdiv           &lt; DEFAULT &gt; =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> Gdivword       &lt; DEFAULT &gt; =&gt; <span class="hljs-number">2</span><span class="hljs-keyword">
+    rule</span> Gdivkara       &lt; DEFAULT &gt; =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> Gexpkara       &lt; DEFAULT &gt; =&gt; <span class="hljs-number">50</span><span class="hljs-keyword">
+    rule</span> Gexpword       &lt; DEFAULT &gt; =&gt; <span class="hljs-number">10</span><span class="hljs-keyword">
+    rule</span> Gexp           &lt; DEFAULT &gt; =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> Gexpmodkara    &lt; DEFAULT &gt; =&gt; <span class="hljs-number">40</span><span class="hljs-keyword">
+    rule</span> Gexpmodmod     &lt; DEFAULT &gt; =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> Gexpmodexp     &lt; DEFAULT &gt; =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> Gexpmod        &lt; DEFAULT &gt; =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> Gnot           &lt; DEFAULT &gt; =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> Gnotword       &lt; DEFAULT &gt; =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> Gbitwise       &lt; DEFAULT &gt; =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> Gbitwiseword   &lt; DEFAULT &gt; =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> Glogarithm     &lt; DEFAULT &gt; =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> Glogarithmword &lt; DEFAULT &gt; =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> Gbyte          &lt; DEFAULT &gt; =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> Gtwos          &lt; DEFAULT &gt; =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> Gtwosword      &lt; DEFAULT &gt; =&gt; <span class="hljs-number">5</span><span class="hljs-keyword">
+    rule</span> Gsext          &lt; DEFAULT &gt; =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> Gsextword      &lt; DEFAULT &gt; =&gt; <span class="hljs-number">5</span><span class="hljs-keyword">
+    rule</span> Gbswap         &lt; DEFAULT &gt; =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> Gbswapword     &lt; DEFAULT &gt; =&gt; <span class="hljs-number">5</span><span class="hljs-keyword">
+    rule</span> Giszero        &lt; DEFAULT &gt; =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> Gcmp           &lt; DEFAULT &gt; =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> Gcmpword       &lt; DEFAULT &gt; =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> Gbr            &lt; DEFAULT &gt; =&gt; <span class="hljs-number">8</span><span class="hljs-keyword">
+    rule</span> Gbrcond        &lt; DEFAULT &gt; =&gt; <span class="hljs-number">10</span><span class="hljs-keyword">
+    rule</span> Gblockhash     &lt; DEFAULT &gt; =&gt; <span class="hljs-number">20</span><span class="hljs-keyword">
+    rule</span> Gsha3          &lt; DEFAULT &gt; =&gt; <span class="hljs-number">30</span><span class="hljs-keyword">
+    rule</span> Gsha3word      &lt; DEFAULT &gt; =&gt; <span class="hljs-number">6</span><span class="hljs-keyword">
+    rule</span> Gloadcell      &lt; DEFAULT &gt; =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> Gload          &lt; DEFAULT &gt; =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> Gloadword      &lt; DEFAULT &gt; =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> Gstorecell     &lt; DEFAULT &gt; =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> Gstore         &lt; DEFAULT &gt; =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> Gstoreword     &lt; DEFAULT &gt; =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> Gbalance       &lt; DEFAULT &gt; =&gt; <span class="hljs-number">400</span><span class="hljs-keyword">
+    rule</span> Gextcodesize   &lt; DEFAULT &gt; =&gt; <span class="hljs-number">700</span><span class="hljs-keyword">
+    rule</span> Gcalladdress   &lt; DEFAULT &gt; =&gt; <span class="hljs-number">700</span><span class="hljs-keyword">
+    rule</span> Glog           &lt; DEFAULT &gt; =&gt; <span class="hljs-number">375</span><span class="hljs-keyword">
+    rule</span> Glogdata       &lt; DEFAULT &gt; =&gt; <span class="hljs-number">8</span><span class="hljs-keyword">
+    rule</span> Glogtopic      &lt; DEFAULT &gt; =&gt; <span class="hljs-number">375</span><span class="hljs-keyword">
+    rule</span> Gsstore        &lt; DEFAULT &gt; =&gt; <span class="hljs-number">1000</span><span class="hljs-keyword">
+    rule</span> Gsstoreword    &lt; DEFAULT &gt; =&gt; <span class="hljs-number">500</span><span class="hljs-keyword">
+    rule</span> Gsstorekey     &lt; DEFAULT &gt; =&gt; <span class="hljs-number">500</span><span class="hljs-keyword">
+    rule</span> Gsstoreset     &lt; DEFAULT &gt; =&gt; <span class="hljs-number">1875</span><span class="hljs-keyword">
+    rule</span> Rsstoreset     &lt; DEFAULT &gt; =&gt; <span class="hljs-number">1875</span><span class="hljs-keyword">
+    rule</span> Gsstoresetkey  &lt; DEFAULT &gt; =&gt; <span class="hljs-number">1875</span><span class="hljs-keyword">
+    rule</span> Gsload         &lt; DEFAULT &gt; =&gt; <span class="hljs-number">50</span><span class="hljs-keyword">
+    rule</span> Gsloadkey      &lt; DEFAULT &gt; =&gt; <span class="hljs-number">100</span><span class="hljs-keyword">
+    rule</span> Gsloadword     &lt; DEFAULT &gt; =&gt; <span class="hljs-number">50</span><span class="hljs-keyword">
+    rule</span> Gselfdestruct  &lt; DEFAULT &gt; =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> Gcallmemory    &lt; DEFAULT &gt; =&gt; <span class="hljs-number">2</span><span class="hljs-keyword">
+    rule</span> Gcallreg       &lt; DEFAULT &gt; =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> Glocalcall     &lt; DEFAULT &gt; =&gt; <span class="hljs-number">11</span><span class="hljs-keyword">
+    rule</span> Gcall          &lt; DEFAULT &gt; =&gt; <span class="hljs-number">40</span><span class="hljs-keyword">
+    rule</span> Gcallstipend   &lt; DEFAULT &gt; =&gt; <span class="hljs-number">2300</span><span class="hljs-keyword">
+    rule</span> Gcallvalue     &lt; DEFAULT &gt; =&gt; <span class="hljs-number">9000</span><span class="hljs-keyword">
+    rule</span> Gnewaccount    &lt; DEFAULT &gt; =&gt; <span class="hljs-number">25000</span><span class="hljs-keyword">
+    rule</span> Gcreate        &lt; DEFAULT &gt; =&gt; <span class="hljs-number">32000</span><span class="hljs-keyword">
+    rule</span> Gcopycreate    &lt; DEFAULT &gt; =&gt; <span class="hljs-number">33000</span><span class="hljs-keyword">
+    rule</span> Gcodedeposit   &lt; DEFAULT &gt; =&gt; <span class="hljs-number">200</span><span class="hljs-keyword">
+    rule</span> Gecrec         &lt; DEFAULT &gt; =&gt; <span class="hljs-number">3000</span><span class="hljs-keyword">
+    rule</span> Gsha256        &lt; DEFAULT &gt; =&gt; <span class="hljs-number">60</span><span class="hljs-keyword">
+    rule</span> Gsha256word    &lt; DEFAULT &gt; =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> Grip160        &lt; DEFAULT &gt; =&gt; <span class="hljs-number">600</span><span class="hljs-keyword">
+    rule</span> Grip160word    &lt; DEFAULT &gt; =&gt; <span class="hljs-number">30</span><span class="hljs-keyword">
+    rule</span> Gecadd         &lt; DEFAULT &gt; =&gt; <span class="hljs-number">500</span><span class="hljs-keyword">
+    rule</span> Gecmul         &lt; DEFAULT &gt; =&gt; <span class="hljs-number">40000</span><span class="hljs-keyword">
+    rule</span> Gecpairing     &lt; DEFAULT &gt; =&gt; <span class="hljs-number">100000</span><span class="hljs-keyword">
+    rule</span> Gecpairingpair &lt; DEFAULT &gt; =&gt; <span class="hljs-number">80000</span><span class="hljs-keyword">
+    rule</span> Gmemory        &lt; DEFAULT &gt; =&gt; <span class="hljs-number">1</span><span class="hljs-keyword">
+    rule</span> Gquadcoeff     &lt; DEFAULT &gt; =&gt; <span class="hljs-number">8192</span><span class="hljs-keyword">
+    rule</span> Gtransaction   &lt; DEFAULT &gt; =&gt; <span class="hljs-number">21000</span><span class="hljs-keyword">
+    rule</span> Gtxcreate      &lt; DEFAULT &gt; =&gt; <span class="hljs-number">53000</span><span class="hljs-keyword">
+    rule</span> Gtxdatazero    &lt; DEFAULT &gt; =&gt; <span class="hljs-number">4</span><span class="hljs-keyword">
+    rule</span> Gtxdatanonzero &lt; DEFAULT &gt; =&gt; <span class="hljs-number">68</span><span class="hljs-keyword">
+    rule</span> Rselfdestruct  &lt; DEFAULT &gt; =&gt; <span class="hljs-number">24000</span><span class="hljs-keyword">
+    rule</span> Rb             &lt; DEFAULT &gt; =&gt; <span class="hljs-number">3</span> *<span class="hljs-keyword">Int</span> (<span class="hljs-number">10</span> ^<span class="hljs-keyword">Int</span> <span class="hljs-number">18</span>)<span class="hljs-keyword">
+
+    rule</span> Gselfdestructnewaccount &lt;&lt; DEFAULT &gt;&gt; =&gt; false<span class="hljs-keyword">
+    rule</span> Gstaticcalldepth        &lt;&lt; DEFAULT &gt;&gt; =&gt; true<span class="hljs-keyword">
+    rule</span> Gnewmove                &lt;&lt; DEFAULT &gt;&gt; =&gt; false<span class="hljs-keyword">
+    rule</span> Gnewarith               &lt;&lt; DEFAULT &gt;&gt; =&gt; false<span class="hljs-keyword">
+
+    rule</span> Smemallowance  &lt; DEFAULT &gt; =&gt; <span class="hljs-number">4096</span><span class="hljs-keyword">
+    rule</span> Sgasdivisor    &lt; DEFAULT &gt; =&gt; <span class="hljs-number">1</span>
+</code></pre>
+<h3 id="albe-schedule">Albe Schedule</h3>
+<p>This is the initial schedule of IELE.</p>
+<pre class="hljs"><code> <span class="hljs-comment">// Albe</span>
+ <span class="hljs-comment">// --------------------------</span><span class="hljs-keyword">
+    rule</span> Gcall         &lt; ALBE &gt; =&gt; <span class="hljs-number">700</span><span class="hljs-keyword">
+    rule</span> Gselfdestruct &lt; ALBE &gt; =&gt; <span class="hljs-number">5000</span><span class="hljs-keyword">
+    rule</span> SCHEDCONST    &lt; ALBE &gt; =&gt; SCHEDCONST &lt; DEFAULT &gt; [owise]<span class="hljs-keyword">
+
+    rule</span> Gselfdestructnewaccount &lt;&lt; ALBE &gt;&gt; =&gt; true<span class="hljs-keyword">
+    rule</span> Gstaticcalldepth        &lt;&lt; ALBE &gt;&gt; =&gt; false<span class="hljs-keyword">
+    rule</span> SCHEDCONST              &lt;&lt; ALBE &gt;&gt; =&gt; SCHEDCONST &lt;&lt; DEFAULT &gt;&gt; [owise]
+</code></pre>
+<h3 id="danse-schedule">Danse Schedule</h3>
+<p>This is the first major revision of IELE.</p>
+<pre class="hljs"><code> <span class="hljs-comment">// Danse</span>
+ <span class="hljs-comment">// ---------------------------</span><span class="hljs-keyword">
+    rule</span> Gmove          &lt; DANSE &gt; =&gt; <span class="hljs-number">2000</span><span class="hljs-keyword">
+    rule</span> Greadstate     &lt; DANSE &gt; =&gt; <span class="hljs-number">2000</span><span class="hljs-keyword">
+    rule</span> Gadd           &lt; DANSE &gt; =&gt; <span class="hljs-number">2800</span><span class="hljs-keyword">
+    rule</span> Gaddword       &lt; DANSE &gt; =&gt; <span class="hljs-number">1</span><span class="hljs-keyword">
+    rule</span> Gmul           &lt; DANSE &gt; =&gt; <span class="hljs-number">4900</span><span class="hljs-keyword">
+    rule</span> Gmulword       &lt; DANSE &gt; =&gt; <span class="hljs-number">4</span><span class="hljs-keyword">
+    rule</span> Gmulkara       &lt; DANSE &gt; =&gt; <span class="hljs-number">4</span><span class="hljs-keyword">
+    rule</span> Gdiv           &lt; DANSE &gt; =&gt; <span class="hljs-number">4900</span><span class="hljs-keyword">
+    rule</span> Gdivword       &lt; DANSE &gt; =&gt; <span class="hljs-number">5</span><span class="hljs-keyword">
+    rule</span> Gdivkara       &lt; DANSE &gt; =&gt; <span class="hljs-number">8</span><span class="hljs-keyword">
+    rule</span> Gexpkara       &lt; DANSE &gt; =&gt; <span class="hljs-number">2</span><span class="hljs-keyword">
+    rule</span> Gexpword       &lt; DANSE &gt; =&gt; <span class="hljs-number">80</span><span class="hljs-keyword">
+    rule</span> Gexp           &lt; DANSE &gt; =&gt; <span class="hljs-number">5300</span><span class="hljs-keyword">
+    rule</span> Gexpmodkara    &lt; DANSE &gt; =&gt; <span class="hljs-number">15</span><span class="hljs-keyword">
+    rule</span> Gexpmodmod     &lt; DANSE &gt; =&gt; <span class="hljs-number">180</span><span class="hljs-keyword">
+    rule</span> Gexpmodexp     &lt; DANSE &gt; =&gt; <span class="hljs-number">8</span><span class="hljs-keyword">
+    rule</span> Gexpmod        &lt; DANSE &gt; =&gt; <span class="hljs-number">6000</span><span class="hljs-keyword">
+    rule</span> Gnot           &lt; DANSE &gt; =&gt; <span class="hljs-number">2700</span><span class="hljs-keyword">
+    rule</span> Gnotword       &lt; DANSE &gt; =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> Gbitwise       &lt; DANSE &gt; =&gt; <span class="hljs-number">2900</span><span class="hljs-keyword">
+    rule</span> Gbitwiseword   &lt; DANSE &gt; =&gt; <span class="hljs-number">1</span><span class="hljs-keyword">
+    rule</span> Glogarithm     &lt; DANSE &gt; =&gt; <span class="hljs-number">2300</span><span class="hljs-keyword">
+    rule</span> Glogarithmword &lt; DANSE &gt; =&gt; <span class="hljs-number">1</span><span class="hljs-keyword">
+    rule</span> Gbyte          &lt; DANSE &gt; =&gt; <span class="hljs-number">2500</span><span class="hljs-keyword">
+    rule</span> Gtwos          &lt; DANSE &gt; =&gt; <span class="hljs-number">3100</span><span class="hljs-keyword">
+    rule</span> Gtwosword      &lt; DANSE &gt; =&gt; <span class="hljs-number">1</span><span class="hljs-keyword">
+    rule</span> Gsext          &lt; DANSE &gt; =&gt; <span class="hljs-number">3300</span><span class="hljs-keyword">
+    rule</span> Gsextword      &lt; DANSE &gt; =&gt; <span class="hljs-number">5</span><span class="hljs-keyword">
+    rule</span> Gbswap         &lt; DANSE &gt; =&gt; <span class="hljs-number">3300</span><span class="hljs-keyword">
+    rule</span> Gbswapword     &lt; DANSE &gt; =&gt; <span class="hljs-number">10</span><span class="hljs-keyword">
+    rule</span> Giszero        &lt; DANSE &gt; =&gt; <span class="hljs-number">1800</span><span class="hljs-keyword">
+    rule</span> Gcmp           &lt; DANSE &gt; =&gt; <span class="hljs-number">2500</span><span class="hljs-keyword">
+    rule</span> Gcmpword       &lt; DANSE &gt; =&gt; <span class="hljs-number">1</span><span class="hljs-keyword">
+    rule</span> Gbr            &lt; DANSE &gt; =&gt; <span class="hljs-number">5000</span><span class="hljs-keyword">
+    rule</span> Gbrcond        &lt; DANSE &gt; =&gt; <span class="hljs-number">5000</span><span class="hljs-keyword">
+    rule</span> Gblockhash     &lt; DANSE &gt; =&gt; <span class="hljs-number">20000</span><span class="hljs-keyword">
+    rule</span> Gsha3          &lt; DANSE &gt; =&gt; <span class="hljs-number">8300</span><span class="hljs-keyword">
+    rule</span> Gsha3word      &lt; DANSE &gt; =&gt; <span class="hljs-number">20</span><span class="hljs-keyword">
+    rule</span> Gloadcell      &lt; DANSE &gt; =&gt; <span class="hljs-number">2900</span><span class="hljs-keyword">
+    rule</span> Gload          &lt; DANSE &gt; =&gt; <span class="hljs-number">3300</span><span class="hljs-keyword">
+    rule</span> Gloadword      &lt; DANSE &gt; =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> Gstorecell     &lt; DANSE &gt; =&gt; <span class="hljs-number">2800</span><span class="hljs-keyword">
+    rule</span> Gstore         &lt; DANSE &gt; =&gt; <span class="hljs-number">3900</span><span class="hljs-keyword">
+    rule</span> Gstoreword     &lt; DANSE &gt; =&gt; <span class="hljs-number">4</span><span class="hljs-keyword">
+    rule</span> Gbalance       &lt; DANSE &gt; =&gt; <span class="hljs-number">400000</span><span class="hljs-keyword">
+    rule</span> Gextcodesize   &lt; DANSE &gt; =&gt; <span class="hljs-number">700000</span><span class="hljs-keyword">
+    rule</span> Gcalladdress   &lt; DANSE &gt; =&gt; <span class="hljs-number">700000</span><span class="hljs-keyword">
+    rule</span> Glog           &lt; DANSE &gt; =&gt; <span class="hljs-number">375000</span><span class="hljs-keyword">
+    rule</span> Glogdata       &lt; DANSE &gt; =&gt; <span class="hljs-number">8000</span><span class="hljs-keyword">
+    rule</span> Glogtopic      &lt; DANSE &gt; =&gt; <span class="hljs-number">375000</span><span class="hljs-keyword">
+    rule</span> Gsstore        &lt; DANSE &gt; =&gt; <span class="hljs-number">4950000</span><span class="hljs-keyword">
+    rule</span> Gsstoreword    &lt; DANSE &gt; =&gt; <span class="hljs-number">300</span><span class="hljs-keyword">
+    rule</span> Gsstorekey     &lt; DANSE &gt; =&gt; <span class="hljs-number">400</span><span class="hljs-keyword">
+    rule</span> Gsstoreset     &lt; DANSE &gt; =&gt; <span class="hljs-number">1875000</span><span class="hljs-keyword">
+    rule</span> Gsstoresetkey  &lt; DANSE &gt; =&gt; <span class="hljs-number">1875000</span><span class="hljs-keyword">
+    rule</span> Gsload         &lt; DANSE &gt; =&gt; <span class="hljs-number">190000</span><span class="hljs-keyword">
+    rule</span> Gsloadkey      &lt; DANSE &gt; =&gt; <span class="hljs-number">8000</span><span class="hljs-keyword">
+    rule</span> Gsloadword     &lt; DANSE &gt; =&gt; <span class="hljs-number">2000</span><span class="hljs-keyword">
+    rule</span> Gselfdestruct  &lt; DANSE &gt; =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> Gcallmemory    &lt; DANSE &gt; =&gt; <span class="hljs-number">2</span><span class="hljs-keyword">
+    rule</span> Gcallreg       &lt; DANSE &gt; =&gt; <span class="hljs-number">1000</span><span class="hljs-keyword">
+    rule</span> Glocalcall     &lt; DANSE &gt; =&gt; <span class="hljs-number">6800</span><span class="hljs-keyword">
+    rule</span> Gcall          &lt; DANSE &gt; =&gt; <span class="hljs-number">40000</span><span class="hljs-keyword">
+    rule</span> Gcallstipend   &lt; DANSE &gt; =&gt; <span class="hljs-number">2300000</span><span class="hljs-keyword">
+    rule</span> Gcallvalue     &lt; DANSE &gt; =&gt; <span class="hljs-number">9000000</span><span class="hljs-keyword">
+    rule</span> Gnewaccount    &lt; DANSE &gt; =&gt; <span class="hljs-number">25000000</span><span class="hljs-keyword">
+    rule</span> Gcreate        &lt; DANSE &gt; =&gt; <span class="hljs-number">32000000</span><span class="hljs-keyword">
+    rule</span> Gcopycreate    &lt; DANSE &gt; =&gt; <span class="hljs-number">33000000</span><span class="hljs-keyword">
+    rule</span> Gcodedeposit   &lt; DANSE &gt; =&gt; <span class="hljs-number">200000</span><span class="hljs-keyword">
+    rule</span> Gecrec         &lt; DANSE &gt; =&gt; <span class="hljs-number">3000000</span><span class="hljs-keyword">
+    rule</span> Gsha256        &lt; DANSE &gt; =&gt; <span class="hljs-number">25000</span><span class="hljs-keyword">
+    rule</span> Gsha256word    &lt; DANSE &gt; =&gt; <span class="hljs-number">30</span><span class="hljs-keyword">
+    rule</span> Grip160        &lt; DANSE &gt; =&gt; <span class="hljs-number">25000</span><span class="hljs-keyword">
+    rule</span> Grip160word    &lt; DANSE &gt; =&gt; <span class="hljs-number">30</span><span class="hljs-keyword">
+    rule</span> Gecadd         &lt; DANSE &gt; =&gt; <span class="hljs-number">35000</span><span class="hljs-keyword">
+    rule</span> Gecmul         &lt; DANSE &gt; =&gt; <span class="hljs-number">1700000</span><span class="hljs-keyword">
+    rule</span> Gecpairing     &lt; DANSE &gt; =&gt; <span class="hljs-number">100000000</span><span class="hljs-keyword">
+    rule</span> Gecpairingpair &lt; DANSE &gt; =&gt; <span class="hljs-number">26000000</span><span class="hljs-keyword">
+    rule</span> Gmemory        &lt; DANSE &gt; =&gt; <span class="hljs-number">750</span><span class="hljs-keyword">
+ 
+    rule</span> Sgasdivisor &lt; DANSE &gt; =&gt; <span class="hljs-number">1000</span><span class="hljs-keyword">
+    rule</span> SCHEDCONST  &lt; DANSE &gt; =&gt; SCHEDCONST &lt; ALBE &gt; [owise]<span class="hljs-keyword">
+
+    rule</span> Gnewmove      &lt;&lt; DANSE &gt;&gt; =&gt; true<span class="hljs-keyword">
+    rule</span> Gnewarith     &lt;&lt; DANSE &gt;&gt; =&gt; true<span class="hljs-keyword">
+    rule</span> SCHEDCONST    &lt;&lt; DANSE &gt;&gt; =&gt; SCHEDCONST &lt;&lt; ALBE &gt;&gt; [owise]<span class="hljs-keyword">
+    
+endmodule</span>
+</code></pre>
+</body></html></div>
+        </main>
+      </div>
+    </div>
+<footer class="app-footer text-md-left text-center">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-2 mb-md-0 mb-4">
+        <span class="pr-md-5 pr-0 py-3">
+          <a href="https://runtimeverification.com" target="_blank">
+            <picture>
+              <source
+                srcset="../assets/img/rv-logo-dark.png"
+                media="(prefers-color-scheme: dark)"
+              />
+              <img
+                class="pr-3 footer-logo"
+                src="../assets/img/rv-logo.png"
+                alt="Runtime Verification Inc logo"
+              />
+            </picture>
+          </a>
+        </span>
+      </div>
+      <div class="col-md-6 mb-md-0 mb-4"></div>
+      <div class="col-md-4 text-md-right">
+        <p class="copyright">
+          &copy; 2020 Runtime Verification Inc. All right reserved.
+        </p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script
+  async
+  src="https://www.googletagmanager.com/gtag/js?id=UA-163311512-1"
+></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag("js", new Date());
+  gtag("config", "UA-163311512-1");
+</script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Typist/1.2/typist.min.js"></script>
+    <script src="../assets/js/index.js"></script>
+  </body>
+</html>

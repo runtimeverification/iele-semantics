@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+<meta charset="utf-8" />
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+/>
+<meta
+  name="description"
+  content="Design and implement your programming language and software analysis tools with mathematical rigor."
+/>
+<meta name="keywords" content="runtime, verification, rv, k" />
+<meta name="author" content="IELE Semantics | Runtime Verification Inc" />
+<meta name="robots" content="index, follow" />
+
+<!--favicon icon-->
+<link rel="icon" type="image/png" href="../assets/img/favicon.ico" />
+
+<title>IELE Semantics | Runtime Verification Inc</title>
+
+<!-- <base href="/k/" /> -->
+
+<!--web fonts-->
+<link
+  href="https://fonts.googleapis.com/css?family=Nunito:300,400,600,700,800"
+  rel="stylesheet"
+/>
+<link
+  href="https://fonts.googleapis.com/css?family=Lora:400i"
+  rel="stylesheet"
+/>
+
+<link
+  href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css"
+  rel="stylesheet"
+/>
+
+<link href="../assets/css/index.css" rel="stylesheet" />
+
+<!--[if (gt IE 9) |!(IE)]><!-->
+<!--<link rel="stylesheet" href="/assets/vendor/custom-nav/css/effects/fade-menu.css"/>-->
+<!-- <link rel="stylesheet" href="../assets/k/vl-nav/css/effects/slide-menu.css" /> -->
+<!--<![endif]-->
+
+  </head>
+
+  <body>
+<header
+  class="navbar navbar-expand navbar-dark flex-column flex-md-row bd-navbar"
+>
+  <a class="logo-link" href="../index.html"> IELE Semantics </a>
+  <ul class="navbar-nav ml-md-auto">
+    <li class="nav-item">
+      <a
+        class="nav-link pl-2 pr-1 mx-1 py-3 my-n2"
+        href="https://github.com/runtimeverification/iele-semantics"
+        target="_blank"
+        rel="noopener"
+        aria-label="GitHub"
+      >
+        <i class="fab fa-github"></i>
+      </a>
+    </li>
+  </ul>
+  <!--
+  <a
+    class="btn btn-rv-blue d-none d-lg-inline-block mb-3 mb-md-0 ml-md-3"
+    href="../downloads"
+    >Download</a
+  >
+  -->
+</header>
+
+
+    <div class="container-fluid">
+      <div class="row flex-xl-nowrap">
+<div class="col-12 col-md-3 col-xl-2 bd-sidebar mb-3">
+  <form
+    role="search"
+    class="bd-search d-flex align-items-center justify-content-between"
+  >
+    <input
+      type="search"
+      class="form-control"
+      placeholder="Search..."
+      aria-label="Search for..."
+      autocomplete="false"
+      id="search-box"
+    />
+    <button
+      class="btn bd-search-docs-toggle d-md-none p-0 ml-3 collapsed"
+      type="button"
+      aria-label="Toggle docs navigation"
+      style="font-size: 1.4rem"
+    >
+      <i class="fas fa-bars"></i>
+    </button>
+  </form>
+  <nav class="collapse bd-links" aria-label="Main navigation">
+    <div class="bd-toc-item">
+      <a class="bd-toc-link" href="../">Homepage</a>
+      <a class="bd-toc-link" href="../INSTALL">Install</a>
+      <a class="bd-toc-link" href="../Design">Design</a>
+    </div>
+  </nav>
+</div>
+
+        <main
+          class="col-12 col-md-9 col-xl-8 py-md-3 pl-md-5 bd-content"
+          role="main"
+        >
+          <div class="markdown-preview"><html><head></head><body><h1 id="iele-contract-well-formedness">IELE Contract Well-Formedness</h1>
+<p>The following document describes a semantics of type- and semantic-checking in IELE. The semantics takes a contract as input and succeeds only if the contract is determined to be well-formed, i.e., free from type errors and malformed instructions or functions.</p>
+<pre class="hljs"><code><span class="hljs-keyword">require</span> <span class="hljs-string">&quot;iele-syntax.md&quot;</span><span class="hljs-keyword">
+require</span> <span class="hljs-string">&quot;data.md&quot;</span>
+</code></pre>
+<h2 id="modal-semantics">Modal Semantics</h2>
+<p>Our semantics is modal, with the initial mode being set on the command line via <code>-cMODE=EXECMODE</code>.</p>
+<ul>
+<li><code>NORMAL</code> executes as a client on the network would.</li>
+<li><code>VMTESTS</code> skips <code>call*</code> and <code>create*</code> operations.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">module</span> IELE-CONSTANTS<span class="hljs-keyword">
+    syntax</span> Mode ::= <span class="hljs-string">&quot;NORMAL&quot;</span> [klabel(NORMAL), symbol] | <span class="hljs-string">&quot;VMTESTS&quot;</span> [klabel(VMTESTS), symbol]<span class="hljs-keyword">
+    syntax</span> Schedule ::= <span class="hljs-string">&quot;ALBE&quot;</span> [klabel(ALBE), symbol]
+                      | <span class="hljs-string">&quot;DANSE&quot;</span> [klabel(DANSE), symbol]<span class="hljs-keyword">
+endmodule</span><span class="hljs-keyword">
+
+
+module</span> IELE-WELL-FORMEDNESS<span class="hljs-keyword">
+    imports</span> IELE-COMMON<span class="hljs-keyword">
+    imports</span> IELE-DATA<span class="hljs-keyword">
+    imports</span> IELE-CONSTANTS<span class="hljs-keyword">
+    imports</span> DEFAULT-CONFIGURATION
+</code></pre>
+<h2 id="configuration">Configuration</h2>
+<p>The semantic checker for IELE has its own configuration separate from the configuration of execution. This is consistent with the semantics of other languages defined in K, which can have separate compile-time and execution-time semantics.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> IeleNameToken ::= <span class="hljs-string">&quot;Main&quot;</span> [<span class="hljs-literal">token</span>]<span class="hljs-keyword">
+    syntax</span> Schedule<span class="hljs-keyword">
+
+    configuration</span> &lt;well-formedness&gt;
+                    &lt;typeChecking&gt; false &lt;/typeChecking&gt;
+                    &lt;well-formedness-schedule&gt; $SCHEDULE:Schedule &lt;/well-formedness-schedule&gt;
+                    &lt;contracts&gt; .Set &lt;/contracts&gt;
+                    &lt;currentContract&gt;
+                      &lt;types&gt; intrinsicTypes &lt;/types&gt;
+                      &lt;contractName&gt; Main &lt;/contractName&gt;
+                      &lt;declaredContracts&gt; .Set &lt;/declaredContracts&gt;
+                      &lt;functionBodies&gt; .K &lt;/functionBodies&gt;
+                      &lt;currentFunction&gt;
+                        &lt;functionName&gt; deposit:IeleName &lt;/functionName&gt;
+                        &lt;labels&gt; .Set &lt;/labels&gt;
+                        &lt;currentInstructions&gt; .K &lt;/currentInstructions&gt;
+                      &lt;/currentFunction&gt;
+                    &lt;/currentContract&gt;
+                  &lt;/well-formedness&gt;
+</code></pre>
+<h2 id="types">Types</h2>
+<p>IELE is a primarily untyped language, and therefore identifiers have one of two types: either an integer or a function.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> Type ::= <span class="hljs-string">&quot;int&quot;</span> | Types <span class="hljs-string">&quot;-&gt;&quot;</span> ReturnType [klabel(funType)]<span class="hljs-keyword">
+    syntax</span> Types ::= List{Type,<span class="hljs-string">&quot;,&quot;</span>} [klabel(typeList)]<span class="hljs-keyword">
+    syntax</span> ReturnType ::= Types | <span class="hljs-string">&quot;unknown&quot;</span><span class="hljs-keyword">
+    syntax</span> priorities typeList &gt; funType<span class="hljs-keyword">
+
+    syntax</span> Types ::= ints(<span class="hljs-keyword">Int</span>) [function]
+ <span class="hljs-comment">// -------------------------------------</span><span class="hljs-keyword">
+    rule</span> ints(<span class="hljs-number">0</span>) =&gt; .Types<span class="hljs-keyword">
+    rule</span> ints(N) =&gt; int , ints(N -<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>) [owise]
+</code></pre>
+<h2 id="contracts">Contracts</h2>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> CONTRACT1::ContractDefinition CONTRACT2::ContractDefinition CONTRACTS =&gt; CONTRACT1 ~&gt; CONTRACT2 CONTRACTS<span class="hljs-keyword">
+    rule</span> CONTRACT::ContractDefinition .Contract =&gt; (CONTRACT::ContractDefinition :KItem)<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; contract NAME { DEFINITIONS } =&gt; checkName(NAME) ~&gt; DEFINITIONS ... &lt;/k&gt;
+         &lt;contracts&gt; CONTRACTS =&gt; CONTRACTS SetItem(NAME) &lt;/contracts&gt;
+         (_:CurrentContractCell =&gt; &lt;currentContract&gt;
+           &lt;contractName&gt; NAME &lt;/contractName&gt;
+           ...
+         &lt;/currentContract&gt;)<span class="hljs-keyword">
+      requires</span> notBool NAME in CONTRACTS<span class="hljs-keyword">
+
+    rule</span> DEF::TopLevelDefinition DEFS =&gt; DEF ~&gt; DEFS<span class="hljs-keyword">
+    rule</span> &lt;k&gt; .TopLevelDefinitions =&gt; BODIES ... &lt;/k&gt;
+         &lt;functionBodies&gt; BODIES &lt;/functionBodies&gt;
+         &lt;types&gt; ... init |-&gt; _ -&gt; .Types &lt;/types&gt;
+</code></pre>
+<h2 id="top-level-definitions">Top Level Definitions</h2>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; external contract NAME =&gt; . ... &lt;/k&gt;
+         &lt;contracts&gt; CONTRACTS &lt;/contracts&gt;
+         &lt;declaredContracts&gt; DECLARED =&gt; DECLARED SetItem(NAME) &lt;/declaredContracts&gt;<span class="hljs-keyword">
+      requires</span> NAME in CONTRACTS andBool notBool NAME in DECLARED<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; (@ NAME = _)::GlobalDefinition =&gt; checkName(NAME) ... &lt;/k&gt;
+         &lt;types&gt; TYPES =&gt; TYPES NAME |-&gt; int &lt;/types&gt;<span class="hljs-keyword">
+      requires</span> notBool NAME in_keys(TYPES)<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; define @ init ( ARGS::FunctionParameters ) { BLOCKS } =&gt; . ... &lt;/k&gt;
+         &lt;types&gt; TYPES =&gt; TYPES init |-&gt; ints(#sizeNames(ARGS)) -&gt; .Types &lt;/types&gt;
+         &lt;functionBodies&gt; .K =&gt; processFunction(init) ~&gt; BLOCKS ... &lt;/functionBodies&gt;<span class="hljs-keyword">
+      requires</span> notBool init in_keys(TYPES)<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; define @ NAME ( ARGS::FunctionParameters ) { BLOCKS } =&gt; checkName(NAME) ~&gt; checkArgs(ARGS) ... &lt;/k&gt;
+         &lt;types&gt; TYPES =&gt; TYPES NAME |-&gt; (ints(#sizeNames(ARGS)) -&gt; unknown) &lt;/types&gt;
+         &lt;functionBodies&gt; .K =&gt; processFunction(NAME) ~&gt; BLOCKS ... &lt;/functionBodies&gt;<span class="hljs-keyword">
+      requires</span> notBool NAME in_keys(TYPES) andBool NAME =/=K init<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; define public @ NAME ( ARGS::FunctionParameters ) { BLOCKS } =&gt; checkName(NAME) ~&gt; checkArgs(ARGS) ... &lt;/k&gt;
+         &lt;types&gt; TYPES =&gt; TYPES NAME |-&gt; ints(#sizeNames(ARGS)) -&gt; unknown &lt;/types&gt;
+         &lt;functionBodies&gt; .K =&gt; processFunction(NAME) ~&gt; BLOCKS ... &lt;/functionBodies&gt;<span class="hljs-keyword">
+      requires</span> notBool NAME in_keys(TYPES) andBool NAME =/=K init<span class="hljs-keyword">
+
+    syntax</span> KItem ::= processFunction(IeleName)
+ <span class="hljs-comment">// ------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; processFunction(NAME) =&gt; . ... &lt;/k&gt;
+         (_:CurrentFunctionCell =&gt; &lt;currentFunction&gt;
+           &lt;functionName&gt; NAME &lt;/functionName&gt;
+           ...
+         &lt;/currentFunction&gt;)<span class="hljs-keyword">
+
+    syntax</span> FunctionParameters ::=<span class="hljs-keyword"> Int</span><span class="hljs-keyword">
+    syntax</span><span class="hljs-keyword"> Int</span> ::= #sizeNames(FunctionParameters) [function]
+ <span class="hljs-comment">// --------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #sizeNames(I:<span class="hljs-keyword">Int</span>) =&gt; I<span class="hljs-keyword">
+    rule</span> #sizeNames(.LocalNames) =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> #sizeNames(N , NAMES) =&gt; <span class="hljs-number">1</span> +<span class="hljs-keyword">Int</span> #sizeNames(NAMES)<span class="hljs-keyword">
+
+    syntax</span> KItem ::= checkArgs(FunctionParameters)
+                   | checkNameArgs(LocalNames)
+                   | checkIntArgs(LocalNames,<span class="hljs-keyword"> Int</span>)
+ <span class="hljs-comment">// ----------------------------------------------</span><span class="hljs-keyword">
+    rule</span> checkArgs(.LocalNames) =&gt; .<span class="hljs-keyword">
+    rule</span> checkArgs(_:<span class="hljs-keyword">Int</span>) =&gt; .<span class="hljs-keyword"> 
+    rule</span> checkArgs(% N:NumericIeleName , ARGS) =&gt; checkIntArgs(% N, ARGS, <span class="hljs-number">0</span>)<span class="hljs-keyword">
+    rule</span> checkArgs(% N, ARGS) =&gt; checkNameArgs(ARGS)<span class="hljs-keyword"> requires</span> notBool isNumericIeleName(N)<span class="hljs-keyword">
+
+    rule</span> checkNameArgs(% N, ARGS) =&gt; checkName(N) ~&gt; checkNameArgs(ARGS)<span class="hljs-keyword"> requires</span> notBool isNumericIeleName(N)<span class="hljs-keyword">
+    rule</span> checkNameArgs(.LocalNames) =&gt; .<span class="hljs-keyword">
+
+    rule</span> checkIntArgs( % N , ARGS , I) =&gt; checkIntArgs(ARGS, I +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>)<span class="hljs-keyword">
+      requires</span> String2Int(IeleName2String(N)) ==<span class="hljs-keyword">Int</span> I<span class="hljs-keyword">
+    rule</span> checkIntArgs(.LocalNames, _) =&gt; .
+</code></pre>
+<h2 id="blocks">Blocks</h2>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; BLOCK:UnlabeledBlock BLOCKS =&gt; BLOCKS ... &lt;/k&gt;
+         &lt;typeChecking&gt; true &lt;/typeChecking&gt;
+         &lt;currentInstructions&gt; .K =&gt; BLOCK ... &lt;/currentInstructions&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; BLOCK::LabeledBlock BLOCKS =&gt; BLOCK ~&gt; BLOCKS ... &lt;/k&gt;
+         &lt;typeChecking&gt; true &lt;/typeChecking&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; .LabeledBlocks =&gt; INSTRS ... &lt;/k&gt;
+         &lt;typeChecking&gt; true &lt;/typeChecking&gt;
+         &lt;currentInstructions&gt; INSTRS &lt;/currentInstructions&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; NAME : BLOCK::Instructions =&gt; . ... &lt;/k&gt;
+         &lt;typeChecking&gt; true &lt;/typeChecking&gt;
+         &lt;labels&gt; LABELS =&gt; LABELS SetItem(NAME) &lt;/labels&gt;
+         &lt;currentInstructions&gt; .K =&gt; BLOCK ... &lt;/currentInstructions&gt;<span class="hljs-keyword">
+      requires</span> notBool NAME in LABELS<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; INSTR::Instruction INSTRS::Instructions =&gt; check ~&gt; INSTR ~&gt; INSTRS ... &lt;/k&gt;
+         &lt;typeChecking&gt; true &lt;/typeChecking&gt;<span class="hljs-keyword">
+    rule</span> .Instructions =&gt; .
+</code></pre>
+<h2 id="instructions">Instructions</h2>
+<h3 id="regular-instructions">Regular Instructions</h3>
+<p>Each of these instructions takes some number of immediates, globals, or registers, and returns zero or one registers. Checking them is as straightforward as checking for reserved names.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> KResult ::= Type
+                     | Types<span class="hljs-keyword">
+    syntax</span> KItem ::= <span class="hljs-string">&quot;check&quot;</span>
+ <span class="hljs-comment">// ------------------------</span><span class="hljs-keyword">
+
+    rule</span> check ~&gt; LVAL = OP1 =&gt; checkLVal(LVAL) ~&gt; checkOperand(OP1)<span class="hljs-keyword">
+    rule</span> check ~&gt; LVAL = load OP1 =&gt; checkLVal(LVAL) ~&gt; checkOperand(OP1)<span class="hljs-keyword">
+    rule</span> check ~&gt; LVAL = load OP1, OP2, OP3 =&gt; checkLVal(LVAL) ~&gt; checkOperands(OP1, OP2, OP3)<span class="hljs-keyword">
+    rule</span> check ~&gt; store OP1, OP2 =&gt; checkOperands(OP1, OP2)<span class="hljs-keyword">
+    rule</span> check ~&gt; store OP1, OP2, OP3, OP4 =&gt; checkOperands(OP1, OP2, OP3, OP4)<span class="hljs-keyword">
+
+    rule</span> check ~&gt; LVAL = sload OP1 =&gt; checkLVal(LVAL) ~&gt; checkOperand(OP1)<span class="hljs-keyword">
+    rule</span> check ~&gt; sstore OP1, OP2 =&gt; checkOperands(OP1, OP2)<span class="hljs-keyword">
+
+    rule</span> check ~&gt; LVAL = iszero OP1 =&gt; checkLVal(LVAL) ~&gt; checkOperand(OP1)<span class="hljs-keyword">
+    rule</span> check ~&gt; LVAL = not    OP1 =&gt; checkLVal(LVAL) ~&gt; checkOperand(OP1)<span class="hljs-keyword">
+
+    rule</span> check ~&gt; LVAL = add OP1, OP2 =&gt; checkLVal(LVAL) ~&gt; checkOperands(OP1, OP2)<span class="hljs-keyword">
+    rule</span> check ~&gt; LVAL = mul OP1, OP2 =&gt; checkLVal(LVAL) ~&gt; checkOperands(OP1, OP2)<span class="hljs-keyword">
+    rule</span> check ~&gt; LVAL = sub OP1, OP2 =&gt; checkLVal(LVAL) ~&gt; checkOperands(OP1, OP2)<span class="hljs-keyword">
+    rule</span> check ~&gt; LVAL = div OP1, OP2 =&gt; checkLVal(LVAL) ~&gt; checkOperands(OP1, OP2)<span class="hljs-keyword">
+    rule</span> check ~&gt; LVAL = exp OP1, OP2 =&gt; checkLVal(LVAL) ~&gt; checkOperands(OP1, OP2)<span class="hljs-keyword">
+    rule</span> check ~&gt; LVAL = mod OP1, OP2 =&gt; checkLVal(LVAL) ~&gt; checkOperands(OP1, OP2)<span class="hljs-keyword">
+
+    rule</span> check ~&gt; LVAL = addmod OP1, OP2, OP3 =&gt; checkLVal(LVAL) ~&gt; checkOperands(OP1, OP2, OP3)<span class="hljs-keyword">
+    rule</span> check ~&gt; LVAL = mulmod OP1, OP2, OP3 =&gt; checkLVal(LVAL) ~&gt; checkOperands(OP1, OP2, OP3)<span class="hljs-keyword">
+    rule</span> check ~&gt; LVAL = expmod OP1, OP2, OP3 =&gt; checkLVal(LVAL) ~&gt; checkOperands(OP1, OP2, OP3)<span class="hljs-keyword">
+
+    rule</span> check ~&gt; LVAL = byte  OP1, OP2 =&gt; checkLVal(LVAL) ~&gt; checkOperands(OP1, OP2)<span class="hljs-keyword">
+    rule</span> check ~&gt; LVAL = sext  OP1, OP2 =&gt; checkLVal(LVAL) ~&gt; checkOperands(OP1, OP2)<span class="hljs-keyword">
+    rule</span> check ~&gt; LVAL = twos  OP1, OP2 =&gt; checkLVal(LVAL) ~&gt; checkOperands(OP1, OP2)<span class="hljs-keyword">
+    rule</span> check ~&gt; LVAL = bswap OP1, OP2 =&gt; checkLVal(LVAL) ~&gt; checkOperands(OP1, OP2)<span class="hljs-keyword">
+
+    rule</span> check ~&gt; LVAL = log2 OP1 =&gt; checkLVal(LVAL) ~&gt; checkOperands(OP1)<span class="hljs-keyword">
+
+    rule</span> check ~&gt; LVAL = and   OP1, OP2 =&gt; checkLVal(LVAL) ~&gt; checkOperands(OP1, OP2)<span class="hljs-keyword">
+    rule</span> check ~&gt; LVAL = or    OP1, OP2 =&gt; checkLVal(LVAL) ~&gt; checkOperands(OP1, OP2)<span class="hljs-keyword">
+    rule</span> check ~&gt; LVAL = xor   OP1, OP2 =&gt; checkLVal(LVAL) ~&gt; checkOperands(OP1, OP2)<span class="hljs-keyword">
+    rule</span> check ~&gt; LVAL = shift OP1, OP2 =&gt; checkLVal(LVAL) ~&gt; checkOperands(OP1, OP2)<span class="hljs-keyword">
+
+    rule</span> check ~&gt; LVAL = cmp _ OP1, OP2 =&gt; checkLVal(LVAL) ~&gt; checkOperands(OP1, OP2)<span class="hljs-keyword">
+
+    rule</span> check ~&gt; LVAL = sha3 OP1 =&gt; checkLVal(LVAL) ~&gt; checkOperand(OP1)<span class="hljs-keyword">
+    rule</span> check ~&gt; log OP1                     =&gt; checkOperand(OP1)<span class="hljs-keyword">
+    rule</span> check ~&gt; log OP1, OP2                =&gt; checkOperands(OP1, OP2)<span class="hljs-keyword">
+    rule</span> check ~&gt; log OP1, OP2, OP3           =&gt; checkOperands(OP1, OP2, OP3)<span class="hljs-keyword">
+    rule</span> check ~&gt; log OP1, OP2, OP3, OP4      =&gt; checkOperands(OP1, OP2, OP3, OP4)<span class="hljs-keyword">
+    rule</span> check ~&gt; log OP1, OP2, OP3, OP4, OP5 =&gt; checkOperands(OP1, OP2, OP3, OP4, OP5)<span class="hljs-keyword">
+
+    rule</span> check ~&gt; revert OP1 =&gt; checkOperand(OP1)<span class="hljs-keyword">
+    rule</span> check ~&gt; selfdestruct OP1 =&gt; checkOperand(OP1)
+</code></pre>
+<h3 id="static-jumps">Static Jumps</h3>
+<p>Checking these instructions requires checking that a label exists that matches the specified label.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; check ~&gt; br NAME =&gt; . ... &lt;/k&gt;
+         &lt;labels&gt; ... SetItem(NAME) &lt;/labels&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; check ~&gt; br OP1, NAME =&gt; checkOperand(OP1) ... &lt;/k&gt;
+         &lt;labels&gt; ... SetItem(NAME) &lt;/labels&gt;
+</code></pre>
+<h3 id="function-calls-and-returns">Function Calls and Returns</h3>
+<p>Checking these instructions requires checking the types of local function calls and checking the consistency of the return type.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; check ~&gt; RETS = call @ NAME ( ARGS ) =&gt; checkLVals(RETS) ~&gt; checkOperands(ARGS) ... &lt;/k&gt;
+         &lt;types&gt; ... NAME |-&gt; ARGTYPES -&gt; RETTYPES:Types &lt;/types&gt;
+         &lt;well-formedness-schedule&gt; SCHED &lt;/well-formedness-schedule&gt;<span class="hljs-keyword">
+      requires</span> ints(#sizeRegs(ARGS)) ==K ARGTYPES andBool ints(#sizeLVals(RETS)) ==K RETTYPES andBool checkInit(NAME, SCHED)<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; check ~&gt; RETS = call @ NAME ( ARGS ) =&gt; checkLVals(RETS) ~&gt; checkOperands(ARGS) ... &lt;/k&gt;
+         &lt;types&gt; ... NAME |-&gt; ARGTYPES -&gt; (unknown =&gt; ints(#sizeLVals(RETS))) &lt;/types&gt;
+         &lt;well-formedness-schedule&gt; SCHED &lt;/well-formedness-schedule&gt;<span class="hljs-keyword">
+      requires</span> ints(#sizeRegs(ARGS)) ==K ARGTYPES andBool checkInit(NAME, SCHED)<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; check ~&gt; RETS = call % NAME ( ARGS ) =&gt; checkLVals(RETS) ~&gt; checkOperands(ARGS) ... &lt;/k&gt;<span class="hljs-keyword">
+
+    rule</span> check ~&gt; STATUS, RETS = call NAME at OP1 ( ARGS ) send OP2 , gaslimit OP3 =&gt; checkLVals(STATUS, RETS) ~&gt; checkOperands(OP1 , OP2 , OP3 , ARGS)<span class="hljs-keyword">
+    rule</span> check ~&gt; STATUS, RETS = staticcall NAME at OP1 ( ARGS ) gaslimit OP2 =&gt; checkLVals(STATUS, RETS) ~&gt; checkOperands(OP1 , OP2 , ARGS)<span class="hljs-keyword">
+
+    rule</span> check ~&gt; RET = calladdress NAME at OP =&gt; checkLVal(RET) ~&gt; checkOperand(OP)<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; check ~&gt; ret OPS =&gt; checkOperands(OPS) ... &lt;/k&gt;
+         &lt;functionName&gt; NAME &lt;/functionName&gt;
+         &lt;types&gt; ... NAME |-&gt; _ -&gt; RETTYPES:Types &lt;/types&gt;<span class="hljs-keyword">
+      requires</span> ints(#sizeRegs(OPS)) ==K RETTYPES<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; check ~&gt; ret OPS =&gt; checkOperands(OPS) ... &lt;/k&gt;
+         &lt;functionName&gt; NAME &lt;/functionName&gt;
+         &lt;types&gt; ... NAME |-&gt; _ -&gt; (unknown =&gt; ints(#sizeRegs(OPS))) &lt;/types&gt;
+</code></pre>
+<h3 id="contract-creation">Contract Creation</h3>
+<p>Checking these instructions also requires checking that the contract they reference has been declared.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    rule</span> &lt;k&gt; check ~&gt; STATUS , RET = create NAME ( ARGS ) send OP1 =&gt; checkLVals(STATUS, RET) ~&gt; checkOperands(OP1 , ARGS) ... &lt;/k&gt;
+         &lt;declaredContracts&gt; ... SetItem(NAME) &lt;/declaredContracts&gt;<span class="hljs-keyword">
+
+    rule</span> check ~&gt; STATUS , RET = copycreate OP1 ( ARGS ) send OP2 =&gt; checkLVals(STATUS, RET) ~&gt; checkOperands(OP1 , OP2 , ARGS)
+</code></pre>
+<h2 id="types-of-intrinsic-functions">Types of intrinsic functions</h2>
+<p>Below are defined the types of the reserved functions that begin with &quot;iele.&quot;.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> Map ::= <span class="hljs-string">&quot;intrinsicTypes&quot;</span> [function]
+ <span class="hljs-comment">// ------------------------------------------</span><span class="hljs-keyword">
+    rule</span> intrinsicTypes =&gt;
+    (iele.invalid |-&gt; .Types -&gt; .Types
+    (iele.gas |-&gt; .Types -&gt; int, .Types
+    (iele.gasprice |-&gt; .Types -&gt; int, .Types
+    (iele.gaslimit |-&gt; .Types -&gt; int, .Types
+    (iele.beneficiary |-&gt; .Types -&gt; int, .Types
+    (iele.timestamp |-&gt; .Types -&gt; int, .Types
+    (iele.number |-&gt; .Types -&gt; int, .Types
+    (iele.difficulty |-&gt; .Types -&gt; int, .Types
+    (iele.address |-&gt; .Types -&gt; int, .Types
+    (iele.origin |-&gt; .Types -&gt; int, .Types
+    (iele.caller |-&gt; .Types -&gt; int, .Types
+    (iele.callvalue |-&gt; .Types -&gt; int, .Types
+    (iele.msize |-&gt; .Types -&gt; int, .Types
+    (iele.codesize |-&gt; .Types -&gt; int, .Types
+    (iele.blockhash |-&gt; int -&gt; int, .Types
+    (iele.balance |-&gt; int -&gt; int, .Types
+    (iele.extcodesize |-&gt; int -&gt; int, .Types
+    )))))))))))))))))
+    
+</code></pre>
+<h2 id="reserved-names">Reserved Names</h2>
+<p>All identifiers beginning with &quot;iele.&quot; are reserved by the language and cannot be written to.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> KItem ::= checkName(IeleName)
+ <span class="hljs-comment">// ------------------------------------</span><span class="hljs-keyword">
+    rule</span> checkName(NAME) =&gt; .<span class="hljs-keyword">
+      requires</span> lengthString(IeleName2String(NAME)) &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">5</span> orBool substrString(IeleName2String(NAME), <span class="hljs-number">0</span>, <span class="hljs-number">5</span>) =/=<span class="hljs-keyword">String</span> <span class="hljs-string">&quot;iele.&quot;</span><span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Bool</span> ::= checkInit(IeleName, Schedule) [function]
+ <span class="hljs-comment">// --------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> checkInit(init, SCHED) =&gt; SCHED =/=K ALBE<span class="hljs-keyword">
+    rule</span> checkInit(...) =&gt; true [owise]
+</code></pre>
+<p>In order to correctly check names, we must convert escaped IELE names to their correct token representation.</p>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span><span class="hljs-keyword"> String</span> ::= unescape(<span class="hljs-keyword">String</span>) [function]
+                    | unescape(<span class="hljs-keyword">String</span>,<span class="hljs-keyword"> Int</span>, StringBuffer) [function, klabel(unescapeAux)]
+ <span class="hljs-comment">// -------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> unescape(S) =&gt; unescape(S, <span class="hljs-number">1</span>, .StringBuffer)<span class="hljs-keyword">
+    rule</span> unescape(S, IDX, SB) =&gt; unescape(S, IDX +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, SB +<span class="hljs-keyword">String</span> substrString(S, IDX, IDX +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>))<span class="hljs-keyword">
+      requires</span> IDX &lt;<span class="hljs-keyword">Int</span> lengthString(S) -<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span> andBool substrString(S, IDX, IDX +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>) =/=K <span class="hljs-string">&quot;\\&quot;</span><span class="hljs-keyword">
+    rule</span> unescape(S, IDX, SB) =&gt; unescape(S, IDX +<span class="hljs-keyword">Int</span> <span class="hljs-number">3</span>, SB +<span class="hljs-keyword">String</span> chrChar(String2Base(substrString(S, IDX +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, IDX +<span class="hljs-keyword">Int</span> <span class="hljs-number">3</span>), <span class="hljs-number">16</span>)))<span class="hljs-keyword">
+      requires</span> IDX &lt;<span class="hljs-keyword">Int</span> lengthString(S) -<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span> andBool substrString(S, IDX, IDX +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>) ==K <span class="hljs-string">&quot;\\&quot;</span><span class="hljs-keyword">
+    rule</span> unescape(S, IDX, SB) =&gt; StringBuffer2String(SB)<span class="hljs-keyword">
+      requires</span> IDX ==<span class="hljs-keyword">Int</span> lengthString(S) -<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span><span class="hljs-keyword">
+    rule</span> `StringIeleName`(NAME:StringIeleName) =&gt; String2IeleName(unescape(StringIeleName2String(NAME)))
+</code></pre>
+<h2 id="checking-operands">Checking Operands</h2>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> KItem ::= checkOperand(Operand)
+                   | checkOperands(Operands)
+ <span class="hljs-comment">// ----------------------------------------</span><span class="hljs-keyword">
+    rule</span> checkOperands(OP , OPS) =&gt; checkOperand(OP) ~&gt; checkOperands(OPS)<span class="hljs-keyword">
+    rule</span> checkOperands(.Operands) =&gt; .<span class="hljs-keyword">
+
+    rule</span> checkOperand(% NAME) =&gt; .<span class="hljs-keyword">
+    rule</span> checkOperand(_:IntConstant) =&gt; .<span class="hljs-keyword">
+    rule</span> checkOperand(@ NAME) =&gt; .
+</code></pre>
+<h2 id="checking-lvalues">Checking LValues</h2>
+<pre class="hljs"><code><span class="hljs-keyword">    syntax</span> KItem ::= checkLVal(LValue)
+                   | checkLVals(LValues)
+ <span class="hljs-comment">// --------------------------------------</span><span class="hljs-keyword">
+    rule</span> checkLVals(LVAL , LVALS) =&gt; checkLVal(LVAL) ~&gt; checkLVals(LVALS)<span class="hljs-keyword">
+    rule</span> checkLVals(.LValues) =&gt; .<span class="hljs-keyword">
+
+    rule</span> checkLVal(% NAME) =&gt; checkName(NAME)<span class="hljs-keyword">
+endmodule</span><span class="hljs-keyword">
+
+module</span> IELE-WELL-FORMEDNESS-STANDALONE<span class="hljs-keyword">
+    imports</span> IELE-WELL-FORMEDNESS<span class="hljs-keyword">
+
+    configuration</span> &lt;k&gt; $PGM:Contract &lt;/k&gt; &lt;well-formedness/&gt; &lt;exit-code exit=<span class="hljs-string">&quot;&quot;</span>&gt; <span class="hljs-number">1</span> &lt;/exit-code&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;typeChecking&gt; false =&gt; true &lt;/typeChecking&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; . &lt;/k&gt; &lt;exit-code&gt; <span class="hljs-number">1</span> =&gt; <span class="hljs-number">0</span> &lt;/exit-code&gt;<span class="hljs-keyword">
+
+endmodule</span>
+</code></pre>
+</body></html></div>
+        </main>
+      </div>
+    </div>
+<footer class="app-footer text-md-left text-center">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-2 mb-md-0 mb-4">
+        <span class="pr-md-5 pr-0 py-3">
+          <a href="https://runtimeverification.com" target="_blank">
+            <picture>
+              <source
+                srcset="../assets/img/rv-logo-dark.png"
+                media="(prefers-color-scheme: dark)"
+              />
+              <img
+                class="pr-3 footer-logo"
+                src="../assets/img/rv-logo.png"
+                alt="Runtime Verification Inc logo"
+              />
+            </picture>
+          </a>
+        </span>
+      </div>
+      <div class="col-md-6 mb-md-0 mb-4"></div>
+      <div class="col-md-4 text-md-right">
+        <p class="copyright">
+          &copy; 2020 Runtime Verification Inc. All right reserved.
+        </p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script
+  async
+  src="https://www.googletagmanager.com/gtag/js?id=UA-163311512-1"
+></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag("js", new Date());
+  gtag("config", "UA-163311512-1");
+</script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Typist/1.2/typist.min.js"></script>
+    <script src="../assets/js/index.js"></script>
+  </body>
+</html>

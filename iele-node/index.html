@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+<meta charset="utf-8" />
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+/>
+<meta
+  name="description"
+  content="Design and implement your programming language and software analysis tools with mathematical rigor."
+/>
+<meta name="keywords" content="runtime, verification, rv, k" />
+<meta name="author" content="IELE Semantics | Runtime Verification Inc" />
+<meta name="robots" content="index, follow" />
+
+<!--favicon icon-->
+<link rel="icon" type="image/png" href="../assets/img/favicon.ico" />
+
+<title>IELE Semantics | Runtime Verification Inc</title>
+
+<!-- <base href="/k/" /> -->
+
+<!--web fonts-->
+<link
+  href="https://fonts.googleapis.com/css?family=Nunito:300,400,600,700,800"
+  rel="stylesheet"
+/>
+<link
+  href="https://fonts.googleapis.com/css?family=Lora:400i"
+  rel="stylesheet"
+/>
+
+<link
+  href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css"
+  rel="stylesheet"
+/>
+
+<link href="../assets/css/index.css" rel="stylesheet" />
+
+<!--[if (gt IE 9) |!(IE)]><!-->
+<!--<link rel="stylesheet" href="/assets/vendor/custom-nav/css/effects/fade-menu.css"/>-->
+<!-- <link rel="stylesheet" href="../assets/k/vl-nav/css/effects/slide-menu.css" /> -->
+<!--<![endif]-->
+
+  </head>
+
+  <body>
+<header
+  class="navbar navbar-expand navbar-dark flex-column flex-md-row bd-navbar"
+>
+  <a class="logo-link" href="../index.html"> IELE Semantics </a>
+  <ul class="navbar-nav ml-md-auto">
+    <li class="nav-item">
+      <a
+        class="nav-link pl-2 pr-1 mx-1 py-3 my-n2"
+        href="https://github.com/runtimeverification/iele-semantics"
+        target="_blank"
+        rel="noopener"
+        aria-label="GitHub"
+      >
+        <i class="fab fa-github"></i>
+      </a>
+    </li>
+  </ul>
+  <!--
+  <a
+    class="btn btn-rv-blue d-none d-lg-inline-block mb-3 mb-md-0 ml-md-3"
+    href="../downloads"
+    >Download</a
+  >
+  -->
+</header>
+
+
+    <div class="container-fluid">
+      <div class="row flex-xl-nowrap">
+<div class="col-12 col-md-3 col-xl-2 bd-sidebar mb-3">
+  <form
+    role="search"
+    class="bd-search d-flex align-items-center justify-content-between"
+  >
+    <input
+      type="search"
+      class="form-control"
+      placeholder="Search..."
+      aria-label="Search for..."
+      autocomplete="false"
+      id="search-box"
+    />
+    <button
+      class="btn bd-search-docs-toggle d-md-none p-0 ml-3 collapsed"
+      type="button"
+      aria-label="Toggle docs navigation"
+      style="font-size: 1.4rem"
+    >
+      <i class="fas fa-bars"></i>
+    </button>
+  </form>
+  <nav class="collapse bd-links" aria-label="Main navigation">
+    <div class="bd-toc-item">
+      <a class="bd-toc-link" href="../">Homepage</a>
+      <a class="bd-toc-link" href="../INSTALL">Install</a>
+      <a class="bd-toc-link" href="../Design">Design</a>
+    </div>
+  </nav>
+</div>
+
+        <main
+          class="col-12 col-md-9 col-xl-8 py-md-3 pl-md-5 bd-content"
+          role="main"
+        >
+          <div class="markdown-preview"><html><head></head><body><pre class="hljs"><code><span class="hljs-keyword">module</span> IELE-NODE<span class="hljs-keyword">
+    imports</span> IELE<span class="hljs-keyword">
+    imports</span> IELE-BINARY<span class="hljs-keyword">
+    imports</span> K-REFLECTION<span class="hljs-keyword">
+    imports</span> COLLECTIONS<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Int</span> ::= #getBalance(<span class="hljs-keyword">Int</span>) [function, hook(BLOCKCHAIN.getBalance)]
+                 | #getNonce(<span class="hljs-keyword">Int</span>) [function, hook(BLOCKCHAIN.getNonce)]<span class="hljs-keyword">
+    syntax</span><span class="hljs-keyword"> Bool</span> ::= #isCodeEmpty(<span class="hljs-keyword">Int</span>) [function, hook(BLOCKCHAIN.isCodeEmpty)]
+ <span class="hljs-comment">// ---------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #loadAccount ACCT =&gt; . ... &lt;/k&gt;
+         &lt;activeAccounts&gt; ACCTS (.Set =&gt; SetItem(ACCT)) &lt;/activeAccounts&gt;
+         &lt;accounts&gt;
+           ( .Bag
+          =&gt; &lt;account&gt;
+               &lt;acctID&gt; ACCT &lt;/acctID&gt;
+               &lt;balance&gt; #getBalance(ACCT) &lt;/balance&gt;
+               &lt;code&gt; #if #isCodeEmpty(ACCT) #then #emptyCode #else .Contract #fi &lt;/code&gt;
+               &lt;storage&gt; .Map &lt;/storage&gt;
+               &lt;nonce&gt; #getNonce(ACCT) &lt;/nonce&gt;
+             &lt;/account&gt;
+           )
+           ...
+         &lt;/accounts&gt;<span class="hljs-keyword">
+      requires</span> notBool ACCT in ACCTS<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Int</span> ::= #getStorageData(<span class="hljs-keyword">Int</span>,<span class="hljs-keyword"> Int</span>) [function, hook(BLOCKCHAIN.getStorageData)]
+ <span class="hljs-comment">// --------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #lookupStorage(ACCT, INDEX) =&gt; . ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt;  ACCT                                                         &lt;/acctID&gt;
+           &lt;storage&gt; STORAGE =&gt; STORAGE [ INDEX &lt;- #getStorageData(ACCT, INDEX) ] &lt;/storage&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+      requires</span> notBool INDEX in_keys(STORAGE)<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> String</span> ::= #getCode(<span class="hljs-keyword">Int</span>) [function, hook(BLOCKCHAIN.getCode)]
+ <span class="hljs-comment">// ----------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #lookupCode(ACCT) =&gt; . ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;code&gt; .Contract =&gt; #dasmContract(#parseByteStackRaw(#getCode(ACCT)), Main) &lt;/code&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Int</span> ::= #getBlockhash(<span class="hljs-keyword">Int</span>) [function, hook(BLOCKCHAIN.getBlockhash)]
+ <span class="hljs-comment">// -----------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #exec REG = call @iele.blockhash ( N ) =&gt; #load REG #getBlockhash(N)<span class="hljs-keyword">
+      requires</span> N &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span>  andBool N &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span><span class="hljs-keyword">
+    rule</span> #exec REG = call @iele.blockhash ( N ) =&gt; #load REG <span class="hljs-number">0</span><span class="hljs-keyword">
+      requires</span> N &lt;<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> orBool N &gt;=<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span><span class="hljs-keyword">
+
+    syntax</span> IELESimulation ::= runVM(iscreate:<span class="hljs-keyword"> Bool</span>, to:<span class="hljs-keyword"> Int</span>, from:<span class="hljs-keyword"> Int</span>, code:<span class="hljs-keyword"> String</span>, args: JSONs, value:<span class="hljs-keyword"> Int</span>, gasprice:<span class="hljs-keyword"> Int</span>, gas:<span class="hljs-keyword"> Int</span>, beneficiary:<span class="hljs-keyword"> Int</span>, difficulty:<span class="hljs-keyword"> Int</span>, number:<span class="hljs-keyword"> Int</span>, gaslimit:<span class="hljs-keyword"> Int</span>, timestamp:<span class="hljs-keyword"> Int</span>, function:<span class="hljs-keyword"> String</span>) [symbol]<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; (.K =&gt; #loadAccount ACCTFROM) ~&gt; runVM(... from: ACCTFROM) ... &lt;/k&gt;
+         &lt;activeAccounts&gt; .Set &lt;/activeAccounts&gt;<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; runVM(true, _, ACCTFROM, CODESTR, ARGS, VALUE, GPRICE, GAVAIL, CB, DIFF, NUMB, GLIMIT, TS, _)
+          =&gt; #fun(CODE =&gt; #fun(CONTRACT =&gt;
+             #checkContract CONTRACT
+          ~&gt; #create ACCTFROM #newAddr(ACCTFROM, NONCE -<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>) (GAVAIL *<span class="hljs-keyword">Int</span> Sgasdivisor &lt; SCHED &gt;) VALUE CONTRACT #toInts(ARGS)
+          ~&gt; #codeDeposit #newAddr(ACCTFROM, NONCE -<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>) #sizeWordStack(CODE) CONTRACT %<span class="hljs-number">0</span> %<span class="hljs-number">1</span> true
+          ~&gt; #trimAccounts)(#if #isValidContract(CODE) #then #dasmContract(CODE, Main) #else #illFormed #fi))(#parseByteStackRaw(CODESTR))
+         ...
+         &lt;/k&gt;
+         &lt;schedule&gt; SCHED &lt;/schedule&gt;
+         &lt;gasPrice&gt; _ =&gt; GPRICE &lt;/gasPrice&gt;
+         &lt;origin&gt; _ =&gt; ACCTFROM &lt;/origin&gt;
+         &lt;callDepth&gt; _ =&gt; <span class="hljs-number">-1</span> &lt;/callDepth&gt;
+         &lt;beneficiary&gt; _ =&gt; CB &lt;/beneficiary&gt;
+         &lt;difficulty&gt; _ =&gt; DIFF &lt;/difficulty&gt;
+         &lt;number&gt; _ =&gt; NUMB &lt;/number&gt;
+         &lt;gasLimit&gt; _ =&gt; GLIMIT &lt;/gasLimit&gt;
+         &lt;timestamp&gt; _ =&gt; TS &lt;/timestamp&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCTFROM &lt;/acctID&gt;
+           &lt;nonce&gt; NONCE &lt;/nonce&gt;
+           ...
+         &lt;/account&gt;
+         &lt;activeAccounts&gt; ACCTS &lt;/activeAccounts&gt;<span class="hljs-keyword">
+      requires</span> ACCTFROM in ACCTS<span class="hljs-keyword">
+
+    rule</span> &lt;k&gt; runVM(false, ACCTTO, ACCTFROM, _, ARGS, VALUE, GPRICE, GAVAIL, CB, DIFF, NUMB, GLIMIT, TS, FUNC)
+          =&gt; #call ACCTFROM ACCTTO @ String2IeleName(FUNC) (GAVAIL *<span class="hljs-keyword">Int</span> Sgasdivisor &lt; SCHED &gt;) VALUE #toInts(ARGS) false
+          ~&gt; #endVM
+          ~&gt; #trimAccounts
+         ...
+         &lt;/k&gt;
+         &lt;schedule&gt; SCHED &lt;/schedule&gt;
+         &lt;gasPrice&gt; _ =&gt; GPRICE &lt;/gasPrice&gt;
+         &lt;origin&gt; _ =&gt; ACCTFROM &lt;/origin&gt;
+         &lt;callDepth&gt; _ =&gt; <span class="hljs-number">-1</span> &lt;/callDepth&gt;
+         &lt;beneficiary&gt; _ =&gt; CB &lt;/beneficiary&gt;
+         &lt;difficulty&gt; _ =&gt; DIFF &lt;/difficulty&gt;
+         &lt;number&gt; _ =&gt; NUMB &lt;/number&gt;
+         &lt;gasLimit&gt; _ =&gt; GLIMIT &lt;/gasLimit&gt;
+         &lt;timestamp&gt; _ =&gt; TS &lt;/timestamp&gt;
+         &lt;activeAccounts&gt; ACCTS &lt;/activeAccounts&gt;<span class="hljs-keyword">
+      requires</span> ACCTFROM in ACCTS<span class="hljs-keyword">
+
+    syntax</span> IELECommand ::= <span class="hljs-string">&quot;#endVM&quot;</span>
+ <span class="hljs-comment">// -------------------------------</span><span class="hljs-keyword">
+    rule</span> &lt;k&gt; #exception STATUS ~&gt; #endVM =&gt; #popCallStack ~&gt; #popWorldState ~&gt; #popSubstate ~&gt; STATUS ... &lt;/k&gt;
+         &lt;output&gt; _ =&gt; .Ints &lt;/output&gt;<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #revert OUT       ~&gt; #endVM =&gt; #popCallStack ~&gt; #popWorldState ~&gt; #popSubstate ~&gt; #refund GAVAIL ~&gt; OUT ... &lt;/k&gt;
+         &lt;gas&gt; GAVAIL &lt;/gas&gt;<span class="hljs-keyword">       
+
+    rule</span> &lt;k&gt; #end ~&gt; #endVM =&gt; #popCallStack ~&gt; #dropWorldState ~&gt; #dropSubstate ~&gt; #refund GAVAIL ~&gt; <span class="hljs-number">0</span> ... &lt;/k&gt;
+         &lt;gas&gt; GAVAIL &lt;/gas&gt;<span class="hljs-keyword">
+
+    syntax</span> KItem ::= <span class="hljs-string">&quot;#trimAccounts&quot;</span>
+                   | #trimAccounts(List)<span class="hljs-keyword">
+    rule</span> I:<span class="hljs-keyword">Int</span> ~&gt; #trimAccounts =&gt; #trimAccounts ~&gt; I<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #trimAccounts =&gt; #trimAccounts(Set2List(ACCTS)) ... &lt;/k&gt;
+         &lt;activeAccounts&gt; ACCTS &lt;/activeAccounts&gt;<span class="hljs-keyword">
+
+    rule</span> #trimAccounts(.List) =&gt; .<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #trimAccounts((ListItem(ACCT) =&gt; .List) ACCTS) ... &lt;/k&gt;
+         (&lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;balance&gt; <span class="hljs-number">0</span> &lt;/balance&gt;
+           &lt;code&gt; #emptyCode &lt;/code&gt;
+           &lt;nonce&gt; <span class="hljs-number">0</span> &lt;/nonce&gt;
+           ...
+         &lt;/account&gt; =&gt; .Bag)<span class="hljs-keyword">
+    rule</span> &lt;k&gt; #trimAccounts((ListItem(ACCT) =&gt; .List) ACCTS) ... &lt;/k&gt;
+         &lt;account&gt;
+           &lt;acctID&gt; ACCT &lt;/acctID&gt;
+           &lt;balance&gt; BAL &lt;/balance&gt;
+           &lt;code&gt; CODE &lt;/code&gt;
+           &lt;nonce&gt; NONCE &lt;/nonce&gt;
+           ...
+         &lt;/account&gt;<span class="hljs-keyword">
+      requires</span> BAL =/=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> orBool NONCE =/=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> orBool CODE =/=K #emptyCode<span class="hljs-keyword">
+
+    syntax</span> Ints ::= #toInts(List) [function, klabel(ListToInts), symbol]
+ <span class="hljs-comment">// --------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #toInts(.List) =&gt; .Ints<span class="hljs-keyword">
+    rule</span> #toInts(ListItem(I:<span class="hljs-keyword">Int</span>) L) =&gt; I , #toInts(L)<span class="hljs-keyword">
+
+    syntax</span> Ints ::= #toInts(JSONs) [function, klabel(JSONsToInts)]
+ <span class="hljs-comment">// --------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #toInts(.JSONs) =&gt; .Ints<span class="hljs-keyword">
+    rule</span> #toInts(S:<span class="hljs-keyword">String</span>, L) =&gt; Bytes2Int(String2Bytes(S), BE, Signed) , #toInts(L)<span class="hljs-keyword">
+
+
+    syntax</span> List ::= #toList(Ints) [function]
+ <span class="hljs-comment">// ----------------------------------------</span><span class="hljs-keyword">
+    rule</span> #toList(.Ints) =&gt; .List<span class="hljs-keyword">
+    rule</span> #toList(I , L) =&gt; ListItem(I) #toList(L)<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> String</span> ::= unparseByteStack(Bytes) [function, symbol]<span class="hljs-keyword">
+    rule</span> unparseByteStack(B::Bytes) =&gt; Bytes2String(B)<span class="hljs-keyword">
+
+    syntax</span> KItem ::= vmResult(return: List,gas:<span class="hljs-keyword"> Int</span>,refund:<span class="hljs-keyword"> Int</span>,status:<span class="hljs-keyword"> Int</span>,selfdestruct: List,logs: List,AccountsCell, touched: List)<span class="hljs-keyword">
+    syntax</span> KItem ::= extractConfig(GeneratedTopCell) [function, symbol]
+ <span class="hljs-comment">// ----------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> extractConfig(&lt;generatedTop&gt;... &lt;schedule&gt; SCHED &lt;/schedule&gt; &lt;output&gt; OUT &lt;/output&gt; &lt;gas&gt; GAVAIL &lt;/gas&gt; &lt;refund&gt; REFUND &lt;/refund&gt; &lt;k&gt; STATUS:<span class="hljs-keyword">Int</span> &lt;/k&gt; &lt;selfDestruct&gt; SD &lt;/selfDestruct&gt; &lt;logData&gt; LOGS &lt;/logData&gt; &lt;accounts&gt; ACCTS &lt;/accounts&gt; ... &lt;/generatedTop&gt;) =&gt; vmResult(#toList(OUT),GAVAIL up/<span class="hljs-keyword">Int</span> Sgasdivisor &lt; SCHED &gt;,REFUND,STATUS,Set2List(SD),LOGS,&lt;accounts&gt; ACCTS &lt;/accounts&gt;, .List)<span class="hljs-keyword">
+
+endmodule</span>
+</code></pre>
+</body></html></div>
+        </main>
+      </div>
+    </div>
+<footer class="app-footer text-md-left text-center">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-2 mb-md-0 mb-4">
+        <span class="pr-md-5 pr-0 py-3">
+          <a href="https://runtimeverification.com" target="_blank">
+            <picture>
+              <source
+                srcset="../assets/img/rv-logo-dark.png"
+                media="(prefers-color-scheme: dark)"
+              />
+              <img
+                class="pr-3 footer-logo"
+                src="../assets/img/rv-logo.png"
+                alt="Runtime Verification Inc logo"
+              />
+            </picture>
+          </a>
+        </span>
+      </div>
+      <div class="col-md-6 mb-md-0 mb-4"></div>
+      <div class="col-md-4 text-md-right">
+        <p class="copyright">
+          &copy; 2020 Runtime Verification Inc. All right reserved.
+        </p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script
+  async
+  src="https://www.googletagmanager.com/gtag/js?id=UA-163311512-1"
+></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag("js", new Date());
+  gtag("config", "UA-163311512-1");
+</script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Typist/1.2/typist.min.js"></script>
+    <script src="../assets/js/index.js"></script>
+  </body>
+</html>

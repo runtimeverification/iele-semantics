@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+<meta charset="utf-8" />
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+/>
+<meta
+  name="description"
+  content="Design and implement your programming language and software analysis tools with mathematical rigor."
+/>
+<meta name="keywords" content="runtime, verification, rv, k" />
+<meta name="author" content="IELE Semantics | Runtime Verification Inc" />
+<meta name="robots" content="index, follow" />
+
+<!--favicon icon-->
+<link rel="icon" type="image/png" href="../assets/img/favicon.ico" />
+
+<title>IELE Semantics | Runtime Verification Inc</title>
+
+<!-- <base href="/k/" /> -->
+
+<!--web fonts-->
+<link
+  href="https://fonts.googleapis.com/css?family=Nunito:300,400,600,700,800"
+  rel="stylesheet"
+/>
+<link
+  href="https://fonts.googleapis.com/css?family=Lora:400i"
+  rel="stylesheet"
+/>
+
+<link
+  href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css"
+  rel="stylesheet"
+/>
+
+<link href="../assets/css/index.css" rel="stylesheet" />
+
+<!--[if (gt IE 9) |!(IE)]><!-->
+<!--<link rel="stylesheet" href="/assets/vendor/custom-nav/css/effects/fade-menu.css"/>-->
+<!-- <link rel="stylesheet" href="../assets/k/vl-nav/css/effects/slide-menu.css" /> -->
+<!--<![endif]-->
+
+  </head>
+
+  <body>
+<header
+  class="navbar navbar-expand navbar-dark flex-column flex-md-row bd-navbar"
+>
+  <a class="logo-link" href="../index.html"> IELE Semantics </a>
+  <ul class="navbar-nav ml-md-auto">
+    <li class="nav-item">
+      <a
+        class="nav-link pl-2 pr-1 mx-1 py-3 my-n2"
+        href="https://github.com/runtimeverification/iele-semantics"
+        target="_blank"
+        rel="noopener"
+        aria-label="GitHub"
+      >
+        <i class="fab fa-github"></i>
+      </a>
+    </li>
+  </ul>
+  <!--
+  <a
+    class="btn btn-rv-blue d-none d-lg-inline-block mb-3 mb-md-0 ml-md-3"
+    href="../downloads"
+    >Download</a
+  >
+  -->
+</header>
+
+
+    <div class="container-fluid">
+      <div class="row flex-xl-nowrap">
+<div class="col-12 col-md-3 col-xl-2 bd-sidebar mb-3">
+  <form
+    role="search"
+    class="bd-search d-flex align-items-center justify-content-between"
+  >
+    <input
+      type="search"
+      class="form-control"
+      placeholder="Search..."
+      aria-label="Search for..."
+      autocomplete="false"
+      id="search-box"
+    />
+    <button
+      class="btn bd-search-docs-toggle d-md-none p-0 ml-3 collapsed"
+      type="button"
+      aria-label="Toggle docs navigation"
+      style="font-size: 1.4rem"
+    >
+      <i class="fas fa-bars"></i>
+    </button>
+  </form>
+  <nav class="collapse bd-links" aria-label="Main navigation">
+    <div class="bd-toc-item">
+      <a class="bd-toc-link" href="../">Homepage</a>
+      <a class="bd-toc-link" href="../INSTALL">Install</a>
+      <a class="bd-toc-link" href="../Design">Design</a>
+    </div>
+  </nav>
+</div>
+
+        <main
+          class="col-12 col-md-9 col-xl-8 py-md-3 pl-md-5 bd-content"
+          role="main"
+        >
+          <div class="markdown-preview"><html><head></head><body><h1 id="iele-binary-encoding-(work-in-progress)">IELE Binary Encoding (Work In Progress)</h1>
+<p>Here we define an ad-hoc binary encoding for IELE. This encoding is subject to change and should not be viewed as final. The actual semantics of IELE is defined in terms of a fragment of its textual representation.
+You can use the IELE assembler provided with the semantics to convert from the textual encoding into this binary encoding.</p>
+<pre class="hljs"><code><span class="hljs-keyword">requires</span> <span class="hljs-string">&quot;iele.md&quot;</span><span class="hljs-keyword">
+requires</span> <span class="hljs-string">&quot;iele-syntax.md&quot;</span><span class="hljs-keyword">
+
+module</span> IELE-BINARY<span class="hljs-keyword">
+    imports</span> IELE<span class="hljs-keyword">
+    imports</span> IELE-COMMON
+</code></pre>
+<p>Here we define the OpCode sort. An OpCode is the atomic unit of a IELE program in binary representation and a IELE contract can be expressed as a sequence of operations.
+Each operation consists of its OpCode plus zero or more bytes containing the register operands to the operation. The OpCode consists of between one and seven bytes.
+The first byte represents the operation in question, and contains enough information to determine and decode the rest of the OpCode. The remainder of the OpCode then
+contains enough information to determine and decode the rest of the operation.</p>
+<pre class="hljs"><code><span class="hljs-keyword">
+    syntax</span> NullOp ::= BRLABEL (<span class="hljs-keyword"> Int</span> )
+                    | BR (<span class="hljs-keyword"> Int</span> )
+                    | INVALID ()<span class="hljs-keyword">
+
+    syntax</span> UnOp   ::= LOADPOS (<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> )
+                    | LOADNEG (<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> )
+                    | BRC (<span class="hljs-keyword"> Int</span> )
+                    | GASLIMIT ()
+                    | GASPRICE ()
+                    | GAS ()
+                    | ADDRESS ()
+                    | ORIGIN ()
+                    | CALLER ()
+                    | CALLVALUE ()
+                    | CODESIZE ()
+                    | BENEFICIARY ()
+                    | TIMESTAMP ()
+                    | NUMBER ()
+                    | DIFFICULTY ()
+                    | MSIZE ()
+                    | SELFDESTRUCT ()
+                    | LOG0 ()
+                    | REVERT()<span class="hljs-keyword">
+
+    syntax</span> BinOp ::= ISZERO ()
+                   | NOT ()
+                   | SHA3 ()
+                   | MLOAD ()
+                   | MSTORE ()
+                   | SLOAD ()
+                   | LOGARITHM2 ()
+                   | EXTCODESIZE ()
+                   | BLOCKHASH ()
+                   | BALANCE ()
+                   | SSTORE ()
+                   | MOVE ()
+                   | LOG1 ()<span class="hljs-keyword">
+
+    syntax</span> TernOp ::= ADD ()
+                    | MUL ()
+                    | SUB ()
+                    | DIV ()
+                    | MOD ()
+                    | EXP ()
+                    | SIGNEXTEND ()
+                    | TWOS ()
+                    | BSWAP ()
+                    | LT ()
+                    | LE ()
+                    | GT ()
+                    | GE ()
+                    | EQ ()
+                    | NE ()
+                    | AND ()
+                    | OR ()
+                    | XOR ()
+                    | SHIFT ()
+                    | BYTE ()
+                    | LOG2 ()<span class="hljs-keyword">
+
+    syntax</span> QuadOp ::= ADDMOD ()
+                    | MULMOD ()
+                    | EXPMOD ()
+                    | MLOADN ()
+                    | MSTOREN ()
+                    | LOG3 ()<span class="hljs-keyword">
+
+    syntax</span> FiveOp ::= LOG4 ()<span class="hljs-keyword">
+
+    syntax</span> CreateOp ::= CREATE (<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> )<span class="hljs-keyword">
+
+    syntax</span> CopyCreateOp ::= COPYCREATE (<span class="hljs-keyword"> Int</span> )<span class="hljs-keyword">
+
+    syntax</span> CallOp ::= CALL (<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> )
+                    | CALLDYN (<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> )
+                    | STATICCALL (<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> )
+                    | STATICCALLDYN (<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> )
+                    | CALLADDRESS (<span class="hljs-keyword"> Int</span> )<span class="hljs-keyword">
+
+    syntax</span> ReturnOp ::= RETURN (<span class="hljs-keyword"> Int</span> )<span class="hljs-keyword">
+
+    syntax</span> LocalCallOp ::= LOCALCALL (<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> )
+                         | LOCALCALLDYN (<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> )<span class="hljs-keyword">
+
+    syntax</span> OpCode ::= NullOp
+                    | UnOp
+                    | CreateOp
+                    | CopyCreateOp
+                    | CallOp
+                    | ReturnOp
+                    | LocalCallOp
+                    | TernOp
+                    | QuadOp
+                    | BinOp
+                    | FiveOp
+                    | encodingError()
+</code></pre>
+<p>After interpreting the strings representing programs as a <code>WordStack</code>, it should be changed into a <code>Contract</code> for use by the IELE semantics.</p>
+<ul>
+<li><code>#dasmContract</code> interperets <code>WordStack</code> as a <code>Contract</code>.</li>
+<li><code>#dasmFunction</code> interprets a single function of a contract represented as a <code>WordStack</code> into a <code>TopLevelDefinition</code></li>
+<li><code>#dasmInstruction</code> disassembles the registers for a single instruction.</li>
+<li><code>#dasmOpCode</code> interperets a <code>Int</code> as an <code>OpCode</code>.</li>
+</ul>
+<pre class="hljs"><code><span class="hljs-keyword">
+    syntax</span> Contract ::= #dasmContract ( WordStack , IeleName )       [function]
+                      | #dasmContract ( WordStack , IeleName , WordStack ) [function, klabel(#dasmContractAux1)]
+                      | #dasmContract ( WordStack ,<span class="hljs-keyword"> Int</span> , Map, IeleName , TopLevelDefinitions,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> String</span> ) [function, klabel(#dasmContractAux2)]
+ <span class="hljs-comment">// ----------------------------------------------------------------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #dasmContract( .WordStack, _) =&gt; #emptyCode<span class="hljs-keyword">
+    rule</span> #dasmContract( W1 : W2 : W3 : W4 : <span class="hljs-number">99</span> : WS, NAME) =&gt; #dasmContract(<span class="hljs-number">99</span> : #take( W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">16777216</span>  +<span class="hljs-keyword">Int</span> W2 *<span class="hljs-keyword">Int</span> <span class="hljs-number">65536</span> +<span class="hljs-keyword">Int</span> W3 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W4 -<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, WS), NAME, W1 : W2 : W3 : W4 : .WordStack)<span class="hljs-keyword">
+
+    rule</span> #dasmContract( <span class="hljs-number">99</span> : NBITS : WS, NAME, W1 : W2 : W3 : W4 : .WordStack ) =&gt; #dasmContract(WS, NBITS, <span class="hljs-number">0</span> |-&gt; init, NAME, .TopLevelDefinitions, <span class="hljs-number">1</span>, #sizeWordStack(WS) +<span class="hljs-keyword">Int</span> <span class="hljs-number">6</span> , #unparseByteStack(W1 : W2 : W3 : W4 : <span class="hljs-number">99</span> : NBITS : WS))<span class="hljs-keyword">
+    rule</span> #dasmContract( <span class="hljs-number">105</span> : W1 : W2 : WS, NBITS, FUNCS, NAME, DEFS, N, SIZE, BYTES ) =&gt; #dasmContract(#drop(W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2, WS), NBITS, N |-&gt; String2IeleName(#unparseByteStack(#take(W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2, WS))) FUNCS, NAME, DEFS, N +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, SIZE, BYTES )<span class="hljs-keyword">
+    rule</span> #dasmContract( <span class="hljs-number">106</span> : W1 : W2 : WS, NBITS, FUNCS, NAME, DEFS, N, SIZE, BYTES ) =&gt; #dasmContract(#take(W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2, WS), NAME +.+IeleName N) ++Contract #dasmContract(#drop(W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2, WS), NBITS, FUNCS, NAME, external contract NAME +.+IeleName N DEFS, N +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, SIZE, BYTES)<span class="hljs-keyword">
+    rule</span> #dasmContract( WS, NBITS, FUNCS, NAME, DEFS, N, SIZE, BYTES ) =&gt; contract NAME ! SIZE BYTES { DEFS ++TopLevelDefinitions #dasmFunctions(WS, NBITS, FUNCS, NAME) } .Contract [owise]<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Bool</span> ::= #isValidContract(WordStack)              [function]
+                  | #isValidContract(WordStack,<span class="hljs-keyword"> Int</span>)         [function, klabel(isValidContractAux)]
+                  | #isValidStringTable(WordStack,<span class="hljs-keyword"> Int</span>,<span class="hljs-keyword"> Int</span>) [function]
+ <span class="hljs-comment">// -------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #isValidContract(CODE) =&gt; #isValidContract(CODE, #sizeWordStack(CODE))<span class="hljs-keyword">
+    rule</span> #isValidContract(.WordStack, <span class="hljs-number">0</span>) =&gt; true<span class="hljs-keyword">
+    rule</span> #isValidContract(W1 : W2 : W3 : W4 : <span class="hljs-number">99</span> : NBITS : WS, SIZE) =&gt; #fun(DECLSIZE =&gt; SIZE -<span class="hljs-keyword">Int</span> <span class="hljs-number">4</span> &gt;=<span class="hljs-keyword">Int</span> DECLSIZE andBool #isValidStringTable(#take(DECLSIZE -<span class="hljs-keyword">Int</span> <span class="hljs-number">2</span>, WS), NBITS, DECLSIZE -<span class="hljs-keyword">Int</span> <span class="hljs-number">2</span>))(W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">16777216</span> +<span class="hljs-keyword">Int</span> W2 *<span class="hljs-keyword">Int</span> <span class="hljs-number">65536</span> +<span class="hljs-keyword">Int</span> W3 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W4)<span class="hljs-keyword">
+    rule</span> #isValidContract(_, _) =&gt; false [owise]<span class="hljs-keyword">
+
+    rule</span> #isValidStringTable(<span class="hljs-number">105</span> : W1 : W2 : WS, NBITS, SIZE) =&gt; SIZE -<span class="hljs-keyword">Int</span> <span class="hljs-number">3</span> &gt;=<span class="hljs-keyword">Int</span> W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2 andBool #isValidStringTable(#drop(W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2, WS), NBITS, SIZE -<span class="hljs-keyword">Int</span> <span class="hljs-number">3</span> -<span class="hljs-keyword">Int</span> W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> -<span class="hljs-keyword">Int</span> W2)<span class="hljs-keyword">
+    rule</span> #isValidStringTable(<span class="hljs-number">106</span> : W1 : W2 : WS, NBITS, SIZE) =&gt; SIZE -<span class="hljs-keyword">Int</span> <span class="hljs-number">3</span> &gt;=<span class="hljs-keyword">Int</span> W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2 andBool #isValidContract(#take(W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2, WS), W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2) andBool #isValidStringTable(#drop(W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2, WS), NBITS, SIZE -<span class="hljs-keyword">Int</span> <span class="hljs-number">3</span> -<span class="hljs-keyword">Int</span> W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> -<span class="hljs-keyword">Int</span> W2)<span class="hljs-keyword">
+      requires</span> W1 =/=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span> orBool W2 =/=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> #isValidStringTable(<span class="hljs-number">106</span> : <span class="hljs-number">0</span> : <span class="hljs-number">0</span> : WS, NBITS, SIZE) =&gt; false<span class="hljs-keyword">
+    rule</span> #isValidStringTable(WS, NBITS, SIZE) =&gt; #isValidFunctions(WS, NBITS, SIZE) [owise]<span class="hljs-keyword">
+
+    syntax</span> priorities contractDefinitionList &gt; contractAppend<span class="hljs-keyword">
+    syntax</span> priorities topLevelDefinitionList &gt; topLevelAppend<span class="hljs-keyword">
+    syntax</span> IeleName ::= IeleName <span class="hljs-string">&quot;+.+IeleName&quot;</span> IeleName [function]<span class="hljs-keyword">
+    syntax</span> Contract ::= Contract <span class="hljs-string">&quot;++Contract&quot;</span> Contract [function, klabel(contractAppend)]<span class="hljs-keyword">
+    syntax</span> TopLevelDefinitions ::= TopLevelDefinitions <span class="hljs-string">&quot;++TopLevelDefinitions&quot;</span> TopLevelDefinitions [function, klabel(topLevelAppend)]
+ <span class="hljs-comment">// ---------------------------------------------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> .Contract ++Contract Cs =&gt; Cs<span class="hljs-keyword">
+    rule</span> C Cs ++Contract Cs&apos; =&gt; C (Cs ++Contract Cs&apos;)<span class="hljs-keyword">
+    rule</span> .TopLevelDefinitions ++TopLevelDefinitions Ds =&gt; Ds<span class="hljs-keyword">
+    rule</span> D Ds ++TopLevelDefinitions Ds&apos; =&gt; D (Ds ++TopLevelDefinitions Ds&apos;)<span class="hljs-keyword">
+    rule</span> N +.+IeleName M =&gt; String2IeleName(IeleName2String(N) +<span class="hljs-keyword">String</span> <span class="hljs-string">&quot;.&quot;</span> +<span class="hljs-keyword">String</span> IeleName2String(M))<span class="hljs-keyword"> 
+
+    syntax</span> TopLevelDefinitions ::= #dasmFunctions ( WordStack ,<span class="hljs-keyword"> Int</span> , Map , IeleName ) [function]<span class="hljs-keyword">
+    syntax</span> TopLevelDefinitions ::= #dasmFunction (<span class="hljs-keyword"> Bool</span> , IeleName , IeleName ,<span class="hljs-keyword"> Int</span> , WordStack ,<span class="hljs-keyword"> Int</span> , Map , Instructions , K ) [function]
+ <span class="hljs-comment">// ----------------------------------------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #dasmFunctions(<span class="hljs-number">103</span> : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS, NAME) =&gt; #dasmFunction(false, getIeleName(FUNCS [ W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2 ] orDefault W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2), NAME, W3 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W4, WS, NBITS, FUNCS, .Instructions, .K)<span class="hljs-keyword">
+    rule</span> #dasmFunctions(<span class="hljs-number">104</span> : W1 : W2 : W3 : W4 : WS, NBITS, FUNCS, NAME) =&gt; #dasmFunction(true, getIeleName(FUNCS [ W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2 ] orDefault W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2), NAME, W3 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W4, WS, NBITS, FUNCS, .Instructions, .K)<span class="hljs-keyword">
+    rule</span> #dasmFunctions(.WordStack, NBITS, FUNCS, NAME) =&gt; .TopLevelDefinitions<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Bool</span> ::= #isValidFunctions(WordStack,<span class="hljs-keyword"> Int</span>,<span class="hljs-keyword"> Int</span>)           [function]
+                  | #isValidFunction(WordStack,<span class="hljs-keyword"> Int</span>,<span class="hljs-keyword"> Int</span>)            [function]
+                  | #isValidInstruction(OpCode, WordStack,<span class="hljs-keyword"> Int</span>,<span class="hljs-keyword"> Int</span>) [function]
+                  | #isValidLoad(WordStack,<span class="hljs-keyword"> Int</span>)                     [function]
+ <span class="hljs-comment">// ---------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #isValidFunctions(<span class="hljs-number">103</span> : W1 : W2 : W3 : W4 : WS, NBITS, SIZE) =&gt; #isValidFunction(WS, NBITS, SIZE -<span class="hljs-keyword">Int</span> <span class="hljs-number">5</span>)<span class="hljs-keyword">
+    rule</span> #isValidFunctions(<span class="hljs-number">104</span> : W1 : W2 : W3 : W4 : WS, NBITS, SIZE) =&gt; #isValidFunction(WS, NBITS, SIZE -<span class="hljs-keyword">Int</span> <span class="hljs-number">5</span>)<span class="hljs-keyword">
+    rule</span> #isValidFunctions(.WordStack, _, <span class="hljs-number">0</span>) =&gt; true<span class="hljs-keyword">
+    rule</span> #isValidFunctions(_, _, _) =&gt; false [owise]<span class="hljs-keyword">
+
+    rule</span> #isValidFunction(W : WS, NBITS, SIZE) =&gt; #isValidFunctions(W : WS, NBITS, SIZE)<span class="hljs-keyword">
+      requires</span> W ==<span class="hljs-keyword">Int</span> <span class="hljs-number">103</span> orBool W ==<span class="hljs-keyword">Int</span> <span class="hljs-number">104</span><span class="hljs-keyword">
+    rule</span> #isValidFunction(.WordStack, _, <span class="hljs-number">0</span>) =&gt; true<span class="hljs-keyword">
+    rule</span> #isValidFunction(W : WS, NBITS, SIZE) =&gt; #isValidLoad(WS, SIZE -<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>) andBool #isValidInstruction(#dasmOpCode(W : WS), W : WS, NBITS, SIZE)<span class="hljs-keyword">
+      requires</span> W ==<span class="hljs-keyword">Int</span> <span class="hljs-number">97</span> orBool W ==<span class="hljs-keyword">Int</span> <span class="hljs-number">98</span><span class="hljs-keyword">
+    rule</span> #isValidFunction(WS, NBITS, SIZE) =&gt; #isValidInstruction(#dasmOpCode(WS), WS, NBITS, SIZE) [owise]<span class="hljs-keyword">
+
+    rule</span> #isValidInstruction(encodingError(), _, _, _) =&gt; false<span class="hljs-keyword">
+    rule</span> #isValidInstruction(OP:OpCode, WS, NBITS, SIZE) =&gt; SIZE &gt;=<span class="hljs-keyword">Int</span> #opWidth(OP, NBITS) andBool #isValidFunction(#drop(#opWidth(OP, NBITS), WS), NBITS, SIZE -<span class="hljs-keyword">Int</span> #opWidth(OP, NBITS)) [owise]<span class="hljs-keyword">
+
+    rule</span> #isValidLoad(WS, SIZE) =&gt; SIZE &gt;=<span class="hljs-keyword">Int</span> #loadLen(WS) +<span class="hljs-keyword">Int</span> #loadOffset(WS)<span class="hljs-keyword">
+
+    rule</span> #dasmFunction(false, NAME, CNAME, SIG, W : WS, NBITS, FUNCS, INSTRS, .K) =&gt; define @ NAME ( SIG ) { #toBlocks(INSTRS) } #dasmFunctions(W : WS, NBITS, FUNCS, CNAME)<span class="hljs-keyword">
+      requires</span> W ==<span class="hljs-keyword">Int</span> <span class="hljs-number">103</span> orBool W ==<span class="hljs-keyword">Int</span> <span class="hljs-number">104</span><span class="hljs-keyword">
+    rule</span> #dasmFunction(true, NAME, CNAME, SIG, W : WS, NBITS, FUNCS, INSTRS, .K) =&gt; define public @ NAME ( SIG ) { #toBlocks(INSTRS) } #dasmFunctions(W : WS, NBITS, FUNCS, CNAME)<span class="hljs-keyword">
+      requires</span> W ==<span class="hljs-keyword">Int</span> <span class="hljs-number">103</span> orBool W ==<span class="hljs-keyword">Int</span> <span class="hljs-number">104</span><span class="hljs-keyword">
+    rule</span> #dasmFunction(false, NAME, CNAME, SIG, .WordStack, NBITS, FUNCS, INSTRS, .K) =&gt; define @ NAME ( SIG ) { #toBlocks(INSTRS) } .TopLevelDefinitions<span class="hljs-keyword">
+    rule</span> #dasmFunction(true, NAME, CNAME, SIG, .WordStack, NBITS, FUNCS, INSTRS, .K) =&gt; define public @ NAME ( SIG ) { #toBlocks(INSTRS) } .TopLevelDefinitions<span class="hljs-keyword">
+
+    rule</span> #dasmFunction(PUBLIC, NAME, CNAME, SIG, WS, NBITS, FUNCS, INSTRS, .K) =&gt; #dasmFunction(PUBLIC, NAME, CNAME, SIG, WS, NBITS, FUNCS, INSTRS, #dasmOpCode(WS)) [owise]<span class="hljs-keyword">
+
+    rule</span> #dasmFunction(PUBLIC, NAME, CNAME, SIG, WS, NBITS, FUNCS, INSTRS, OP:OpCode) =&gt; #dasmFunction(PUBLIC, NAME, CNAME, SIG, #drop(#opWidth(OP, NBITS), WS), NBITS, FUNCS, #dasmInstruction(OP, #take(#opWidth(OP, NBITS) -<span class="hljs-keyword">Int</span> #opCodeWidth(OP), #drop(#opCodeWidth(OP), WS)), NBITS, FUNCS, CNAME) INSTRS, .K)<span class="hljs-keyword">
+
+    syntax</span> Blocks ::= #toBlocks ( Instructions ) [function]
+                    | #toBlocks ( Instructions , Blocks ) [function, klabel(#toBlockAux)]
+ <span class="hljs-comment">// -------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #toBlocks(INSTRS) =&gt; #toBlocks(INSTRS, .LabeledBlocks)<span class="hljs-keyword">
+    rule</span> #toBlocks(.Instructions, BLOCKS) =&gt; BLOCKS<span class="hljs-keyword">
+    rule</span> #toBlocks(label(LABEL) INSTRS, UNLABELEDBLOCK::Instructions BLOCKS) =&gt; #toBlocks(INSTRS, LABEL : UNLABELEDBLOCK BLOCKS)<span class="hljs-keyword">
+    rule</span> #toBlocks(label(LABEL) INSTRS, LABELEDBLOCK::LabeledBlock BLOCKS) =&gt; #toBlocks(INSTRS, LABEL : .Instructions LABELEDBLOCK BLOCKS)<span class="hljs-keyword">
+    rule</span> #toBlocks(label(LABEL) INSTRS, .LabeledBlocks) =&gt; #toBlocks(INSTRS, LABEL : .Instructions .LabeledBlocks)<span class="hljs-keyword">
+    rule</span> #toBlocks(INSTR INSTRS, UNLABELEDBLOCK::Instructions BLOCKS) =&gt; #toBlocks(INSTRS, INSTR UNLABELEDBLOCK BLOCKS)<span class="hljs-keyword">
+      requires</span> notBool isPseudoInstruction(INSTR)<span class="hljs-keyword">
+    rule</span> #toBlocks(INSTR INSTRS, LABELEDBLOCK::LabeledBlock BLOCKS) =&gt; #toBlocks(INSTRS, INSTR .Instructions LABELEDBLOCK BLOCKS)<span class="hljs-keyword">
+      requires</span> notBool isPseudoInstruction(INSTR)<span class="hljs-keyword">
+    rule</span> #toBlocks(INSTR INSTRS, .LabeledBlocks) =&gt; #toBlocks(INSTRS, INSTR .Instructions .LabeledBlocks)<span class="hljs-keyword">
+      requires</span> notBool isPseudoInstruction(INSTR)<span class="hljs-keyword">
+
+    syntax</span> PseudoInstruction ::= label (<span class="hljs-keyword"> Int</span> )<span class="hljs-keyword">
+    syntax</span> Instruction ::= PseudoInstruction<span class="hljs-keyword">
+    syntax</span> Instruction ::= #dasmInstruction ( OpCode , WordStack ,<span class="hljs-keyword"> Int</span> , Map , IeleName ) [function]
+                         | #dasmInstruction ( OpCode ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> , Map , IeleName ) [function, klabel(#dasmInstructionAux)]
+ <span class="hljs-comment">// ------------------------------------------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #dasmInstruction ( LOADPOS(N, W), WS, NBITS, FUNCS, NAME ) =&gt; #dasmInstruction(LOADPOS(N, W), #asUnsigned(#take(NBITS up/<span class="hljs-keyword">Int</span> <span class="hljs-number">8</span>, WS)),                            NBITS, (<span class="hljs-number">1</span> &lt;&lt;<span class="hljs-keyword">Int</span> NBITS) -<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, FUNCS, NAME)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( LOADNEG(N, W), WS, NBITS, FUNCS, NAME ) =&gt; #dasmInstruction(LOADNEG(N, W), #asUnsigned(#take(NBITS up/<span class="hljs-keyword">Int</span> <span class="hljs-number">8</span>, WS)),                            NBITS, (<span class="hljs-number">1</span> &lt;&lt;<span class="hljs-keyword">Int</span> NBITS) -<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, FUNCS, NAME)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( OP,            WS, NBITS, FUNCS, NAME ) =&gt; #dasmInstruction(OP,            #asUnsigned(#take(#opWidth(OP, NBITS) -<span class="hljs-keyword">Int</span> #opCodeWidth(OP), WS)), NBITS, (<span class="hljs-number">1</span> &lt;&lt;<span class="hljs-keyword">Int</span> NBITS) -<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, FUNCS, NAME) [owise]<span class="hljs-keyword">
+
+    rule</span> #dasmInstruction ( LOADPOS ( _, I ),  R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = I<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( LOADNEG ( _, I ),  R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = (<span class="hljs-number">0</span> -<span class="hljs-keyword">Int</span> I)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( BR ( LABEL ),      _, _, _, _, _ ) =&gt; br LABEL<span class="hljs-keyword"> 
+    rule</span> #dasmInstruction ( INVALID (),        R, W, M, _, _ ) =&gt; .LValues = call @iele.invalid ( .Operands )<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( BRLABEL ( LABEL ), _, _, _, _, _ ) =&gt; label ( LABEL )<span class="hljs-keyword">
+
+    rule</span> #dasmInstruction ( SELFDESTRUCT (), R, W, M, _, _ ) =&gt; selfdestruct %(R, W, M, <span class="hljs-number">0</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( BRC ( LABEL ),   R, W, M, _, _ ) =&gt; br %(R, W, M, <span class="hljs-number">0</span>) , LABEL<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( LOG0 (),         R, W, M, _, _ ) =&gt; log %(R, W, M, <span class="hljs-number">0</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( CALLVALUE (),    R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = call @iele.callvalue   ( .Operands )<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( GASLIMIT (),     R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = call @iele.gaslimit    ( .Operands )<span class="hljs-keyword"> 
+    rule</span> #dasmInstruction ( GASPRICE (),     R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = call @iele.gasprice    ( .Operands )<span class="hljs-keyword"> 
+    rule</span> #dasmInstruction ( GAS (),          R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = call @iele.gas         ( .Operands )<span class="hljs-keyword"> 
+    rule</span> #dasmInstruction ( ADDRESS (),      R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = call @iele.address     ( .Operands )<span class="hljs-keyword"> 
+    rule</span> #dasmInstruction ( ORIGIN (),       R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = call @iele.origin      ( .Operands )<span class="hljs-keyword"> 
+    rule</span> #dasmInstruction ( CALLER (),       R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = call @iele.caller      ( .Operands )<span class="hljs-keyword"> 
+    rule</span> #dasmInstruction ( CODESIZE (),     R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = call @iele.codesize    ( .Operands )<span class="hljs-keyword"> 
+    rule</span> #dasmInstruction ( BENEFICIARY (),  R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = call @iele.beneficiary ( .Operands )<span class="hljs-keyword"> 
+    rule</span> #dasmInstruction ( TIMESTAMP (),    R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = call @iele.timestamp   ( .Operands )<span class="hljs-keyword"> 
+    rule</span> #dasmInstruction ( NUMBER (),       R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = call @iele.number      ( .Operands )<span class="hljs-keyword"> 
+    rule</span> #dasmInstruction ( DIFFICULTY (),   R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = call @iele.difficulty  ( .Operands )<span class="hljs-keyword"> 
+    rule</span> #dasmInstruction ( MSIZE (),        R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = call @iele.msize       ( .Operands )<span class="hljs-keyword"> 
+
+    rule</span> #dasmInstruction ( MOVE (),        R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = %(R, W, M, <span class="hljs-number">1</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( ISZERO (),      R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = iszero %(R, W, M, <span class="hljs-number">1</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( NOT (),         R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = not    %(R, W, M, <span class="hljs-number">1</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( SHA3 (),        R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = sha3   %(R, W, M, <span class="hljs-number">1</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( MLOAD (),       R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = load   %(R, W, M, <span class="hljs-number">1</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( SLOAD (),       R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = sload  %(R, W, M, <span class="hljs-number">1</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( LOGARITHM2 (),   R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = log2   %(R, W, M, <span class="hljs-number">1</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( MSTORE (),      R, W, M, _, _ ) =&gt; store  %(R, W, M, <span class="hljs-number">0</span>) , %(R, W, M, <span class="hljs-number">1</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( SSTORE (),      R, W, M, _, _ ) =&gt; sstore %(R, W, M, <span class="hljs-number">0</span>) , %(R, W, M, <span class="hljs-number">1</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( LOG1 (),        R, W, M, _, _ ) =&gt; log    %(R, W, M, <span class="hljs-number">0</span>) , %(R, W, M, <span class="hljs-number">1</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( EXTCODESIZE (), R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = call @iele.extcodesize ( %(R, W, M, <span class="hljs-number">1</span>) )<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( BLOCKHASH (),   R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = call @iele.blockhash   ( %(R, W, M, <span class="hljs-number">1</span>) )<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( BALANCE (),     R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = call @iele.balance     ( %(R, W, M, <span class="hljs-number">1</span>) )<span class="hljs-keyword"> 
+
+    rule</span> #dasmInstruction ( ADD (),        R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = add    %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( MUL (),        R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = mul    %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( SUB (),        R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = sub    %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( DIV (),        R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = div    %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( MOD (),        R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = mod    %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( EXP (),        R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = exp    %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( SIGNEXTEND (), R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = sext   %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( TWOS (),       R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = twos   %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( BSWAP (),      R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = bswap  %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( AND (),        R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = and    %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( OR (),         R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = or     %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( XOR (),        R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = xor    %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( SHIFT (),      R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = shift  %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( BYTE (),       R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = byte   %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( LT (),         R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = cmp lt %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( LE (),         R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = cmp le %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( GT (),         R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = cmp gt %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( GE (),         R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = cmp ge %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( EQ (),         R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = cmp eq %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( NE (),         R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = cmp ne %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( LOG2 (),       R, W, M, _, _ ) =&gt; log %(R, W, M, <span class="hljs-number">0</span>) , %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>)<span class="hljs-keyword">
+
+    rule</span> #dasmInstruction ( ADDMOD (),  R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = addmod %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>) , %(R, W, M, <span class="hljs-number">3</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( MULMOD (),  R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = mulmod %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>) , %(R, W, M, <span class="hljs-number">3</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( EXPMOD (),  R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = expmod %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>) , %(R, W, M, <span class="hljs-number">3</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( MLOADN (),  R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = load   %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>) , %(R, W, M, <span class="hljs-number">3</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( MSTOREN (), R, W, M, _, _ ) =&gt; store %(R, W, M, <span class="hljs-number">0</span>) , %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>) , %(R, W, M, <span class="hljs-number">3</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( LOG3 (),    R, W, M, _, _ ) =&gt; log %(R, W, M, <span class="hljs-number">0</span>) , %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>) , %(R, W, M, <span class="hljs-number">3</span>)<span class="hljs-keyword">
+
+    rule</span> #dasmInstruction ( LOG4 (),    R, W, M, _, _ ) =&gt; log %(R, W, M, <span class="hljs-number">0</span>) , %(R, W, M, <span class="hljs-number">1</span>) , %(R, W, M, <span class="hljs-number">2</span>) , %(R, W, M, <span class="hljs-number">3</span>) , %(R, W, M, <span class="hljs-number">4</span>)<span class="hljs-keyword">
+
+    rule</span> #dasmInstruction ( STATICCALL (LABEL, ARGS, RETS), R, W, M, F, _ ) =&gt; %l(R, W, M, <span class="hljs-number">0</span>, RETS +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>) = staticcall @ getIeleName(F [ LABEL ]) at %(R, W, M, <span class="hljs-number">2</span> +<span class="hljs-keyword">Int</span> RETS) ( %o(R, W, M, <span class="hljs-number">3</span> +<span class="hljs-keyword">Int</span> RETS, ARGS) ) gaslimit %(R, W, M, <span class="hljs-number">1</span> +<span class="hljs-keyword">Int</span> RETS)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( STATICCALLDYN (ARGS, RETS), R, W, M, F, _ ) =&gt; %l(R, W, M, <span class="hljs-number">0</span>, RETS +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>) = staticcall %(R, W, M, <span class="hljs-number">1</span> +<span class="hljs-keyword">Int</span> RETS) at %(R, W, M, <span class="hljs-number">3</span> +<span class="hljs-keyword">Int</span> RETS) ( %o(R, W, M, <span class="hljs-number">4</span> +<span class="hljs-keyword">Int</span> RETS, ARGS) ) gaslimit %(R, W, M, <span class="hljs-number">2</span> +<span class="hljs-keyword">Int</span> RETS)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( CALL (LABEL, ARGS, RETS), R, W, M, F, _ ) =&gt; %l(R, W, M, <span class="hljs-number">0</span>, RETS +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>) = call @ getIeleName(F [ LABEL ]) at %(R, W, M, <span class="hljs-number">2</span> +<span class="hljs-keyword">Int</span> RETS) ( %o(R, W, M, <span class="hljs-number">4</span> +<span class="hljs-keyword">Int</span> RETS, ARGS) ) send %(R, W, M, <span class="hljs-number">3</span> +<span class="hljs-keyword">Int</span> RETS) , gaslimit %(R, W, M, <span class="hljs-number">1</span> +<span class="hljs-keyword">Int</span> RETS)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( CALLDYN (ARGS, RETS), R, W, M, F, _ ) =&gt; %l(R, W, M, <span class="hljs-number">0</span>, RETS +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>) = call %(R, W, M, <span class="hljs-number">1</span> +<span class="hljs-keyword">Int</span> RETS) at %(R, W, M, <span class="hljs-number">3</span> +<span class="hljs-keyword">Int</span> RETS) ( %o(R, W, M, <span class="hljs-number">5</span> +<span class="hljs-keyword">Int</span> RETS, ARGS) ) send %(R, W, M, <span class="hljs-number">4</span> +<span class="hljs-keyword">Int</span> RETS) , gaslimit %(R, W, M, <span class="hljs-number">2</span> +<span class="hljs-keyword">Int</span> RETS)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( LOCALCALL (LABEL, ARGS, RETS), R, W, M, F, _ ) =&gt; %l(R, W, M, <span class="hljs-number">0</span>, RETS) = call @ getIeleName(F [ LABEL ] orDefault LABEL) ( %o(R, W, M, RETS, ARGS) )<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( LOCALCALLDYN (ARGS, RETS), R, W, M, F, _ ) =&gt; %l(R, W, M, <span class="hljs-number">0</span>, RETS) = call %(R, W, M, RETS) ( %o(R, W, M, <span class="hljs-number">1</span> +<span class="hljs-keyword">Int</span> RETS, ARGS) )<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( CALLADDRESS (LABEL), R, W, M, F, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) = calladdress @ getIeleName(F [ LABEL ]) at %(R, W, M, <span class="hljs-number">1</span>)<span class="hljs-keyword">
+
+    rule</span> #dasmInstruction ( CREATE (LABEL, ARGS), R, W, M, _, NAME ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) , %(R, W, M, <span class="hljs-number">1</span>) = create NAME +.+IeleName String2IeleName(Int2String(LABEL)) ( %o(R, W, M, <span class="hljs-number">3</span>, ARGS) ) send %(R, W, M, <span class="hljs-number">2</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( COPYCREATE (ARGS), R, W, M, _, _ ) =&gt; %(R, W, M, <span class="hljs-number">0</span>) , %(R, W, M, <span class="hljs-number">1</span>) = copycreate %(R, W, M, <span class="hljs-number">3</span>) ( %o(R, W, M, <span class="hljs-number">4</span>, ARGS) ) send %(R, W, M, <span class="hljs-number">2</span>)<span class="hljs-keyword">
+
+    rule</span> #dasmInstruction ( REVERT(), R, W, M, _, _ ) =&gt; revert %(R, W, M, <span class="hljs-number">0</span>)<span class="hljs-keyword">
+    rule</span> #dasmInstruction ( RETURN(RETS), R, W, M, _, _ ) =&gt; ret %o(R, W, M, <span class="hljs-number">0</span>, RETS)<span class="hljs-keyword">
+      requires</span> RETS =/=<span class="hljs-keyword">Int</span> <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> #dasmInstruction ( RETURN(<span class="hljs-number">0</span>), R, W, M, _, _ ) =&gt; ret void<span class="hljs-keyword">
+
+    syntax</span> LValue ::= <span class="hljs-string">&quot;%&quot;</span> <span class="hljs-string">&quot;(&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;,&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;,&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;,&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;)&quot;</span> [function]
+ <span class="hljs-comment">// --------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> %(REGS, WIDTH, MASK, IDX) =&gt; % ((REGS &gt;&gt;<span class="hljs-keyword">Int</span> (IDX *<span class="hljs-keyword">Int</span> WIDTH)) &amp;<span class="hljs-keyword">Int</span> MASK)<span class="hljs-keyword">
+
+    syntax</span> NonEmptyOperands ::= <span class="hljs-string">&quot;%o&quot;</span> <span class="hljs-string">&quot;(&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;,&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;,&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;,&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;,&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;)&quot;</span> [function]
+ <span class="hljs-comment">// -------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> %o(REGS, WIDTH, MASK, IDX, <span class="hljs-number">0</span>) =&gt; .NonEmptyOperands<span class="hljs-keyword">
+    rule</span> %o(REGS, WIDTH, MASK, IDX, COUNT) =&gt; %(REGS, WIDTH, MASK, IDX) , %o(REGS, WIDTH, MASK, IDX +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, COUNT -<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>) [owise]<span class="hljs-keyword">
+
+    syntax</span> LValues ::= <span class="hljs-string">&quot;%l&quot;</span> <span class="hljs-string">&quot;(&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;,&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;,&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;,&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;,&quot;</span><span class="hljs-keyword"> Int</span> <span class="hljs-string">&quot;)&quot;</span> [function]
+ <span class="hljs-comment">// ------------------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> %l(REGS, WIDTH, MASK, IDX, <span class="hljs-number">0</span>) =&gt; .LValues<span class="hljs-keyword">
+    rule</span> %l(REGS, WIDTH, MASK, IDX, COUNT) =&gt; %(REGS, WIDTH, MASK, IDX) , %l(REGS, WIDTH, MASK, IDX +<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>, COUNT -<span class="hljs-keyword">Int</span> <span class="hljs-number">1</span>) [owise]<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Int</span> ::= #opWidth ( OpCode ,<span class="hljs-keyword"> Int</span> ) [function]
+ <span class="hljs-comment">// ---------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #opWidth ( OP, NBITS ) =&gt; #opCodeWidth(OP) +<span class="hljs-keyword">Int</span> ((NBITS *<span class="hljs-keyword">Int</span> #numArgs(OP)) up/<span class="hljs-keyword">Int</span> <span class="hljs-number">8</span>) [owise]<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Int</span> ::= #opCodeWidth ( OpCode ) [function]
+ <span class="hljs-comment">// -------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #opCodeWidth( BRLABEL(_) )         =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> #opCodeWidth( BR(_) )              =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> #opCodeWidth( BRC(_) )             =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> #opCodeWidth( LOCALCALL(_,_,_) )   =&gt; <span class="hljs-number">7</span><span class="hljs-keyword">
+    rule</span> #opCodeWidth( LOCALCALLDYN(_,_) )  =&gt; <span class="hljs-number">5</span><span class="hljs-keyword">
+    rule</span> #opCodeWidth( RETURN(_) )          =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> #opCodeWidth( CALL(_,_,_) )        =&gt; <span class="hljs-number">7</span><span class="hljs-keyword">
+    rule</span> #opCodeWidth( CALLDYN(_,_) )       =&gt; <span class="hljs-number">5</span><span class="hljs-keyword">
+    rule</span> #opCodeWidth( STATICCALL(_,_,_) )  =&gt; <span class="hljs-number">7</span><span class="hljs-keyword">
+    rule</span> #opCodeWidth( STATICCALLDYN(_,_) ) =&gt; <span class="hljs-number">5</span><span class="hljs-keyword">
+    rule</span> #opCodeWidth( CALLADDRESS(_) )     =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> #opCodeWidth( _:CreateOp )         =&gt; <span class="hljs-number">5</span><span class="hljs-keyword">
+    rule</span> #opCodeWidth( _:CopyCreateOp )     =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> #opCodeWidth ( LOADPOS(N, _) )     =&gt; <span class="hljs-number">1</span> +<span class="hljs-keyword">Int</span> N<span class="hljs-keyword">
+    rule</span> #opCodeWidth ( LOADNEG(N, _) )     =&gt; <span class="hljs-number">1</span> +<span class="hljs-keyword">Int</span> N<span class="hljs-keyword">
+    rule</span> #opCodeWidth( OP )                 =&gt; <span class="hljs-number">1</span> [owise]<span class="hljs-keyword">
+
+    syntax</span><span class="hljs-keyword"> Int</span> ::= #numArgs ( OpCode ) [function]
+ <span class="hljs-comment">// ---------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #numArgs ( _:NullOp ) =&gt; <span class="hljs-number">0</span><span class="hljs-keyword">
+    rule</span> #numArgs ( _:UnOp )   =&gt; <span class="hljs-number">1</span><span class="hljs-keyword">
+    rule</span> #numArgs ( _:BinOp )  =&gt; <span class="hljs-number">2</span><span class="hljs-keyword">
+    rule</span> #numArgs ( _:TernOp ) =&gt; <span class="hljs-number">3</span><span class="hljs-keyword">
+    rule</span> #numArgs ( _:QuadOp ) =&gt; <span class="hljs-number">4</span><span class="hljs-keyword">
+    rule</span> #numArgs ( _:FiveOp ) =&gt; <span class="hljs-number">5</span><span class="hljs-keyword">
+    rule</span> #numArgs ( STATICCALL   (_, ARGS, RETS) ) =&gt; <span class="hljs-number">3</span> +<span class="hljs-keyword">Int</span> ARGS +<span class="hljs-keyword">Int</span> RETS<span class="hljs-keyword">
+    rule</span> #numArgs ( STATICCALLDYN(   ARGS, RETS) ) =&gt; <span class="hljs-number">4</span> +<span class="hljs-keyword">Int</span> ARGS +<span class="hljs-keyword">Int</span> RETS<span class="hljs-keyword">
+    rule</span> #numArgs ( CALL         (_, ARGS, RETS) ) =&gt; <span class="hljs-number">4</span> +<span class="hljs-keyword">Int</span> ARGS +<span class="hljs-keyword">Int</span> RETS<span class="hljs-keyword">
+    rule</span> #numArgs ( CALLDYN      (   ARGS, RETS) ) =&gt; <span class="hljs-number">5</span> +<span class="hljs-keyword">Int</span> ARGS +<span class="hljs-keyword">Int</span> RETS<span class="hljs-keyword">
+    rule</span> #numArgs ( LOCALCALL    (_, ARGS, RETS) ) =&gt; ARGS +<span class="hljs-keyword">Int</span> RETS<span class="hljs-keyword">
+    rule</span> #numArgs ( LOCALCALLDYN (   ARGS, RETS) ) =&gt; <span class="hljs-number">1</span> +<span class="hljs-keyword">Int</span> ARGS +<span class="hljs-keyword">Int</span> RETS<span class="hljs-keyword">
+    rule</span> #numArgs ( CALLADDRESS(_) )               =&gt; <span class="hljs-number">2</span><span class="hljs-keyword">
+    rule</span> #numArgs ( RETURN(RETS) )                 =&gt; RETS<span class="hljs-keyword">
+    rule</span> #numArgs ( CREATE(_, ARGS) )              =&gt; <span class="hljs-number">3</span> +<span class="hljs-keyword">Int</span> ARGS<span class="hljs-keyword">
+    rule</span> #numArgs ( COPYCREATE(ARGS) )             =&gt; <span class="hljs-number">4</span> +<span class="hljs-keyword">Int</span> ARGS<span class="hljs-keyword">
+
+    syntax</span> OpCode ::= #dasmOpCode ( WordStack ) [function]
+ <span class="hljs-comment">// ------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #dasmOpCode(   <span class="hljs-number">1</span> :  _ ) =&gt; ADD ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(   <span class="hljs-number">2</span> :  _ ) =&gt; MUL ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(   <span class="hljs-number">3</span> :  _ ) =&gt; SUB ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(   <span class="hljs-number">4</span> :  _ ) =&gt; DIV ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(   <span class="hljs-number">6</span> :  _ ) =&gt; MOD ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(   <span class="hljs-number">7</span> :  _ ) =&gt; EXP ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(   <span class="hljs-number">8</span> :  _ ) =&gt; ADDMOD ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(   <span class="hljs-number">9</span> :  _ ) =&gt; MULMOD ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">10</span> :  _ ) =&gt; EXPMOD ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">11</span> :  _ ) =&gt; SIGNEXTEND ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">12</span> :  _ ) =&gt; TWOS ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">13</span> :  _ ) =&gt; BSWAP ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">15</span> :  _ ) =&gt; NE ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">16</span> :  _ ) =&gt; LT ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">17</span> :  _ ) =&gt; GT ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">18</span> :  _ ) =&gt; LE ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">19</span> :  _ ) =&gt; GE ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">20</span> :  _ ) =&gt; EQ ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">21</span> :  _ ) =&gt; ISZERO ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">22</span> :  _ ) =&gt; AND ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">23</span> :  _ ) =&gt; OR ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">24</span> :  _ ) =&gt; XOR ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">25</span> :  _ ) =&gt; NOT ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">26</span> :  _ ) =&gt; BYTE ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">27</span> :  _ ) =&gt; SHIFT ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">28</span> :  _ ) =&gt; LOGARITHM2 ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">32</span> :  _ ) =&gt; SHA3 ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">48</span> :  _ ) =&gt; ADDRESS ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">49</span> :  _ ) =&gt; BALANCE ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">50</span> :  _ ) =&gt; ORIGIN ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">51</span> :  _ ) =&gt; CALLER ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">52</span> :  _ ) =&gt; CALLVALUE ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">56</span> :  _ ) =&gt; CODESIZE ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">58</span> :  _ ) =&gt; GASPRICE ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">59</span> :  _ ) =&gt; EXTCODESIZE ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">64</span> :  _ ) =&gt; BLOCKHASH ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">65</span> :  _ ) =&gt; BENEFICIARY ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">66</span> :  _ ) =&gt; TIMESTAMP ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">67</span> :  _ ) =&gt; NUMBER ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">68</span> :  _ ) =&gt; DIFFICULTY ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">69</span> :  _ ) =&gt; GASLIMIT ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">80</span> :  _ ) =&gt; MLOADN ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">81</span> :  _ ) =&gt; MLOAD ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">82</span> :  _ ) =&gt; MSTOREN ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">83</span> :  _ ) =&gt; MSTORE ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">84</span> :  _ ) =&gt; SLOAD ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">85</span> :  _ ) =&gt; SSTORE ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">86</span> :  _ ) =&gt; MSIZE ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">87</span> :  _ ) =&gt; GAS ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">96</span> :  _ ) =&gt; MOVE ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">97</span> : WS ) =&gt; #dasmLoad(<span class="hljs-number">97</span>, #loadLen(WS), #loadOffset(WS), WS)<span class="hljs-keyword">
+    rule</span> #dasmOpCode(  <span class="hljs-number">98</span> : WS ) =&gt; #dasmLoad(<span class="hljs-number">98</span>, #loadLen(WS), #loadOffset(WS), WS)<span class="hljs-keyword">
+    rule</span> #dasmOpCode( <span class="hljs-number">100</span> : W1 : W2 : WS ) =&gt; BR(W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2)<span class="hljs-keyword">
+    rule</span> #dasmOpCode( <span class="hljs-number">101</span> : W1 : W2 : WS ) =&gt; BRC(W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2)<span class="hljs-keyword">
+    rule</span> #dasmOpCode( <span class="hljs-number">102</span> : W1 : W2 : WS ) =&gt; BRLABEL(W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2)<span class="hljs-keyword">
+    rule</span> #dasmOpCode( <span class="hljs-number">160</span> :  _ ) =&gt; LOG0 ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode( <span class="hljs-number">161</span> :  _ ) =&gt; LOG1 ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode( <span class="hljs-number">162</span> :  _ ) =&gt; LOG2 ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode( <span class="hljs-number">163</span> :  _ ) =&gt; LOG3 ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode( <span class="hljs-number">164</span> :  _ ) =&gt; LOG4 ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode( <span class="hljs-number">240</span> : W1 : W2 : W3 : W4 : WS ) =&gt; CREATE(W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2, W3 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W4)<span class="hljs-keyword">
+    rule</span> #dasmOpCode( <span class="hljs-number">241</span> : W1 : W2 : WS ) =&gt; COPYCREATE(W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2)<span class="hljs-keyword">
+    rule</span> #dasmOpCode( <span class="hljs-number">242</span> : W1 : W2 : W3 : W4 : W5 : W6 : WS ) =&gt; CALL(W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2, W3 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W4, W5 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W6)<span class="hljs-keyword">
+    rule</span> #dasmOpCode( <span class="hljs-number">243</span> : W1 : W2 : W3 : W4 : WS ) =&gt; CALLDYN(W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2, W3 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W4)<span class="hljs-keyword">
+    rule</span> #dasmOpCode( <span class="hljs-number">244</span> : W1 : W2 : W3 : W4 : W5 : W6 : WS ) =&gt; STATICCALL(W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2, W3 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W4, W5 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W6)<span class="hljs-keyword">
+    rule</span> #dasmOpCode( <span class="hljs-number">245</span> : W1 : W2 : W3 : W4 : WS ) =&gt; STATICCALLDYN(W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2, W3 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W4)<span class="hljs-keyword">
+    rule</span> #dasmOpCode( <span class="hljs-number">246</span> : W1 : W2 : WS ) =&gt; RETURN(W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2)<span class="hljs-keyword">
+    rule</span> #dasmOpCode( <span class="hljs-number">247</span> :  _ ) =&gt; REVERT()<span class="hljs-keyword">
+    rule</span> #dasmOpCode( <span class="hljs-number">248</span> : W1 : W2 : W3 : W4 : W5 : W6 : WS ) =&gt; LOCALCALL(W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2, W3 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W4, W5 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W6)<span class="hljs-keyword">
+    rule</span> #dasmOpCode( <span class="hljs-number">249</span> : W1 : W2 : W3 : W4 : WS ) =&gt; LOCALCALLDYN(W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2, W3 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W4)<span class="hljs-keyword">
+    rule</span> #dasmOpCode( <span class="hljs-number">250</span> : W1 : W2 : WS ) =&gt; CALLADDRESS(W1 *<span class="hljs-keyword">Int</span> <span class="hljs-number">256</span> +<span class="hljs-keyword">Int</span> W2)<span class="hljs-keyword">
+    rule</span> #dasmOpCode( <span class="hljs-number">254</span> :  _ ) =&gt; INVALID ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode( <span class="hljs-number">255</span> :  _ ) =&gt; SELFDESTRUCT ()<span class="hljs-keyword">
+    rule</span> #dasmOpCode( _ ) =&gt; encodingError() [owise]<span class="hljs-keyword">
+
+    syntax</span> OpCode ::= #dasmLoad (<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> ,<span class="hljs-keyword"> Int</span> , WordStack ) [function]
+ <span class="hljs-comment">// ----------------------------------------------------------------------</span><span class="hljs-keyword">
+    rule</span> #dasmLoad(<span class="hljs-number">97</span>, LEN, POS, WS) =&gt; LOADPOS(LEN +<span class="hljs-keyword">Int</span> POS, #asUnsigned(WS [ POS .. LEN ]))<span class="hljs-keyword">
+    rule</span> #dasmLoad(<span class="hljs-number">98</span>, LEN, POS, WS) =&gt; LOADNEG(LEN +<span class="hljs-keyword">Int</span> POS, #asUnsigned(WS [ POS .. LEN ]))<span class="hljs-keyword">
+
+endmodule</span>
+</code></pre>
+</body></html></div>
+        </main>
+      </div>
+    </div>
+<footer class="app-footer text-md-left text-center">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-2 mb-md-0 mb-4">
+        <span class="pr-md-5 pr-0 py-3">
+          <a href="https://runtimeverification.com" target="_blank">
+            <picture>
+              <source
+                srcset="../assets/img/rv-logo-dark.png"
+                media="(prefers-color-scheme: dark)"
+              />
+              <img
+                class="pr-3 footer-logo"
+                src="../assets/img/rv-logo.png"
+                alt="Runtime Verification Inc logo"
+              />
+            </picture>
+          </a>
+        </span>
+      </div>
+      <div class="col-md-6 mb-md-0 mb-4"></div>
+      <div class="col-md-4 text-md-right">
+        <p class="copyright">
+          &copy; 2020 Runtime Verification Inc. All right reserved.
+        </p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script
+  async
+  src="https://www.googletagmanager.com/gtag/js?id=UA-163311512-1"
+></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag("js", new Date());
+  gtag("config", "UA-163311512-1");
+</script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Typist/1.2/typist.min.js"></script>
+    <script src="../assets/js/index.js"></script>
+  </body>
+</html>
