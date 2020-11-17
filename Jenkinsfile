@@ -19,7 +19,7 @@ pipeline {
       steps {
         sh '''
           make deps
-          make COVERAGE=k
+          make COVERAGE=k -j4
         '''
       }
     }
