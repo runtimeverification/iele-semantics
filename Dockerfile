@@ -11,6 +11,11 @@ RUN    apt update                                                          \
 
 RUN curl -sSL https://get.haskellstack.org/ | sh
 
+RUN curl -sL https://deb.nodesource.com/setup_10.x | bash -
+RUN    apt-get update               \
+    && apt-get upgrade --yes        \
+    && apt-get install --yes nodejs
+
 ARG USER_ID=1000
 ARG GROUP_ID=1000
 RUN    groupadd --gid $GROUP_ID user                                        \
