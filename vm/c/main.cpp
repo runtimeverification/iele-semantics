@@ -5,7 +5,7 @@
 #include "proto/msg.pb.h"
 #include "runtime/alloc.h"
 #include "version.h"
-#include "init.h"
+#include "k.h"
 
 extern FILE *vm_out_chan;
 extern FILE *vm_in_chan;
@@ -18,7 +18,39 @@ extern "C" {
   void freeAllKoreMem(void);
 }
 
-int init(int port, in_addr host);
+int init(int port, in_addr host) {
+  initStaticObjects();
+
+  int sock = socket(AF_INET, SOCK_STREAM, 0);
+  if (sock == -1) {
+    perror("socket");
+    exit(1);
+  }
+  sockaddr_in addr;
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(port);
+  addr.sin_addr = host;
+  int sec = 0;
+  int ret;
+  do {
+    if (sec > 0) {
+      std::cerr << "Socket in use, retrying in " << sec << "..." << std::endl;
+    }
+    sleep(sec);
+    ret = bind(sock, (sockaddr *)&addr, sizeof(addr));
+    sec++;
+  } while(ret == -1 && errno == EADDRINUSE);
+  if (ret) {
+    perror("bind");
+    exit(1);
+  }
+  if (listen(sock, 50)) {
+    perror("listen");
+    exit(1);
+  }
+  set_gc_interval(10000);
+  return sock;
+}
 
 int main(int argc, char **argv) {
   std::string usage = std::string("Usage: ") + argv[0] + " PORT BIND_ADDRESS";

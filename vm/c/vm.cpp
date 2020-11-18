@@ -3,7 +3,7 @@
 #include "runtime/header.h"
 #include "runtime/alloc.h"
 #include "vm.h"
-#include "init.h"
+#include "k.h"
 #include "semantics.h"
 #include "world.h"
 

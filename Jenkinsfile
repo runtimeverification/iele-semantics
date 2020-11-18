@@ -19,7 +19,7 @@ pipeline {
       steps {
         sh '''
           make deps
-          make COVERAGE=k
+          make COVERAGE=k -j4
         '''
       }
     }
@@ -51,25 +51,12 @@ pipeline {
         branch 'master'
         beforeAgent true
       }
-      agent {
-        dockerfile {
-          additionalBuildArgs '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g)'
-          reuseNode true
-        }
-      }
       post {
         failure {
           slackSend color: '#cb2431'                                 \
-                  , channel: '#iele-internal'                                    \
+                  , channel: '#iele-internal'                        \
                   , message: "Deploy Phase Failed: ${env.BUILD_URL}"
         }
-      }
-      environment {
-        AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
-        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
-        AWS_REGION            = 'us-east-2'
-        GITHUB_TOKEN          = credentials('rv-jenkins')
-        GIT_SSH_COMMAND       = 'ssh -o StrictHostKeyChecking=accept-new'
       }
       steps {
         dir('gh-pages') {

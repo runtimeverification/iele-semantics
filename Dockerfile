@@ -11,6 +11,11 @@ RUN    apt update                                                          \
 
 RUN curl -sSL https://get.haskellstack.org/ | sh
 
+RUN curl -sL https://deb.nodesource.com/setup_10.x | bash -
+RUN    apt-get update               \
+    && apt-get upgrade --yes        \
+    && apt-get install --yes nodejs
+
 ARG USER_ID=1000
 ARG GROUP_ID=1000
 RUN    groupadd --gid $GROUP_ID user                                        \
@@ -25,4 +30,13 @@ RUN    cd /home/user/.tmp-haskell \
 
 RUN    opam init -y \
     && opam install zarith hex uuidm rlp yojson cryptokit ocaml-protoc
-    
+
+RUN    git config --global user.email 'admin@runtimeverification.com' \
+    && git config --global user.name  'RV Jenkins'                    \
+    && mkdir -p ~/.ssh                                                \
+    && echo 'host github.com'                       > ~/.ssh/config   \
+    && echo '    hostname github.com'              >> ~/.ssh/config   \
+    && echo '    user git'                         >> ~/.ssh/config   \
+    && echo '    identityagent SSH_AUTH_SOCK'      >> ~/.ssh/config   \
+    && echo '    stricthostkeychecking accept-new' >> ~/.ssh/config   \
+    && chmod go-rwx -R ~/.ssh
