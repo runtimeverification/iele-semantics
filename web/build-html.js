@@ -3,30 +3,34 @@ const path = require("path");
 const MarkdownIt = require("markdown-it");
 const glob = require("glob");
 const cheerio = require("cheerio");
-const hljs = require("highlight.js"); // https://highlightjs.org/
-const k = require("./highlight.js/k");
 const G = require("glob");
 const url = require("url");
-hljs.registerLanguage("k", k);
+const Prism = require("prismjs");
+const loadLanguages = require("prismjs/components/");
+loadLanguages();
+const defineK = require("./prismjs/k");
+defineK(Prism);
+const defineIELE = require("./prismjs/iele");
+defineIELE(Prism);
 
 const md = new MarkdownIt({
   html: true,
   linkify: true,
   highlight: function (str, lang) {
-    lang = lang.replace(/^\{\./, "").replace(/\}$/, "").trim();
-    if (lang && hljs.getLanguage(lang)) {
-      try {
-        return (
-          '<pre class="hljs"><code>' +
-          hljs.highlight(lang, str, true).value +
-          "</code></pre>"
-        );
-      } catch (__) {}
+    lang = lang
+      .trim()
+      .replace(/^{\.(.+?)}?/, (_, $1) => $1)
+      .trim();
+    try {
+      const html = Prism.highlight(str, Prism.languages[lang], lang);
+      return `<pre class="language-${lang}"><code>` + html + "</code></pre>";
+    } catch (error) {
+      return (
+        '<pre class="language-text"><code>' +
+        md.utils.escapeHtml(str) +
+        "</code></pre>"
+      );
     }
-
-    return (
-      '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + "</code></pre>"
-    );
   },
 });
 md.use(require("markdown-it-anchor"));
@@ -131,27 +135,29 @@ function generatePagesFromMarkdownFiles({
         if (href.match(/^(https?|mailto):/)) {
           $(anchorElement).attr("target", "_blank");
           $(anchorElement).attr("rel", "noopener");
-        } else if (href.match(/\.md(#|$)/)) {
+        } else if (href.match(/\.md(#.+?$|$)/)) {
           // might be ./README.md or ./README.md#tag
-          if (
-            href.startsWith("../") &&
-            !href.match(/(index|README)\.md(#|$)/)
-          ) {
-            href = "../" + href;
-          }
+          let hrefTargetFilePath = path.resolve(
+            href.startsWith("/")
+              ? path.resolve(outputDirectory, "." + path.dirname(href))
+              : path.resolve(
+                  path.dirname(targetFilePath),
+                  path.basename(file).match(/^(index|README)\.md$/i)
+                    ? "./"
+                    : "../",
+                  path.dirname(href)
+                ),
+            path.basename(href).match(/^(README|index)\.md/)
+              ? path.basename(href).replace(/^(README|index)\.md/, `index.html`)
+              : path.basename(href).replace(/\.md/, "/index.html")
+          );
           $(anchorElement).attr(
             "href",
-            href.match(/(index|README)\.md(#|$)/)
-              ? href.replace(/(index|README)\.md/, "")
-              : href.replace(/(?:\/|^)(.+?)\.md/, ($0, name) => {
-                  if (path.basename(file).match(/^(index|README)\.md$/i)) {
-                    return `./${name}/`;
-                  } else {
-                    return `../${name}/`;
-                  }
-                })
+            path
+              .relative(path.dirname(targetFilePath), hrefTargetFilePath)
+              .replace(/(\/|^)index\.html(#|$)/, (_, pre, post) => pre + post)
           );
-        } else {
+        } else if (!href.endsWith("/")) {
           $(anchorElement).attr("href", url.resolve(origin, href));
         }
       } catch (error) {}
