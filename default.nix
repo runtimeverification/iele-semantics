@@ -13,6 +13,8 @@ let
   inherit (pkgs) lib haskell-nix;
 
   iele-assemble-project = (args: haskell-nix.stackProject args) {
+    inherit checkMaterialization;
+    materialized = ./nix/iele-assemble.materialized;
     src = haskell-nix.haskellLib.cleanGit { src = ./.; subDir = "compiler"; };
   };
 
