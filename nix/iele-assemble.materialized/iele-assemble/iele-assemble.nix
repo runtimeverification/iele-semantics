@@ -11,7 +11,7 @@
     flags = {};
     package = {
       specVersion = "1.10";
-      identifier = { name = "compiler"; version = "0.0.1.0"; };
+      identifier = { name = "iele-assemble"; version = "0.0.1.0"; };
       license = "LicenseRef-NCSA";
       copyright = "2017 Runtime Verification";
       maintainer = "virgil.serbanuta@runtimeverification.com";
@@ -62,7 +62,7 @@
         "iele-assemble" = {
           depends = [
             (hsPkgs."base" or (errorHandler.buildDepError "base"))
-            (hsPkgs."compiler" or (errorHandler.buildDepError "compiler"))
+            (hsPkgs."iele-assemble" or (errorHandler.buildDepError "iele-assemble"))
             (hsPkgs."parsec" or (errorHandler.buildDepError "parsec"))
             (hsPkgs."bytestring" or (errorHandler.buildDepError "bytestring"))
             (hsPkgs."sandi" or (errorHandler.buildDepError "sandi"))
@@ -73,10 +73,10 @@
           };
         };
       tests = {
-        "compiler-test" = {
+        "iele-assemble-test" = {
           depends = [
             (hsPkgs."base" or (errorHandler.buildDepError "base"))
-            (hsPkgs."compiler" or (errorHandler.buildDepError "compiler"))
+            (hsPkgs."iele-assemble" or (errorHandler.buildDepError "iele-assemble"))
             (hsPkgs."parsec" or (errorHandler.buildDepError "parsec"))
             (hsPkgs."tasty" or (errorHandler.buildDepError "tasty"))
             (hsPkgs."tasty-hunit" or (errorHandler.buildDepError "tasty-hunit"))

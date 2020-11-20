@@ -15,13 +15,13 @@ let
   iele-assemble-project = (args: haskell-nix.stackProject args) {
     inherit checkMaterialization;
     materialized = ./nix/iele-assemble.materialized;
-    src = haskell-nix.haskellLib.cleanGit { src = ./.; subDir = "compiler"; };
+    src = haskell-nix.haskellLib.cleanGit { src = ./.; subDir = "iele-assemble"; };
   };
 
   default =
     {
       inherit pkgs iele-assemble-project;
-      inherit (iele-assemble-project.compiler.components.exes) iele-assemble;
+      inherit (iele-assemble-project.iele-assemble.components.exes) iele-assemble;
       cache = [
         iele-assemble-project.roots
       ];

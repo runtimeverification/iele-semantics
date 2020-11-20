@@ -1,5 +1,5 @@
 cabal-version:       >=1.10
-name:                compiler
+name:                iele-assemble
 version:             0.0.1.0
 -- synopsis:
 -- description:
@@ -49,19 +49,19 @@ executable iele-assemble
   main-is:             Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends: base
-  build-depends: compiler
+  build-depends: iele-assemble
   build-depends: parsec >=3.1 && <3.2
   build-depends: bytestring
   build-depends: sandi
 
-test-suite compiler-test
+test-suite iele-assemble-test
   type:                exitcode-stdio-1.0
   default-language:    Haskell2010
   hs-source-dirs:      test
   main-is:             TestParser.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends: base
-  build-depends: compiler
+  build-depends: iele-assemble
   build-depends: parsec >=3.1 && <3.2
   build-depends: tasty
   build-depends: tasty-hunit

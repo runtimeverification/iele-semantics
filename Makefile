@@ -22,7 +22,7 @@ BISECT=-package bisect_ppx
 PREDICATES=-predicates coverage
 endif
 
-export PATH:=$(shell cd compiler && stack path --local-install-root)/bin:${PATH}
+export PATH:=$(shell cd iele-assemble && stack path --local-install-root)/bin:${PATH}
 
 BUILD_DIR      := $(abspath .build)
 KORE_SUBMODULE := $(BUILD_DIR)/kore
@@ -52,10 +52,10 @@ llvm: tangle .build/llvm/iele-testing.kore
 haskell: tangle .build/haskell/definition.kore
 
 assembler:
-	cd compiler && stack build --install-ghc
+	cd iele-assemble && stack build --install-ghc
 
 install: assembler
-	cd compiler && stack install
+	cd iele-assemble && stack install
 	cp .build/vm/iele-vm .build/vm/iele-test-client .build/vm/iele-test-vm ~/.local/bin
 
 # Tangle from *.md files
