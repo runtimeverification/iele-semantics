@@ -306,7 +306,7 @@ instructionTests =
       "ret void"
   , testIeleInst
       "Revert"
-      (VoidOp (REVERT (mkArgs 1)) ["%10"])
+      (VoidOp REVERT ["%10"])
       "revert %10"
   , testIeleInst
       "Log 0"

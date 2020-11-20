@@ -1,3 +1,4 @@
+cabal-version:       >=1.10
 name:                compiler
 version:             0.0.1.0
 -- synopsis:
@@ -10,55 +11,57 @@ maintainer:          virgil.serbanuta@runtimeverification.com
 copyright:           2017 Runtime Verification
 category:            Compilers/Interpreters, Language
 build-type:          Simple
-extra-source-files:  README.md
-cabal-version:       >=1.10
 
-library
-  hs-source-dirs:      src
-  exposed-modules:     IeleParser
-                     , IeleDesugar
-                     , IelePrint
-                     , IeleTypes
-                     , IeleInstructions
-                     , IeleAssembler
-                     , IeleParserImplementation
-  other-modules:       IeleTHUtil
-  build-depends:       base >= 4.7 && < 5
-                     , parsec >=3.1 && <3.2
-                     , containers
-                     , lens
-                     , bifunctors
-                     , validation
-                     , cereal
-                     , bytestring
-                     , pretty
-                     , sandi
-                     , template-haskell
-  default-language:    Haskell2010
-
-executable iele-assemble
-  hs-source-dirs:      app
-  main-is:             Main.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
-  build-depends:       base
-                     , compiler
-                     , parsec >=3.1 && <3.2
-                     , bytestring
-                     , sandi
-  default-language:    Haskell2010
-
-test-suite compiler-test
-  type:                exitcode-stdio-1.0
-  hs-source-dirs:      test
-  main-is:             TestParser.hs
-  build-depends:       base
-                     , compiler
-                     , parsec >=3.1 && <3.2
-                     , tasty
-                     , tasty-hunit
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
-  default-language:    Haskell2010
+extra-source-files: README.md
 
 source-repository head
   type:     git
   location: https://github.com/runtimeverification/iele-semantics
+
+library
+  default-language: Haskell2010
+  hs-source-dirs: src
+  exposed-modules:
+    IeleParser
+    IeleDesugar
+    IelePrint
+    IeleTypes
+    IeleInstructions
+    IeleAssembler
+    IeleParserImplementation
+  other-modules:
+    IeleTHUtil
+  build-depends: base >= 4.7 && < 5
+  build-depends: parsec >=3.1 && <3.2
+  build-depends: containers
+  build-depends: lens
+  build-depends: bifunctors
+  build-depends: validation
+  build-depends: cereal
+  build-depends: bytestring
+  build-depends: pretty
+  build-depends: sandi
+  build-depends: template-haskell
+
+executable iele-assemble
+  default-language:    Haskell2010
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends: base
+  build-depends: compiler
+  build-depends: parsec >=3.1 && <3.2
+  build-depends: bytestring
+  build-depends: sandi
+
+test-suite compiler-test
+  type:                exitcode-stdio-1.0
+  default-language:    Haskell2010
+  hs-source-dirs:      test
+  main-is:             TestParser.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends: base
+  build-depends: compiler
+  build-depends: parsec >=3.1 && <3.2
+  build-depends: tasty
+  build-depends: tasty-hunit
