@@ -202,12 +202,6 @@ cleanUpFiles();
 const pageTemplate = fs
   .readFileSync("./static_content/html/page_template.html")
   .toString("utf-8");
-//generatePagesFromMarkdownFiles(
-//  path.resolve(__dirname, "./pages/") + "/**/*.md",
-//  path.resolve(__dirname, "./pages/"),
-//  path.resolve(__dirname, "./public_content/"),
-//  pageTemplate
-//);
 generatePagesFromMarkdownFiles({
   globPattern: path.resolve(__dirname, "../") + "/**/*.md",
   globOptions: { ignore: [path.resolve(__dirname, "../web/**/*")] },
