@@ -48,8 +48,8 @@ ADD --chown=user:user iele-assemble/stack.yaml iele-assemble/iele-assemble.cabal
 RUN    cd /home/user/.tmp-haskell \
     && stack build --only-snapshot
 
-RUN    opam init -y \
-    && opam install zarith hex uuidm rlp yojson cryptokit ocaml-protoc
+RUN    opam init --yes                                                       \
+    && opam install --yes zarith hex uuidm rlp yojson cryptokit ocaml-protoc
 
 RUN    git config --global user.email 'admin@runtimeverification.com' \
     && git config --global user.name  'RV Jenkins'                    \
