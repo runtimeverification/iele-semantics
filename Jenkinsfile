@@ -15,14 +15,7 @@ pipeline {
         }
       }
     }
-    stage('Build') {
-      steps {
-        sh '''
-          make deps
-          make COVERAGE=k -j4
-        '''
-      }
-    }
+    stage('Build') { steps { sh 'make COVERAGE=k -j4' } }
     stage('Test') {
       stages {
         stage('VM Tests') {
