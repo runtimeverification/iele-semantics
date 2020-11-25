@@ -1,13 +1,33 @@
 ARG K_COMMIT
 FROM runtimeverificationinc/kframework-k:ubuntu-bionic-${K_COMMIT}
 
-RUN    apt update                                                          \
-    && apt upgrade --yes                                                   \
-    && apt install --yes                                                   \
-           autoconf build-essential curl flex gcc libffi-dev libmpfr-dev   \
-           libtool make maven opam openjdk-8-jdk pandoc pkg-config python3 \
-           zlib1g-dev libsecp256k1-dev netcat protobuf-compiler cmake      \
-           libprotobuf-dev libcrypto++-dev libssl-dev libprocps-dev
+RUN    apt update         \
+    && apt upgrade --yes  \
+    && apt install --yes  \
+        autoconf          \
+        build-essential   \
+        cmake             \
+        curl              \
+        flex              \
+        gcc               \
+        libcrypto++-dev   \
+        libffi-dev        \
+        libmpfr-dev       \
+        libprocps-dev     \
+        libprotobuf-dev   \
+        libsecp256k1-dev  \
+        libssl-dev        \
+        libtool           \
+        make              \
+        maven             \
+        netcat            \
+        opam              \
+        openjdk-8-jdk     \
+        pandoc            \
+        pkg-config        \
+        protobuf-compiler \
+        python3           \
+        zlib1g-dev
 
 RUN curl -sSL https://get.haskellstack.org/ | sh
 
