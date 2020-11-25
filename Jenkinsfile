@@ -9,11 +9,7 @@ pipeline {
   stages {
     stage("Init title") {
       when { changeRequest() }
-      steps {
-        script {
-          currentBuild.displayName = "PR ${env.CHANGE_ID}: ${env.CHANGE_TITLE}"
-        }
-      }
+      steps { script { currentBuild.displayName = "PR ${env.CHANGE_ID}: ${env.CHANGE_TITLE}" } }
     }
     stage('Build') { steps { sh 'make COVERAGE=k -j4' } }
     stage('Test') {
