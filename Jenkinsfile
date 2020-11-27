@@ -1,5 +1,13 @@
 pipeline {
   agent { label 'docker' }
+  environment {
+    KIELE_VERSION     = '0.1.0'
+    GITHUB_TOKEN      = credentials('rv-jenkins')
+    SHORT_REV         = """${sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()}"""
+    LONG_REV          = """${sh(returnStdout: true, script: 'git rev-parse HEAD').trim()}"""
+    KIELE_RELEASE_TAG = "v${env.KIELE_VERSION}-${env.SHORT_REV}"
+    K_SHORT_REV       = """${sh(returnStdout: true, script: 'cat deps/k_release').trim()}"""
+  }
   options { ansiColor('xterm') }
   stages {
     stage("Init title") {
@@ -36,6 +44,68 @@ pipeline {
               options { timeout(time: 5, unit: 'MINUTES') }
               failFast true
               steps { sh 'make -j2 iele-test-haskell' }
+            }
+          }
+        }
+      }
+    }
+    stage('Package') {
+      stages {
+        stage('Checkout SCM') { steps { dir("kiele-${KIELE_VERSION}-src") { checkout scm } } }
+        stage('Binary Package') {
+          when {
+            branch 'master'
+            beforeAgent true
+          }
+          agent {
+            dockerfile {
+              reuseNode true
+              additionalBuildArgs '--build-arg K_COMMIT=${K_SHORT_REV} --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g)'
+            }
+          }
+          steps {
+            sh '''
+              make install INSTALL_PREFIX=$(pwd)/kiele-${KIELE_VERSION}-bin
+              cp install.sh kiele-${KIELE_VERSION}-bin/
+              tar czvf kiele-${KIELE_VERSION}-bin.tar.gz kiele-${KIELE_VERSION}-bin
+            '''
+            stash name: 'bin-kiele', includes: "kiele-${env.KIELE_VERSION}-bin.tar.gz"
+          }
+        }
+        stage('Ubuntu Bionic') {
+          stages {
+            stage('Build Package') {
+              agent {
+                dockerfile {
+                  dir "kiele-${env.KIELE_VERSION}-src/package/debian"
+                  additionalBuildArgs '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg BASE_IMAGE=ubuntu:bionic'
+                  reuseNode true
+                }
+              }
+              steps {
+                dir("kiele-${env.KIELE_VERSION}-bionic") {
+                  checkout scm
+                  sh './package/debian/build-package.sh ${K_SHORT_REV} bionic'
+                  stash name: 'bionic-kframework', includes: "kframework-bionic.deb"
+                }
+                stash name: 'bionic-kiele', includes: "kiele_${env.KIELE_VERSION}_amd64_bionic.deb"
+              }
+            }
+            stage('Test Package') {
+              agent {
+                dockerfile {
+                  filename "kiele-${env.KIELE_VERSION}-src/package/debian/Dockerfile.test"
+                  additionalBuildArgs '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg BASE_IMAGE=ubuntu:bionic'
+                  reuseNode true
+                }
+              }
+              options { timeout(time: 15, unit: 'MINUTES') }
+              steps {
+                dir("kiele-${env.KIELE_VERSION}-bionic-test") {
+                  unstash 'bionic-kiele'
+                  sh '../kiele-${KIELE_VERSION}-bionic/package/debian/test-package.sh ${KIELE_VERSION} bionic'
+                }
+              }
             }
           }
         }

@@ -1,0 +1,15 @@
+Source: KIELE
+Section: devel
+Priority: optional
+Maintainer: Everett Hildenbrandt <everett.hildenbrandt@runtimeverification.com>
+Build-Depends: clang-8 , cmake , kframework , libcrypto++-dev , libjemalloc-dev , libprocps-dev , libprotobuf-dev , libsecp256k1-dev , libssl-dev , pkg-config , protobuf-compiler
+Standards-Version: 3.9.6
+Homepage: https://github.com/runtimeverification/iele-semantics
+
+Package: KIELE
+Architecture: any
+Section: devel
+Priority: optional
+Depends: libjemalloc-dev, libprotobuf-dev, libcrypto++-dev, libsecp256k1-dev
+Description: KIELE
+ K Semantics of the Iele Virtual Machine
