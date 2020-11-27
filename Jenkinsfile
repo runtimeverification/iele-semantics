@@ -1,37 +1,42 @@
 pipeline {
-  agent {
-    dockerfile {
-      label 'docker'
-      additionalBuildArgs '--build-arg K_COMMIT=$(cat deps/k_release | cut --delimiter="-" --field="2") --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g)'
-    }
-  }
+  agent { label 'docker' }
   options { ansiColor('xterm') }
   stages {
     stage("Init title") {
       when { changeRequest() }
       steps { script { currentBuild.displayName = "PR ${env.CHANGE_ID}: ${env.CHANGE_TITLE}" } }
     }
-    stage('Build') { steps { sh 'make COVERAGE=k -j4' } }
-    stage('Test') {
+    stage('Build and Test') {
+      agent {
+        dockerfile {
+          label 'docker'
+          additionalBuildArgs '--build-arg K_COMMIT=$(cat deps/k_release | cut --delimiter="-" --field="2") --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g)'
+        }
+      }
       stages {
-        stage('VM Tests') {
-          steps {
-            ansiColor('xterm') {
-              sh '''#!/bin/bash -ex
-                .build/vm/iele-vm 0 127.0.0.1 > port &
-                sleep 3
-                export PORT=`cat port | awk -F ':' '{print $2}'`
-                make test -j`nproc` -k
-                make coverage
-                kill %1
-              '''
+        stage('Build') { steps { sh 'make COVERAGE=k -j4' } }
+        stage('Test') {
+          stages {
+            stage('VM Tests') {
+              steps {
+                ansiColor('xterm') {
+                  sh '''#!/bin/bash -ex
+                    .build/vm/iele-vm 0 127.0.0.1 > port &
+                    sleep 3
+                    export PORT=`cat port | awk -F ':' '{print $2}'`
+                    make test -j`nproc` -k
+                    make coverage
+                    kill %1
+                  '''
+                }
+              }
+            }
+            stage('Haskell Standalone') {
+              options { timeout(time: 20, unit: 'MINUTES') }
+              failFast true
+              steps { sh 'make -j2 iele-test-haskell' }
             }
           }
-        }
-        stage('Haskell Standalone') {
-          options { timeout(time: 20, unit: 'MINUTES') }
-          failFast true
-          steps { sh 'make -j2 iele-test-haskell' }
         }
       }
     }
