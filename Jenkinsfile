@@ -53,10 +53,10 @@ pipeline {
       stages {
         stage('Checkout SCM') { steps { dir("kiele-${KIELE_VERSION}-src") { checkout scm } } }
         stage('Binary Package') {
-          when {
-            branch 'master'
-            beforeAgent true
-          }
+          // when {
+          //   branch 'master'
+          //   beforeAgent true
+          // }
           agent {
             dockerfile {
               reuseNode true
@@ -116,34 +116,58 @@ pipeline {
         branch 'master'
         beforeAgent true
       }
-      post {
-        failure {
-          slackSend color: '#cb2431'                                 \
-                  , channel: '#iele-internal'                        \
-                  , message: "Deploy Phase Failed: ${env.BUILD_URL}"
+      post { failure { slackSend color: '#cb2431' , channel: '#iele-internal' , message: "Deploy Phase Failed: ${env.BUILD_URL}" } }
+      stages {
+        stage('GitHub Release') {
+          steps {
+            unstash 'bin-kiele'
+            unstash 'bionic-kiele'
+            sshagent(['2b3d8d6b-0855-4b59-864a-6b3ddf9c9d1a']) {
+              sh '''
+                git clone 'ssh://github.com/runtimeverification/iele-semantics.git' kiele-release
+                cd kiele-release
+                git fetch --all
+
+                git tag -d "${KIELE_RELEASE_TAG}" "${SHORT_REV}" || true
+                git push -d origin "${KIELE_RELEASE_TAG}"        || true
+                hub release delete "${KIELE_RELEASE_TAG}"        || true
+
+                git tag "${KIELE_RELEASE_TAG}" "${LONG_REV}"
+                git push origin "${KIELE_RELEASE_TAG}"
+
+                make release.md KIELE_VERSION=${KIELE_RELEASE_TAG}
+                hub release create                                                                      \
+                    --attach "../kiele-${KIELE_VERSION}-bin.tar.gz#KIELE Linux Binary"                  \
+                    --attach "../kiele_${KIELE_VERSION}_amd64_bionic.deb#Ubuntu Bionic (18.04) Package" \
+                    --file "release.md" "${KIELE_RELEASE_TAG}"
+              '''
+            }
+          }
         }
-      }
-      steps {
-        dir('gh-pages') {
-          sshagent(['2b3d8d6b-0855-4b59-864a-6b3ddf9c9d1a']) {
-            sh '''
-              git clone 'ssh://github.com/runtimeverification/iele-semantics.git' --depth 1 --no-single-branch --branch master --branch gh-pages
-              cd iele-semantics
-              git checkout -B gh-pages origin/master
-              cd web
-              npm install
-              npm run build
-              npm run build-sitemap
-              cd -
-              mv web/public_content ./
-              rm -rf $(find . -maxdepth 1 -not -name public_content -a -not -name .git -a -not -path . -a -not -path .. -a -not -name CNAME)
-              mv public_content/* ./
-              rm -rf public_content
-              git add ./
-              git commit -m 'gh-pages: Updated the website'
-              git merge --strategy ours origin/gh-pages --allow-unrelated-histories
-              git push origin gh-pages
-            '''
+        stage('GitHub Pages') {
+          steps {
+            dir('gh-pages') {
+              sshagent(['2b3d8d6b-0855-4b59-864a-6b3ddf9c9d1a']) {
+                sh '''
+                  git clone 'ssh://github.com/runtimeverification/iele-semantics.git' --depth 1 --no-single-branch --branch master --branch gh-pages
+                  cd iele-semantics
+                  git checkout -B gh-pages origin/master
+                  cd web
+                  npm install
+                  npm run build
+                  npm run build-sitemap
+                  cd -
+                  mv web/public_content ./
+                  rm -rf $(find . -maxdepth 1 -not -name public_content -a -not -name .git -a -not -path . -a -not -path .. -a -not -name CNAME)
+                  mv public_content/* ./
+                  rm -rf public_content
+                  git add ./
+                  git commit -m 'gh-pages: Updated the website'
+                  git merge --strategy ours origin/gh-pages --allow-unrelated-histories
+                  git push origin gh-pages
+                '''
+              }
+            }
           }
         }
       }
