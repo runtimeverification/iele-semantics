@@ -23,7 +23,6 @@ RUN    apt update         \
         netcat            \
         opam              \
         openjdk-8-jdk     \
-        pandoc            \
         pkg-config        \
         protobuf-compiler \
         python3           \

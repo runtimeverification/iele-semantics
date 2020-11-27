@@ -66,15 +66,6 @@ tangle: defn proofs
 k_files:=iele-testing.md data.md iele.md iele-gas.md iele-binary.md plugin/plugin/krypto.md iele-syntax.md iele-node.md well-formedness.md
 checker_files:=iele-syntax.md well-formedness.md data.md
 
-.build/node/%.k: %.md
-	@echo "==  tangle: $@"
-	mkdir -p $(dir $@)
-	pandoc --from markdown --to .build/tangle/tangle.lua --metadata=code:".k:not(.standalone),.node" $< > $@
-.build/standalone/%.k: %.md
-	@echo "==  tangle: $@"
-	mkdir -p $(dir $@)
-	pandoc --from markdown --to .build/tangle/tangle.lua --metadata=code:".k:not(.node),.standalone" $< > $@
-
 node: .build/vm/iele-vm
 testnode : .build/vm/iele-test-vm .build/vm/iele-test-client
 
