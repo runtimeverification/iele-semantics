@@ -1,47 +1,47 @@
 Installing IELE
 ===============
 
-In a nutshell, to install IELE on an Ubuntu 16.04 machine, run:
+These instructions are an example for how to setup IELE on an Ubuntu 18.04 machine (and MacOS).
 
+System Dependencies
+-------------------
+
+The following packages are needed for running KIELE on Ubuntu:
+
+```sh
+sudo apt-get install --yes autoconf build-essential cmake curl flex gcc   \
+                           libcrypto++-dev libffi-dev libmpfr-dev         \
+                           libprocps-dev libprotobuf-dev libsecp256k1-dev \
+                           libssl-dev libtool make maven netcat opam      \
+                           openjdk-8-jdk pkg-config protobuf-compiler     \
+                           python3 zlib1g-dev
 ```
 
-sudo apt-get update
-sudo apt-get install make gcc maven curl openjdk-8-jdk flex opam pkg-config libmpfr-dev autoconf libtool pandoc build-essential libffi-dev protobuf-compiler libprotobuf-dev libcrypto++-dev libssl-dev libprocps-dev
-git clone git@github.com:runtimeverification/iele-semantics.git
-cd iele-semantics
-git submodule update --init --recursive # Initialize submodules
-curl -sSL https://get.haskellstack.org/ | sh # Install stack
-cd .build/secp256k1 && ./autogen.sh && ./configure --enable-module-recovery --enable-module-ecdh --enable-experimental && make && sudo make install # install secp256k1 from bitcoin-core
-cd ../..
-cd .build/ff && mkdir build && cd build && CC=clang-6.0 CXX=clang++-6.0 cmake .. -DCMAKE_BUILD_TYPE=Release && make && sudo make install
-cd ../../..
-make deps # Build dependencies not installed by package manager
-eval `opam config env` # add OCAML installation to path
-make # Build project
-make install # install to ~/.local
+On MacOS, you need the following:
 
-```
-
-To install on MacOS, after installing the command line tools package:
-
-```
-
+```sh
 brew tap homebrew/homebrew-cask homebrew-cask-versions
 brew cask install java8
-brew install maven opam pkg-config gmp mpfr automake libtool pandoc
+brew install maven opam pkg-config gmp mpfr automake libtool
 ```
 
-Followed by the Ubuntu instructions beginning at `git submodule update --init`
+On all systems, you need Haskell Stack:
 
---------------
+```sh
+curl -sSL https://get.haskellstack.org/ | sh
+```
 
-To test against our test suite, run `make test`. For more details, see [here](https://github.com/runtimeverification/iele-semantics#testing-1).
+Build K and KIELE
+-----------------
 
-Other Linux distros can install by installing the list of dependencies in the `apt-get install` command above and then following the rest of the instructions.
+These commands build and install K and KIELE:
 
-To install on Windows, first install [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10) and then proceed with the installation for Ubuntu 16.04. Note that the installation will take significantly longer due to existing problems in the performance of disk-intensive processes in WSL, and you should expect it to over half an hour. However, once installed, it should run roughly the same speed as on native Linux.
-
-Developers
-==========
-If you have run the above setup, and a build fails because of missing dependences after checking out a different version of the code,
-you can probably fix it by making sure the git submodules are up to date with `git submodule update --init` and then running `make deps`. If that fails, it should always work to repeat the full installation instructions above.
+```sh
+git clone git@github.com:runtimeverification/iele-semantics.git
+cd iele-semantics
+git submodule update --init --recursive
+curl -sSL https://github.com/kframework/k/releases/tags/$(cat deps/k_release)/kframework_5.0.0_amd64_bionic.deb
+sudo apt-get install --yes ./kframework_5.0.0_amd64_bionic.deb
+sudo bash -c 'OPAMROOT=/usr/lib/kframework/opamroot k-configure-opam'
+make COVERAGE=k
+```
