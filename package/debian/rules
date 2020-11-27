@@ -21,7 +21,7 @@ override_dh_auto_build:
 	make COVERAGE=k
 
 override_dh_auto_install:
-	true
+	make install DESTTDIR=${CURDIR}/debian/kiele INSTALL_PREFIX=/usr
 
 override_dh_auto_test:
 	true
