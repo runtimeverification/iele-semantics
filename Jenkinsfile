@@ -18,6 +18,7 @@ pipeline {
         stage('Test') {
           stages {
             stage('VM Tests') {
+              options { timeout(time: 5, unit: 'MINUTES') }
               steps {
                 ansiColor('xterm') {
                   sh '''#!/bin/bash -ex
@@ -32,7 +33,7 @@ pipeline {
               }
             }
             stage('Haskell Standalone') {
-              options { timeout(time: 20, unit: 'MINUTES') }
+              options { timeout(time: 5, unit: 'MINUTES') }
               failFast true
               steps { sh 'make -j2 iele-test-haskell' }
             }
