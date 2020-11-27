@@ -40,7 +40,7 @@ These commands build and install K and KIELE:
 git clone git@github.com:runtimeverification/iele-semantics.git
 cd iele-semantics
 git submodule update --init --recursive
-curl -sSL https://github.com/kframework/k/releases/tags/$(cat deps/k_release)/kframework_5.0.0_amd64_bionic.deb
+curl -sSL https://github.com/kframework/k/releases/download/$(cat deps/k_release)/kframework_5.0.0_amd64_bionic.deb
 sudo apt-get install --yes ./kframework_5.0.0_amd64_bionic.deb
 sudo bash -c 'OPAMROOT=/usr/lib/kframework/opamroot k-configure-opam'
 make COVERAGE=k
