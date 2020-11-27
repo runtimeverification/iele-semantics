@@ -109,6 +109,41 @@ pipeline {
             }
           }
         }
+        stage('Docker') {
+          when {
+            branch 'master'
+            beforeAgent true
+          }
+          environment {
+            DOCKERHUB_TOKEN   = credentials('rvdockerhub')
+            DOCKERHUB_REPO    = 'runtimeverificationinc/runtimeverification-kiele'
+            BASE_JOB_NAME     = """${sh(returnStdout: true, script: 'echo $(basename ${JOB_NAME})').trim()}"""
+            DOCKER_IMAGE_NAME = "${env.DOCKERHUB_REPO}:${env.BASE_JOB_NAME}"
+            BIONIC_COMMIT_TAG = "ubuntu-bionic-${env.SHORT_REV}"
+            BIONIC_BRANCH_TAG = "ubuntu-bionic-${env.BRANCH_NAME}"
+          }
+          stages {
+            stage('Build Image') {
+              agent { label 'docker' }
+              steps {
+                dir("kiele-${KIELE_VERSION}-docker") {
+                  checkout scm
+                  unstash 'bionic-kframework'
+                  unstash 'bionic-kiele'
+                  sh '''
+                    docker image build . --file package/docker/Dockerfile --tag ${DOCKER_IMAGE_NAME} --build-arg KIELE_VERSION=$KIELE_VERSION
+                    docker tag "${DOCKER_IMAGE_NAME}" "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}"
+                    docker tag "${DOCKER_IMAGE_NAME}" "${DOCKERHUB_REPO}:${BIONIC_BRANCH_TAG}"
+
+                    docker login --username "${DOCKERHUB_TOKEN_USR}" --password "${DOCKERHUB_TOKEN_PSW}"
+                    docker image push "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}"
+                    docker image push "${DOCKERHUB_REPO}:${BIONIC_BRANCH_TAG}"
+                  '''
+                }
+              }
+            }
+          }
+        }
       }
     }
     stage('Deploy') {
