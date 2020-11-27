@@ -1,10 +1,58 @@
-Installing IELE
-===============
+Installing KIELE
+================
 
-These instructions are an example for how to setup IELE on an Ubuntu 18.04 machine (and MacOS).
+We provide packages for IELE on the following platforms:
 
-System Dependencies
--------------------
+-   Ubuntu Bionic (18.04)
+-   Docker Images
+-   From Source Build
+
+**NOTE**: We do not currently support running K on native Windows.
+To use K on Windows, you are encouraged to install [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10) and follow the instructions for Ubuntu Bionic.
+
+Download Packages
+-----------------
+
+Download the appropriate package from the GitHub, via the [Releases](https://github.com/kframework/k/releases) page.
+Releases are generated as often as possible from `master` build.
+
+Install Packages
+----------------
+
+For version `X.Y.Z`, the following instructions tell you how to install the downloaded package on your system.
+
+### Ubuntu Bionic (18.04)
+
+First make sure you have the `kframework` package installed, see instructions here: <https://github.com/kframework/k/releases>.
+Then install the `kiele` package.
+
+```sh
+sudo apt install ./kiele_X.Y.Z_amd64_bionic.deb
+```
+
+### DockerHub
+
+Docker images with KIELE pre-installed are available at the [runtimeverification/runtimeverification-kiele Docker Hub repository](https://hub.docker.com/repository/docker/runtimeverificationinc/runtimeverification-kiele).
+
+Each release at `COMMIT_ID` has an image associated with it at `runtimeverificationinc/runtimeverification-kiele:ubuntu-bionic-COMMIT_ID`.
+The latest `master` build Docker image can be accessed with `COMMIT_ID` set to `master`.
+
+To run the image directly:
+
+```sh
+docker run -it runtimeverificationinc/runtimeverification-kiele:ubuntu-bionic-COMMIT_ID
+```
+
+and to make a Docker Image based on it, use the following line in your `Dockerfile`:
+
+```Dockerfile
+FROM runtimeverificationinc/runtimeverification-kiele:ubuntu-bionic-COMMIT_ID
+```
+
+From Source Build
+-----------------
+
+### System Dependencies
 
 The following packages are needed for running KIELE on Ubuntu:
 
@@ -31,8 +79,7 @@ On all systems, you need Haskell Stack:
 curl -sSL https://get.haskellstack.org/ | sh
 ```
 
-Build K and KIELE
------------------
+### Build K and KIELE
 
 These commands build and install K and KIELE:
 
