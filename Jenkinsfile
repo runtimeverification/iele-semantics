@@ -6,7 +6,7 @@ pipeline {
     SHORT_REV         = """${sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()}"""
     LONG_REV          = """${sh(returnStdout: true, script: 'git rev-parse HEAD').trim()}"""
     KIELE_RELEASE_TAG = "v${env.KIELE_VERSION}-${env.SHORT_REV}"
-    K_SHORT_REV       = """${sh(returnStdout: true, script: 'cat deps/k_release').trim()}"""
+    K_SHORT_REV       = """${sh(returnStdout: true, script: 'cat deps/k_release | cut --delimiter="-" --field="2"').trim()}"""
   }
   options { ansiColor('xterm') }
   stages {
