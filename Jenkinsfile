@@ -66,7 +66,6 @@ pipeline {
           steps {
             sh '''
               make install INSTALL_PREFIX=$(pwd)/kiele-${KIELE_VERSION}-bin
-              cp install.sh kiele-${KIELE_VERSION}-bin/
               tar czvf kiele-${KIELE_VERSION}-bin.tar.gz kiele-${KIELE_VERSION}-bin
             '''
             stash name: 'bin-kiele', includes: "kiele-${env.KIELE_VERSION}-bin.tar.gz"
