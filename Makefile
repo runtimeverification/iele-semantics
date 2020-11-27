@@ -33,7 +33,13 @@ LOCAL_INCLUDE  := $(BUILD_LOCAL)/include
 PLUGIN=$(abspath plugin)
 PROTO=$(abspath proto)
 
-.PHONY: all clean distclean build build-haskell tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-haskell iele-test-node node testnode install kore libff protobuf
+IELE_BIN      := .build/vm
+IELE_ASSEMBLE := $(IELE_BIN)/iele-assemble
+IELE_VM       := $(IELE_BIN)/iele-vm
+IELE_TEST_VM  := $(IELE_BIN)/iele-test-vm
+
+.PHONY: all clean distclean build build-haskell tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps iele-test iele-test-haskell iele-test-node node testnode kore libff protobuf \
+        install uninstall
 .SECONDARY:
 
 all: build split-vm-tests testnode
@@ -51,13 +57,6 @@ llvm: tangle .build/llvm/iele-testing.kore
 
 haskell: tangle .build/haskell/definition.kore
 
-assembler:
-	cd iele-assemble && stack build --install-ghc
-
-install: assembler
-	cd iele-assemble && stack install
-	cp .build/vm/iele-vm .build/vm/iele-test-client .build/vm/iele-test-vm ~/.local/bin
-
 # Tangle from *.md files
 # ----------------------
 
@@ -66,8 +65,8 @@ tangle: defn proofs
 k_files:=iele-testing.md data.md iele.md iele-gas.md iele-binary.md plugin/plugin/krypto.md iele-syntax.md iele-node.md well-formedness.md
 checker_files:=iele-syntax.md well-formedness.md data.md
 
-node: .build/vm/iele-vm
-testnode : .build/vm/iele-test-vm .build/vm/iele-test-client
+node: $(IELE_VM)
+testnode : $(IELE_TEST_VM) .build/vm/iele-test-client
 
 # Dependencies
 # ------------
@@ -149,7 +148,7 @@ well-formed-test: ${well_formedness_targets}
 test-bad-packet:
 	netcat 127.0.0.1 $(PORT) -q 2 < tests/bad-packet
 	netcat 127.0.0.1 $(PORT) -q 2 < tests/bad-packet-2
-	.build/vm/iele-test-vm tests/iele/danse/sum/sum_zero.iele.json $(PORT)
+	$(IELE_TEST_VM) tests/iele/danse/sum/sum_zero.iele.json $(PORT)
 
 tests/VMTests/%.json.test: tests/VMTests/%.json | .build/standalone/iele-testing-kompiled/interpreter
 	./vmtest $<
@@ -165,7 +164,7 @@ tests/iele/%.json.test-haskell: tests/iele/%.json | $(haskell_kompiled)
 
 PORT?=10000
 tests/iele/%.nodetest: tests/iele/% | testnode
-	.build/vm/iele-test-vm $< $(PORT)
+	$(IELE_TEST_VM) $< $(PORT)
 
 tests/%/make.timestamp: tests/ethereum-tests/%.json tests/evm-to-iele/evm-to-iele tests/evm-to-iele/evm-test-to-iele
 	@echo "==   split: $@"
@@ -236,6 +235,54 @@ $(haskell_kompiled): MD_SELECTOR="(k & ! node) | standalone"
 $(haskell_kompiled):
 	$(KOMPILE) --directory $(haskell_dir) --backend haskell --main-module $(haskell_main_module) --syntax-module $(haskell_syntax_module) --md-selector $(MD_SELECTOR) --hook-namespaces "KRYPTO JSON" $(haskell_main_file)
 
+# IELE Assembler
+# --------------
+
+$(IELE_ASSEMBLE):
+	cd compiler && stack install --local-bin-path $(CURDIR)/$(IELE_BIN)
+
+# Install
+# -------
+
+KIELE_VERSION     ?= 0.2.0
+KIELE_RELEASE_TAG ?= v$(KIELE_VERSION)-$(shell git rev-parse --short HEAD)
+
+INSTALL_PREFIX := /usr/local
+INSTALL_BIN    ?= $(DESTDIR)$(INSTALL_PREFIX)/bin
+INSTALL_LIB    ?= $(DESTDIR)$(INSTALL_PREFIX)/lib/kiele
+
+install_bins := kiele-vm kiele-test-vm kiele-assemble
+
+install_libs := version
+
+version:
+	echo "$(KIELE_RELEASE_TAG)" > $@
+
+kiele-vm: $(IELE_VM)
+	cp --preserve=mode $< $@
+
+kiele-test-vm: $(IELE_TEST_VM)
+	cp --preserve=mode $< $@
+
+kiele-assemble: $(IELE_ASSEMBLE)
+	cp --preserve=mode $< $@
+
+$(INSTALL_BIN)/%: %
+	install -D $< $@
+
+$(INSTALL_LIB)/%: %
+	install -D $< $@
+
+install: $(patsubst %, $(INSTALL_BIN)/%, $(install_bins)) $(patsubst %, $(INSTALL_LIB)/%, $(install_libs))
+
+uninstall:
+	rm $(patsubst %, $(INSTALL_BIN)/%, $(install_bins))
+	rm $(patsubst %, $(INSTALL_LIB)/%, $(install_libs))
+
+release.md:
+	echo "Firefly Release - $(KIELE_RELEASE_TAG)"  > $@
+	echo                                          >> $@
+
 # Ocaml Builds
 # ------------
 
@@ -243,7 +290,7 @@ $(haskell_kompiled):
 	mkdir -p .build/plugin-ocaml
 	eval `opam config env` && ocaml-protoc $< -ml_out .build/plugin-ocaml
 
-.build/vm/iele-test-vm: $(wildcard vm/*.ml vm/*.mli) .build/plugin-ocaml/msg_types.ml
+$(IELE_TEST_VM): $(wildcard vm/*.ml vm/*.mli) .build/plugin-ocaml/msg_types.ml
 	mkdir -p .build/vm
 	cp vm/*.ml vm/*.mli .build/plugin-ocaml/*.ml .build/plugin-ocaml/*.mli .build/vm
 	cd .build/vm && eval `opam config env` && ocamlfind $(OCAMLC) -g -o iele-test-vm msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml ieleClientUtils.ml ieleVmTest.ml -package dynlink -package zarith -package str -package uuidm -package unix -package rlp -package yojson -package hex -package cryptokit -package ocaml-protoc -linkpkg -linkall -thread -safe-string
