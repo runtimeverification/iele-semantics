@@ -23,6 +23,7 @@ RUN    apt-get update         \
             libsecp256k1-dev  \
             libssl-dev        \
             netcat-openbsd    \
+            opam              \
             pkg-config        \
             protobuf-compiler \
             python3-pip       \
