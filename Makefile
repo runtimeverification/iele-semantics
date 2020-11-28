@@ -51,8 +51,6 @@ clean:
 	rm -rf .build
 
 distclean: clean
-	cd .build/k && mvn clean
-	cd .build/kore && stack clean
 
 build: tangle $(IELE_INTERPRETER) $(IELE_VM) $(IELE_ASSEMBLE) $(IELE_CHECK) build-haskell
 
