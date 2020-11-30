@@ -15,6 +15,10 @@ pipeline {
       steps { script { currentBuild.displayName = "PR ${env.CHANGE_ID}: ${env.CHANGE_TITLE}" } }
     }
     stage('Build and Test') {
+      when {
+        branch 'master'
+        beforeAgent true
+      }
       agent {
         dockerfile {
           label 'docker'
