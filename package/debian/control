@@ -10,6 +10,6 @@ Package: kiele
 Architecture: any
 Section: devel
 Priority: optional
-Depends: libjemalloc-dev, libprotobuf-dev, libcrypto++-dev, libsecp256k1-dev
+Depends: libcrypto++-dev , libjemalloc-dev , libmpfr-dev , libprotobuf-dev , libsecp256k1-dev
 Description: KIELE
  K Semantics of the Iele Virtual Machine
