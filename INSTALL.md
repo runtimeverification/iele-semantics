@@ -4,7 +4,6 @@ Installing KIELE
 We provide packages for IELE on the following platforms:
 
 -   Ubuntu Bionic (18.04)
--   Docker Images
 -   From Source Build
 
 **NOTE**: We do not currently support running K on native Windows.
@@ -28,25 +27,6 @@ Then install the `kiele` package.
 
 ```sh
 sudo apt install ./kiele_X.Y.Z_amd64_bionic.deb
-```
-
-### DockerHub
-
-Docker images with KIELE pre-installed are available at the [runtimeverification/runtimeverification-kiele Docker Hub repository](https://hub.docker.com/repository/docker/runtimeverificationinc/runtimeverification-kiele).
-
-Each release at `COMMIT_ID` has an image associated with it at `runtimeverificationinc/runtimeverification-kiele:ubuntu-bionic-COMMIT_ID`.
-The latest `master` build Docker image can be accessed with `COMMIT_ID` set to `master`.
-
-To run the image directly:
-
-```sh
-docker run -it runtimeverificationinc/runtimeverification-kiele:ubuntu-bionic-COMMIT_ID
-```
-
-and to make a Docker Image based on it, use the following line in your `Dockerfile`:
-
-```Dockerfile
-FROM runtimeverificationinc/runtimeverification-kiele:ubuntu-bionic-COMMIT_ID
 ```
 
 From Source Build
