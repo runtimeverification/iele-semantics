@@ -239,7 +239,7 @@ $(haskell_kompiled):
 # --------------
 
 $(IELE_ASSEMBLE):
-	cd compiler && stack install --local-bin-path $(CURDIR)/$(IELE_BIN)
+	cd iele-assemble && stack install --local-bin-path $(CURDIR)/$(IELE_BIN)
 
 # Install
 # -------
@@ -251,23 +251,14 @@ INSTALL_PREFIX := /usr/local
 INSTALL_BIN    ?= $(DESTDIR)$(INSTALL_PREFIX)/bin
 INSTALL_LIB    ?= $(DESTDIR)$(INSTALL_PREFIX)/lib/kiele
 
-install_bins := kiele-vm kiele-test-vm kiele-assemble
+install_bins := iele-vm iele-test-vm iele-assemble
 
 install_libs := version
 
 version:
 	echo "$(KIELE_RELEASE_TAG)" > $@
 
-kiele-vm: $(IELE_VM)
-	cp --preserve=mode $< $@
-
-kiele-test-vm: $(IELE_TEST_VM)
-	cp --preserve=mode $< $@
-
-kiele-assemble: $(IELE_ASSEMBLE)
-	cp --preserve=mode $< $@
-
-$(INSTALL_BIN)/%: %
+$(INSTALL_BIN)/%: $(IELE_BIN)/%
 	install -D $< $@
 
 $(INSTALL_LIB)/%: %
