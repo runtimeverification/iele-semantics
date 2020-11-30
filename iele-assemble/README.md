@@ -1,4 +1,14 @@
-# compiler
+# iele-assemble
+
+## Build instructions
+
+### Nix
+
+From the root of the `iele-semantics` repository,
+run `nix-build -A iele-assemble`.
+
+### Stack
+
 To build: `stack build`.
 all dependencies are managed by stack.
 
