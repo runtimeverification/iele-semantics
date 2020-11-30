@@ -53,10 +53,10 @@ pipeline {
       stages {
         stage('Checkout SCM') { steps { dir("kiele-${KIELE_VERSION}-src") { checkout scm } } }
         stage('Binary Package') {
-          // when {
-          //   branch 'master'
-          //   beforeAgent true
-          // }
+          when {
+            branch 'master'
+            beforeAgent true
+          }
           agent {
             dockerfile {
               reuseNode true
@@ -109,10 +109,10 @@ pipeline {
           }
         }
         stage('Docker') {
-          // when {
-          //   branch 'master'
-          //   beforeAgent true
-          // }
+          when {
+            branch 'master'
+            beforeAgent true
+          }
           environment {
             DOCKERHUB_TOKEN   = credentials('rvdockerhub')
             DOCKERHUB_REPO    = 'runtimeverificationinc/runtimeverification-kiele'
@@ -146,11 +146,11 @@ pipeline {
       }
     }
     stage('Deploy') {
-      // when {
-      //   branch 'master'
-      //   beforeAgent true
-      // }
-      // post { failure { slackSend color: '#cb2431' , channel: '#iele-internal' , message: "Deploy Phase Failed: ${env.BUILD_URL}" } }
+      when {
+        branch 'master'
+        beforeAgent true
+      }
+      post { failure { slackSend color: '#cb2431' , channel: '#iele-internal' , message: "Deploy Phase Failed: ${env.BUILD_URL}" } }
       stages {
         stage('GitHub Release') {
           steps {
@@ -179,10 +179,6 @@ pipeline {
           }
         }
         stage('GitHub Pages') {
-          when {
-            branch 'master'
-            beforeAgent true
-          }
           steps {
             dir('gh-pages') {
               sshagent(['2b3d8d6b-0855-4b59-864a-6b3ddf9c9d1a']) {
