@@ -150,20 +150,20 @@ test-bad-packet:
 	netcat 127.0.0.1 $(PORT) -q 2 < tests/bad-packet-2
 	$(IELE_TEST_VM) tests/iele/danse/sum/sum_zero.iele.json $(PORT)
 
-tests/VMTests/%.json.test: tests/VMTests/%.json | .build/standalone/iele-testing-kompiled/interpreter
+tests/VMTests/%.json.test: tests/VMTests/%.json
 	./vmtest $<
-tests/BlockchainTests/%.json.test: tests/BlockchainTests/%.json | .build/standalone/iele-testing-kompiled/interpreter
+tests/BlockchainTests/%.json.test: tests/BlockchainTests/%.json
 	./blockchaintest $<
-tests/iele/%.json.test: tests/iele/%.json | .build/standalone/iele-testing-kompiled/interpreter 
+tests/iele/%.json.test: tests/iele/%.json
 	./blockchaintest $<
-tests/iele/%.json.test-haskell: tests/iele/%.json | $(haskell_kompiled)
+tests/iele/%.json.test-haskell: tests/iele/%.json
 	./vmtest-haskell $<
 
 %.iele.test: %.iele | .build/check/well-formedness-kompiled/interpreter
 	./check-iele $<
 
 PORT?=10000
-tests/iele/%.nodetest: tests/iele/% | testnode
+tests/iele/%.nodetest: tests/iele/%
 	$(IELE_TEST_VM) $< $(PORT)
 
 tests/%/make.timestamp: tests/ethereum-tests/%.json tests/evm-to-iele/evm-to-iele tests/evm-to-iele/evm-test-to-iele
@@ -191,11 +191,6 @@ KOMPILE_CPP_OPTS     := $(addprefix -ccopt , $(KOMPILE_CPP_FILES))
 
 coverage:
 	kcovr .build/node/iele-testing-kompiled .build/standalone/iele-testing-kompiled .build/check/well-formedness-kompiled -- $(filter-out krypto.md, $(source_files)) > .build/coverage.xml
-
-deps:
-
-haskell-deps:
-		cd $(KORE_SUBMODULE) && stack install --local-bin-path $(abspath $(KORE_SUBMODULE))/bin kore:exe:kore-exec
 
 .build/check/well-formedness-kompiled/interpreter: $(checker_files) $(protobuf_out) $(libff_out)
 	${KOMPILE} --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE --md-selector "(k & ! node) | standalone" \
