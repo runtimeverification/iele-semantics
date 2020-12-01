@@ -57,10 +57,10 @@ pipeline {
       stages {
         stage('Checkout SCM') { steps { dir("kiele-${KIELE_VERSION}-src") { checkout scm } } }
         stage('Binary Package') {
-          // when {
-          //   branch 'master'
-          //   beforeAgent true
-          // }
+          when {
+            branch 'master'
+            beforeAgent true
+          }
           agent {
             dockerfile {
               reuseNode true
