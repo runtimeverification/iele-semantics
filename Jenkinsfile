@@ -106,7 +106,7 @@ pipeline {
               steps {
                 dir("kiele-${env.KIELE_VERSION}-bionic-test") {
                   unstash 'bionic-kiele'
-                  sh '../kiele-${KIELE_VERSION}-bionic/package/debian/test-package.sh ${KIELE_VERSION} bionic ${LONG_REV}'
+                  sh '../kiele-${KIELE_VERSION}-bionic/package/debian/test-package.sh ${KIELE_VERSION} bionic ${LONG_REV} ${K_SHORT_REV}'
                 }
               }
             }
