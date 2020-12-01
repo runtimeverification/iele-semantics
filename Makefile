@@ -22,8 +22,6 @@ BISECT=-package bisect_ppx
 PREDICATES=-predicates coverage
 endif
 
-export PATH:=$(shell cd iele-assemble && stack path --local-install-root)/bin:${PATH}
-
 BUILD_DIR      := $(abspath .build)
 KORE_SUBMODULE := $(BUILD_DIR)/kore
 BUILD_LOCAL    := $(BUILD_DIR)/local
@@ -33,10 +31,14 @@ LOCAL_INCLUDE  := $(BUILD_LOCAL)/include
 PLUGIN=$(abspath plugin)
 PROTO=$(abspath proto)
 
-IELE_BIN      := .build/vm
-IELE_ASSEMBLE := $(IELE_BIN)/iele-assemble
-IELE_VM       := $(IELE_BIN)/iele-vm
-IELE_TEST_VM  := $(IELE_BIN)/iele-test-vm
+IELE_BIN         := .build/vm
+IELE_ASSEMBLE    := $(IELE_BIN)/iele-assemble
+IELE_INTERPRETER := $(IELE_BIN)/iele-interpreter
+IELE_CHECK       := $(IELE_BIN)/iele-check
+IELE_VM          := $(IELE_BIN)/iele-vm
+IELE_TEST_VM     := $(IELE_BIN)/iele-test-vm
+
+export PATH:=$(IELE_BIN):$(PATH)
 
 .PHONY: all clean distclean build build-haskell tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps iele-test iele-test-haskell iele-test-node node testnode kore libff protobuf \
         install uninstall
@@ -51,7 +53,7 @@ distclean: clean
 	cd .build/k && mvn clean
 	cd .build/kore && stack clean
 
-build: tangle .build/standalone/iele-testing-kompiled/interpreter $(IELE_VM) $(IELE_ASSEMBLE) .build/check/well-formedness-kompiled/interpreter build-haskell
+build: tangle $(IELE_INTERPRETER) $(IELE_VM) $(IELE_ASSEMBLE) $(IELE_CHECK) build-haskell
 
 llvm: tangle .build/llvm/iele-testing.kore
 
@@ -159,7 +161,7 @@ tests/iele/%.json.test: tests/iele/%.json
 tests/iele/%.json.test-haskell: tests/iele/%.json
 	./vmtest-haskell $<
 
-%.iele.test: %.iele | .build/check/well-formedness-kompiled/interpreter
+%.iele.test: %.iele
 	./check-iele $<
 
 PORT?=10000
@@ -209,7 +211,13 @@ coverage:
 LLVM_KOMPILE_INCLUDE_OPTS := -I $(PLUGIN)/plugin-c/ -I $(PROTO) -I $(BUILD_DIR)/plugin-node -I vm/c/ -I vm/c/iele/ -I $(LOCAL_INCLUDE)
 LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(LOCAL_LIB) -lff -lprotobuf -lgmp -lprocps -lcryptopp -lsecp256k1
 
-.build/vm/iele-vm: .build/node/iele-testing-kompiled/interpreter $(wildcard vm/c/*.cpp vm/c/*.h) $(protobuf_out)
+$(IELE_CHECK): .build/check/well-formedness-kompiled/interpreter
+	cp $< $@
+
+$(IELE_INTERPRETER): .build/standalone/iele-testing-kompiled/interpreter
+	cp $< $@
+
+$(IELE_VM): .build/node/iele-testing-kompiled/interpreter $(wildcard vm/c/*.cpp vm/c/*.h) $(protobuf_out)
 	mkdir -p .build/vm
 	llvm-kompile .build/node/iele-testing-kompiled/definition.kore .build/node/iele-testing-kompiled/dt library vm/c/main.cpp vm/c/vm.cpp $(KOMPILE_CPP_FILES) $(protobuf_out) vm/c/iele/semantics.cpp $(LLVM_KOMPILE_INCLUDE_OPTS) $(LLVM_KOMPILE_LINK_OPTS) -o .build/vm/iele-vm -g
 
@@ -246,7 +254,7 @@ INSTALL_PREFIX := /usr/local
 INSTALL_BIN    ?= $(DESTDIR)$(INSTALL_PREFIX)/bin
 INSTALL_LIB    ?= $(DESTDIR)$(INSTALL_PREFIX)/lib/kiele
 
-install_bins := iele-vm iele-test-vm iele-assemble
+install_bins := iele-vm iele-test-vm iele-assemble iele-interpreter iele-check
 
 install_libs := version
 
