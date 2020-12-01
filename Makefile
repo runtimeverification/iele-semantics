@@ -37,6 +37,7 @@ IELE_INTERPRETER := $(IELE_BIN)/iele-interpreter
 IELE_CHECK       := $(IELE_BIN)/iele-check
 IELE_VM          := $(IELE_BIN)/iele-vm
 IELE_TEST_VM     := $(IELE_BIN)/iele-test-vm
+IELE_TEST_CLIENT := $(IELE_BIN)/iele-test-client
 
 export PATH:=$(IELE_BIN):$(PATH)
 
@@ -68,7 +69,7 @@ k_files:=iele-testing.md data.md iele.md iele-gas.md iele-binary.md plugin/plugi
 checker_files:=iele-syntax.md well-formedness.md data.md
 
 node: $(IELE_VM)
-testnode : $(IELE_TEST_VM) .build/vm/iele-test-client
+testnode : $(IELE_TEST_VM) $(IELE_TEST_CLIENT)
 
 # Dependencies
 # ------------
@@ -212,14 +213,16 @@ LLVM_KOMPILE_INCLUDE_OPTS := -I $(PLUGIN)/plugin-c/ -I $(PROTO) -I $(BUILD_DIR)/
 LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(LOCAL_LIB) -lff -lprotobuf -lgmp -lprocps -lcryptopp -lsecp256k1
 
 $(IELE_CHECK): .build/check/well-formedness-kompiled/interpreter
+	@mkdir -p $(IELE_BIN)
 	cp $< $@
 
 $(IELE_INTERPRETER): .build/standalone/iele-testing-kompiled/interpreter
+	@mkdir -p $(IELE_BIN)
 	cp $< $@
 
 $(IELE_VM): .build/node/iele-testing-kompiled/interpreter $(wildcard vm/c/*.cpp vm/c/*.h) $(protobuf_out)
-	mkdir -p .build/vm
-	llvm-kompile .build/node/iele-testing-kompiled/definition.kore .build/node/iele-testing-kompiled/dt library vm/c/main.cpp vm/c/vm.cpp $(KOMPILE_CPP_FILES) $(protobuf_out) vm/c/iele/semantics.cpp $(LLVM_KOMPILE_INCLUDE_OPTS) $(LLVM_KOMPILE_LINK_OPTS) -o .build/vm/iele-vm -g
+	@mkdir -p $(IELE_BIN)
+	llvm-kompile .build/node/iele-testing-kompiled/definition.kore .build/node/iele-testing-kompiled/dt library vm/c/main.cpp vm/c/vm.cpp $(KOMPILE_CPP_FILES) $(protobuf_out) vm/c/iele/semantics.cpp $(LLVM_KOMPILE_INCLUDE_OPTS) $(LLVM_KOMPILE_LINK_OPTS) -o $(IELE_VM) -g
 
 # Haskell Build
 # -------------
@@ -285,11 +288,11 @@ release.md:
 	eval `opam config env` && ocaml-protoc $< -ml_out .build/plugin-ocaml
 
 $(IELE_TEST_VM): $(wildcard vm/*.ml vm/*.mli) .build/plugin-ocaml/msg_types.ml
-	mkdir -p .build/vm
-	cp vm/*.ml vm/*.mli .build/plugin-ocaml/*.ml .build/plugin-ocaml/*.mli .build/vm
-	cd .build/vm && eval `opam config env` && ocamlfind $(OCAMLC) -g -o iele-test-vm msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml ieleClientUtils.ml ieleVmTest.ml -package dynlink -package zarith -package str -package uuidm -package unix -package rlp -package yojson -package hex -package cryptokit -package ocaml-protoc -linkpkg -linkall -thread -safe-string
+	@mkdir -p $(IELE_BIN)
+	cp vm/*.ml vm/*.mli .build/plugin-ocaml/*.ml .build/plugin-ocaml/*.mli $(IELE_BIN)
+	cd $(IELE_BIN) && eval `opam config env` && ocamlfind $(OCAMLC) -g -o iele-test-vm msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml ieleClientUtils.ml ieleVmTest.ml -package dynlink -package zarith -package str -package uuidm -package unix -package rlp -package yojson -package hex -package cryptokit -package ocaml-protoc -linkpkg -linkall -thread -safe-string
 
-.build/vm/iele-test-client: $(wildcard vm/*.ml vm/*.mli) .build/plugin-ocaml/msg_types.ml
-	mkdir -p .build/vm
-	cp vm/*.ml vm/*.mli .build/plugin-ocaml/*.ml .build/plugin-ocaml/*.mli .build/vm
-	cd .build/vm && eval `opam config env` && ocamlfind $(OCAMLC) -g -o iele-test-client msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml ieleClientUtils.ml ieleApi.mli ieleApi.ml ieleApiClient.ml -package dynlink -package zarith -package str -package uuidm -package unix -package rlp -package yojson -package hex -package cryptokit -package ocaml-protoc -linkpkg -linkall -thread -safe-string $(PREDICATES)
+$(IELE_TEST_CLIENT): $(wildcard vm/*.ml vm/*.mli) .build/plugin-ocaml/msg_types.ml
+	@mkdir -p $(IELE_BIN)
+	cp vm/*.ml vm/*.mli .build/plugin-ocaml/*.ml .build/plugin-ocaml/*.mli $(IELE_BIN)
+	cd $(IELE_BIN) && eval `opam config env` && ocamlfind $(OCAMLC) -g -o iele-test-client msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml ieleClientUtils.ml ieleApi.mli ieleApi.ml ieleApiClient.ml -package dynlink -package zarith -package str -package uuidm -package unix -package rlp -package yojson -package hex -package cryptokit -package ocaml-protoc -linkpkg -linkall -thread -safe-string $(PREDICATES)
