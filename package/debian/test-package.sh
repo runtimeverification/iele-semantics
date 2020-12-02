@@ -22,5 +22,4 @@ iele-vm 0 127.0.0.1 > port &
 sleep 3
 export PORT=$(cat port | awk -F ':' '{print $2}')
 make test -j`nproc` -k TEST_WELLFORMED=true
-make coverage
 kill %1
