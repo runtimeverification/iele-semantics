@@ -151,7 +151,7 @@ well-formed-test: ${well_formedness_targets}
 test-bad-packet:
 	netcat 127.0.0.1 $(PORT) -q 2 < tests/bad-packet
 	netcat 127.0.0.1 $(PORT) -q 2 < tests/bad-packet-2
-	$(IELE_TEST_VM) tests/iele/danse/sum/sum_zero.iele.json $(PORT)
+	iele-test-vm tests/iele/danse/sum/sum_zero.iele.json $(PORT)
 
 tests/VMTests/%.json.test: tests/VMTests/%.json
 	./vmtest $<
@@ -167,7 +167,7 @@ tests/iele/%.json.test-haskell: tests/iele/%.json
 
 PORT?=10000
 tests/iele/%.nodetest: tests/iele/%
-	$(IELE_TEST_VM) $< $(PORT)
+	iele-test-vm $< $(PORT)
 
 tests/%/make.timestamp: tests/ethereum-tests/%.json tests/evm-to-iele/evm-to-iele tests/evm-to-iele/evm-test-to-iele
 	@echo "==   split: $@"
