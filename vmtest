@@ -1,5 +1,4 @@
 #!/bin/sh
-interpreter="$(dirname "$0")/.build/standalone/iele-testing-kompiled/interpreter"
 assembled="$(mktemp)"
 kast="$(mktemp)"
 output="$(mktemp)"
@@ -8,7 +7,7 @@ trap "rm -rf $kast $output $assembled" INT TERM EXIT
 "$(dirname "$0")/kore-json.py" "$assembled" '`DEFAULT`(.KList)' '`VMTESTS`(.KList)' > "$kast"
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 shift 1
-$interpreter "$kast" -1 "$output" "$@"
+iele-interpreter "$kast" -1 "$output" "$@"
 exit=$?
 if [ $exit -eq 0 ]; then
   exit 0

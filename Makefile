@@ -22,8 +22,6 @@ BISECT=-package bisect_ppx
 PREDICATES=-predicates coverage
 endif
 
-export PATH:=$(shell cd iele-assemble && stack path --local-install-root)/bin:${PATH}
-
 BUILD_DIR      := $(abspath .build)
 KORE_SUBMODULE := $(BUILD_DIR)/kore
 BUILD_LOCAL    := $(BUILD_DIR)/local
@@ -33,7 +31,18 @@ LOCAL_INCLUDE  := $(BUILD_LOCAL)/include
 PLUGIN=$(abspath plugin)
 PROTO=$(abspath proto)
 
-.PHONY: all clean distclean build build-haskell tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps assembler iele-test iele-test-haskell iele-test-node node testnode install kore libff protobuf
+IELE_BIN         := .build/vm
+IELE_ASSEMBLE    := $(IELE_BIN)/iele-assemble
+IELE_INTERPRETER := $(IELE_BIN)/iele-interpreter
+IELE_CHECK       := $(IELE_BIN)/iele-check
+IELE_VM          := $(IELE_BIN)/iele-vm
+IELE_TEST_VM     := $(IELE_BIN)/iele-test-vm
+IELE_TEST_CLIENT := $(IELE_BIN)/iele-test-client
+
+export PATH:=$(IELE_BIN):$(PATH)
+
+.PHONY: all clean distclean build build-haskell tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps iele-test iele-test-haskell iele-test-node node testnode kore libff protobuf \
+        install uninstall
 .SECONDARY:
 
 all: build split-vm-tests testnode
@@ -45,18 +54,11 @@ distclean: clean
 	cd .build/k && mvn clean
 	cd .build/kore && stack clean
 
-build: tangle .build/standalone/iele-testing-kompiled/interpreter .build/vm/iele-vm assembler .build/check/well-formedness-kompiled/interpreter build-haskell
+build: tangle $(IELE_INTERPRETER) $(IELE_VM) $(IELE_ASSEMBLE) $(IELE_CHECK) build-haskell
 
 llvm: tangle .build/llvm/iele-testing.kore
 
 haskell: tangle .build/haskell/definition.kore
-
-assembler:
-	cd iele-assemble && stack build --install-ghc
-
-install: assembler
-	cd iele-assemble && stack install
-	cp .build/vm/iele-vm .build/vm/iele-test-client .build/vm/iele-test-vm ~/.local/bin
 
 # Tangle from *.md files
 # ----------------------
@@ -66,17 +68,8 @@ tangle: defn proofs
 k_files:=iele-testing.md data.md iele.md iele-gas.md iele-binary.md plugin/plugin/krypto.md iele-syntax.md iele-node.md well-formedness.md
 checker_files:=iele-syntax.md well-formedness.md data.md
 
-.build/node/%.k: %.md
-	@echo "==  tangle: $@"
-	mkdir -p $(dir $@)
-	pandoc --from markdown --to .build/tangle/tangle.lua --metadata=code:".k:not(.standalone),.node" $< > $@
-.build/standalone/%.k: %.md
-	@echo "==  tangle: $@"
-	mkdir -p $(dir $@)
-	pandoc --from markdown --to .build/tangle/tangle.lua --metadata=code:".k:not(.node),.standalone" $< > $@
-
-node: .build/vm/iele-vm
-testnode : .build/vm/iele-test-vm .build/vm/iele-test-client
+node: $(IELE_VM)
+testnode : $(IELE_TEST_VM) $(IELE_TEST_CLIENT)
 
 # Dependencies
 # ------------
@@ -158,23 +151,23 @@ well-formed-test: ${well_formedness_targets}
 test-bad-packet:
 	netcat 127.0.0.1 $(PORT) -q 2 < tests/bad-packet
 	netcat 127.0.0.1 $(PORT) -q 2 < tests/bad-packet-2
-	.build/vm/iele-test-vm tests/iele/danse/sum/sum_zero.iele.json $(PORT)
+	iele-test-vm tests/iele/danse/sum/sum_zero.iele.json $(PORT)
 
-tests/VMTests/%.json.test: tests/VMTests/%.json | .build/standalone/iele-testing-kompiled/interpreter
+tests/VMTests/%.json.test: tests/VMTests/%.json
 	./vmtest $<
-tests/BlockchainTests/%.json.test: tests/BlockchainTests/%.json | .build/standalone/iele-testing-kompiled/interpreter
+tests/BlockchainTests/%.json.test: tests/BlockchainTests/%.json
 	./blockchaintest $<
-tests/iele/%.json.test: tests/iele/%.json | .build/standalone/iele-testing-kompiled/interpreter 
+tests/iele/%.json.test: tests/iele/%.json
 	./blockchaintest $<
-tests/iele/%.json.test-haskell: tests/iele/%.json | $(haskell_kompiled)
+tests/iele/%.json.test-haskell: tests/iele/%.json
 	./vmtest-haskell $<
 
-%.iele.test: %.iele | .build/check/well-formedness-kompiled/interpreter
+%.iele.test: %.iele
 	./check-iele $<
 
 PORT?=10000
-tests/iele/%.nodetest: tests/iele/% | testnode
-	.build/vm/iele-test-vm $< $(PORT)
+tests/iele/%.nodetest: tests/iele/%
+	iele-test-vm $< $(PORT)
 
 tests/%/make.timestamp: tests/ethereum-tests/%.json tests/evm-to-iele/evm-to-iele tests/evm-to-iele/evm-test-to-iele
 	@echo "==   split: $@"
@@ -202,11 +195,6 @@ KOMPILE_CPP_OPTS     := $(addprefix -ccopt , $(KOMPILE_CPP_FILES))
 coverage:
 	kcovr .build/node/iele-testing-kompiled .build/standalone/iele-testing-kompiled .build/check/well-formedness-kompiled -- $(filter-out krypto.md, $(source_files)) > .build/coverage.xml
 
-deps:
-
-haskell-deps:
-		cd $(KORE_SUBMODULE) && stack install --local-bin-path $(abspath $(KORE_SUBMODULE))/bin kore:exe:kore-exec
-
 .build/check/well-formedness-kompiled/interpreter: $(checker_files) $(protobuf_out) $(libff_out)
 	${KOMPILE} --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE --md-selector "(k & ! node) | standalone" \
 	                                --syntax-module IELE-SYNTAX well-formedness.md --directory .build/check --hook-namespaces KRYPTO \
@@ -224,9 +212,17 @@ haskell-deps:
 LLVM_KOMPILE_INCLUDE_OPTS := -I $(PLUGIN)/plugin-c/ -I $(PROTO) -I $(BUILD_DIR)/plugin-node -I vm/c/ -I vm/c/iele/ -I $(LOCAL_INCLUDE)
 LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(LOCAL_LIB) -lff -lprotobuf -lgmp -lprocps -lcryptopp -lsecp256k1
 
-.build/vm/iele-vm: .build/node/iele-testing-kompiled/interpreter $(wildcard vm/c/*.cpp vm/c/*.h) $(protobuf_out)
-	mkdir -p .build/vm
-	llvm-kompile .build/node/iele-testing-kompiled/definition.kore .build/node/iele-testing-kompiled/dt library vm/c/main.cpp vm/c/vm.cpp $(KOMPILE_CPP_FILES) $(protobuf_out) vm/c/iele/semantics.cpp $(LLVM_KOMPILE_INCLUDE_OPTS) $(LLVM_KOMPILE_LINK_OPTS) -o .build/vm/iele-vm -g
+$(IELE_CHECK): .build/check/well-formedness-kompiled/interpreter
+	@mkdir -p $(IELE_BIN)
+	cp $< $@
+
+$(IELE_INTERPRETER): .build/standalone/iele-testing-kompiled/interpreter
+	@mkdir -p $(IELE_BIN)
+	cp $< $@
+
+$(IELE_VM): .build/node/iele-testing-kompiled/interpreter $(wildcard vm/c/*.cpp vm/c/*.h) $(protobuf_out)
+	@mkdir -p $(IELE_BIN)
+	llvm-kompile .build/node/iele-testing-kompiled/definition.kore .build/node/iele-testing-kompiled/dt library vm/c/main.cpp vm/c/vm.cpp $(KOMPILE_CPP_FILES) $(protobuf_out) vm/c/iele/semantics.cpp $(LLVM_KOMPILE_INCLUDE_OPTS) $(LLVM_KOMPILE_LINK_OPTS) -o $(IELE_VM) -g
 
 # Haskell Build
 # -------------
@@ -245,6 +241,45 @@ $(haskell_kompiled): MD_SELECTOR="(k & ! node) | standalone"
 $(haskell_kompiled):
 	$(KOMPILE) --directory $(haskell_dir) --backend haskell --main-module $(haskell_main_module) --syntax-module $(haskell_syntax_module) --md-selector $(MD_SELECTOR) --hook-namespaces "KRYPTO JSON" $(haskell_main_file)
 
+# IELE Assembler
+# --------------
+
+$(IELE_ASSEMBLE):
+	cd iele-assemble && stack install --local-bin-path $(CURDIR)/$(IELE_BIN)
+
+# Install
+# -------
+
+KIELE_VERSION     ?= 0.2.0
+KIELE_RELEASE_TAG ?= v$(KIELE_VERSION)-$(shell git rev-parse --short HEAD)
+
+INSTALL_PREFIX := /usr/local
+INSTALL_BIN    ?= $(DESTDIR)$(INSTALL_PREFIX)/bin
+INSTALL_LIB    ?= $(DESTDIR)$(INSTALL_PREFIX)/lib/kiele
+
+install_bins := iele-vm iele-test-vm iele-assemble iele-interpreter iele-check
+
+install_libs := version
+
+version:
+	echo "$(KIELE_RELEASE_TAG)" > $@
+
+$(INSTALL_BIN)/%: $(IELE_BIN)/%
+	install -D $< $@
+
+$(INSTALL_LIB)/%: %
+	install -D $< $@
+
+install: $(patsubst %, $(INSTALL_BIN)/%, $(install_bins)) $(patsubst %, $(INSTALL_LIB)/%, $(install_libs))
+
+uninstall:
+	rm $(patsubst %, $(INSTALL_BIN)/%, $(install_bins))
+	rm $(patsubst %, $(INSTALL_LIB)/%, $(install_libs))
+
+release.md:
+	echo "KIELE Release - $(KIELE_RELEASE_TAG)"  > $@
+	echo                                        >> $@
+
 # Ocaml Builds
 # ------------
 
@@ -252,12 +287,12 @@ $(haskell_kompiled):
 	mkdir -p .build/plugin-ocaml
 	eval `opam config env` && ocaml-protoc $< -ml_out .build/plugin-ocaml
 
-.build/vm/iele-test-vm: $(wildcard vm/*.ml vm/*.mli) .build/plugin-ocaml/msg_types.ml
-	mkdir -p .build/vm
-	cp vm/*.ml vm/*.mli .build/plugin-ocaml/*.ml .build/plugin-ocaml/*.mli .build/vm
-	cd .build/vm && eval `opam config env` && ocamlfind $(OCAMLC) -g -o iele-test-vm msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml ieleClientUtils.ml ieleVmTest.ml -package dynlink -package zarith -package str -package uuidm -package unix -package rlp -package yojson -package hex -package cryptokit -package ocaml-protoc -linkpkg -linkall -thread -safe-string
+$(IELE_TEST_VM): $(wildcard vm/*.ml vm/*.mli) .build/plugin-ocaml/msg_types.ml
+	@mkdir -p $(IELE_BIN)
+	cp vm/*.ml vm/*.mli .build/plugin-ocaml/*.ml .build/plugin-ocaml/*.mli $(IELE_BIN)
+	cd $(IELE_BIN) && eval `opam config env` && ocamlfind $(OCAMLC) -g -o iele-test-vm msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml ieleClientUtils.ml ieleVmTest.ml -package dynlink -package zarith -package str -package uuidm -package unix -package rlp -package yojson -package hex -package cryptokit -package ocaml-protoc -linkpkg -linkall -thread -safe-string
 
-.build/vm/iele-test-client: $(wildcard vm/*.ml vm/*.mli) .build/plugin-ocaml/msg_types.ml
-	mkdir -p .build/vm
-	cp vm/*.ml vm/*.mli .build/plugin-ocaml/*.ml .build/plugin-ocaml/*.mli .build/vm
-	cd .build/vm && eval `opam config env` && ocamlfind $(OCAMLC) -g -o iele-test-client msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml ieleClientUtils.ml ieleApi.mli ieleApi.ml ieleApiClient.ml -package dynlink -package zarith -package str -package uuidm -package unix -package rlp -package yojson -package hex -package cryptokit -package ocaml-protoc -linkpkg -linkall -thread -safe-string $(PREDICATES)
+$(IELE_TEST_CLIENT): $(wildcard vm/*.ml vm/*.mli) .build/plugin-ocaml/msg_types.ml
+	@mkdir -p $(IELE_BIN)
+	cp vm/*.ml vm/*.mli .build/plugin-ocaml/*.ml .build/plugin-ocaml/*.mli $(IELE_BIN)
+	cd $(IELE_BIN) && eval `opam config env` && ocamlfind $(OCAMLC) -g -o iele-test-client msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml ieleClientUtils.ml ieleApi.mli ieleApi.ml ieleApiClient.ml -package dynlink -package zarith -package str -package uuidm -package unix -package rlp -package yojson -package hex -package cryptokit -package ocaml-protoc -linkpkg -linkall -thread -safe-string $(PREDICATES)

@@ -17,7 +17,7 @@ def assembleIele(code):
     path = code
   else:
     path = source_dir + "/" + code
-  binary = subprocess.check_output(["stack", "exec", "iele-assemble", path], cwd=dir_path + "/iele-assemble")
+  binary = subprocess.check_output(["iele-assemble", path])
   return binary
 
 def convertToBinaryIele(json):
