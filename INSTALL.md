@@ -70,5 +70,8 @@ git submodule update --init --recursive
 curl -sSL https://github.com/kframework/k/releases/download/$(cat deps/k_release)/kframework_5.0.0_amd64_bionic.deb
 sudo apt-get install --yes ./kframework_5.0.0_amd64_bionic.deb
 sudo bash -c 'OPAMROOT=/usr/lib/kframework/opamroot k-configure-opam'
+sudo bash -c 'OPAMROOT=/usr/lib/kframework/opamroot opam install --yes ocaml-protoc rlp yojson zarith hex uuidm cryptokit'
+export OPAMROOT=/usr/lib/kframework/opamroot
+eval $(opam config env)
 make COVERAGE=k
 ```
