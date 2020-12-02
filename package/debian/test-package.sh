@@ -5,9 +5,6 @@ set -euxo pipefail
 KIELE_VERSION="$1"
 UBUNTU_RELEASE="$2"
 KIELE_REVISION="$3"
-K_SHORT_REV="$4"
-
-K_RELEASE="https://github.com/kframework/k/releases/download/v5.0.0-${K_SHORT_REV}"
 
 sudo apt-get update && sudo apt-get upgrade --yes
 sudo apt-get install --yes netcat
