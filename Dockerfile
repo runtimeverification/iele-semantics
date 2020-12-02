@@ -42,13 +42,17 @@ RUN    groupadd --gid $GROUP_ID user                                        \
 
 USER $USER_ID:$GROUP_ID
 
+RUN curl -L https://github.com/github/hub/releases/download/v2.14.0/hub-linux-amd64-2.14.0.tgz -o /home/user/hub.tgz
+RUN cd /home/user && tar xzf hub.tgz
+ENV PATH=/home/user/hub-linux-amd64-2.14.0/bin:$PATH
+
+RUN    opam init --yes                                                       \
+    && opam install --yes zarith hex uuidm rlp yojson cryptokit ocaml-protoc
+
 ENV LC_ALL=C.UTF-8
 ADD --chown=user:user iele-assemble/stack.yaml iele-assemble/iele-assemble.cabal /home/user/.tmp-haskell/
 RUN    cd /home/user/.tmp-haskell \
     && stack build --only-snapshot
-
-RUN    opam init --yes                                                       \
-    && opam install --yes zarith hex uuidm rlp yojson cryptokit ocaml-protoc
 
 RUN    git config --global user.email 'admin@runtimeverification.com' \
     && git config --global user.name  'RV Jenkins'                    \
