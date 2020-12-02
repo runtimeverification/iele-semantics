@@ -4,6 +4,7 @@ Installing KIELE
 We provide packages for IELE on the following platforms:
 
 -   Ubuntu Bionic (18.04)
+-   Binary Package (Most Linux Systems)
 -   From Source Build
 
 **NOTE**: We do not currently support running K on native Windows.
@@ -27,6 +28,34 @@ Then install the `kiele` package.
 
 ```sh
 sudo apt install ./kiele_X.Y.Z_amd64_bionic.deb
+```
+
+### Binary Package
+
+Install the following runtime dependencies:
+
+```sh
+sudo apt-get install --yes libcrypto++-dev libjemalloc-dev libmpfr-dev libprotobuf-dev libsecp256k1-dev
+```
+
+Extract the tarball:
+
+```sh
+tar -xvf kiele-X.Y.Z-bin.tar.gz
+```
+
+Copy all the files in the tarball into place:
+
+```sh
+mkdir -p ~/.local/bin ~/.local/lib
+cp -r kiele-X.Y.Z-bin/bin/* ~/.local/bin/
+cp -r kiele-X.Y.Z-bin/lib/* ~/.local/lib/
+```
+
+And make sure it's on `PATH`:
+
+```sh
+export PATH=$HOME/local/bin:$PATH
 ```
 
 From Source Build
