@@ -277,7 +277,7 @@ uninstall:
 	rm $(patsubst %, $(INSTALL_LIB)/%, $(install_libs))
 
 release.md:
-	echo "Firefly Release - $(KIELE_RELEASE_TAG)"  > $@
+	echo "KIELE Release - $(KIELE_RELEASE_TAG)"  > $@
 	echo                                          >> $@
 
 # Ocaml Builds
