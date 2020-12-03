@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+<meta charset="utf-8" />
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+/>
+<meta
+  name="description"
+  content="Design and implement your programming language and software analysis tools with mathematical rigor."
+/>
+<meta name="keywords" content="runtime, verification, rv, k" />
+<meta name="author" content="IELE Semantics | Runtime Verification Inc" />
+<meta name="robots" content="index, follow" />
+
+<!--favicon icon-->
+<link rel="icon" type="image/png" href="../assets/img/favicon.ico" />
+
+<title>IELE Semantics | Runtime Verification Inc</title>
+
+<!-- <base href="/k/" /> -->
+
+<!--web fonts-->
+<link
+  href="https://fonts.googleapis.com/css?family=Nunito:300,400,600,700,800"
+  rel="stylesheet"
+/>
+<link
+  href="https://fonts.googleapis.com/css?family=Lora:400i"
+  rel="stylesheet"
+/>
+
+<link
+  href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css"
+  rel="stylesheet"
+/>
+
+<link href="../assets/css/index.css" rel="stylesheet" />
+
+<!--[if (gt IE 9) |!(IE)]><!-->
+<!--<link rel="stylesheet" href="/assets/vendor/custom-nav/css/effects/fade-menu.css"/>-->
+<!-- <link rel="stylesheet" href="../assets/k/vl-nav/css/effects/slide-menu.css" /> -->
+<!--<![endif]-->
+
+  </head>
+
+  <body>
+<header
+  class="navbar navbar-expand navbar-dark flex-column flex-md-row bd-navbar"
+>
+  <a class="logo-link" href="../index.html"> IELE Semantics </a>
+  <ul class="navbar-nav ml-md-auto">
+    <li class="nav-item">
+      <a
+        class="nav-link pl-2 pr-1 mx-1 py-3 my-n2"
+        href="https://github.com/runtimeverification/iele-semantics"
+        target="_blank"
+        rel="noopener"
+        aria-label="GitHub"
+      >
+        <i class="fab fa-github"></i>
+      </a>
+    </li>
+  </ul>
+  <!--
+  <a
+    class="btn btn-rv-blue d-none d-lg-inline-block mb-3 mb-md-0 ml-md-3"
+    href="../downloads"
+    >Download</a
+  >
+  -->
+</header>
+
+
+    <div class="container-fluid">
+      <div class="row flex-xl-nowrap">
+<div class="col-12 col-md-3 col-xl-2 bd-sidebar mb-3">
+  <form
+    role="search"
+    class="bd-search d-flex align-items-center justify-content-between"
+  >
+    <input
+      type="search"
+      class="form-control"
+      placeholder="Search..."
+      aria-label="Search for..."
+      autocomplete="false"
+      id="search-box"
+    />
+    <button
+      class="btn bd-search-docs-toggle d-md-none p-0 ml-3 collapsed"
+      type="button"
+      aria-label="Toggle docs navigation"
+      style="font-size: 1.4rem"
+    >
+      <i class="fas fa-bars"></i>
+    </button>
+  </form>
+  <nav class="collapse bd-links" aria-label="Main navigation">
+    <div class="bd-toc-item">
+      <a class="bd-toc-link" href="../">Homepage</a>
+      <a class="bd-toc-link" href="../INSTALL">Install</a>
+      <a class="bd-toc-link" href="../Design">Design</a>
+    </div>
+  </nav>
+</div>
+
+        <main
+          class="col-12 col-md-9 col-xl-8 py-md-3 pl-md-5 bd-content"
+          role="main"
+        >
+          <div class="markdown-preview"><html><head></head><body><p>This page discusses the design of the IELE virtual machine (named after the <a href="https://en.wikipedia.org/wiki/Iele" target="_blank" rel="noopener">Mythological Iele</a>)</p>
+<p>The design of IELE was based on our experience with formally defining <a href="https://github.com/kframework" target="_blank" rel="noopener">dozens of languages in K</a>, but especially on recent experience and lessons learned while formally defining two other virtual machines in K, namely:</p>
+<ul>
+<li>
+<p><a href="https://github.com/kframework/evm-semantics" target="_blank" rel="noopener">KEVM</a>, our semantics of the <a href="https://github.com/ethereum/yellowpaper" target="_blank" rel="noopener">Ethereum Virtual Machine</a> (EVM); and</p>
+</li>
+<li>
+<p>KLLVM, our semantics of <a href="http://llvm.org" target="_blank" rel="noopener">LLVM</a>; the latest version of the LLVM semantics will be made public when complete and published, but an earlier version <a href="https://github.com/kframework/llvm-semantics" target="_blank" rel="noopener">is available</a>.</p>
+</li>
+</ul>
+<p>Unlike the EVM, which is a stack-based machine, IELE is a register-based machine, like LLVM. IELE also directly supports functions, like LLVM. It has an unbounded number of registers and also supports unbounded integers. There are some tricky but manageable aspects with respect to gas calculation, a critical part of the design.</p>
+<p>We first discuss the rationale behind the design of IELE, then the major design decisions from the perspective of differences from EVM and LLVM, respectively.</p>
+<h1 id="design-rationale">Design Rationale</h1>
+<p>Here are the forces that drove the design of IELE:</p>
+<ol>
+<li>
+<p>To serve as a uniform, lower-level platform for translating and executing smart contracts from higher-level languages, which can also interact with each other by means of an ABI (Application Binary Interface). The ABI is a core element of IELE, and not just a convention on top of it.  The unbounded integers and unbounded number of registers should make compilation from higher-level languages more straightforward and elegant and, looking at the success of LLVM, more efficient in the long term.  Indeed, many of the LLVM optimizations are expected to carry over.  For that reason, IELE followed the design choices and representation of LLVM as much as possible.  The team also included LLVM experts from the University of Illinois (where LLVM was created).</p>
+</li>
+<li>
+<p>To provide a uniform gas model, across all languages.  The general design philosophy of gas calculation in IELE is &quot;no limitations, but pay for what you consume&quot;.  For example, the more registers a IELE program uses, the more gas it consumes. Or the larger the numbers computed at runtime, the more gas it consumes.  The more memory it uses, in terms of both locations and size of data stored at locations, the more gas it consumes.  And so on.</p>
+</li>
+<li>
+<p>To make it easier to write secure smart contracts.  This includes writing requirements specifications that smart contracts must obey as well as making it easier to develop automated techniques that mathematically verify / prove smart contracts correct with respect to to such specifications.  For example, pushing a possibly computed number on the stack and then jumping to it regarded as an address makes verification hard, and thus security weaker, with current smart contract paradigms.  IELE has named labels, like LLVM, and jump statements can only jump to those labels.  Also, avoiding the use of a bounded stack and not having to worry about stack or arithmetic overflow makes specification and verification of smart contracts significantly easier.</p>
+</li>
+</ol>
+<p>Like <a href="https://github.com/kframework/evm-semantics" target="_blank" rel="noopener">KEVM</a>, the formal semantics of EVM that we previously defined, validated and evaluated using the <a href="http://kframework.org" target="_blank" rel="noopener">K framework</a>, the design of IELE was also done in a semantics-based style, using K. Together with a fast (LLVM-based) execution backend for K that is still under development, it is expected that the interpreter obtained automatically from the semantics of IELE will be sufficiently efficient to serve as a reference implementation of IELE.</p>
+<h1 id="design-changes-relative-to-evm">Design Changes Relative to EVM</h1>
+<p>Here are the IELE design decisions described from the perspective of differences from EVM.</p>
+<h2 id="registers">Registers</h2>
+<p>IELE is a register-based bytecode language, unlike EVM, which is a stack-based bytecode. As a result, the following alterations have been made:</p>
+<ul>
+<li>Each instruction in the bytecode takes register operands representing the arguments and result of the instruction.</li>
+<li>There is an unlimited number of registers available and they can be referred to by user-defined names, similar to the virtual registers of LLVM. The more registers a contract uses, the more gas it consumes.</li>
+<li>Because the stack no longer exists, it is no longer possible for the VM to throw an exception due to stack underflow or overflow.</li>
+<li>Because the stack no longer exists, the POP, DUP, SWAP, and PUSH instructions no longer exist. They are replaced with an assignment instruction that can be used to load a constant value into a register (see section on arbitrary-precision integers for more details), and/or copy a value from one register to another.</li>
+<li>Registers are visible only within the function in which they are used.</li>
+<li>Registers have a lifetime equal to the lifetime of a function call to the function that contains them.</li>
+</ul>
+<h2 id="program-structure">Program Structure</h2>
+<p>A IELE program consists of a list of contracts, where contracts later in the list can create accounts with deployed contracts found earlier in the list. Unlike EVM, in which a contract is a sequence of instructions, a IELE contract consists of a header giving the contract a name, followed by one or more function definitions and optionally one or more external contract declarations.</p>
+<ul>
+<li>An external contract declaration simply declares the name of another contract. The contract being defined will only be able to create accounts with deployed code being a copy of one of the contracts that have been declared as external, or a copy of existing account&apos;s code (see section on contract creation for details). Each externally declared contract should have been defined in the same file and above the contract that externally declares it.</li>
+<li>A function definition includes the function signature, the function body and whether or not the function is public. A function signature includes a function name (which is prefixed by the <code>@</code> symbol) and names of formal arguments (which are represented as local registers, as they are only visible within the function body).</li>
+<li>A public function can be called by other accounts, while a non-public one can only be called by other functions within the same contract.</li>
+<li>A special private function named <code>@init</code> should be defined for any contract and will be called when an account is created with this contract. If this function is not defined the contract is malformed.</li>
+<li>An account to which code has never been deployed contains an implicit public function <code>@deposit</code> which takes no arguments, returns no values, and does nothing. This function exists to allow accounts to receive payment even if they do not have a contract deployed to them, and functions analogously to calling an account with no code in EVM. Note that a contract can forbid payments by refusing to declare the <code>@deposit</code> function, and explicitly raising an exception if any of its entry points are invoked with a balance transfer. A contract can also define code to be executed when it is paid by defining its own deposit function.</li>
+<li>A global definition defines a global name and its constant value (which is an unbounded signed integer). Globals are accessible from within any function of the contract and their value cannot be modified.</li>
+<li>The contract is malformed if it contains multiple function and/or global definitions with the same name, or if it references a global that has not been declared.</li>
+</ul>
+<h2 id="static-jumps">Static Jumps</h2>
+<p>IELE no longer has dynamic jump instructions. They are replaced with jumps that take a named label as an argument, and with a call/return mechanism to allow function calls that return to the caller.</p>
+<ul>
+<li>The code within a function contains named labels. Any instruction can be prefixed by a named label that makes this instruction a valid target of a jump.</li>
+<li>The <code>br</code> instruction has two variants. It can be used with a named label as a single argument for unconditional jumps within a function body, or with an additional register holding a condition value for conditional jumps when the condition value is not zero. The instruction prefixed by the named label is the target of the jump. Therefore all jump targets can be known statically.</li>
+<li>The contract is malformed if multiple labels within the same function have the same name.</li>
+<li>The contract is malformed if the label argument of the <code>br</code> instruction is not found as a label in the function containing the instruction. This is unlike the corresponding behavior in EVM, where an exception is thrown if the argument of JUMP or JUMPI is not the program counter of a JUMPDEST instruction.</li>
+</ul>
+<h2 id="function-call%2Freturn">Function Call/Return</h2>
+<p>IELE function calls take an arbitrary number of register arguments and return values instead of a memory range.</p>
+<ul>
+<li>IELE has a <code>call</code> instruction used for local calls to other functions within the contract. <code>call</code> takes a function name, an arbitrary number of arguments, and an arbitrary number of register return values, and jumps to the start of the function in the current contract with the corresponding name. It pushes the current instruction position, the values of all local registers, and the register operands of the return values onto the local call stack. The arguments of the call are copied into local registers corresponding to the formal arguments of the function being called. A contract is malformed if the number of results in a local <code>call</code> does not match the number of results returned by the target function.</li>
+<li>IELE has a <code>call .. at</code> and a <code>staticcall .. at</code> instruction used for account calls to public functions of other contracts. The target account address is a register operand of these instructions, as is the amount of gas to be spent during the call, and <code>call .. at</code> has an additional operand for the balance to be transferred with the call. <code>call .. at</code> and <code>staticcall .. at</code> also take an arbitrary number of arguments and return values in the form of register operands instead of memory ranges. The arguments are copied into local registers corresponding to the formal arguments of the function being called. The first register operand in the list of return values is the status register. This register will hold the exit status code upon returning from the call. This means that the list of return value registers given to a <code>call .. at</code> or <code>staticcall .. at</code> instruction should be long enough to accept the correct number of values expected to returned by the callee plus the exit status code.</li>
+<li>The <code>ret</code> instruction takes an arbitrary number of register operands holding returned values. <code>ret</code> will return to the instruction position on the top of the local call stack if one exists, restoring the values of local registers and copying the returned values into the return value operands of the call instruction. If the local call stack is empty, it returns from the contract to the callsite of the caller account code with an exit status code of <code>0</code> in addition to the given returned values. A contract is malformed if any function contains multiple <code>ret</code> instructions with different numbers of arguments.</li>
+<li>The <code>revert</code> instruction takes a single register operand. <code>revert</code> always returns from the contract to the callsite of the caller account code, independently of the size of the local stack. It refunds unused gas and returns a value in the first register return value of the call (that is the exit status register), but does not write to the other return values, and it also rolls back the state changes of the contract.</li>
+<li>A static account call, done with <code>staticcall .. at</code>, similarly to EVM, should not attempt to change any state in the network (e.g. log, account storage, account creation/deletion) during its execution. If it does, an exception is thrown. (Avoiding state changes also means that no balance can be transferred with the <code>staticcall .. at</code>, which is why <code>call .. at</code> takes one additional parameter).</li>
+<li>If the name of the function being called does not correspond to a public function of the contract being called, an exception is thrown.</li>
+<li>In all cases, if a mismatch occurs between the number of arguments or return values of a function and the matching <code>call</code> or <code>ret</code> instruction, an exception is thrown.</li>
+<li>When an exception is thrown during the lifetime of an account call, the call is terminated and control returns to the callsite of the caller account code, similarly to a <code>revert</code>. Also in a similar fashion to <code>revert</code>, an exit status code is returned in the first register return value of the call (that is the exit status register), while nothing is written to the other return values, and the state changes of the contract are rolled back. However, unlike <code>revert</code>, no unused gas is refunded.</li>
+<li>Following is a comprehensive list of exit status codes:
+<ul>
+<li>0: success</li>
+<li>1: function does not exist</li>
+<li>2: function has wrong signature</li>
+<li>3: function does not exist on empty account</li>
+<li>4: execution of instructions led to failure</li>
+<li>5: out of gas</li>
+<li>6: deploying to an account that already exists</li>
+<li>7: insufficient balance to transfer</li>
+<li>8: negative balance or gas limit or call depth exceeded</li>
+<li>9: contract being uploaded to blockchain is not well formed</li>
+</ul>
+</li>
+<li>Because they are no longer needed, we remove EVM&apos;s CALLDATA* instructions and RETURNDATA* instructions.</li>
+<li>Because of security concerns, we remove the EVM&apos;s CALLCODE and DELEGATECALL instructions. We provide a different way to more cheaply create many contracts that share code.</li>
+</ul>
+<h2 id="arbitrary-precision-words">Arbitrary Precision Words</h2>
+<p>Unlike EVM, which uses 32-byte unsigned words, IELE has arbitrary-precision signed words.</p>
+<ul>
+<li>Because words are now explicitly signed, the SDIV, SMOD, SLT, and SGT instructions are removed, and DIV, MOD, LT, and GT are replaced with signed versions.</li>
+<li>An <code>expmod</code> instruction is added to perform exponentiation modulo a particular base, and the MODEXP precompiled contract is removed.</li>
+<li>a <code>twos</code> instruction is added to convert a signed integer into an <code>N</code>-byte twos-complement representation of the number, where <code>N</code> is passed as an argument to the instruction.</li>
+<li><code>sext</code> (corresponding to EVM&apos;s SIGNEXTEND) is changed to convert an N-byte twos-complement representation of a signed number into its signed value, where <code>N</code> is passed as an argument to the instruction.</li>
+<li>Because integers are unbounded, the index operand of <code>byte</code> (corresponding to EVM&apos;s BYTE) now counts from the least-significant byte instead of the most-significant.</li>
+<li>In order to reduce gas costs for multiplication and division by powers of two, we introduce an explicit bitwise <code>shift</code> operator. It takes two arguments, and the second is positive for left shift and negative for right shift.</li>
+</ul>
+<h2 id="local-execution-memory">Local Execution Memory</h2>
+<p>Unlike EVM, which uses a 2^256-cell array of bytes as local execution memory, IELE&apos;s local execution memory is a 2^256-cell array of arbitrary-length byte buffers.</p>
+<ul>
+<li>Unbounded signed integers are stored with their MSB first (at offset 0 within the cell).</li>
+<li>There are two variations of the <code>load</code> and <code>store</code> instructions, one that accesses the whole contents of a cell interpreting them as an unbound signed integer, and one that accesses a subrange of the bytes stored in a cell.</li>
+<li>Similar to EVM, the local execution memory is cleared when the currently executing contract returns.</li>
+</ul>
+<h2 id="account-storage">Account Storage</h2>
+<p>IELE&apos;s account storage is an unbound array of unbound signed integers, unlike EVM&apos;s storage, which is a 2^256 cell array of 256-bit words. Similar to EVM, IELE&apos;s account storage (unlike the local execution memory) is persistent over contract calls and returns and is only cleared when the corresponding account is destroyed.</p>
+<h2 id="instructions-and-precompiled-contracts">Instructions and Precompiled Contracts</h2>
+<p>Unlike EVM, where each instruction is just an opcode operating on the values found on top of the stack, IELE instructions follow a syntax similar to LLVM: each instruction is an opcode followed by some arguments in the form of registers. If the instruction produces a result, it is formed as an assignment where the LHS contains the register(s) to hold the result(s) and the RHS contains the opcode and the arguments. Other changes with respect to EVM include:</p>
+<ul>
+<li>IELE has one integer comparison instruction, namely <code>cmp</code>, that accepts various predicates. In addition to the predicates <code>lt</code>, <code>gt</code>, and <code>eq</code>, which have corresponding EVM instructions, the predicates <code>le</code>, <code>ge</code>, and <code>ne</code> are also supported.</li>
+<li>The IELE instructions for storing in the local execution memory (<code>store</code>) and account storage (<code>sstore</code>) accept two arguments, where the first argument is the value to be stored and the second argument is the index of the memory cell to be updated. This is opposite from the order expected on the stack in the corresponding EVM instructions, but similar to the order used in the corresponding LLVM instruction.</li>
+<li>Various EVM instructions that query local and/or network state (e.g. GAS, BALANCE, etc.) have been replaced by IELE builtins that can be called using the <code>call</code> instruction (e.g. <code>%balance = call @iele.balance(%bank.account)</code>). The names of all IELE builtins start with the prefix <code>@iele.</code>, following a convention similar to the LLVM intrinsics. All names for global functions starting with this prefix are reserved: A contract is malformed if it contains user-defined registers and/or functions with names starting with <code>@iele.</code>.</li>
+<li>Precompiled contracts in IELE are also invoked using corresponding builtins (e.g. <code>@iele.ecpairing</code>), but should be called using the <code>call .. at</code> instruction and targeting the account with address <code>1</code> (e.g. <code>%res  = call @iele.sha256 at 1 ( %len, %data ) send %val, gaslimit %gas</code>).</li>
+</ul>
+<h2 id="contract-creation">Contract Creation</h2>
+<p>Unlike EVM, both for ease of verification and due to security concerns, we do not allow smart contracts to create new accounts from dynamically computed code. Accounts can be dynamically created only from code that is part of a previously validated contract, either by copying the complete contract of an account or by instantiating a child contract packaged inside the creating contract. Accounts can be created from completely new code only by top-level blockchain transaction, not by any IELE instructions.</p>
+<ul>
+<li>The <code>create</code> instruction is modified from its EVM counterpart. Instead of taking a memory start address and a memory width containing initialization code, the <code>create</code> instruction takes a contract name, and an arbitrary number of register arguments to be passed to the <code>@init</code> function of the contract to be created. If the contract name is not an externally declared contract name, the contract is malformed.</li>
+<li>Each externally declared contract should have been defined in the same file and above the contract that externally declares it, otherwise the contract is malformed. As a result of this requirement, the exact code that will be deployed by a <code>create</code> instruction is statically known and available.</li>
+<li>The <code>create</code> instruction copies the corresponding contract code into the code storage of the account that contains the created contract. The copied code includes the code of the contract to be deployed along with the code of every contract listed above it in the file (in order to allow the new account to create new contracts on its own in the same way). Then the <code>@init</code> function is invoked in the context of the created account to initialize the contract. It is passed the values in the registers as arguments in the same fashion as a <code>call .. at</code> or <code>staticcall .. at</code> instruction. If the <code>@init</code> function of a contract returns a value, the contract is malformed.</li>
+<li>A separate instruction, <code>copycreate</code>, is introduced for the case of copying an entire contract, or duplicating your own contract. The <code>copycreate</code> instruction behaves like <code>create</code>, except that instead of taking a contract name, it takes a register operand containing an account address, and deploys the entire contract deployed to said account to the newly created account.</li>
+<li>Both instructions return an exit status code and the address of the created contract on success or zero on failure.</li>
+<li>Because we no longer actually need to address portions of code by program counter in order to create contracts, we remove the EVM&apos;s CODECOPY and EXTCODECOPY instructions. Because these are also the only remaining instructions which require the code to be addressed by a particular byte offset, we also remove the EVM&apos;s PC instruction.</li>
+<li>Transactions that create a contract now explicitly provide the binary data of the contract instead of the binary data of the initialization function. Contracts created in this way still invoke the <code>@init</code> function to initialize the contract. If the contract is malformed, the transaction fails.</li>
+</ul>
+<p>Because accounts created by <code>create</code> and <code>copycreate</code> only use code that already exists on the blockchain, they do not have a charge based on code size. This allows for cheap code reuse, without unsafe operations like <code>DELEGATECALL</code> or an explicit notion of shared library code.</p>
+<h2 id="gas-model">Gas Model</h2>
+<p>Due to the changes above, it is necessary to have a refined gas model of IELE which defines gas for arbitrary-precision arithmetic operations in terms of the sizes of the operands. For an in-depth look at the gas model, refer to <a href="../iele-gas/">iele-gas.md</a>. However, at a high level, the main differences from EVM are:</p>
+<ul>
+<li>Because IELE registers are arbitrary precision, we must perform memory accounting on the sizes of registers. Like EVM&apos;s stack of words used for passing arguments to instructions, some amount of memory (currently 32 KB) is free per inter-contract call frame. After that point there is a cost to increasing peak memory consumption. Each successive word costs a linear amount at first, but as memory increases further, costs become quadratic.</li>
+<li>If memory is freed by decreasing the size of a register or memory cell, that memory can be reused elsewhere up to the same amount that has already been payed for, with no additional cost.</li>
+<li>Before executing instructions that may produce large results, a memory cost is paid based on an estimate of the result size, if the predicted result would increase the peak memory usage. If actual memory usage after executing the instruction is less than the estimate, the cost for the unused expansion is not refunded (and the additional memory has still been paid for).</li>
+<li>Each instruction has a formula for its gas cost that is potentially parametric in the sizes of the operands, in keeping with the fact that arbitrary-precision arithmetic can be asymptotically non-constant in the sizes of operands.</li>
+</ul>
+<h1 id="design-changes-relative-to-llvm">Design Changes Relative to LLVM</h1>
+<p>Here are the IELE design decisions described from the perspective of differences from LLVM.</p>
+<h2 id="type-system">Type system</h2>
+<p>Unlike LLVM, which uses finite-precision words as values of its various integer and floating point types, IELE values are arbitrary-precision words. Moreover, we decided to support initially only one type, <code>int</code>, describing arbitrary-precision integer values. This suffices to capture the functionality of EVM in terms of values. In the future we may add a type system supporting aggregate types (such as arrays and structures) as well as (higher-order) function types, similar to the LLVM type system.</p>
+<h2 id="static-single-assignment-(ssa)-form">Static Single Assignment (SSA) form</h2>
+<p>IELE registers are not in Static Single Assignment (SSA) form, meaning that they can be (statically) assigned more than once and that there is no need for IELE phi functions. This departure from the LLVM SSA style was dictated by the fact that IELE, as the target interpreted language for smart contracts, should allow programs to minimize the number of registers they use the consequent gas costs. A compiler that generates IELE can still use an SSA IELE representation internally to ease optimization, but we do not enforce SSA in the final IELE program to allow compiler and/or hand-written code to optimize their register usage.</p>
+<h2 id="control-flow">Control flow</h2>
+<p>We decided to relax the LLVM restrictions about basic block structure, where code is organized as a control-flow graph of maximal basic blocks with explicit and statically defined successors/predecessors. In IELE, we maintain static labels as the only allowed targets of jumps, but also allow execution to fall through from one block to the next, whereas in LLVM the first instruction of a basic block can only be reached through a jump, and every LLVM block must end with a control flow instruction. We made this decision in order to minimize the size of the code of IELE programs, since these restrictions in LLVM programs usually result in additional branch instructions.</p>
+<h2 id="bitwise-shift">Bitwise shift</h2>
+<p>Because IELE has arbitrary-precision signed integers, bitwise shifts are expressed in terms of a signed shift amount instead of separate shr and shl instructions.</p>
+</body></html></div>
+        </main>
+      </div>
+    </div>
+<footer class="app-footer text-md-left text-center">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-2 mb-md-0 mb-4">
+        <span class="pr-md-5 pr-0 py-3">
+          <a href="https://runtimeverification.com" target="_blank">
+            <picture>
+              <source
+                srcset="../assets/img/rv-logo-dark.png"
+                media="(prefers-color-scheme: dark)"
+              />
+              <img
+                class="pr-3 footer-logo"
+                src="../assets/img/rv-logo.png"
+                alt="Runtime Verification Inc logo"
+              />
+            </picture>
+          </a>
+        </span>
+      </div>
+      <div class="col-md-6 mb-md-0 mb-4"></div>
+      <div class="col-md-4 text-md-right">
+        <p class="copyright">
+          &copy; 2020 Runtime Verification Inc. All right reserved.
+        </p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script
+  async
+  src="https://www.googletagmanager.com/gtag/js?id=UA-163311512-1"
+></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag("js", new Date());
+  gtag("config", "UA-163311512-1");
+</script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Typist/1.2/typist.min.js"></script>
+    <script src="../assets/js/index.js"></script>
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-QL0D8HRYFW"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+      gtag("config", "G-QL0D8HRYFW");
+    </script>
+  </body>
+</html>
