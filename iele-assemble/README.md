@@ -6,15 +6,26 @@
 
 #### Nix (Linux)
 
-1.  **Dependencies:**
-    Follow the instructions below.
-    Perform all steps as your non-root user.
-    You may find the same instructions and our public key at <https://runtimeverification.cachix.org>.
-    It is safe to skip any dependencies that are already installed.
-    1.  **Nix:** `bash <(curl -L https://nixos.org/nix/install)`.
-    2.  **Cachix:** `nix-env -iA cachix -f https://cachix.org/api/v1/install`
-    3.  **Binary cache:** `cachix use runtimeverification`
-2.  **Install:** `nix-env -iA iele-assemble -f https://github.com/runtimeverification/iele-semantics/archive/master.tar.gz`
+##### Prerequisites
+
+It is safe to skip any of these dependencies that are already installed.
+
+Follow the instructions below.
+Perform all steps as your normal (non-root) user.
+You may find the same instructions and our public key at <https://runtimeverification.cachix.org>.
+
+1.  **Curl:** Install `curl` using your distribution's package manager.
+    -  **Ubuntu:** `sudo apt install curl`
+2.  **Nix:** `bash <(curl -L https://nixos.org/nix/install)`.
+    Please pay careful attention to any additional instructions printed by the installer.
+3.  **Cachix:** `nix-env -iA cachix -f https://cachix.org/api/v1/install`
+4.  **Binary cache:** `cachix use runtimeverification`
+
+##### Install
+
+```
+nix-env -iA iele-assemble -f https://github.com/runtimeverification/iele-semantics/archive/master.tar.gz
+```
 
 #### Ubuntu
 
@@ -25,6 +36,8 @@
 ### Build
 
 #### Nix
+
+First, install Nix and set up the binary cache following the [instructions](#prerequisites) above.
 
 -   **Build:** `nix-build -A iele-assemble`
 -   **Test:** `nix-build -A iele-assemble-project.iele-assemble.checks`
