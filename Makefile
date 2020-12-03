@@ -51,8 +51,6 @@ clean:
 	rm -rf .build
 
 distclean: clean
-	cd .build/k && mvn clean
-	cd .build/kore && stack clean
 
 build: tangle $(IELE_INTERPRETER) $(IELE_VM) $(IELE_ASSEMBLE) $(IELE_CHECK) build-haskell
 
@@ -162,8 +160,10 @@ tests/iele/%.json.test: tests/iele/%.json
 tests/iele/%.json.test-haskell: tests/iele/%.json
 	./vmtest-haskell $<
 
+TEST_WELLFORMED = ./check-iele
+
 %.iele.test: %.iele
-	./check-iele $<
+	$(TEST_WELLFORMED) $<
 
 PORT?=10000
 tests/iele/%.nodetest: tests/iele/%
@@ -257,7 +257,7 @@ INSTALL_PREFIX := /usr/local
 INSTALL_BIN    ?= $(DESTDIR)$(INSTALL_PREFIX)/bin
 INSTALL_LIB    ?= $(DESTDIR)$(INSTALL_PREFIX)/lib/kiele
 
-install_bins := iele-vm iele-test-vm iele-assemble iele-interpreter iele-check
+install_bins := iele-vm iele-test-vm iele-assemble iele-interpreter
 
 install_libs := version
 
