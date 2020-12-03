@@ -37,12 +37,14 @@ nix-env -iA iele-assemble -f https://github.com/runtimeverification/iele-semanti
 
 #### Nix
 
-First, install Nix and set up the binary cache following the [instructions](#prerequisites) above.
+**Prerequisites:** Install Nix and set up the binary cache following the [instructions](#prerequisites) above.
 
 -   **Build:** `nix-build -A iele-assemble`
 -   **Test:** `nix-build -A iele-assemble-project.iele-assemble.checks`
 
 #### Stack
+
+**Prerequisites:** Install [Stack](https://docs.haskellstack.org/en/stable/README/#how-to-install).
 
 -   **Build:** `stack build`
 -   **Test:** `stack test`
