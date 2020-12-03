@@ -1,4 +1,4 @@
-{ default ? import ../default.nix {} }:
+{ default ? import ./. {} }:
 
 let
   inherit (default) iele-assemble-project;
