@@ -77,12 +77,20 @@ Download and unpack the `KIELE Linux Binary` archive.
 
 ## For developers
 
+Install Nix and set up the binary cache following the [instructions](#prerequisites) above.
+You must also set up the [binary cache](https://input-output-hk.github.io/haskell.nix/tutorials/getting-started/#setting-up-the-binary-cache) for `haskell.nix`.
+
+If you change the `.cabal` file, you must rematerialize the Nix expressions:
+
+```.sh
+# Requires Nix is installed
+./nix/rematerialize.sh
+```
+
 ### Build - Nix
 
-Install Nix and set up the binary cache following the [instructions](#prerequisites) above.
-
 -   **Build:** `nix-build -A iele-assemble`
--   **Test:** `nix-build -A iele-assemble-project.iele-assemble.checks`
+-   **Test:** `nix-build -A project.iele-assemble.checks`
 
 ### Build - Stack
 

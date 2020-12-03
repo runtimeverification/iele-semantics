@@ -3,8 +3,36 @@ on:
   pull_request:
   push:
 jobs:
+
+  # Run ./nix/rematerialize.sh from iele-assemble if this job fails.
+  test-nix-material:
+    name: 'Nix materialization'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v2.3.4
+      with:
+        submodules: recursive
+
+    - name: Install Nix
+      uses: cachix/install-nix-action@v12
+      with:
+        extra_nix_config: |
+          substituters = http://cache.nixos.org https://hydra.iohk.io
+          trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
+
+    - name: Install Cachix
+      uses: cachix/cachix-action@v8
+      with:
+        name: runtimeverification
+        skipPush: true
+
+    - name: Check materialization
+      run: nix-build --arg checkMaterialization true iele-assemble -A project.stack-nix
+
   test-nix:
     name: 'Nix'
+    needs: test-nix-material
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
@@ -14,19 +42,25 @@ jobs:
       uses: actions/checkout@v2.3.4
       with:
         submodules: recursive
+
     - name: Install Nix
       uses: cachix/install-nix-action@v12
       with:
         extra_nix_config: |
           substituters = http://cache.nixos.org https://hydra.iohk.io
           trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
+
     - name: Install Cachix
       uses: cachix/cachix-action@v8
       with:
         name: runtimeverification
         signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
-    - run: nix-build --arg checkMaterialization true -A iele-assemble
-    - run: nix-build -A iele-assemble-project.iele-assemble.checks
+
+    - name: Build
+      run: nix-build iele-assemble -A iele-assemble
+
+    - name: Run unit tests
+      run: nix-build iele-assemble -A project.iele-assemble.checks
 
   # Update iele-assemble/README.md if this job changes.
   test-nix-install:
