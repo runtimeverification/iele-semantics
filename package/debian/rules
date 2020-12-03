@@ -18,7 +18,7 @@
 
 override_dh_auto_build:
 	git submodule update --init --recursive
-	make COVERAGE=k
+	make build -j4
 
 override_dh_auto_install:
 	make install DESTDIR=${CURDIR}/debian/kiele INSTALL_PREFIX=/usr
