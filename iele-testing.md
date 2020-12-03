@@ -195,7 +195,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
     syntax IELECommand ::= "#finishTx"
  // ----------------------------------
     rule <k> #exception STATUS ~> #finishTx => #popCallStack ~> #popWorldState ~> #popSubstate ~> #load %0 STATUS ... </k>
-    rule <k> #revert STATUS    ~> #finishTx => #popCallStack ~> #popWorldState ~> #popSubstate ~> #refund GAVAIL ~> #load %0 STATUS ... </k> <gas> GAVAIL </gas>       
+    rule <k> #revert STATUS    ~> #finishTx => #popCallStack ~> #popWorldState ~> #popSubstate ~> #refund GAVAIL ~> #load %0 STATUS ... </k> <gas> GAVAIL </gas>
 
     rule <k> #end ~> #finishTx => #popCallStack ~> #dropWorldState ~> #dropSubstate ~> #refund GAVAIL ~> #load %0 0 ... </k>
          <gas> GAVAIL </gas>
@@ -357,10 +357,10 @@ State Manipulation
 Here we perform pre-proccesing on account data which allows "pretty" specification of input.
 
 ```{.k .standalone}
-    rule load "pre" : { (ACCTID:String) : ACCT } => mkAcct #parseAddr(ACCTID) ~> load "account" : { ACCTID : ACCT }
-    rule load "account" : { ACCTID: { KEY : VALUE:JSON , REST } } => load "account" : { ACCTID : { KEY : VALUE } } ~> load "account" : { ACCTID : { REST } } requires REST =/=K .JSONs
+    rule load "pre" : { (ACCTID:String) : ACCT } => mkAcct #parseAddr(ACCTID) ~> load "account" : { #parseAddr(ACCTID) : ACCT }
 
-    rule load "account" : { ((ACCTID:String) => #parseAddr(ACCTID)) : ACCT }
+    rule load "account" : { (ACCT:Int) : { KEY : VALUE:JSON , REST } } => load "account" : { ACCT : { KEY : VALUE } } ~> load "account" : { ACCT : { REST } } requires REST =/=K .JSONs
+
     rule load "account" : { (ACCT:Int) : { "balance" : ((VAL:String)         => #parseWord(VAL)) } }
     rule load "account" : { (ACCT:Int) : { "nonce"   : ((VAL:String)         => #parseWord(VAL)) } }
     rule load "account" : { (ACCT:Int) : { "code"    : ((CODE:String)        => #parseByteStack(CODE)) } }
@@ -468,22 +468,22 @@ The `"blockHeader"` key loads the block information.
     rule load "blockHeader" : { "transactionsTrie" : (HT:String) } => .
     rule load "blockHeader" : { "bloom" : (HB:String) } => .
 
-    rule <k> load "blockHeader" : { "gasLimit" : (HL:String) } => . ...</k> 
+    rule <k> load "blockHeader" : { "gasLimit" : (HL:String) } => . ...</k>
          <gasLimit> _ => #parseHexWord(HL) </gasLimit>
 
-    rule <k> load "blockHeader" : { "number" : (HI:String) } => . ...</k> 
+    rule <k> load "blockHeader" : { "number" : (HI:String) } => . ...</k>
          <number> _ => #parseHexWord(HI) </number>
 
-    rule <k> load "blockHeader" : { "difficulty" : (HD:String) } => . ...</k> 
+    rule <k> load "blockHeader" : { "difficulty" : (HD:String) } => . ...</k>
          <difficulty> _ => #parseHexWord(HD) </difficulty>
 
-    rule <k> load "blockHeader" : { "timestamp" : (HS:String) } => . ...</k> 
+    rule <k> load "blockHeader" : { "timestamp" : (HS:String) } => . ...</k>
          <timestamp> _ => #parseHexWord(HS) </timestamp>
 
-    rule <k> load "blockHeader" : { "coinbase" : (HC:String) } => . ...</k> 
+    rule <k> load "blockHeader" : { "coinbase" : (HC:String) } => . ...</k>
          <beneficiary> _ => #parseHexWord(HC) </beneficiary>
 
-    rule <k> load "blockHeader" : { "gasUsed" : (HG:String) } => . ...</k> 
+    rule <k> load "blockHeader" : { "gasUsed" : (HG:String) } => . ...</k>
          <gasUsed> _ => #parseHexWord(HG) </gasUsed>
 
     rule <k> load "blockhashes" : [ VAL:String , VALS ] => . ...</k>
