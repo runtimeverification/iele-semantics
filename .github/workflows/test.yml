@@ -34,12 +34,15 @@ jobs:
     needs: test-nix
     strategy:
       matrix:
-        os: [ubuntu-20.04, ubuntu-18.04, macos-10.15]
+        os: [ubuntu-20.04, ubuntu-18.04]
+        include:
+          - os: macos-10.15
+            nix-install-opts: '--darwin-use-unencrypted-nix-store-volume'
     runs-on: ${{ matrix.os }}
     steps:
       - name: Test end-to-end installation instructions
         run: |
-          bash <(curl -L https://nixos.org/nix/install)
+          bash <(curl -L https://nixos.org/nix/install) ${{ matrix.nix-install-opts }}
           . $HOME/.nix-profile/etc/profile.d/nix.sh
           nix-env -iA cachix -f https://cachix.org/api/v1/install
           cachix use runtimeverification

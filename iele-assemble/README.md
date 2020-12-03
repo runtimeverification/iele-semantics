@@ -4,7 +4,7 @@
 
 ### Install
 
-#### Nix (Linux)
+#### Nix (Linux and macOS)
 
 ##### Prerequisites
 
@@ -18,6 +18,8 @@ You may find the same instructions and our public key at <https://runtimeverific
     -  **Ubuntu:** `sudo apt install curl`
 2.  **Nix:** `bash <(curl -L https://nixos.org/nix/install)`.
     Please pay careful attention to any additional instructions printed by the installer.
+    On macOS, we recommend you add the additional option `--darwin-use-unencrypted-nix-store-volume`:
+    `bash <(curl -L https://nixos.org/nix/install) --darwin-use-unencrypted-nix-store-volume`
 3.  **Cachix:** `nix-env -iA cachix -f https://cachix.org/api/v1/install`
 4.  **Binary cache:** `cachix use runtimeverification`
 
