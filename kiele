@@ -49,14 +49,14 @@ run_interpret() {
             ;;
         haskell)
             check_k_install
-            kore-exec "$backend_dir/definition.kore" --pattern "$kast" --module "$module" --output "$output" "$@" || status="$?"
+            kore-exec "$backend_dir/$definition-kompiled/definition.kore" --pattern "$kast" --module "$module" --output "$output" "$@" || status="$?"
             ;;
         *)
             fatal "Unknown backend: $backend"
             ;;
     esac
     if $unparse || [[ "$status" != '0' ]]; then
-        kprint $backend_dir "$output"
+        kprint "$backend_dir/$definition-kompiled" "$output"
         printf "\n"
         exit "$status"
     fi
@@ -106,7 +106,7 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
                  <assemble arg> is an argument to the assembler
                  <interpret arg> is an argument you want to pass to the interpreter
                  <K arg> is an argument you want to pass to K
-                 <KIELE arg> is one of (--no-unparse|--debug|--host|--mode|--schedule|--module)
+                 <KIELE arg> is one of (--no-unparse|--debug|--host|--mode|--schedule|--module|--definition)
     "
     exit 0
 fi
@@ -125,6 +125,7 @@ mode='`NORMAL`(.KList)'
 schedule='`DEFAULT`(.KList)'
 kiele_host='127.0.0.1'
 module='IELE-TESTING'
+definition='iele-testing'
 args=()
 while [[ $# -gt 0 ]]; do
     arg="$1"
@@ -134,6 +135,7 @@ while [[ $# -gt 0 ]]; do
         --no-unparse) unparse=false             ; shift   ;;
         --mode)       mode='`'$2'`(.KList)'     ; shift 2 ;;
         --module)     module="$2"               ; shift 2 ;;
+        --definition) definition="$2"           ; shift 2 ;;
         --schedule)   schedule='`'$2'`(.KList)' ; shift 2 ;;
         -h|--host)    kiele_host="$2"           ; shift 2 ;;
         *)            args+=("$1")              ; shift   ;;
