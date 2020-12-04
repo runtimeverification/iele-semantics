@@ -15,8 +15,9 @@ cd iele-semantics
 git checkout "$KIELE_REVISION"
 git submodule update --init --recursive
 
-iele-vm 0 127.0.0.1 > port &
+kiele vm | awk -F ':' '{print $2}' > port &
 sleep 3
-export PORT=$(cat port | awk -F ':' '{print $2}')
-make test -j`nproc` -k TEST_WELLFORMED=true
+export PORT=$(cat port)
+make test -j8 -k
+make coverage
 kill %1
