@@ -75,7 +75,7 @@ run_check() {
 }
 
 run_vm() {
-    iele-vm 0 "$kiele_host"
+    iele-vm "$kiele_port" "$kiele_host"
 }
 
 # Main
@@ -106,7 +106,7 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
                  <assemble arg> is an argument to the assembler
                  <interpret arg> is an argument you want to pass to the interpreter
                  <K arg> is an argument you want to pass to K
-                 <KIELE arg> is one of (--no-unparse|--debug|--host|--mode|--schedule|--module|--definition)
+                 <KIELE arg> is one of (--no-unparse|--debug|--host|--port|--mode|--schedule|--module|--definition)
     "
     exit 0
 fi
@@ -123,6 +123,7 @@ debug=false
 unparse=true
 mode='`NORMAL`(.KList)'
 schedule='`DEFAULT`(.KList)'
+kiele_port='8545'
 kiele_host='127.0.0.1'
 module='IELE-TESTING'
 definition='iele-testing'
@@ -137,6 +138,7 @@ while [[ $# -gt 0 ]]; do
         --module)     module="$2"               ; shift 2 ;;
         --definition) definition="$2"           ; shift 2 ;;
         --schedule)   schedule='`'$2'`(.KList)' ; shift 2 ;;
+        -p|--port)    kiele_port="$2"           ; shift 2 ;;
         -h|--host)    kiele_host="$2"           ; shift 2 ;;
         *)            args+=("$1")              ; shift   ;;
     esac
