@@ -5,6 +5,7 @@ We support the following installation methods:
 
 -   [Ubuntu Bionic (18.04) package](#ubuntu-bionic-package)
 -   [Linux binary package](#linux-binary-package) (most other distributions)
+-   [Nix](#nix) (Linux and macOS)
 -   [Build from source](#build-from-source) (Linux and macOS)
 
 **NOTE**: We do not currently support running K on native Windows.
@@ -51,6 +52,65 @@ And make sure it's on `PATH`:
 
 ```sh
 export PATH=$HOME/local/bin:$PATH
+```
+
+## Nix
+
+A Nix expression is provided, with binary caching for Linux and macOS.
+
+### Prerequisites
+
+It is safe to skip any of these dependencies that are already installed.
+
+Follow the instructions below.
+Perform all steps as your normal (non-root) user.
+You may find the same instructions and our public key at <https://runtimeverification.cachix.org>.
+
+#### curl
+
+Install curl using your distribution's package manager:
+
+```.sh
+# Ubuntu and Debian
+sudo apt install curl
+
+# Fedora, RHEL, and CentOS
+sudo yum install curl
+
+# Arch Linux
+sudo pacman -Sy curl
+```
+
+#### Nix
+
+Please pay careful attention to any additional instructions printed by the installer.
+Install Nix:
+
+```.sh
+# Linux and macOS < 10.15
+bash <(curl -L https://nixos.org/nix/install)
+
+# macOS 10.15 (See note below)
+bash <(curl -L https://nixos.org/nix/install) --darwin-use-unencrypted-nix-store-volume
+```
+
+For macOS 10.15, please refer to the [Nix manual](https://nixos.org/manual/nix/stable/#sect-macos-installation) for more information.
+
+#### Cachix
+
+Install Cachix and start using the binary cache:
+
+```.sh
+nix-env -iA cachix -f https://cachix.org/api/v1/install
+cachix use runtimeverification
+```
+
+### Install iele-assemble with Nix
+
+With the [prerequisites](#prerequisites) installed, we are ready to install `iele-assemble`:
+
+```.sh
+nix-env -iA iele-assemble -f https://github.com/runtimeverification/iele-semantics/archive/master.tar.gz
 ```
 
 ## Build from source
