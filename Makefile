@@ -42,29 +42,19 @@ IELE_TEST_CLIENT := $(IELE_BIN)/iele-test-client
 
 export PATH:=$(IELE_BIN):$(PATH)
 
-.PHONY: all clean distclean build build-haskell defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps iele-test iele-test-haskell iele-test-node node testnode kore libff protobuf \
+.PHONY: all clean distclean libff protobuf \
+        build build build-haskell build-node build-testnode build-coverage \
+        split-tests split-vm-tests split-blockchain-tests \
+        test vm-test blockchain-test deps k-deps ocaml-deps iele-test iele-test-haskell iele-test-node node testnode kore libff protobuf \
         install uninstall
 .SECONDARY:
 
-all: build split-vm-tests testnode
+all: build split-tests
 
 clean:
 	rm -rf $(BUILD_DIR)
 
 distclean: clean
-
-llvm: $(BUILD_DIR)/llvm/iele-testing.kore
-
-haskell: $(BUILD_DIR)/haskell/definition.kore
-
-# Tangle from *.md files
-# ----------------------
-
-k_files:=iele-testing.md data.md iele.md iele-gas.md iele-binary.md plugin/plugin/krypto.md iele-syntax.md iele-node.md well-formedness.md
-checker_files:=iele-syntax.md well-formedness.md data.md
-
-node: $(IELE_VM)
-testnode : $(IELE_TEST_VM) $(IELE_TEST_CLIENT)
 
 # Dependencies
 # ------------
@@ -91,20 +81,26 @@ $(protobuf_out): $(PROTO)/proto/msg.proto
 # Tests
 # -----
 
+TEST          = kiele
+TEST_ASSEMBLE = ./assemble-iele-test
+TEST_BACKEND  = standalone
+TEST_MODE     = NORMAL
+TEST_SCHEDULE = DEFAULT
+TEST_PORT     = 10000
+
 split-tests: split-vm-tests split-blockchain-tests
 
 invalid_iele_tests_file=tests/failing.expected
 invalid_iele_tests= $(shell cat ${invalid_iele_tests_file})
 
-split-vm-tests: \
-		  $(patsubst tests/ethereum-tests/%.json,tests/%/make.timestamp, $(filter-out ${invalid_iele_tests}, $(wildcard tests/ethereum-tests/VMTests/*/*.json))) \
+split-vm-tests: $(patsubst tests/ethereum-tests/%.json,tests/%/make.timestamp, $(filter-out ${invalid_iele_tests}, $(wildcard tests/ethereum-tests/VMTests/*/*.json)))
 
-split-blockchain-tests: \
-				  $(patsubst tests/ethereum-tests/%.json,tests/%/make.timestamp, $(filter-out ${invalid_iele_tests}, $(wildcard tests/ethereum-tests/BlockchainTests/GeneralStateTests/*/*.json))) \
+split-blockchain-tests: $(patsubst tests/ethereum-tests/%.json,tests/%/make.timestamp, $(filter-out ${invalid_iele_tests}, $(wildcard tests/ethereum-tests/BlockchainTests/GeneralStateTests/*/*.json)))
 
 vm_tests=$(wildcard tests/VMTests/*/*/*.iele.json)
 blockchain_tests=$(wildcard tests/BlockchainTests/*/*/*/*.iele.json)
-all_tests=${vm_tests} ${blockchain_tests}
+all_tests=$(vm_tests) $(blockchain_tests)
+failing_tests = $(shell cat tests/failing.$(TEST_BACKEND))
 skipped_tests=$(wildcard tests/VMTests/vmPerformance/*/*.json) \
    $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Frontier.iele.json) \
    $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Homestead.iele.json) \
@@ -116,43 +112,33 @@ skipped_tests=$(wildcard tests/VMTests/vmPerformance/*/*.json) \
    $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Return50000*/*.iele.json) \
    $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Call1MB1024Calldepth_d1g0v0/*.iele.json) \
 
-passing_tests=$(filter-out ${skipped_tests}, ${all_tests})
-passing_vm_tests=$(filter-out ${skipped_tests}, ${vm_tests})
-passing_blockchain_tests=$(filter-out ${skipped_tests}, ${blockchain_tests})
-passing_targets=${passing_tests:=.test}
-passing_vm_targets=${passing_vm_tests:=.test}
-passing_blockchain_targets=${passing_blockchain_tests:=.test}
+passing_tests=$(filter-out $(failing_tests), $(filter-out $(skipped_tests), $(all_tests)))
+passing_vm_tests=$(filter-out $(failing_tests), $(filter-out $(skipped_tests), $(vm_tests)))
+passing_blockchain_tests=$(filter-out $(failing_tests), $(filter-out $(skipped_tests), $(blockchain_tests)))
+passing_targets=$(passing_tests:=.test)
+passing_vm_targets=$(passing_vm_tests:=.test)
+passing_blockchain_targets=$(passing_blockchain_tests:=.test)
 
 iele_tests=$(wildcard tests/iele/*/*/*.iele.json)
-iele_targets=${iele_tests:=.test}
-iele_node_targets=${iele_tests:=.nodetest}
-
-iele_haskell_failing=$(shell cat tests/iele/failing.haskell)
-iele_haskell_passing=$(filter-out $(iele_haskell_failing), $(iele_tests))
-iele_haskell_targets=${iele_haskell_passing:=.test-haskell}
+iele_passing_tests=$(filter-out $(failing_tests), $(iele_tests))
+iele_targets=$(iele_passing_tests:=.test)
+iele_node_targets=$(iele_tests:=.nodetest)
 
 iele_contracts=$(wildcard iele-examples/*.iele tests/iele/*/*/*.iele)
-well_formed_contracts=$(filter-out $(wildcard tests/iele/*/ill-formed/*.iele), ${iele_contracts})
-well_formedness_targets=${well_formed_contracts:=.test-wellformed}
+well_formed_contracts=$(filter-out $(wildcard tests/iele/*/ill-formed/*.iele), $(iele_contracts))
+well_formedness_targets=$(well_formed_contracts:=.test-wellformed)
 
-test: $(passing_targets) ${iele_targets} ${iele_node_targets} ${well_formedness_targets} test-bad-packet
-vm-test: $(passing_vm_targets)
-blockchain-test: $(passing_blockchain_targets)
-iele-test: ${iele_targets}
-iele-test-haskell: $(iele_haskell_targets)
-iele-test-node: ${iele_node_targets}
-well-formed-test: ${well_formedness_targets}
+test-evm: test-vm test-blockchain
+test-vm: $(passing_vm_targets)
+test-blockchain: $(passing_blockchain_targets)
+test-iele: $(iele_targets)
+test-iele-node: $(iele_node_targets)
+test-wellformed: $(well_formedness_targets)
 
 test-bad-packet:
-	netcat 127.0.0.1 $(PORT) -q 2 < tests/bad-packet
-	netcat 127.0.0.1 $(PORT) -q 2 < tests/bad-packet-2
-	iele-test-vm tests/iele/danse/sum/sum_zero.iele.json $(PORT)
-
-TEST          = kiele
-TEST_ASSEMBLE = ./assemble-iele-test
-TEST_BACKEND  = standalone
-TEST_MODE     = NORMAL
-TEST_SCHEDULE = DEFAULT
+	netcat 127.0.0.1 $(TEST_PORT) -q 2 < tests/bad-packet
+	netcat 127.0.0.1 $(TEST_PORT) -q 2 < tests/bad-packet-2
+	iele-test-vm tests/iele/danse/sum/sum_zero.iele.json $(TEST_PORT)
 
 tests/VMTests/%:        TEST_MODE = VMTESTS
 %.iele.test-wellformed: TEST_SCHEDULE = DANSE
@@ -166,9 +152,8 @@ tests/VMTests/%:        TEST_MODE = VMTESTS
 %.iele.test-wellformed: %.iele
 	$(TEST) check --backend check --mode $(TEST_MODE) --schedule $(TEST_SCHEDULE) $<
 
-PORT?=10000
 %.nodetest: %
-	iele-test-vm $< $(PORT)
+	iele-test-vm $< $(TEST_PORT)
 
 tests/%/make.timestamp: tests/ethereum-tests/%.json tests/evm-to-iele/evm-to-iele tests/evm-to-iele/evm-test-to-iele
 	@echo "==   split: $@"
@@ -179,8 +164,17 @@ tests/%/make.timestamp: tests/ethereum-tests/%.json tests/evm-to-iele/evm-to-iel
 tests/evm-to-iele/evm-to-iele: $(wildcard tests/evm-to-iele/*.ml tests/evm-to-iele/*.mli)
 	cd tests/evm-to-iele && eval `opam config env` && ocamlfind $(OCAMLC) -g ieleUtil.mli ieleUtil.ml evm.mli evm.ml iele.mli iele.ml conversion.mli conversion.ml main.ml -package zarith -package hex -linkpkg -o evm-to-iele
 
+# Build Source Files
+# ------------------
+
+k_files:=iele-testing.md data.md iele.md iele-gas.md iele-binary.md plugin/plugin/krypto.md iele-syntax.md iele-node.md well-formedness.md
+checker_files:=iele-syntax.md well-formedness.md data.md
+
 # LLVM Builds
 # -----------
+
+build-node: $(IELE_VM)
+build-testnode : $(IELE_TEST_VM) $(IELE_TEST_CLIENT)
 
 KOMPILE=kompile
 
@@ -189,7 +183,7 @@ KOMPILE_LINK_OPTS    := -ccopt -L -ccopt /usr/local/lib -ccopt -L -ccopt $(LOCAL
 KOMPILE_CPP_FILES    := $(PLUGIN)/plugin-c/k.cpp $(PLUGIN)/plugin-c/crypto.cpp $(PROTO)/blockchain.cpp $(PROTO)/world.cpp $(PLUGIN)/plugin-c/blake2.cpp $(PLUGIN)/plugin-c/plugin_util.cpp
 KOMPILE_CPP_OPTS     := $(addprefix -ccopt , $(KOMPILE_CPP_FILES))
 
-coverage:
+build-coverage:
 	kcovr $(BUILD_DIR)/node/iele-testing-kompiled $(BUILD_DIR)/standalone/iele-testing-kompiled $(BUILD_DIR)/check/well-formedness-kompiled -- $(filter-out krypto.md, $(source_files)) > $(BUILD_DIR)/coverage.xml
 
 $(BUILD_DIR)/check/well-formedness-kompiled/interpreter: $(checker_files) $(protobuf_out) $(libff_out)

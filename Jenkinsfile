@@ -22,29 +22,36 @@ pipeline {
         }
       }
       stages {
-        stage('Build') { steps { sh 'make COVERAGE=k -j4' } }
+        stage('Build')       { steps { sh 'make build       -j4' } }
+        stage('Split Tests') { steps { sh 'make split-tests -j4' } }
         stage('Test') {
-          stages {
-            stage('VM Tests') {
-              options { timeout(time: 5, unit: 'MINUTES') }
+          options { timeout(time: 5, unit: 'MINUTES') }
+          parallel {
+            stage('EVM Tests')          { steps { sh 'make test-vm -j4'                       } }
+            stage('IELE Tests')         { steps { sh 'make test-iele -j4'                     } }
+            stage('VM Tests (Haskell)') { steps { sh 'make test-vm -j4 TEST_BACKEND=haskell'  } }
+            stage('Well Formed Check')  { steps { sh 'make test-wellformed -j4'               } }
+            stage('Node') {
               steps {
-                ansiColor('xterm') {
-                  sh '''#!/bin/bash -ex
-                    export PATH=$(pwd)/.build/bin:$PATH
-                    kiele vm | awk -F ':' '{print $2}' > port &
-                    sleep 3
-                    export PORT=$(cat port)
-                    make test -j8 -k
-                    make coverage
-                    kill %1
-                  '''
-                }
+                sh '''
+                  export PATH=$(pwd)/.build/bin:$PATH
+                  kiele vm | awk -F ':' '{print $2}' > port &
+                  sleep 3
+                  make test-iele-node -j4 PORT=$(cat port)
+                  kill %1
+                '''
               }
             }
-            stage('Haskell Standalone') {
-              options { timeout(time: 5, unit: 'MINUTES') }
-              failFast true
-              steps { sh 'make -j2 iele-test-haskell' }
+            stage('Bad Packet') {
+              steps {
+                sh '''
+                  export PATH=$(pwd)/.build/bin:$PATH
+                  kiele vm | awk -F ':' '{print $2}' > port &
+                  sleep 3
+                  make test-bad-packet -j4 PORT=$(cat port)
+                  kill %1
+                '''
+              }
             }
           }
         }
