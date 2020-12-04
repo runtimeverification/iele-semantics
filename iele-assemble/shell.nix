@@ -1,8 +1,8 @@
-{ default ? import ../default.nix {} }:
+{ default ? import ./. {} }:
 
 let
-  inherit (default) iele-assemble-project;
-  inherit (iele-assemble-project) shellFor;
+  inherit (default) project;
+  inherit (project) shellFor;
 
   sources = import ../nix/sources.nix;
   pkgs = import sources."nixpkgs" {};

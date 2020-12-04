@@ -1,18 +1,30 @@
 # iele-assemble
 
-## Build instructions
+## For users
 
-### Nix
+Please refer to the [installation instructions](../INSTALL.md).
 
-From the root of the `iele-semantics` repository,
-run `nix-build -A iele-assemble`.
+## For developers
 
-### Stack
+Install Nix and set up the binary cache following the [installation instructions](#nix) above.
+You must also set up the [binary cache](https://input-output-hk.github.io/haskell.nix/tutorials/getting-started/#setting-up-the-binary-cache) for `haskell.nix`.
 
-To build: `stack build`.
-all dependencies are managed by stack.
+If you change the `.cabal` file, you must rematerialize the Nix expressions:
 
-To run: `stack exec iele-assemble FILE`.
-or `stack exec iele-assemble -- [OPTIONS] FILE`.
+```.sh
+# Requires Nix is installed
+./nix/rematerialize.sh
+```
 
-To run the tests: `stack test`
+### Build - Nix
+
+-   **Build:** `nix-build -A iele-assemble`
+-   **Test:** `nix-build -A project.iele-assemble.checks`
+
+### Build - Stack
+
+Install [Stack](https://docs.haskellstack.org/en/stable/README/#how-to-install).
+
+-   **Build:** `stack build`
+-   **Test:** `stack test`
+-   **Run:** `stack exec iele-assemble -- [OPTIONS] FILE`
