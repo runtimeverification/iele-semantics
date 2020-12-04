@@ -90,11 +90,11 @@ TEST_PORT     = 10000
 split-tests: split-vm-tests split-blockchain-tests
 
 invalid_iele_tests_file=tests/failing.expected
-invalid_iele_tests= $(shell cat ${invalid_iele_tests_file})
+invalid_iele_tests= $(shell cat $(invalid_iele_tests_file))
 
-split-vm-tests: $(patsubst tests/ethereum-tests/%.json,tests/%/make.timestamp, $(filter-out ${invalid_iele_tests}, $(wildcard tests/ethereum-tests/VMTests/*/*.json)))
+split-vm-tests: $(patsubst tests/ethereum-tests/%.json,tests/%/make.timestamp, $(filter-out $(invalid_iele_tests), $(wildcard tests/ethereum-tests/VMTests/*/*.json)))
 
-split-blockchain-tests: $(patsubst tests/ethereum-tests/%.json,tests/%/make.timestamp, $(filter-out ${invalid_iele_tests}, $(wildcard tests/ethereum-tests/BlockchainTests/GeneralStateTests/*/*.json)))
+split-blockchain-tests: $(patsubst tests/ethereum-tests/%.json,tests/%/make.timestamp, $(filter-out $(invalid_iele_tests), $(wildcard tests/ethereum-tests/BlockchainTests/GeneralStateTests/*/*.json)))
 
 vm_tests=$(wildcard tests/VMTests/*/*/*.iele.json)
 blockchain_tests=$(wildcard tests/BlockchainTests/*/*/*/*.iele.json)
@@ -186,7 +186,7 @@ build-coverage:
 	kcovr $(BUILD_DIR)/node/iele-testing-kompiled $(BUILD_DIR)/standalone/iele-testing-kompiled $(BUILD_DIR)/check/well-formedness-kompiled -- $(filter-out krypto.md, $(source_files)) > $(BUILD_DIR)/coverage.xml
 
 $(BUILD_DIR)/check/well-formedness-kompiled/interpreter: $(checker_files) $(protobuf_out) $(libff_out)
-	${KOMPILE} --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE --md-selector "(k & ! node) | standalone" \
+	$(KOMPILE) --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE --md-selector "(k & ! node) | standalone" \
 	                                --syntax-module IELE-SYNTAX well-formedness.md --directory $(BUILD_DIR)/check --hook-namespaces KRYPTO \
 	                                --backend llvm -ccopt $(protobuf_out) $(KOMPILE_CPP_OPTS) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
 
@@ -195,7 +195,7 @@ $(BUILD_DIR)/node/iele-testing-kompiled/interpreter: MD_SELECTOR="(k & ! standal
 
 $(BUILD_DIR)/%/iele-testing-kompiled/interpreter: $(k_files) $(protobuf_out) $(libff_out)
 	@echo "== kompile: $@"
-	${KOMPILE} --debug --main-module IELE-TESTING --verbose --md-selector ${MD_SELECTOR} \
+	$(KOMPILE) --debug --main-module IELE-TESTING --verbose --md-selector $(MD_SELECTOR) \
 					--syntax-module IELE-SYNTAX iele-testing.md --directory $(BUILD_DIR)/$* --hook-namespaces "KRYPTO BLOCKCHAIN" \
 	                --backend llvm -ccopt $(protobuf_out) $(KOMPILE_CPP_OPTS) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
 
