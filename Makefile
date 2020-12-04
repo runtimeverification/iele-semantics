@@ -45,7 +45,7 @@ export PATH:=$(IELE_BIN):$(PATH)
 .PHONY: all clean distclean libff protobuf coverage \
         build build build-haskell build-node build-testnode \
         split-tests split-vm-tests split-blockchain-tests \
-        test-evm test-vm test-blockchain test-iele test-iele-node test-wellformed test-bad-packet
+        test-evm test-vm test-blockchain test-iele test-iele-node test-wellformed test-bad-packet test-interactive
 .SECONDARY:
 
 all: build split-tests
@@ -140,6 +140,17 @@ test-bad-packet:
 	netcat 127.0.0.1 $(TEST_PORT) -q 2 < tests/bad-packet
 	netcat 127.0.0.1 $(TEST_PORT) -q 2 < tests/bad-packet-2
 	iele-test-vm tests/iele/danse/sum/sum_zero.iele.json $(TEST_PORT)
+
+test-interactive: iele-examples/erc20.iele tests/VMTests/vmSha3Test/sha3_memSizeQuadraticCost64/sha3_memSizeQuadraticCost64.iele.json.test-assembled
+	kiele help
+	kiele --help
+	kiele version
+	kiele --version
+	kiele assemble iele-examples/erc20.iele
+	kiele interpret --mode VMTESTS tests/VMTests/vmSha3Test/sha3_memSizeQuadraticCost64/sha3_memSizeQuadraticCost64.iele.json.test-assembled
+	kiele check --schedule DANSE iele-examples/erc20.iele
+	# kiele krun iele-examples/erc20.iele
+	# kiele vm
 
 tests/VMTests/%:        TEST_MODE = VMTESTS
 %.iele.test-wellformed: TEST_SCHEDULE = DANSE
