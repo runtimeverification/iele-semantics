@@ -167,7 +167,7 @@ tests/VMTests/%:        TEST_MODE = VMTESTS
 	$(TEST) check --backend check --mode $(TEST_MODE) --schedule $(TEST_SCHEDULE) $<
 
 PORT?=10000
-tests/iele/%.nodetest: tests/iele/%
+%.nodetest: %
 	iele-test-vm $< $(PORT)
 
 tests/%/make.timestamp: tests/ethereum-tests/%.json tests/evm-to-iele/evm-to-iele tests/evm-to-iele/evm-test-to-iele

@@ -30,10 +30,11 @@ pipeline {
               steps {
                 ansiColor('xterm') {
                   sh '''#!/bin/bash -ex
-                    .build/vm/iele-vm 0 127.0.0.1 > port &
+                    export PATH=$(pwd)/.build/bin:$PATH
+                    kiele vm | awk -F ':' '{print $2}' > port &
                     sleep 3
-                    export PORT=`cat port | awk -F ':' '{print $2}'`
-                    make test -j`nproc` -k
+                    export PORT=$(cat port)
+                    make test -j8 -k
                     make coverage
                     kill %1
                   '''
