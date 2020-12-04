@@ -41,7 +41,7 @@ IELE_TEST_CLIENT := $(IELE_BIN)/iele-test-client
 
 export PATH:=$(IELE_BIN):$(PATH)
 
-.PHONY: all clean distclean build build-haskell tangle defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps iele-test iele-test-haskell iele-test-node node testnode kore libff protobuf \
+.PHONY: all clean distclean build build-haskell defn proofs split-tests test vm-test blockchain-test deps k-deps ocaml-deps iele-test iele-test-haskell iele-test-node node testnode kore libff protobuf \
         install uninstall
 .SECONDARY:
 
@@ -52,16 +52,14 @@ clean:
 
 distclean: clean
 
-build: tangle $(IELE_INTERPRETER) $(IELE_VM) $(IELE_ASSEMBLE) $(IELE_CHECK) build-haskell
+build: $(IELE_INTERPRETER) $(IELE_VM) $(IELE_ASSEMBLE) $(IELE_CHECK) build-haskell
 
-llvm: tangle .build/llvm/iele-testing.kore
+llvm: .build/llvm/iele-testing.kore
 
-haskell: tangle .build/haskell/definition.kore
+haskell: .build/haskell/definition.kore
 
 # Tangle from *.md files
 # ----------------------
-
-tangle: defn proofs
 
 k_files:=iele-testing.md data.md iele.md iele-gas.md iele-binary.md plugin/plugin/krypto.md iele-syntax.md iele-node.md well-formedness.md
 checker_files:=iele-syntax.md well-formedness.md data.md
