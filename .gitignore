@@ -18,6 +18,8 @@
 /tests/VMTests
 /tests/BlockchainTests
 
+/tests/**/*.test-assembled
+
 # Directory for storing temporary files like logs, snippets and TODO lists.
 /tmp
 
