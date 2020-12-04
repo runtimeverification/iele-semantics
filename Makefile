@@ -250,7 +250,7 @@ INSTALL_LIB    ?= $(DESTDIR)$(INSTALL_PREFIX)/lib/kiele
 
 install_bins := iele-vm iele-test-vm iele-assemble iele-interpreter iele-check kiele
 
-install_libs := version kore-json.py haskell check standalone
+install_libs := version kore-json.py haskell/iele-testing-kompiled check/well-formedness-kompiled standalone/iele-testing-kompiled
 
 $(IELE_BIN)/kiele: kiele
 	@mkdir -p $(IELE_BIN)
@@ -260,16 +260,16 @@ $(IELE_LIB)/version:
 	@mkdir -p $(IELE_LIB)
 	echo "$(KIELE_RELEASE_TAG)" > $@
 
-$(IELE_LIB)/standalone: $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
-	@mkdir -p $(IELE_LIB)
+$(IELE_LIB)/standalone/iele-testing-kompiled: $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
+	@mkdir -p $(IELE_LIB)/standalone
 	cp -r $(dir $<) $@
 
-$(IELE_LIB)/haskell: $(haskell_kompiled)
-	@mkdir -p $(IELE_LIB)
+$(IELE_LIB)/haskell/iele-testing-kompiled: $(haskell_kompiled)
+	@mkdir -p $(IELE_LIB)/haskell
 	cp -r $(dir $<) $@
 
-$(IELE_LIB)/check: $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
-	@mkdir -p $(IELE_LIB)
+$(IELE_LIB)/check/well-formedness-kompiled: $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
+	@mkdir -p $(IELE_LIB)/check
 	cp -r $(dir $<) $@
 
 $(IELE_LIB)/kore-json.py: kore-json.py
