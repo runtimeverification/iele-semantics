@@ -42,8 +42,8 @@ IELE_TEST_CLIENT := $(IELE_BIN)/iele-test-client
 
 export PATH:=$(IELE_BIN):$(PATH)
 
-.PHONY: all clean distclean libff protobuf \
-        build build build-haskell build-node build-testnode build-coverage \
+.PHONY: all clean distclean libff protobuf coverage \
+        build build build-haskell build-node build-testnode \
         split-tests split-vm-tests split-blockchain-tests \
         test-evm test-vm test-blockchain test-iele test-iele-node test-wellformed test-bad-packet
 .SECONDARY:
@@ -184,9 +184,6 @@ KOMPILE_LINK_OPTS    := -ccopt -L -ccopt /usr/local/lib -ccopt -L -ccopt $(LOCAL
 KOMPILE_CPP_FILES    := $(PLUGIN)/plugin-c/k.cpp $(PLUGIN)/plugin-c/crypto.cpp $(PROTO)/blockchain.cpp $(PROTO)/world.cpp $(PLUGIN)/plugin-c/blake2.cpp $(PLUGIN)/plugin-c/plugin_util.cpp
 KOMPILE_CPP_OPTS     := $(addprefix -ccopt , $(KOMPILE_CPP_FILES))
 
-build-coverage:
-	kcovr $(BUILD_DIR)/node/iele-testing-kompiled $(BUILD_DIR)/standalone/iele-testing-kompiled $(BUILD_DIR)/check/well-formedness-kompiled -- $(filter-out krypto.md, $(source_files)) > $(BUILD_DIR)/coverage.xml
-
 $(BUILD_DIR)/check/well-formedness-kompiled/interpreter: $(checker_files) $(protobuf_out) $(libff_out)
 	$(KOMPILE) --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE --md-selector "(k & ! node) | standalone" \
 	                                --syntax-module IELE-SYNTAX well-formedness.md --directory $(BUILD_DIR)/check --hook-namespaces KRYPTO \
@@ -238,6 +235,12 @@ $(haskell_kompiled):
 
 $(IELE_ASSEMBLE):
 	cd iele-assemble && stack install --local-bin-path $(IELE_BIN)
+
+# Coverage Processing
+# -------------------
+
+coverage:
+	kcovr $(BUILD_DIR)/node/iele-testing-kompiled $(BUILD_DIR)/standalone/iele-testing-kompiled $(BUILD_DIR)/check/well-formedness-kompiled -- $(filter-out krypto.md, $(source_files)) > $(BUILD_DIR)/coverage.xml
 
 # Install
 # -------
