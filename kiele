@@ -1,0 +1,161 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+shopt -s extglob
+
+notif() { echo "== $@" >&2 ; }
+fatal() { echo "[FATAL] $@" ; exit 1 ; }
+
+INSTALL_PREFIX="${INSTALL_PREFIX:-.build/install}"
+INSTALL_BIN=${INSTALL_PREFIX}/bin
+INSTALL_LIB=${INSTALL_PREFIX}/lib/kiele
+
+# Works regardless of where script is called from
+kiele_dir="${KIELE_DIR:-$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )}"
+build_dir="$kiele_dir/.build"
+defn_dir="${KIELE_DEFN_DIR:-$build_dir/defn}"
+k_release_dir="${K_RELEASE:-$kiele_dir/deps/k/k-distribution/target/release/k}"
+[[ -f "${k_release_dir}/bin/kompile" ]]               \
+    || ! which kompile &> /dev/null                   \
+    || k_release_dir="$(dirname $(which kompile))/.."
+
+export PATH="$k_release_dir/lib/native/linux:$k_release_dir/lib/native/linux64:$k_release_dir/bin/:$INSTALL_BIN:$PATH"
+export LD_LIBRARY_PATH="$k_release_dir/lib/native/linux64:$INSTALL_LIB:$INSTALL_LIB:${LD_LIBRARY_PATH:-}"
+
+# Runners
+# -------
+
+### Does not depend on K Install
+
+run_assemble() {
+    iele-assemble "$run_file" "$@"
+}
+
+run_kast() {
+    local output_mode
+
+    output_mode="$1" ; shift
+
+    case "$run_file-$output_mode" in
+        *.json-kore) "$kiele_dir/kore-json.py" "$run_file" "$schedule" "$mode"                ;;
+        *)           kast --directory "$backend_dir" "$run_file" --output "$output_mode" "$@" ;;
+    esac
+}
+
+run_interpret() {
+    local kast output status
+    kast="$(mktemp)"
+    output="$(mktemp)"
+    if $debug; then
+        notif "kast: $kast    output: $output"
+    else
+        trap "rm -rf $output" INT TERM EXIT
+    fi
+    status=0
+    run_kast kore > "$kast"
+    case "$backend" in
+        standalone) iele-interpreter "$kast" "$@" > $output                                            || status="$?" ;;
+        haskell)    kore-exec "$backend_dir/definition.kore" --pattern "$kast" --output "$output" "$@" || status="$?" ;;
+        *)          fatal "Unknown backend: $backend"
+    esac
+    if $unparse || [[ "$status" != '0' ]]; then
+        kprint $INSTALL_LIB "$output"
+        printf "\n"
+        exit "$status"
+    fi
+}
+
+run_krun() {
+    krun --directory "$backend_dir"                        \
+        -cSCHEDULE="$schedule"      -pSCHEDULE='printf %s' \
+        -cMODE="$mode"              -pMODE='printf %s'     \
+        "$run_file" "$@"
+}
+
+run_check() {
+    run_krun --parser "kast -d $kiele_dir/.build/check -s Contract" --output none "$@" \
+        || fatal "error: IELE contract failed to pass well-formedness check."
+}
+
+run_vm() {
+    iele-vm "$kiele_port" "$kiele_host" "$@"
+}
+
+# Main
+# ----
+
+run_command="$1" ; shift
+
+if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
+    echo "
+        usage: $0 assemble                                                              <pgm> <assemble arg>*
+               $0 kast         [--backend (standalone|haskell|node|check)] <KIELE arg>* <pgm> <output format> <K arg>*
+               $0 interpret    [--backend (standalone|haskell)]            <KIELE arg>* <pgm> <interpret arg>*
+               $0 krun         [--backend (standalone|haskell|node|check)] <KIELE arg>* <pgm> <K arg>*
+               $0 check                                                    <KIELE arg>* <pgm> <K arg>*
+               $0 vm                                                       <KIELE arg>*
+
+               $0 [help|--help|version|--version]
+
+           $0 assemble  : Translate IELE assembly <pgm to IELE bytecode
+           $0 kast      : Convert input JSON or IELE <pgm> to K's <output format>
+           $0 interpret : Run given input JSON or IELE <pgm>
+           $0 krun      : Run given input <pgm> using `krun`
+           $0 check     : Run the IELE well-formedness checker on <pgm>
+           $0 vm        : Run the KIELE VM server.
+
+           $0 help    : Display this help message.
+           $0 version : Display the versions of KIELE in use.
+
+           Note: <pgm> is a path to a file containing a IELE program/test (possible in JSON format)
+                 <assemble arg> is an argument to the assembler
+                 <output format> is the format for outputting terms in (eg. pretty|kast|kore|none|json|latex)
+                 <interpret arg> is an argument you want to pass to the interpreter
+                 <K arg> is an argument you want to pass to K
+                 <KIELE arg> is one of (--no-unparse|--debug|--port|--host|--mode|--schedule)
+    "
+    exit 0
+fi
+
+if [[ "$run_command" == 'version' ]] || [[ "$run_command" == '--version' ]] ; then
+    notif "KIELE Version"
+    cat $INSTALL_LIB/version
+    exit 0
+fi
+
+backend='standalone'
+debug=false
+unparse=true
+mode='`NORMAL`(.KList)'
+schedule='`DANSE`(.KList)'
+kiele_port='8545'
+kiele_host='127.0.0.1'
+args=()
+while [[ $# -gt 0 ]]; do
+    arg="$1"
+    case $arg in
+        --backend)            backend="$2"              ; shift 2 ;;
+        --debug)              debug=true                ; shift   ;;
+        --no-unparse)         unparse=false             ; shift   ;;
+        --mode)               mode='`'$2'`(.KList)'     ; shift 2 ;;
+        --schedule)           schedule='`'$2'`(.KList)' ; shift 2 ;;
+        -p|--port)            kiele_port="$2"           ; shift 2 ;;
+        -h|--host|--hostname) kiele_host="$2"           ; shift 2 ;;
+        *)                    args+=("$1")              ; shift   ;;
+    esac
+done
+set -- "${args[@]}"
+backend_dir="${backend_dir:-$defn_dir/$backend}"
+
+run_file="$1" ; shift
+[[ -f "$run_file" ]] || [[ "$run_file" == '-' ]] || fatal "File does not exist: $run_file"
+
+case "$run_command" in
+    assemble)  run_assemble  "$@" ;;
+    kast)      run_kast      "$@" ;;
+    interpret) run_interpret "$@" ;;
+    krun)      run_krun      "$@" ;;
+    check)     run_check     "$@" ;;
+    vm)        run_vm        "$@" ;;
+    *) $0 help ; fatal "Unknown command: $run_command" ;;
+esac
