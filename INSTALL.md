@@ -7,6 +7,8 @@ We provide packages for IELE on the following platforms:
 -   Binary Package (Most Linux Systems)
 -   From Source Build
 
+Our most up-to-date packages are available at <https://github.com/runtimeverification/iele-semantics/releases>.
+
 **NOTE**: We do not currently support running K on native Windows.
 To use K on Windows, you are encouraged to install [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10) and follow the instructions for Ubuntu Bionic.
 
