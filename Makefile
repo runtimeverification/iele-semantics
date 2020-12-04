@@ -45,8 +45,7 @@ export PATH:=$(IELE_BIN):$(PATH)
 .PHONY: all clean distclean libff protobuf \
         build build build-haskell build-node build-testnode build-coverage \
         split-tests split-vm-tests split-blockchain-tests \
-        test vm-test blockchain-test deps k-deps ocaml-deps iele-test iele-test-haskell iele-test-node node testnode kore libff protobuf \
-        install uninstall
+        test-evm test-vm test-blockchain test-iele test-iele-node test-wellformed test-bad-packet
 .SECONDARY:
 
 all: build split-tests
