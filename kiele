@@ -13,11 +13,11 @@ export PATH="$INSTALL_BIN:$INSTALL_LIB:$PATH"
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-}:/usr/local/lib
 
 check_k_install() {
-    which kore-exec \
+    which kore-exec &> /dev/null \
         || fatal "Must have K installed!"
-    which kast \
+    which kast &> /dev/null \
         || fatal "Must have K installed!"
-    which krun \
+    which krun &> /dev/null \
         || fatal "Must have K installed!"
 }
 
@@ -49,7 +49,7 @@ run_interpret() {
             ;;
         haskell)
             check_k_install
-            kore-exec "$backend_dir/definition.kore" --pattern "$kast" --output "$output" "$@" || status="$?"
+            kore-exec "$backend_dir/definition.kore" --pattern "$kast" --module "$module" --output "$output" "$@" || status="$?"
             ;;
         *)
             fatal "Unknown backend: $backend"
@@ -71,7 +71,7 @@ run_krun() {
 }
 
 run_check() {
-	run_krun --parser "kast --directory $(INSTALL_LIB)/check -s Contract" --output none "$@"
+    run_krun --parser "kast --directory $INSTALL_LIB/check -s Contract" --output none "$@"
 }
 
 run_vm() {
@@ -106,7 +106,7 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
                  <assemble arg> is an argument to the assembler
                  <interpret arg> is an argument you want to pass to the interpreter
                  <K arg> is an argument you want to pass to K
-                 <KIELE arg> is one of (--no-unparse|--debug|--host|--mode|--schedule)
+                 <KIELE arg> is one of (--no-unparse|--debug|--host|--mode|--schedule|--module)
     "
     exit 0
 fi
@@ -124,6 +124,7 @@ unparse=true
 mode='`NORMAL`(.KList)'
 schedule='`DEFAULT`(.KList)'
 kiele_host='127.0.0.1'
+module='IELE-TESTING'
 args=()
 while [[ $# -gt 0 ]]; do
     arg="$1"
@@ -132,6 +133,7 @@ while [[ $# -gt 0 ]]; do
         --debug)      debug=true                ; shift   ;;
         --no-unparse) unparse=false             ; shift   ;;
         --mode)       mode='`'$2'`(.KList)'     ; shift 2 ;;
+        --module)     module="$2"               ; shift 2 ;;
         --schedule)   schedule='`'$2'`(.KList)' ; shift 2 ;;
         -h|--host)    kiele_host="$2"           ; shift 2 ;;
         *)            args+=("$1")              ; shift   ;;
