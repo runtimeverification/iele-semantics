@@ -296,6 +296,7 @@ uninstall:
 release.md:
 	echo "KIELE Release - $(KIELE_RELEASE_TAG)"  > $@
 	echo                                        >> $@
+	cat INSTALL.md                              >> $@
 
 # Ocaml Builds
 # ------------
