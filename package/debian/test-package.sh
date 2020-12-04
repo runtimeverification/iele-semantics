@@ -15,9 +15,14 @@ cd iele-semantics
 git checkout "$KIELE_REVISION"
 git submodule update --init --recursive
 
-kiele vm | awk -F ':' '{print $2}' > port &
+make test-vm -j4
+make test-iele -j4
+make test-wellformed -j4
+make test-interactive
+
+kiele vm --port 9001 &
+pid=$!
 sleep 3
-export PORT=$(cat port)
-make test -j8 -k
-make coverage
-kill %1
+make test-iele-node  -j4 TEST_PORT=9001
+make test-bad-packet -j4 TEST_PORT=9001
+kill $pid
