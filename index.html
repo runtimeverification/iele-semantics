@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+<meta charset="utf-8" />
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+/>
+<meta
+  name="description"
+  content="Design and implement your programming language and software analysis tools with mathematical rigor."
+/>
+<meta name="keywords" content="runtime, verification, rv, k" />
+<meta name="author" content="IELE Semantics | Runtime Verification Inc" />
+<meta name="robots" content="index, follow" />
+
+<!--favicon icon-->
+<link rel="icon" type="image/png" href="./assets/img/favicon.ico" />
+
+<title>IELE Semantics | Runtime Verification Inc</title>
+
+<!-- <base href="/k/" /> -->
+
+<!--web fonts-->
+<link
+  href="https://fonts.googleapis.com/css?family=Nunito:300,400,600,700,800"
+  rel="stylesheet"
+/>
+<link
+  href="https://fonts.googleapis.com/css?family=Lora:400i"
+  rel="stylesheet"
+/>
+
+<link
+  href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css"
+  rel="stylesheet"
+/>
+
+<link href="./assets/css/index.css" rel="stylesheet" />
+
+<!--[if (gt IE 9) |!(IE)]><!-->
+<!--<link rel="stylesheet" href="/assets/vendor/custom-nav/css/effects/fade-menu.css"/>-->
+<!-- <link rel="stylesheet" href="./assets/k/vl-nav/css/effects/slide-menu.css" /> -->
+<!--<![endif]-->
+
+  </head>
+
+  <body>
+<header
+  class="navbar navbar-expand navbar-dark flex-column flex-md-row bd-navbar"
+>
+  <a class="logo-link" href="./index.html"> IELE Semantics </a>
+  <ul class="navbar-nav ml-md-auto">
+    <li class="nav-item">
+      <a
+        class="nav-link pl-2 pr-1 mx-1 py-3 my-n2"
+        href="https://github.com/runtimeverification/iele-semantics"
+        target="_blank"
+        rel="noopener"
+        aria-label="GitHub"
+      >
+        <i class="fab fa-github"></i>
+      </a>
+    </li>
+  </ul>
+  <!--
+  <a
+    class="btn btn-rv-blue d-none d-lg-inline-block mb-3 mb-md-0 ml-md-3"
+    href="./downloads"
+    >Download</a
+  >
+  -->
+</header>
+
+
+    <div class="container-fluid">
+      <div class="row flex-xl-nowrap">
+<div class="col-12 col-md-3 col-xl-2 bd-sidebar mb-3">
+  <form
+    role="search"
+    class="bd-search d-flex align-items-center justify-content-between"
+  >
+    <input
+      type="search"
+      class="form-control"
+      placeholder="Search..."
+      aria-label="Search for..."
+      autocomplete="false"
+      id="search-box"
+    />
+    <button
+      class="btn bd-search-docs-toggle d-md-none p-0 ml-3 collapsed"
+      type="button"
+      aria-label="Toggle docs navigation"
+      style="font-size: 1.4rem"
+    >
+      <i class="fas fa-bars"></i>
+    </button>
+  </form>
+  <nav class="collapse bd-links" aria-label="Main navigation">
+    <div class="bd-toc-item">
+      <a class="bd-toc-link" href="./">Homepage</a>
+      <a class="bd-toc-link" href="./INSTALL">Install</a>
+      <a class="bd-toc-link" href="./Design">Design</a>
+    </div>
+  </nav>
+</div>
+
+        <main
+          class="col-12 col-md-9 col-xl-8 py-md-3 pl-md-5 bd-content"
+          role="main"
+        >
+          <div class="markdown-preview"><html><head></head><body><h1 id="iele%3A-semantics-of-new-blockchain-vm-in-k">IELE: Semantics of New Blockchain VM in K</h1>
+<p>In this repository we provide a model of IELE in K.</p>
+<h3 id="structure">Structure</h3>
+<p>The file <a href="iele-syntax/">iele-syntax.md</a> contains the syntax definition of IELE, along with comments that guide the reader through the structure of the language and links to more detailed descriptions of various features. This file is a good starting point for getting familiar with the language.</p>
+<p>The file <a href="data/">data.md</a> explains the basic data of IELE (including words and some datastructures over them).
+This data is defined functionally.</p>
+<p><a href="iele/">iele.md</a> is the file containing the semantics of IELE.
+This file contains the <strong>configuration</strong> (a map of the state), and a simple imperative execution machine which IELE lives on top of.
+It deals with the semantics of opcodes and parsing/unparsing/assembling/disassembling.</p>
+<p><a href="iele-gas/">iele-gas.md</a> describes gas price computations. <a href="iele-gas-summary/">iele-gas-summary.md</a> summarizes them in a format readable by those who don&apos;t know K.</p>
+<p>Finally, the file <a href="Design/">Design.md</a> discusses the design rationale of IELE. It also provides more detailed descriptions of various IELE features, as well as differences and similarities with EVM and LLVM.</p>
+<h3 id="testing">Testing</h3>
+<p><a href="iele-testing/">iele-testing.md</a> loads test-files from the <a href="https://github.com/ethereum/tests" target="_blank" rel="noopener">Ethereum Test Set</a> and executes them, checking that the output is correct.
+If the output is correct, the entire configuration is cleared.
+If any check fails, the configuration retains the failed check at the top of the <code>&lt;k&gt;</code> cell.</p>
+<p><a href="iele-testing/">iele-testing.md</a> is also capable of executing tests of arbitrary IELE transactions (subject to the fact that this first release of IELE is still
+built on top of an ethereum-like network layer). The test format is based off of, but slightly different from, the ethereum BlockchainTest json test format.</p>
+<p>The structure of the json files is as follows:</p>
+<ul>
+<li>
+<p>The top level is a json object, containing a list of key value pairs whose keys are the names of the tests to be executed and whose values are json objects containing an individual test case. The top-level fields in each test case are described below:</p>
+<ul>
+<li>&quot;pre&quot;: a json object mapping account IDs (20-byte hexadecimal strings) to an object for each account representing the state of that account before the test starts.</li>
+<li>&quot;blocks&quot;: a list of blocks the test should execute, each containing the folowing fields:
+<ul>
+<li>&quot;transactions&quot;: a list of transactions to be executed, each containing the following fields:
+<ul>
+<li>&quot;nonce&quot;: the nonce of the sender of the transaction.</li>
+<li>&quot;function&quot;: the name of the function to be called. Should be the empty string if the &quot;to&quot; field is the empty string.</li>
+<li>&quot;gasLimit&quot;: the gas limit of the transaction.</li>
+<li>&quot;value&quot;: the amount of currency sent with the transaction.</li>
+<li>&quot;to&quot;: the account the transaction is calling a function on. If the transaction creates an account, this field should be the empty string.</li>
+<li>&quot;arguments&quot;: a list of integers representing the input arguments of the top-level function call of the transaction.</li>
+<li>&quot;contractCode&quot;: the contract being uploaded. Should be the empty string if the &quot;to&quot; field is NOT the empty string.</li>
+<li>&quot;gasPrice&quot;: the price to be paid per unit of gas used.</li>
+<li>&quot;secretKey&quot; OR (&quot;v&quot; AND &quot;r&quot; AND &quot;s&quot;): the signature of the transaction (either as a private key or as an ECDSA signature of the remaining fields) used to sign the transaction.</li>
+</ul>
+</li>
+<li>&quot;results&quot;: a list of results of each transaction in the block, each containing the following fields:
+<ul>
+<li>&quot;out&quot;: a list of integers representing the output of the top-level function call of the transaction.</li>
+<li>&quot;status&quot;: the exit status of the top-level function call of the transaction.</li>
+<li>&quot;gas&quot;: the amount of gas remaining after the transaction executes.</li>
+<li>&quot;logs&quot;: the keccak256 hash of the rlp-encoded log entries generated by the transaction.</li>
+<li>&quot;refund&quot;: the gas refund after the transaction executes.</li>
+</ul>
+</li>
+<li>&quot;blockHeader&quot;: a json object containing the partial block header of the current block, with the following fields:
+<ul>
+<li>&quot;gasLimit&quot;: The block gas limit.</li>
+<li>&quot;number&quot;: The block number.</li>
+<li>&quot;difficulty&quot;: The block difficulty.</li>
+<li>&quot;timestamp&quot;: The timestamp of the block.</li>
+<li>&quot;coinbase&quot;: The block&apos;s beneficiary.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>&quot;network&quot;: The current network rules. Currently only one ruleset is supported, &quot;Albe&quot;.</li>
+<li>&quot;blockhashes&quot;: because we don&apos;t specify the entire blocks, it is necessary to explicitly specify the information seen by the iele.blockhash function. This should be a list of 32-byte hashes ending in 0x00 representing the parentHash of the genesis block.</li>
+<li>&quot;postState&quot;: a json object mapping accoutn IDs (20-byte hexadecimal strings) to an object for each account representing the state of that account expected after the test finishes.</li>
+</ul>
+</li>
+<li>
+<p>Each account listed in the &quot;pre&quot; or &quot;postState&quot; fields has the following fields:</p>
+<ul>
+<li>&quot;nonce&quot;: the nonce of the account.</li>
+<li>&quot;balance&quot;: the balance of currency in the account.</li>
+<li>&quot;storage&quot;: a json object mapping integer storage keys to integer storage values.</li>
+<li>&quot;code&quot;: either &quot;&quot;, representing an empty account, a string beginning with &quot;0x&quot;, indicating a binary representation of an account, or a filename containing a IELE contract to be assembled and used as the code of the account.</li>
+</ul>
+</li>
+<li>
+<p>Each integer is encocded as a string in hexadecimal representing the big-endian representation of the integer. The empty string also can be used to represent the integer zero.</p>
+</li>
+</ul>
+<p>For example pure-IELE tests, see <code>tests/iele</code>.</p>
+<h2 id="using-the-definition">Using the Definition</h2>
+<h3 id="installing">Installing</h3>
+<p>See <a href="INSTALL/">INSTALL.md</a>.</p>
+<h3 id="testing-1">Testing</h3>
+<p>To execute a VM test, run <code>./vmtest $file</code> where <code>$file</code> is a JSON file containing the specification of the test.
+To execute a Blockchain test, run <code>./blockchaintest $file</code> where <code>$file</code> is a JSON file containing the specification of the test.</p>
+<p>To run only the pure-IELE tests, run <code>make iele-test</code>.</p>
+<p>For testing the interprocess VM API, first start the vm server
+by running <code>.build/vm/iele-vm 10000 127.0.0.1</code> in another shell or
+in the background.
+With the server running, run <code>make iele-test-node</code> to run the pure-IELE
+tests on the vm server, or run individual tests using <code>.build/vm/iele-vm-test</code>.</p>
+<p>To execute all currently passing tests, run <code>make test</code>. Note that the vm server should have been started for <code>make test</code> to succeed.</p>
+<h3 id="debugging">Debugging</h3>
+<p>When executing a test, if a test fails, the intermediate state of the IELE VM is dumped on the command line. This can be used to provide
+information about exactly what went wrong with the test, which can be used for debugging purposes. Generally speaking, each dumped state begins with
+the string <code>`&lt;generatedTop&gt;`(`&lt;k&gt;`</code> followed by the current list of instructions to be executed by the VM in balanced parentheses. You can usually
+determine what went wrong with the test by examining the first entry in the list (i.e., everything up to the first <code>~&gt;</code>).</p>
+<p>Some examples of common errors you may encounter are below, with each example followed by a description of the error.</p>
+<pre class="language-text"><code>loadTx(#token(&quot;966588469268559010541288244128342317224451555083&quot;,&quot;Int&quot;))
+</code></pre>
+<p>In this example, either a transaction was signed incorrectly, or the sender of the transaction as specified by its signature does not exist.</p>
+<pre class="language-text"><code>`check__IELE-TESTING`(`_:__IELE-DATA`(#token(&quot;\&quot;account\&quot;&quot;,&quot;String&quot;),`{_}_IELE-DATA`(`_,__IELE-DATA`(`_:__IELE-DATA`(#token(&quot;91343852333181432387730302044767688728495783936&quot;,&quot;Int&quot;),`{_}_IELE-DATA`(`_,__IELE-DATA`(`_:__IELE-DATA`(#token(&quot;\&quot;storage\&quot;&quot;,&quot;String&quot;),`_Map_`(`_|-&gt;_`(#token(&quot;0&quot;,&quot;Int&quot;),#token(&quot;10001&quot;,&quot;Int&quot;)),`_|-&gt;_`(#token(&quot;2428090106599461928744973076844625336880384098059&quot;,&quot;Int&quot;),#token(&quot;10000&quot;,&quot;Int&quot;)))),`.List{&quot;_,__IELE-DATA&quot;}`(.KList)))),`.List{&quot;_,__IELE-DATA&quot;}`(.KList)))))
+</code></pre>
+<p>Here account 91343852333181432387730302044767688728495783936 (in decimal) has different values for storage than expected by the test. Similar errors exist for the nonce, balance, and code of an account. You can refer to the <code>&lt;storage&gt;</code> cell in the dumped state for information on their actual values. The correct storage cell is nested within an <code>&lt;account&gt;</code> cell whose <code>&lt;acctID&gt;</code> is the address of the account in decimal.</p>
+<pre class="language-text"><code>`check__IELE-TESTING`(`_:__IELE-DATA`(#token(&quot;\&quot;out\&quot;&quot;,&quot;String&quot;),`[_]_IELE-DATA`(`_,__IELE-DATA`(#token(&quot;\&quot;0x01\&quot;&quot;,&quot;String&quot;),`.List{&quot;_,__IELE-DATA&quot;}`(.KList)))))
+</code></pre>
+<p>Here is a similar error, but the error states that the transaction returned an incorrect list of values. The actual return value can be found in the <code>&lt;output&gt;</code> cell.</p>
+<p>If other errors occur that are not on this list, feel free to contact us on Gitter or Riot and we will be happy to assist in helping you understand. Future releases of IELE may also have improved debugging information making this easier to interpret.</p>
+<h2 id="contacting-us">Contacting Us</h2>
+<p>In the spirit of open source, community-driven development, we will be holding all IELE discussions on our channels:</p>
+<ul>
+<li><a href="https://riot.im/app/#/room/#IELE:matrix.org" target="_blank" rel="noopener">#IELE:matrix.org</a> on <a href="https://riot.im" target="_blank" rel="noopener">Riot</a></li>
+<li><a href="https://gitter.im/runtimeverification/iele-semantics" target="_blank" rel="noopener">runtimeverification/iele-semantics</a> for issues/pull-requests.</li>
+</ul>
+</body></html></div>
+        </main>
+      </div>
+    </div>
+<footer class="app-footer text-md-left text-center">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-2 mb-md-0 mb-4">
+        <span class="pr-md-5 pr-0 py-3">
+          <a href="https://runtimeverification.com" target="_blank">
+            <picture>
+              <source
+                srcset="./assets/img/rv-logo-dark.png"
+                media="(prefers-color-scheme: dark)"
+              />
+              <img
+                class="pr-3 footer-logo"
+                src="./assets/img/rv-logo.png"
+                alt="Runtime Verification Inc logo"
+              />
+            </picture>
+          </a>
+        </span>
+      </div>
+      <div class="col-md-6 mb-md-0 mb-4"></div>
+      <div class="col-md-4 text-md-right">
+        <p class="copyright">
+          &copy; 2020 Runtime Verification Inc. All right reserved.
+        </p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script
+  async
+  src="https://www.googletagmanager.com/gtag/js?id=UA-163311512-1"
+></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag("js", new Date());
+  gtag("config", "UA-163311512-1");
+</script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Typist/1.2/typist.min.js"></script>
+    <script src="./assets/js/index.js"></script>
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-QL0D8HRYFW"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+      gtag("config", "G-QL0D8HRYFW");
+    </script>
+  </body>
+</html>
