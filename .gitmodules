@@ -8,3 +8,6 @@
 [submodule "plugin"]
 	path = plugin
 	url = https://github.com/runtimeverification/blockchain-k-plugin
+[submodule "web/k-web-theme"]
+	path = web/k-web-theme
+	url = git@github.com:runtimeverification/k-web-theme.git
