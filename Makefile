@@ -100,20 +100,22 @@ vm_tests=$(wildcard tests/VMTests/*/*/*.iele.json)
 blockchain_tests=$(wildcard tests/BlockchainTests/*/*/*/*.iele.json)
 all_tests=$(vm_tests) $(blockchain_tests)
 failing_tests = $(shell cat tests/failing.$(TEST_BACKEND))
-skipped_tests=$(wildcard tests/VMTests/vmPerformance/*/*.json) \
-   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Frontier.iele.json) \
-   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Homestead.iele.json) \
-   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_EIP150.iele.json) \
-   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_EIP158.iele.json) \
-   $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Constantinople.iele.json) \
-   $(wildcard tests/BlockchainTests/GeneralStateTests/stQuadraticComplexityTest/*/*.iele.json) \
-   $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Call50000*/*.iele.json) \
-   $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Return50000*/*.iele.json) \
-   $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Call1MB1024Calldepth_d1g0v0/*.iele.json) \
+skipped_tests=$(failing_tests) \
+    $(wildcard tests/VMTests/vmPerformance/*/*.json) \
+    $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Frontier.iele.json) \
+    $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Homestead.iele.json) \
+    $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_EIP150.iele.json) \
+    $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_EIP158.iele.json) \
+    $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Constantinople.iele.json) \
+    $(wildcard tests/BlockchainTests/GeneralStateTests/stQuadraticComplexityTest/*/*.iele.json) \
+    $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Call50000*/*.iele.json) \
+    $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Return50000*/*.iele.json) \
+    $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Call1MB1024Calldepth_d1g0v0/*.iele.json) \
 
-passing_tests=$(filter-out $(failing_tests), $(filter-out $(skipped_tests), $(all_tests)))
-passing_vm_tests=$(filter-out $(failing_tests), $(filter-out $(skipped_tests), $(vm_tests)))
-passing_blockchain_tests=$(filter-out $(failing_tests), $(filter-out $(skipped_tests), $(blockchain_tests)))
+passing_tests=$(filter-out $(skipped_tests), $(all_tests))
+passing_vm_tests=$(filter-out $(skipped_tests), $(vm_tests))
+passing_blockchain_tests=$(filter-out $(skipped_tests), $(blockchain_tests))
+
 passing_targets=$(passing_tests:=.test)
 passing_vm_targets=$(passing_vm_tests:=.test)
 passing_blockchain_targets=$(passing_blockchain_tests:=.test)
