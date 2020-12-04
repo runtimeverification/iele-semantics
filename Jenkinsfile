@@ -35,9 +35,9 @@ pipeline {
               steps {
                 sh '''
                   export PATH=$(pwd)/.build/bin:$PATH
-                  kiele vm | awk -F ':' '{print $2}' > port &
+                  kiele vm --port 9001 &
                   sleep 3
-                  make test-iele-node -j4 PORT=$(cat port)
+                  make test-iele-node -j4 TEST_PORT=9001
                   kill %1
                 '''
               }
@@ -46,9 +46,9 @@ pipeline {
               steps {
                 sh '''
                   export PATH=$(pwd)/.build/bin:$PATH
-                  kiele vm | awk -F ':' '{print $2}' > port &
+                  kiele vm --port 9002 &
                   sleep 3
-                  make test-bad-packet -j4 PORT=$(cat port)
+                  make test-bad-packet -j4 TEST_PORT=9002
                   kill %1
                 '''
               }
