@@ -36,9 +36,10 @@ pipeline {
                 sh '''
                   export PATH=$(pwd)/.build/bin:$PATH
                   kiele vm --port 9001 &
+                  pid=$!
                   sleep 3
                   make test-iele-node -j4 TEST_PORT=9001
-                  kill %1
+                  kill $pid
                 '''
               }
             }
@@ -47,9 +48,10 @@ pipeline {
                 sh '''
                   export PATH=$(pwd)/.build/bin:$PATH
                   kiele vm --port 9002 &
+                  pid=$!
                   sleep 3
                   make test-bad-packet -j4 TEST_PORT=9002
-                  kill %1
+                  kill $pid
                 '''
               }
             }
