@@ -1,36 +1,28 @@
 Installing KIELE
 ================
 
-We provide packages for IELE on the following platforms:
+We support the following installation methods:
 
--   Ubuntu Bionic (18.04)
--   Binary Package (Most Linux Systems)
--   From Source Build
+-   [Ubuntu Bionic (18.04) package](#ubuntu-bionic-package)
+-   [Linux binary package](#linux-binary-package) (most other distributions)
+-   [Build from source](#build-from-source) (Linux and macOS)
 
 **NOTE**: We do not currently support running K on native Windows.
 To use K on Windows, you are encouraged to install [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10) and follow the instructions for Ubuntu Bionic.
 
-Download Packages
------------------
-
-Download the appropriate package from the GitHub, via the [Releases](https://github.com/kframework/k/releases) page.
-Releases are generated as often as possible from `master` build.
-
-Install Packages
-----------------
-
-For version `X.Y.Z`, the following instructions tell you how to install the downloaded package on your system.
-
-### Ubuntu Bionic (18.04)
+## Ubuntu Bionic package
 
 First make sure you have the `kframework` package installed, see instructions here: <https://github.com/kframework/k/releases>.
-Then install the `kiele` package.
+
+Download the appropriate "Ubuntu Bionic" package from the GitHub, via the [Releases](https://github.com/kframework/k/releases) page.
+Releases are generated as often as possible from `master` build.
+Assuming you have downloaded KIELE version `X.Y.Z`, install the package with `apt`:
 
 ```sh
 sudo apt install ./kiele_X.Y.Z_amd64_bionic.deb
 ```
 
-### Binary Package
+## Linux binary package
 
 Install the following runtime dependencies:
 
@@ -38,7 +30,10 @@ Install the following runtime dependencies:
 sudo apt-get install --yes libcrypto++-dev libjemalloc-dev libmpfr-dev libprotobuf-dev libsecp256k1-dev
 ```
 
-Extract the tarball:
+Download the "KIELE Linux Binary" package from the GitHub, via the [Releases](https://github.com/kframework/k/releases) page.
+Releases are generated as often as possible from `master` build.
+
+Assuming you have downloaded KIELE version `X.Y.Z`, extract the tarball:
 
 ```sh
 tar -xvf kiele-X.Y.Z-bin.tar.gz
@@ -58,8 +53,7 @@ And make sure it's on `PATH`:
 export PATH=$HOME/local/bin:$PATH
 ```
 
-From Source Build
------------------
+## Build from source
 
 ### System Dependencies
 
