@@ -5,7 +5,7 @@ let
 
   default =
     {
-      inherit (iele-assemble) iele-assemble
+      inherit (iele-assemble) iele-assemble;
     };
 
 in default
