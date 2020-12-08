@@ -1,7 +1,6 @@
 name: "Test"
 on:
   pull_request:
-  push:
 jobs:
 
   # Run ./nix/rematerialize.sh from iele-assemble if this job fails.
@@ -57,7 +56,7 @@ jobs:
         signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
 
     - name: Build
-      run: nix-build iele-assemble -A iele-assemble
+      run: nix-build
 
     - name: Run unit tests
       run: nix-build iele-assemble -A project.iele-assemble.checks
@@ -80,5 +79,5 @@ jobs:
           . $HOME/.nix-profile/etc/profile.d/nix.sh
           nix-env -iA cachix -f https://cachix.org/api/v1/install
           cachix use runtimeverification
-          nix-env -iA iele-assemble -f https://github.com/runtimeverification/iele-semantics/archive/master.tar.gz
+          nix-env -iA iele-assemble -f https://github.com/${{ github.repository }}/archive/${{ github.sha }}.tar.gz
 
