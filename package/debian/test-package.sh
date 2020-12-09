@@ -17,7 +17,6 @@ git submodule update --init --recursive
 
 make test-vm -j4
 make test-iele -j4
-make test-wellformed -j4
 make test-interactive
 
 kiele vm --port 9001 &

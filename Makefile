@@ -148,7 +148,7 @@ test-interactive: iele-examples/erc20.iele tests/VMTests/vmSha3Test/sha3_memSize
 	kiele --version
 	kiele assemble iele-examples/erc20.iele
 	kiele interpret --mode VMTESTS tests/VMTests/vmSha3Test/sha3_memSizeQuadraticCost64/sha3_memSizeQuadraticCost64.iele.json.test-assembled
-	kiele check --schedule DANSE iele-examples/erc20.iele
+	#kiele check --schedule DANSE iele-examples/erc20.iele
 	# kiele krun iele-examples/erc20.iele
 	# kiele vm
 
@@ -263,33 +263,31 @@ INSTALL_PREFIX := /usr/local
 INSTALL_BIN    ?= $(DESTDIR)$(INSTALL_PREFIX)/bin
 INSTALL_LIB    ?= $(DESTDIR)$(INSTALL_PREFIX)/lib/kiele
 
-install_bins := iele-vm iele-test-vm iele-assemble iele-interpreter iele-check kiele
+install_bins :=      \
+    iele-assemble    \
+    iele-check       \
+    iele-interpreter \
+    iele-test-vm     \
+    iele-vm          \
+    kiele
 
-install_libs := version kore-json.py haskell/iele-testing-kompiled check/well-formedness-kompiled standalone/iele-testing-kompiled
+install_libs :=                                            \
+    standalone/iele-testing-kompiled/syntaxDefinition.kore \
+    kore-json.py                                           \
+    version
 
 $(IELE_BIN)/kiele: kiele
-	@mkdir -p $(IELE_BIN)
-	cp $< $@
+	install -D $< $@
 
 $(IELE_LIB)/version:
 	@mkdir -p $(IELE_LIB)
 	echo "$(KIELE_RELEASE_TAG)" > $@
 
-$(IELE_LIB)/standalone/iele-testing-kompiled: $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
-	@mkdir -p $(IELE_LIB)/standalone
-	cp -r $(dir $<) $@
-
-$(IELE_LIB)/haskell/iele-testing-kompiled: $(haskell_kompiled)
-	@mkdir -p $(IELE_LIB)/haskell
-	cp -r $(dir $<) $@
-
-$(IELE_LIB)/check/well-formedness-kompiled: $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
-	@mkdir -p $(IELE_LIB)/check
-	cp -r $(dir $<) $@
+$(IELE_LIB)/standalone/iele-testing-kompiled/syntaxDefinition.kore: $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
+	install -D $< $@
 
 $(IELE_LIB)/kore-json.py: kore-json.py
-	@mkdir -p $(IELE_LIB)
-	cp $< $@
+	install -D $< $@
 
 $(INSTALL_BIN)/%: $(IELE_BIN)/%
 	install -D $< $@
@@ -297,7 +295,6 @@ $(INSTALL_BIN)/%: $(IELE_BIN)/%
 $(INSTALL_LIB)/%: $(IELE_LIB)/%
 	install -D $< $@
 
-build: $(patsubst %, $(IELE_BIN)/%, $(install_bins)) $(patsubst %, $(IELE_LIB)/%, $(install_libs))
 install: $(patsubst %, $(INSTALL_BIN)/%, $(install_bins)) $(patsubst %, $(INSTALL_LIB)/%, $(install_libs))
 
 uninstall:
@@ -308,6 +305,22 @@ release.md:
 	echo "KIELE Release - $(KIELE_RELEASE_TAG)"  > $@
 	echo                                        >> $@
 	cat INSTALL.md                              >> $@
+
+build_bins := $(install_bins)
+
+build_libs := $(install_libs)      \
+    check/well-formedness-kompiled \
+    haskell/iele-testing-kompiled
+
+$(IELE_LIB)/haskell/iele-testing-kompiled: $(haskell_kompiled)
+	@mkdir -p $(IELE_LIB)/haskell
+	cp -r $(dir $<) $@
+
+$(IELE_LIB)/check/well-formedness-kompiled: $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
+	@mkdir -p $(IELE_LIB)/check
+	cp -r $(dir $<) $@
+
+build: $(patsubst %, $(IELE_BIN)/%, $(build_bins)) $(patsubst %, $(IELE_LIB)/%, $(build_libs))
 
 # Ocaml Builds
 # ------------
