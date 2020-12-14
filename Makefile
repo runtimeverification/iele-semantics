@@ -285,7 +285,7 @@ $(IELE_LIB)/version:
 	echo "$(KIELE_RELEASE_TAG)" > $@
 
 $(IELE_LIB)/standalone/iele-testing-kompiled/syntaxDefinition.kore: $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
-	install -D $(dir $<)/syntaxDefinition.kore $@
+	install -D $(dir $<)syntaxDefinition.kore $@
 
 $(IELE_LIB)/kore-json.py: kore-json.py
 	install -D $< $@
