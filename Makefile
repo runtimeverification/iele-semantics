@@ -239,7 +239,7 @@ build-haskell: $(haskell_kompiled)
 
 $(haskell_kompiled): MD_SELECTOR="(k & ! node) | standalone"
 
-$(haskell_kompiled):
+$(haskell_kompiled): $(k_files)
 	$(KOMPILE) --directory $(haskell_dir) --backend haskell --main-module $(haskell_main_module) --syntax-module $(haskell_syntax_module) --md-selector $(MD_SELECTOR) --hook-namespaces "KRYPTO JSON" $(haskell_main_file)
 
 # IELE Assembler
