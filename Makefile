@@ -141,7 +141,7 @@ test-bad-packet:
 	netcat 127.0.0.1 $(TEST_PORT) -q 2 < tests/bad-packet-2
 	iele-test-vm tests/iele/danse/sum/sum_zero.iele.json $(TEST_PORT)
 
-test-interactive: iele-examples/erc20.iele tests/VMTests/vmSha3Test/sha3_memSizeQuadraticCost64/sha3_memSizeQuadraticCost64.iele.json.test-assembled
+test-interactive: iele-examples/erc20.iele tests/VMTests/vmArithmeticTest/add0/add0.iele.json.test-assembled
 	kiele help
 	kiele --help
 	kiele version
