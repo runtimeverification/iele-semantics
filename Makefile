@@ -147,8 +147,9 @@ test-interactive: iele-examples/erc20.iele tests/VMTests/vmSha3Test/sha3_memSize
 	kiele version
 	kiele --version
 	kiele assemble iele-examples/erc20.iele
-	kiele interpret --mode VMTESTS tests/VMTests/vmSha3Test/sha3_memSizeQuadraticCost64/sha3_memSizeQuadraticCost64.iele.json.test-assembled
-	#kiele check --schedule DANSE iele-examples/erc20.iele
+	echo
+	kiele interpret --mode VMTESTS tests/VMTests/vmArithmeticTest/add0/add0.iele.json.test-assembled
+	# kiele check --schedule DANSE iele-examples/erc20.iele
 	# kiele krun iele-examples/erc20.iele
 	# kiele vm
 
@@ -284,7 +285,7 @@ $(IELE_LIB)/version:
 	echo "$(KIELE_RELEASE_TAG)" > $@
 
 $(IELE_LIB)/standalone/iele-testing-kompiled/syntaxDefinition.kore: $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
-	install -D $< $@
+	install -D $(dir $<)/syntaxDefinition.kore $@
 
 $(IELE_LIB)/kore-json.py: kore-json.py
 	install -D $< $@
