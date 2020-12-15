@@ -149,9 +149,9 @@ test-interactive: iele-examples/erc20.iele tests/iele/danse/factorial/factorial_
 	kiele assemble iele-examples/erc20.iele
 	echo
 	kiele interpret tests/iele/danse/factorial/factorial_positive.iele.json.test-assembled
-	# kiele check --schedule DANSE iele-examples/erc20.iele
-	# kiele krun iele-examples/erc20.iele
-	# kiele vm
+	kiele check --schedule DANSE iele-examples/erc20.iele
+	kiele krun iele-examples/erc20.iele
+	kiele vm
 
 tests/VMTests/%:        TEST_MODE     = VMTESTS
 %.iele.test-wellformed: TEST_SCHEDULE = DANSE
