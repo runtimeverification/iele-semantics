@@ -95,7 +95,7 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
 
            $0 assemble  : Translate IELE assembly <pgm to IELE bytecode
            $0 interpret : Run given input JSON or IELE <pgm>
-           $0 krun      : Run given input <pgm> using `krun`
+           $0 krun      : Run given input <pgm> using 'krun'
            $0 check     : Run the IELE well-formedness checker on <pgm>
            $0 vm        : Run the KIELE VM server.
 
