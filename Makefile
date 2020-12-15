@@ -150,8 +150,7 @@ test-interactive: iele-examples/erc20.iele tests/iele/danse/factorial/factorial_
 	echo
 	kiele interpret tests/iele/danse/factorial/factorial_positive.iele.json.test-assembled
 	kiele check --schedule DANSE iele-examples/erc20.iele
-	kiele krun iele-examples/erc20.iele
-	kiele vm
+	# kiele vm
 
 tests/VMTests/%:        TEST_MODE     = VMTESTS
 %.iele.test-wellformed: TEST_SCHEDULE = DANSE
@@ -284,8 +283,8 @@ $(IELE_LIB)/version:
 	@mkdir -p $(IELE_LIB)
 	echo "$(KIELE_RELEASE_TAG)" > $@
 
-$(IELE_LIB)/standalone/iele-testing-kompiled/syntaxDefinition.kore: $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
-	install -D $(dir $<)syntaxDefinition.kore $@
+$(IELE_LIB)/standalone/iele-testing-kompiled/%: $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
+	install -D $(dir $<)$* $@
 
 $(IELE_LIB)/kore-json.py: kore-json.py
 	install -D $< $@
