@@ -431,14 +431,24 @@ These parsers can interperet hex-encoded strings as `Int`s, `WordStack`s, and `M
     rule #parseWord(S)  => #parseHexWord(S) requires lengthString(S) >=Int 2 andBool substrString(S, 0, 2) ==String "0x"
     rule #parseWord(S)  => String2Int(S) [owise]
 
+    syntax String ::= #alignHexString ( String ) [function, functional]
+ // -------------------------------------------------------------------
+    rule #alignHexString(S) => S             requires         lengthString(S) modInt 2 ==Int 0
+    rule #alignHexString(S) => "0" +String S requires notBool lengthString(S) modInt 2 ==Int 0
+
     syntax WordStack ::= #parseByteStack ( String )    [function]
-                       | #parseByteStack ( String , WordStack , Int , Int ) [function, klabel(#parseByteStackAux)]
+                       | #parseHexBytes     ( String ) [function]
+                       | #parseHexBytesAux  ( String ) [function]
                        | #parseByteStackRaw ( String ) [function]
                        | #parseByteStackRaw ( String , WordStack , Int , Int ) [function, klabel(#parseByteStackRawAux)]
  // --------------------------------------------------------------------------------------------------------------------
-    rule #parseByteStack(S) => #fun(STR => #parseByteStack(STR, .WordStack, 0, lengthString(STR)))(replaceAll(S, "0x", ""))
-    rule #parseByteStack(_, WS, LEN, LEN) => #rev(WS, .WordStack)
-    rule #parseByteStack(S, WS, I, LEN)  => #parseByteStack(S, #parseHexWord(substrString(S, I, I +Int 2)) : WS, I +Int 2, LEN) [owise]
+    rule #parseByteStack(S) => #parseHexBytes(replaceAll(S, "0x", ""))
+
+    rule #parseHexBytes(S)  => #parseHexBytesAux(#alignHexString(S))
+    rule #parseHexBytesAux("") => .WordStack
+    rule #parseHexBytesAux(S)  => #parseHexWord(substrString(S, 0, 2)) : #parseHexBytesAux(substrString(S, 2, lengthString(S)))
+       requires lengthString(S) >=Int 2
+
     rule #parseByteStackRaw(S) => #parseByteStackRaw(S, .WordStack, 0, lengthString(S))
     rule #parseByteStackRaw(S, WS, LEN, LEN) => #rev(WS, .WordStack)
     rule #parseByteStackRaw(S, WS, I, LEN) => #parseByteStackRaw(S, ordChar(substrString(S, I, I +Int 1)) : WS, I +Int 1, LEN) [owise]
