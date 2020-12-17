@@ -5,8 +5,6 @@
 , k, haskell-backend, llvm-backend, clang
 }:
 
-let inherit (nix-gitignore) gitignoreSourcePure; in
-
 stdenv.mkDerivation {
   name = "kiele-0.2.0";
   src =
