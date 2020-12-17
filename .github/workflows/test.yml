@@ -61,7 +61,7 @@ jobs:
     - name: Run unit tests
       run: nix-build iele-assemble -A project.iele-assemble.checks
 
-  # Update iele-assemble/README.md if this job changes.
+  # Update INSTALL.md if this job changes.
   test-nix-install:
     name: 'Nix: Install'
     needs: test-nix
@@ -79,5 +79,6 @@ jobs:
           . $HOME/.nix-profile/etc/profile.d/nix.sh
           nix-env -iA cachix -f https://cachix.org/api/v1/install
           cachix use runtimeverification
-          nix-env -iA iele-assemble -f https://github.com/${{ github.repository }}/archive/${{ github.sha }}.tar.gz
+          nix-env -f https://github.com/${{ github.repository }}/archive/${{ github.sha }}.tar.gz \
+            -i -A kiele -A iele-assemble
 

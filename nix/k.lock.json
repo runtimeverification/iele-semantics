@@ -1,0 +1,10 @@
+{
+  "url": "https://github.com/kframework/k.git",
+  "rev": "365ce08789e1580c1863d10aa0401ef29e38aab2",
+  "date": "2020-12-17T13:06:19-06:00",
+  "path": "/nix/store/x341zva23cxqklgw3mw8gzb207qm43b3-k-365ce08",
+  "sha256": "0f9jg10jigshrypz3sv4w0mahz3b98aagk07495kdpvx9ibkhd93",
+  "fetchSubmodules": true,
+  "deepClone": false,
+  "leaveDotGit": false
+}
