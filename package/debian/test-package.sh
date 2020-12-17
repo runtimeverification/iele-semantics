@@ -5,6 +5,7 @@ set -euxo pipefail
 KIELE_VERSION="$1"
 UBUNTU_RELEASE="$2"
 KIELE_REVISION="$3"
+TEST_PORT="$4"
 
 sudo apt-get update && sudo apt-get upgrade --yes
 sudo apt-get install --yes netcat
@@ -18,9 +19,9 @@ git submodule update --init --recursive
 make test-vm -j4
 make test-iele -j4
 
-kiele vm --port 9001 &
+kiele vm --port ${TEST_PORT} &
 pid=$!
 sleep 3
-make test-iele-node  -j4 TEST_PORT=9001
-make test-bad-packet -j4 TEST_PORT=9001
+make test-iele-node  -j4 TEST_PORT=${TEST_PORT}
+make test-bad-packet -j4 TEST_PORT=${TEST_PORT}
 kill $pid
