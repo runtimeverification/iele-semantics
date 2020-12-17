@@ -40,11 +40,11 @@ stdenv.mkDerivation {
     "INSTALL_PREFIX=${builtins.placeholder "out"}"
   ];
   buildFlags = [
-    ".build/vm/iele-interpreter"
-    ".build/vm/iele-vm"
+    "build-interpreter"
+    "build-vm"
   ];
   installTargets = [
-    "${builtins.placeholder "out"}/bin/iele-interpreter"
-    "${builtins.placeholder "out"}/bin/iele-vm"
+    "install-interpreter"
+    "install-vm"
   ];
 }
