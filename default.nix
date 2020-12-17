@@ -31,7 +31,7 @@ let
 
   default =
     {
-      inherit kiele libff;
+      inherit kiele;
       inherit (iele-assemble) iele-assemble;
     };
 

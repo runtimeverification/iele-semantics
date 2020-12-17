@@ -105,12 +105,12 @@ nix-env -iA cachix -f https://cachix.org/api/v1/install
 cachix use runtimeverification
 ```
 
-### Install iele-assemble with Nix
+### Install with Nix
 
-With the [prerequisites](#prerequisites) installed, we are ready to install `iele-assemble`:
+With the [prerequisites](#prerequisites) installed, we are ready to install `kiele`:
 
 ```.sh
-nix-env -iA iele-assemble -f https://github.com/runtimeverification/iele-semantics/archive/master.tar.gz
+nix-env -i -f https://github.com/runtimeverification/iele-semantics/archive/master.tar.gz
 ```
 
 ## Build from source

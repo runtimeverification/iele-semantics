@@ -73,6 +73,5 @@ jobs:
           . $HOME/.nix-profile/etc/profile.d/nix.sh
           nix-env -iA cachix -f https://cachix.org/api/v1/install
           cachix use runtimeverification
-          nix-env -f https://github.com/${{ github.repository }}/archive/${{ github.sha }}.tar.gz \
-            -i -A kiele -A iele-assemble
+          nix-env -i -f https://github.com/${{ github.repository }}/archive/${{ github.sha }}.tar.gz \
 
