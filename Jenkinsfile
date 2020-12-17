@@ -157,6 +157,7 @@ pipeline {
                   git clone 'ssh://github.com/runtimeverification/iele-semantics.git' --depth 1 --no-single-branch --branch master --branch gh-pages
                   cd iele-semantics
                   git checkout -B gh-pages origin/master
+                  git submodule update --init --recursive -- ./web
                   cd web
                   npm install
                   npm run build
