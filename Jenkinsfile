@@ -22,28 +22,28 @@ pipeline {
         }
       }
       stages {
-        stage('Build') { steps { sh 'make COVERAGE=k -j4' } }
+        stage('Build')       { steps { sh 'make build       -j4' } }
+        stage('Split Tests') { steps { sh 'make split-tests -j4' } }
         stage('Test') {
-          stages {
-            stage('VM Tests') {
-              options { timeout(time: 5, unit: 'MINUTES') }
+          options { timeout(time: 5, unit: 'MINUTES') }
+          parallel {
+            stage('EVM Tests')          { steps { sh 'make test-vm -j4'                       } }
+            stage('IELE Tests')         { steps { sh 'make test-iele -j4'                     } }
+            stage('VM Tests (Haskell)') { steps { sh 'make test-vm -j4 TEST_BACKEND=haskell'  } }
+            stage('Well Formed Check')  { steps { sh 'make test-wellformed -j4'               } }
+            stage('Interactive')        { steps { sh 'make test-interactive'                  } }
+            stage('Node') {
               steps {
-                ansiColor('xterm') {
-                  sh '''#!/bin/bash -ex
-                    .build/vm/iele-vm 0 127.0.0.1 > port &
-                    sleep 3
-                    export PORT=`cat port | awk -F ':' '{print $2}'`
-                    make test -j`nproc` -k
-                    make coverage
-                    kill %1
-                  '''
-                }
+                sh '''
+                  export PATH=$(pwd)/.build/bin:$PATH
+                  kiele vm --port 9001 &
+                  pid=$!
+                  sleep 3
+                  make test-iele-node  -j4 TEST_PORT=9001
+                  make test-bad-packet -j4 TEST_PORT=9001
+                  kill $pid
+                '''
               }
-            }
-            stage('Haskell Standalone') {
-              options { timeout(time: 5, unit: 'MINUTES') }
-              failFast true
-              steps { sh 'make -j2 iele-test-haskell' }
             }
           }
         }
@@ -102,7 +102,7 @@ pipeline {
               steps {
                 dir("kiele-${env.KIELE_VERSION}-bionic-test") {
                   unstash 'bionic-kiele'
-                  sh '../kiele-${KIELE_VERSION}-bionic/package/debian/test-package.sh ${KIELE_VERSION} bionic ${LONG_REV}'
+                  sh '../kiele-${KIELE_VERSION}-bionic/package/debian/test-package.sh ${KIELE_VERSION} bionic ${LONG_REV} 9001'
                 }
               }
             }

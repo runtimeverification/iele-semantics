@@ -8,6 +8,8 @@ We support the following installation methods:
 -   [Nix](#nix) (Linux and macOS)
 -   [Build from source](#build-from-source) (Linux and macOS)
 
+Our most up-to-date packages are available at <https://github.com/runtimeverification/iele-semantics/releases>.
+
 **NOTE**: We do not currently support running K on native Windows.
 To use K on Windows, you are encouraged to install [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10) and follow the instructions for Ubuntu Bionic.
 

@@ -5,6 +5,7 @@ set -euxo pipefail
 KIELE_VERSION="$1"
 UBUNTU_RELEASE="$2"
 KIELE_REVISION="$3"
+TEST_PORT="$4"
 
 sudo apt-get update && sudo apt-get upgrade --yes
 sudo apt-get install --yes netcat
@@ -15,8 +16,12 @@ cd iele-semantics
 git checkout "$KIELE_REVISION"
 git submodule update --init --recursive
 
-iele-vm 0 127.0.0.1 > port &
+make test-vm -j4
+make test-iele -j4
+
+kiele vm --port ${TEST_PORT} &
+pid=$!
 sleep 3
-export PORT=$(cat port | awk -F ':' '{print $2}')
-make test -j`nproc` -k TEST_WELLFORMED=true
-kill %1
+make test-iele-node  -j4 TEST_PORT=${TEST_PORT}
+make test-bad-packet -j4 TEST_PORT=${TEST_PORT}
+kill $pid
