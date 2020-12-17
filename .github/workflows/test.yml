@@ -32,10 +32,7 @@ jobs:
   test-nix:
     name: 'Nix'
     needs: test-nix-material
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
     - name: Check out code
       uses: actions/checkout@v2.3.4
@@ -68,9 +65,6 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04, ubuntu-18.04]
-        include:
-          - os: macos-10.15
-            nix-install-opts: '--darwin-use-unencrypted-nix-store-volume'
     runs-on: ${{ matrix.os }}
     steps:
       - name: Test end-to-end installation instructions
