@@ -439,6 +439,7 @@ These parsers can interperet hex-encoded strings as `Int`s, `WordStack`s, and `M
     syntax WordStack ::= #parseByteStack ( String )    [function]
                        | #parseHexBytes     ( String ) [function]
                        | #parseHexBytesAux  ( String ) [function]
+                       | #parseHexBytesAux  ( Bytes  ) [function]
                        | #parseByteStackRaw ( String ) [function]
                        | #parseByteStackRaw ( String , WordStack , Int , Int ) [function, klabel(#parseByteStackRawAux)]
  // --------------------------------------------------------------------------------------------------------------------
@@ -446,8 +447,14 @@ These parsers can interperet hex-encoded strings as `Int`s, `WordStack`s, and `M
 
     rule #parseHexBytes(S)  => #parseHexBytesAux(#alignHexString(S))
     rule #parseHexBytesAux("") => .WordStack
-    rule #parseHexBytesAux(S)  => #parseHexWord(substrString(S, 0, 2)) : #parseHexBytesAux(substrString(S, 2, lengthString(S)))
-       requires lengthString(S) >=Int 2
+    rule #parseHexBytesAux(S)  => #parseHexBytesAux( Int2Bytes(lengthString(S) /Int 2, String2Base(S, 16), BE) )
+      requires lengthString(S) >=Int 2
+
+    rule #parseHexBytesAux(BS) => BS[0] : BS[1] : BS[2] : BS[3] : #parseHexBytesAux( substrBytes(BS, 4, lengthBytes(BS)) ) requires lengthBytes(BS) >=Int 4
+    rule #parseHexBytesAux(BS) => BS[0] : BS[1] : BS[2] : .WordStack                                                       requires lengthBytes(BS) ==Int 3
+    rule #parseHexBytesAux(BS) => BS[0] : BS[1] : .WordStack                                                               requires lengthBytes(BS) ==Int 2
+    rule #parseHexBytesAux(BS) => BS[0] : .WordStack                                                                       requires lengthBytes(BS) ==Int 1
+    rule #parseHexBytesAux(BS) => .WordStack                                                                               requires lengthBytes(BS) ==Int 0
 
     rule #parseByteStackRaw(S) => #parseByteStackRaw(S, .WordStack, 0, lengthString(S))
     rule #parseByteStackRaw(S, WS, LEN, LEN) => #rev(WS, .WordStack)
