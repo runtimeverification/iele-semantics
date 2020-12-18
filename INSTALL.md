@@ -109,10 +109,13 @@ cachix use runtimeverification
 
 ### Install with Nix
 
-With the [prerequisites](#prerequisites) installed, we are ready to install `kiele`:
+With the [prerequisites](#prerequisites) installed,
+we can install `kiele` from any clone of the repository:
 
 ```.sh
-nix-env -i -f https://github.com/runtimeverification/iele-semantics/archive/master.tar.gz
+git clone https://github.com/runtimeverification/iele-semantics
+cd iele-semantics
+nix-env -f . -i
 ```
 
 ## Build from source
