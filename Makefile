@@ -43,7 +43,8 @@ IELE_TEST_CLIENT := $(IELE_BIN)/iele-test-client
 export PATH:=$(IELE_BIN):$(PATH)
 
 .PHONY: all clean distclean libff protobuf coverage \
-        build build build-haskell build-node build-testnode \
+        build build-interpreter build-vm build-haskell build-node build-testnode \
+		install install-interpreter install-vm uninstall \
         split-tests split-vm-tests split-blockchain-tests \
         test-evm test-vm test-blockchain test-iele test-iele-node test-wellformed test-bad-packet test-interactive
 .SECONDARY:
@@ -216,9 +217,13 @@ $(IELE_CHECK): $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
 	@mkdir -p $(IELE_BIN)
 	cp $< $@
 
+build-interpreter: $(IELE_INTERPRETER)
+
 $(IELE_INTERPRETER): $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
 	@mkdir -p $(IELE_BIN)
 	cp $< $@
+
+build-vm: $(IELE_VM)
 
 $(IELE_VM): $(BUILD_DIR)/node/iele-testing-kompiled/interpreter $(wildcard vm/c/*.cpp vm/c/*.h) $(protobuf_out)
 	@mkdir -p $(IELE_BIN)
@@ -296,6 +301,10 @@ $(INSTALL_LIB)/%: $(IELE_LIB)/%
 	install -D $< $@
 
 install: $(patsubst %, $(INSTALL_BIN)/%, $(install_bins)) $(patsubst %, $(INSTALL_LIB)/%, $(install_libs))
+
+install-interpreter: $(INSTALL_BIN)/iele-interpreter
+
+install-vm: $(INSTALL_BIN)/iele-vm
 
 uninstall:
 	rm $(patsubst %, $(INSTALL_BIN)/%, $(install_bins))
