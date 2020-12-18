@@ -13,6 +13,9 @@ stdenv.mkDerivation {
       patterns = [
         "result*"
         "/iele-assemble"
+        "/iele-examples"
+        "/nix"
+        "/package"
         "/tests"
         "/web"
       ];
