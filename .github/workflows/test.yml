@@ -32,10 +32,7 @@ jobs:
   test-nix:
     name: 'Nix'
     needs: test-nix-material
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
     - name: Check out code
       uses: actions/checkout@v2.3.4
@@ -61,23 +58,4 @@ jobs:
     - name: Run unit tests
       run: nix-build iele-assemble -A project.iele-assemble.checks
 
-  # Update iele-assemble/README.md if this job changes.
-  test-nix-install:
-    name: 'Nix: Install'
-    needs: test-nix
-    strategy:
-      matrix:
-        os: [ubuntu-20.04, ubuntu-18.04]
-        include:
-          - os: macos-10.15
-            nix-install-opts: '--darwin-use-unencrypted-nix-store-volume'
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Test end-to-end installation instructions
-        run: |
-          bash <(curl -L https://nixos.org/nix/install) ${{ matrix.nix-install-opts }}
-          . $HOME/.nix-profile/etc/profile.d/nix.sh
-          nix-env -iA cachix -f https://cachix.org/api/v1/install
-          cachix use runtimeverification
-          nix-env -iA iele-assemble -f https://github.com/${{ github.repository }}/archive/${{ github.sha }}.tar.gz
 
