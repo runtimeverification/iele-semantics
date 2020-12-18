@@ -11,18 +11,21 @@ stdenv.mkDerivation {
     let
       path = ./..;
       patterns = [
-        "/.build"
-        "/tests"
         "result*"
         "/iele-assemble"
+        "/tests"
         "/web"
       ];
-      inherit (nix-gitignore) gitignoreFilterPure;
+      inherit (nix-gitignore) gitignoreFilterPure withGitignoreFile;
+      filter =
+        gitignoreFilterPure
+          (_: _: true)
+          (withGitignoreFile patterns path)
+          path;
     in
       builtins.path {
-        inherit path;
+        inherit path filter;
         name = "iele-semantics";
-        filter = gitignoreFilterPure (_: _: true) patterns path;
       };
   nativeBuildInputs = [
     protobuf
