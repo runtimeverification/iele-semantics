@@ -75,6 +75,7 @@ jobs:
           cachix use runtimeverification
           git clone https://github.com/${{ github.repository }}
           cd $(basename ${{ github.repository }})
-          git checkout ${{ github.head_ref }}
+          git fetch origin
+          git checkout ${{ github.sha }}
           nix-env -f . -i
 
