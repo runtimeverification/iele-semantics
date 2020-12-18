@@ -115,6 +115,7 @@ we can install `kiele` from any clone of the repository:
 ```.sh
 git clone https://github.com/runtimeverification/iele-semantics
 cd iele-semantics
+git submodule update --init --recursive
 nix-env -f . -i
 ```
 

@@ -67,15 +67,21 @@ jobs:
         os: [ubuntu-20.04, ubuntu-18.04]
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Test end-to-end installation instructions
+      - name: Install Nix and Cachix
         run: |
           bash <(curl -L https://nixos.org/nix/install) ${{ matrix.nix-install-opts }}
           . $HOME/.nix-profile/etc/profile.d/nix.sh
           nix-env -iA cachix -f https://cachix.org/api/v1/install
           cachix use runtimeverification
-          git clone https://github.com/${{ github.repository }}
-          cd $(basename ${{ github.repository }})
-          git fetch origin
-          git checkout ${{ github.sha }}
+
+      - name: Check out code
+        uses: actions/checkout@v2.3.4
+        with:
+          submodules: recursive
+
+      - name: Install
+        timeout-minutes: 8
+        run: |
+          . $HOME/.nix-profile/etc/profile.d/nix.sh
           nix-env -f . -i
 
