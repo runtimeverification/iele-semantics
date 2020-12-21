@@ -484,8 +484,9 @@ We need to interperet a `WordStack` as a `String` again so that we can call `Kec
  // ---------------------------------------------------------------------------------------------------------
     rule #unparseByteStack ( WS ) => #unparseByteStack(WS, .StringBuffer)
 
-    rule #unparseByteStack( .WordStack, BUFFER ) => StringBuffer2String(BUFFER)
-    rule #unparseByteStack( W : WS, BUFFER )     => #unparseByteStack(WS, BUFFER +String chrChar(W))
+    rule #unparseByteStack( W1 : W2 : W3 : W4 : WS, BUFFER ) => #unparseByteStack(WS, BUFFER +String (chrChar(W1) +String chrChar(W2) +String chrChar(W3) +String chrChar(W4)))
+    rule #unparseByteStack( W1 : WS,                BUFFER ) => #unparseByteStack(WS, BUFFER +String chrChar(W1)) [owise]
+    rule #unparseByteStack( .WordStack,             BUFFER ) => StringBuffer2String(BUFFER)
 ```
 
 Recursive Length Prefix (RLP)
