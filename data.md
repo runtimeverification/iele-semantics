@@ -244,7 +244,6 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
 ```
 
 -   `_++_` acts as `WordStack` append.
--   `#rev` reverses a `WordStack`.
 -   `#take(N , WS)` keeps the first $N$ elements of a `WordStack` (passing with zeros as needed).
 -   `#drop(N , WS)` removes the first $N$ elements of a `WordStack`.
 -   `WS [ N .. W ]` access the range of `WS` beginning with `N` of width `W`.
@@ -254,11 +253,6 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
  // ---------------------------------------------------------------
     rule .WordStack ++ WS' => WS'
     rule (W : WS)   ++ WS' => W : (WS ++ WS')
-
-    syntax WordStack ::= #rev ( WordStack , WordStack ) [function]
- // --------------------------------------------------------------
-    rule #rev ( .WordStack , WS ) => WS
-    rule #rev ( W : WS1 , WS2 ) => #rev(WS1, W : WS2)
 
     syntax WordStack ::= #take ( Int , WordStack ) [function]
  // ---------------------------------------------------------
