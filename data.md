@@ -455,9 +455,7 @@ These parsers can interperet hex-encoded strings as `Int`s, `WordStack`s, and `M
     rule #parseHexBytesAux(BS) => BS[0] : .WordStack                                                                       requires lengthBytes(BS) ==Int 1
     rule #parseHexBytesAux(BS) => .WordStack                                                                               requires lengthBytes(BS) ==Int 0
 
-    rule #parseByteStackRaw(S) => #parseByteStackRaw(S, .WordStack, 0, lengthString(S))
-    rule #parseByteStackRaw(S, WS, LEN, LEN) => #rev(WS, .WordStack)
-    rule #parseByteStackRaw(S, WS, I, LEN) => #parseByteStackRaw(S, ordChar(substrString(S, I, I +Int 1)) : WS, I +Int 1, LEN) [owise]
+    rule #parseByteStackRaw(S) => #parseHexBytesAux(String2Bytes(S))
 
     syntax Map ::= #parseMap ( JSON ) [function]
  // --------------------------------------------
