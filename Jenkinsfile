@@ -25,7 +25,7 @@ pipeline {
         stage('Build')       { steps { sh 'make build       -j4' } }
         stage('Split Tests') { steps { sh 'make split-tests -j4' } }
         stage('Test') {
-          options { timeout(time: 5, unit: 'MINUTES') }
+          options { timeout(time: 30, unit: 'MINUTES') }
           parallel {
             stage('EVM Tests')            { steps { sh 'make test-vm -j4'                        } }
             stage('IELE Tests')           { steps { sh 'make test-iele -j4'                      } }
