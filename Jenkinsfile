@@ -27,11 +27,11 @@ pipeline {
         stage('Test') {
           options { timeout(time: 5, unit: 'MINUTES') }
           parallel {
-            stage('EVM Tests')          { steps { sh 'make test-vm -j4'                       } }
-            stage('IELE Tests')         { steps { sh 'make test-iele -j4'                     } }
-            stage('VM Tests (Haskell)') { steps { sh 'make test-vm -j4 TEST_BACKEND=haskell'  } }
-            stage('Well Formed Check')  { steps { sh 'make test-wellformed -j4'               } }
-            stage('Interactive')        { steps { sh 'make test-interactive'                  } }
+            stage('EVM Tests')            { steps { sh 'make test-vm -j4'                        } }
+            stage('IELE Tests')           { steps { sh 'make test-iele -j4'                      } }
+            stage('IELE Tests (Haskell)') { steps { sh 'make test-iele -j2 TEST_BACKEND=haskell' } }
+            stage('Well Formed Check')    { steps { sh 'make test-wellformed -j4'                } }
+            stage('Interactive')          { steps { sh 'make test-interactive'                   } }
             stage('Node') {
               steps {
                 sh '''
