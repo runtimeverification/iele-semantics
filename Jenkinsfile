@@ -29,7 +29,7 @@ pipeline {
           parallel {
             stage('EVM Tests')            { steps { sh 'make test-vm -j4'                        } }
             stage('IELE Tests')           { steps { sh 'make test-iele -j4'                      } }
-            stage('IELE Tests (Haskell)') { steps { sh 'make test-iele -j2 TEST_BACKEND=haskell' } }
+            stage('IELE Tests (Haskell)') { steps { sh 'sleep 10; make test-iele -j2 TEST_BACKEND=haskell' } }
             stage('Well Formed Check')    { steps { sh 'make test-wellformed -j4'                } }
             stage('Interactive')          { steps { sh 'make test-interactive'                   } }
             stage('Node') {
