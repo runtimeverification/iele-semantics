@@ -507,3 +507,4 @@ tests/VMTests/vmSha3Test/sha3_2/sha3_2.iele.json
 tests/VMTests/vmSha3Test/sha3_memSizeQuadraticCost65/sha3_memSizeQuadraticCost65.iele.json
 tests/VMTests/vmSha3Test/sha3_3/sha3_3.iele.json
 tests/VMTests/vmSha3Test/sha3_memSizeQuadraticCost32/sha3_memSizeQuadraticCost32.iele.json
+tests/iele/danse/unit/precompiled.iele.json

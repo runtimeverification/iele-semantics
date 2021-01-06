@@ -348,7 +348,7 @@ State Manipulation
  // ----------------------------------
     rule load DATA : { .JSONs } => .
     rule load DATA : { KEY : VALUE:JSON , REST } => load DATA : { KEY : VALUE } ~> load DATA : { REST }
-      requires REST =/=K .JSONs andBool DATA =/=String "transactions"
+      requires REST =/=K .JSONs andBool notBool DATA in (SetItem("transactions") SetItem("transactionsSorted"))
 
     rule load DATA : [ .JSONs ] => .
     rule load DATA : [ { TEST } , REST ] => load DATA : { TEST } ~> load DATA : [ REST ]
@@ -493,10 +493,9 @@ The `"blockHeader"` key loads the block information.
 The `"transactions"` key loads the transactions.
 
 ```{.k .standalone}
-    rule load "transactions" : { TX } => load "transactions" : { #sortJSONList(TX) }
-         requires notBool #isSorted(TX)
+    rule load "transactions" : { TX } => load "transactionsSorted" : { #sortJSONList(TX) }
 
-    rule <k> load "transactions" : { "arguments" : [ ARGS ],  "contractCode" : TI , "from" : FROM, "function" : FUNC, "gasLimit" : TG , "gasPrice" : TP , "nonce" : TN , "to" : TT , "value" : TV , .JSONs } => . ... </k>
+    rule <k> load "transactionsSorted" : { "arguments" : [ ARGS ],  "contractCode" : TI , "from" : FROM, "function" : FUNC, "gasLimit" : TG , "gasPrice" : TP , "nonce" : TN , "to" : TT , "value" : TV , .JSONs } => . ... </k>
          <txOrder>   ... .List => ListItem(!ID) </txOrder>
          <txPending> ... .List => ListItem(!ID) </txPending>
          <messages>
@@ -533,13 +532,10 @@ The `"transactions"` key loads the transactions.
     rule #exception CODE ~> check J:JSON => check J ~> #exception CODE
     rule check DATA : { .JSONs } => . requires DATA =/=String "transactions"
     rule check DATA : { (KEY:String) : VALUE , REST } => check DATA : { KEY : VALUE } ~> check DATA : { REST }
-      requires REST =/=K .JSONs andBool notBool DATA in (SetItem("callcreates") SetItem("transactions"))
+      requires REST =/=K .JSONs andBool notBool DATA in (SetItem("callcreates") SetItem("callcreatesSorted") SetItem("transactions"))
 
     rule check DATA : [ .JSONs ] => . requires DATA =/=String "ommerHeaders" andBool DATA =/=String "out"
     rule check DATA : [ { TEST } , REST ] => check DATA : { TEST } ~> check DATA : [ REST ] requires DATA =/=String "transactions"
-
-    rule check (KEY:String) : { JS:JSONs => #sortJSONList(JS) }
-      requires KEY in (SetItem("callcreates")) andBool notBool #isSorted(JS)
 
     rule check TESTID : { "post" : POST } => check "account" : POST ~> failure TESTID
     rule check "account" : { ACCTID: { KEY : VALUE:JSON , REST } } => check "account" : { ACCTID : { KEY : VALUE } } ~> check "account" : { ACCTID : { REST } } requires REST =/=K .JSONs
@@ -579,7 +575,7 @@ The `"transactions"` key loads the transactions.
            <code> CONTRACT </code>
            ...
          </account>
-         requires #dasmContract(CODE, #mainContract(CONTRACT)) ==K CONTRACT
+         requires #unparseByteStack(CODE) ==String #contractBytes(CONTRACT, #mainContract(CONTRACT))
     rule <k> check "account" : { ACCT : { "code" : .WordStack } } => . ... </k>
          <account>
            <acctID> ACCT </acctID>
@@ -602,7 +598,7 @@ Here we check the other post-conditions associated with an EVM test.
 
     rule check TESTID : { "logs" : LOGS } => check "logs" : LOGS ~> failure TESTID
  // ------------------------------------------------------------------------------
-    rule <k> check "logs" : HASH:String => . ... </k> <logData> SL </logData> requires #parseByteStack(Keccak256(#rlpEncodeLogs(SL))) ==K #parseByteStack(HASH)
+    rule <k> check "logs" : HASH:String => . ... </k> <logData> SL </logData> requires "0x" +String Keccak256(#rlpEncodeLogs(SL)) ==K HASH
 
     rule check TESTID : { "status" : STATUS } => check "status" : STATUS ~> failure TESTID
  // --------------------------------------------------------------------------------------
@@ -632,7 +628,8 @@ Here we check the other post-conditions associated with an EVM test.
 
     rule check TESTID : { "callcreates" : CCREATES } => check "callcreates" : CCREATES ~> failure TESTID
  // ----------------------------------------------------------------------------------------------------
-    rule check "callcreates" : { ("data" : (DATA:String)) , ("destination" : (ACCTTO:String)) , ("gasLimit" : (GLIMIT:String)) , ("value" : (VAL:String)) , .JSONs }
+    rule check "callcreates" : { JS:JSONs } => check "callcreatesSorted" : { #sortJSONList(JS) }
+    rule check "callcreatesSorted" : { ("data" : (DATA:String)) , ("destination" : (ACCTTO:String)) , ("gasLimit" : (GLIMIT:String)) , ("value" : (VAL:String)) , .JSONs }
       => .
 
     rule check TESTID : { "genesisBlockHeader" : BLOCKHEADER } => check "genesisBlockHeader" : BLOCKHEADER ~> failure TESTID

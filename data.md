@@ -431,17 +431,32 @@ These parsers can interperet hex-encoded strings as `Int`s, `WordStack`s, and `M
     rule #parseWord(S)  => #parseHexWord(S) requires lengthString(S) >=Int 2 andBool substrString(S, 0, 2) ==String "0x"
     rule #parseWord(S)  => String2Int(S) [owise]
 
+    syntax String ::= #alignHexString ( String ) [function, functional]
+ // -------------------------------------------------------------------
+    rule #alignHexString(S) => S             requires         lengthString(S) modInt 2 ==Int 0
+    rule #alignHexString(S) => "0" +String S requires notBool lengthString(S) modInt 2 ==Int 0
+
     syntax WordStack ::= #parseByteStack ( String )    [function]
-                       | #parseByteStack ( String , WordStack , Int , Int ) [function, klabel(#parseByteStackAux)]
+                       | #parseHexBytes     ( String ) [function]
+                       | #parseHexBytesAux  ( String ) [function]
+                       | #parseHexBytesAux  ( Bytes  ) [function]
                        | #parseByteStackRaw ( String ) [function]
                        | #parseByteStackRaw ( String , WordStack , Int , Int ) [function, klabel(#parseByteStackRawAux)]
  // --------------------------------------------------------------------------------------------------------------------
-    rule #parseByteStack(S) => #fun(STR => #parseByteStack(STR, .WordStack, 0, lengthString(STR)))(replaceAll(S, "0x", ""))
-    rule #parseByteStack(_, WS, LEN, LEN) => #rev(WS, .WordStack)
-    rule #parseByteStack(S, WS, I, LEN)  => #parseByteStack(S, #parseHexWord(substrString(S, I, I +Int 2)) : WS, I +Int 2, LEN) [owise]
-    rule #parseByteStackRaw(S) => #parseByteStackRaw(S, .WordStack, 0, lengthString(S))
-    rule #parseByteStackRaw(S, WS, LEN, LEN) => #rev(WS, .WordStack)
-    rule #parseByteStackRaw(S, WS, I, LEN) => #parseByteStackRaw(S, ordChar(substrString(S, I, I +Int 1)) : WS, I +Int 1, LEN) [owise]
+    rule #parseByteStack(S) => #parseHexBytes(replaceAll(S, "0x", ""))
+
+    rule #parseHexBytes(S)  => #parseHexBytesAux(#alignHexString(S))
+    rule #parseHexBytesAux("") => .WordStack
+    rule #parseHexBytesAux(S)  => #parseHexBytesAux( Int2Bytes(lengthString(S) /Int 2, String2Base(S, 16), BE) )
+      requires lengthString(S) >=Int 2
+
+    rule #parseHexBytesAux(BS) => BS[0] : BS[1] : BS[2] : BS[3] : #parseHexBytesAux( substrBytes(BS, 4, lengthBytes(BS)) ) requires lengthBytes(BS) >=Int 4
+    rule #parseHexBytesAux(BS) => BS[0] : BS[1] : BS[2] : .WordStack                                                       requires lengthBytes(BS) ==Int 3
+    rule #parseHexBytesAux(BS) => BS[0] : BS[1] : .WordStack                                                               requires lengthBytes(BS) ==Int 2
+    rule #parseHexBytesAux(BS) => BS[0] : .WordStack                                                                       requires lengthBytes(BS) ==Int 1
+    rule #parseHexBytesAux(BS) => .WordStack                                                                               requires lengthBytes(BS) ==Int 0
+
+    rule #parseByteStackRaw(S) => #parseHexBytesAux(String2Bytes(S))
 
     syntax Map ::= #parseMap ( JSON ) [function]
  // --------------------------------------------
@@ -467,8 +482,9 @@ We need to interperet a `WordStack` as a `String` again so that we can call `Kec
  // ---------------------------------------------------------------------------------------------------------
     rule #unparseByteStack ( WS ) => #unparseByteStack(WS, .StringBuffer)
 
-    rule #unparseByteStack( .WordStack, BUFFER ) => StringBuffer2String(BUFFER)
-    rule #unparseByteStack( W : WS, BUFFER )     => #unparseByteStack(WS, BUFFER +String chrChar(W))
+    rule #unparseByteStack( W1 : W2 : W3 : W4 : WS, BUFFER ) => #unparseByteStack(WS, BUFFER +String (chrChar(W1) +String chrChar(W2) +String chrChar(W3) +String chrChar(W4)))
+    rule #unparseByteStack( W1 : WS,                BUFFER ) => #unparseByteStack(WS, BUFFER +String chrChar(W1)) [owise]
+    rule #unparseByteStack( .WordStack,             BUFFER ) => StringBuffer2String(BUFFER)
 ```
 
 Recursive Length Prefix (RLP)
