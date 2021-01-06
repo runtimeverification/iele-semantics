@@ -125,6 +125,16 @@ After interpreting the strings representing programs as a `WordStack`, it should
 -   `#dasmInstruction` disassembles the registers for a single instruction.
 -   `#dasmOpCode` interperets a `Int` as an `OpCode`.
 
+```{.k .bytes}
+    syntax Contract ::= #dasmContract ( Bytes , IeleName )       [function]
+ // -----------------------------------------------------------------------
+    rule #dasmContract( _, _ ) => contract 0 { .TopLevelDefinitions }
+
+    syntax Bool ::= #isValidContract(Bytes) [function]
+ // --------------------------------------------------
+    rule #isValidContract(BS) => true
+```
+
 ```{.k .wordstack}
 
     syntax Contract ::= #dasmContract ( WordStack , IeleName )       [function]

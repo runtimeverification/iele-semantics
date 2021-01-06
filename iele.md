@@ -155,6 +155,10 @@ In the comments next to each cell, we explain the purpose of the cell.
                         <data>       .WordStack </data>               // Arguments to function called by transaction
 ```
 
+```{.k .bytes}
+                        <data>       .Bytes     </data>               // Arguments to function called by transaction
+```
+
 ```k
                         <args>       .Ints      </args>
                       </message>

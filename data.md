@@ -463,6 +463,22 @@ These parsers can interperet hex-encoded strings as `Int`s, `WordStack`s, and `M
     rule #parseByteStackRaw(S) => #parseHexBytesAux(String2Bytes(S))
 ```
 
+```{.k .bytes}
+    syntax Bytes ::= #parseHexBytes     ( String ) [function]
+                   | #parseHexBytesAux  ( String ) [function]
+                   | #parseByteStack    ( String ) [function, memo]
+                   | #parseByteStackRaw ( String ) [function]
+ // ---------------------------------------------------------------
+    rule #parseByteStack(S) => #parseHexBytes(replaceAll(S, "0x", ""))
+
+    rule #parseHexBytes(S)     => #parseHexBytesAux(#alignHexString(S))
+    rule #parseHexBytesAux("") => .Bytes
+    rule #parseHexBytesAux(S)  => Int2Bytes(lengthString(S) /Int 2, String2Base(S, 16), BE)
+      requires lengthString(S) >=Int 2
+
+    rule #parseByteStackRaw(S) => String2Bytes(S)
+```
+
 ```k
     syntax Map ::= #parseMap ( JSON ) [function]
  // --------------------------------------------
@@ -491,6 +507,12 @@ We need to interperet a `WordStack` as a `String` again so that we can call `Kec
     rule #unparseByteStack( W1 : W2 : W3 : W4 : WS, BUFFER ) => #unparseByteStack(WS, BUFFER +String (chrChar(W1) +String chrChar(W2) +String chrChar(W3) +String chrChar(W4)))
     rule #unparseByteStack( W1 : WS,                BUFFER ) => #unparseByteStack(WS, BUFFER +String chrChar(W1)) [owise]
     rule #unparseByteStack( .WordStack,             BUFFER ) => StringBuffer2String(BUFFER)
+```
+
+```{.k .bytes}
+    syntax String ::= #unparseByteStack ( Bytes ) [function, klabel(unparseByteStack), symbol]
+ // ------------------------------------------------------------------------------------------
+    rule #unparseByteStack(WS) => Bytes2String(WS)
 ```
 
 Recursive Length Prefix (RLP)
@@ -561,6 +583,20 @@ Decoding
     rule #loadOffset ( B0 : WS ) => 0           requires B0  <Int 128 orBool  B0 >=Int 192
     rule #loadOffset ( B0 : WS ) => 1           requires B0 >=Int 128 andBool B0  <Int 184
     rule #loadOffset ( B0 : WS ) => B0 -Int 182 requires B0 >=Int 184 andBool B0  <Int 192
+```
+
+```{.k .bytes}
+    syntax Int ::= #loadLen ( Bytes ) [function]
+ // --------------------------------------------
+    rule #loadLen ( WS ) => 1                                                           requires WS[0]  <Int 128 orBool  WS[0] >=Int 192
+    rule #loadLen ( WS ) => WS[0] -Int 128                                              requires WS[0] >=Int 128 andBool WS[0]  <Int 184
+    rule #loadLen ( WS ) => Bytes2Int(substrBytes(WS, 0, WS[0] -Int 183), BE, Unsigned) requires WS[0] >=Int 184 andBool WS[0]  <Int 192
+
+    syntax Int ::= #loadOffset ( Bytes ) [function]
+ // -----------------------------------------------
+    rule #loadOffset ( WS ) => 0              requires WS[0]  <Int 128 orBool  WS[0] >=Int 192
+    rule #loadOffset ( WS ) => 1              requires WS[0] >=Int 128 andBool WS[0]  <Int 184
+    rule #loadOffset ( WS ) => WS[0] -Int 182 requires WS[0] >=Int 184 andBool WS[0]  <Int 192
 ```
 
 ```k

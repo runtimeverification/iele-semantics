@@ -182,6 +182,87 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
       requires ACCTTO =/=K .Account
 ```
 
+```{.k .standalone .bytes}
+    rule <k> startTx => loadTx(TS) ... </k>
+         <txPending> ListItem(TXID:Int) ... </txPending>
+         <message>
+           <msgID>      TXID </msgID>
+           <txNonce>    TN   </txNonce>
+           <txGasPrice> TP   </txGasPrice>
+           <txGasLimit> TG   </txGasLimit>
+           <sendto>     TT   </sendto>
+           <value>      TV   </value>
+           <from>       TS   </from>
+           <data>       DATA </data>
+           ...
+         </message>
+
+    syntax IELECommand ::= loadTx ( Int )
+ // -------------------------------------
+    rule <k> loadTx(ACCTFROM)
+          => #fun(CONTRACT =>
+             #checkContract CONTRACT
+          ~> #create ACCTFROM #newAddr(ACCTFROM, NONCE) ((GLIMIT -Int G0(SCHED, CODE, ARGS))*Int Sgasdivisor < SCHED >) VALUE CONTRACT ARGS
+          ~> #codeDeposit #newAddr(ACCTFROM, NONCE) lengthBytes(CODE) CONTRACT %0 %1 true ~> #adjustGas ~> #finalizeTx(false) ~> startTx)(#if #isValidContract(CODE) #then #dasmContract(CODE, Main) #else #illFormed #fi)
+         ...
+         </k>
+         <schedule> SCHED </schedule>
+         <gasPrice> _ => GPRICE </gasPrice>
+         <origin> _ => ACCTFROM </origin>
+         <callDepth> _ => -1 </callDepth>
+         <gas> _ => 0 </gas>
+         <refund> _ => 0 </refund>
+         <logData> _ => .List </logData>
+         <txPending> ListItem(TXID:Int) ... </txPending>
+         <message>
+           <msgID>      TXID     </msgID>
+           <txGasPrice> GPRICE   </txGasPrice>
+           <txGasLimit> GLIMIT   </txGasLimit>
+           <sendto>     .Account </sendto>
+           <value>      VALUE    </value>
+           <data>       CODE     </data>
+           <args>       ARGS     </args>
+           ...
+         </message>
+         <account>
+           <acctID> ACCTFROM </acctID>
+           <balance> BAL => BAL -Int (GLIMIT *Int GPRICE) </balance>
+           <nonce> NONCE => NONCE +Int 1 </nonce>
+           ...
+         </account>
+
+    rule <k> loadTx(ACCTFROM)
+          => #call ACCTFROM ACCTTO @ FUNC ((GLIMIT -Int G0(SCHED, IeleName2String(FUNC), ARGS))*Int Sgasdivisor < SCHED >) VALUE ARGS false
+          ~> #finishTx ~> #adjustGas ~> #finalizeTx(false) ~> startTx
+         ...
+         </k>
+         <schedule> SCHED </schedule>
+         <gasPrice> _ => GPRICE </gasPrice>
+         <origin> _ => ACCTFROM </origin>
+         <callDepth> _ => -1 </callDepth>
+         <gas> _ => 0 </gas>
+         <refund> _ => 0 </refund>
+         <logData> _ => .List </logData>
+         <txPending> ListItem(TXID:Int) ... </txPending>
+         <message>
+           <msgID>      TXID   </msgID>
+           <txGasPrice> GPRICE </txGasPrice>
+           <txGasLimit> GLIMIT </txGasLimit>
+           <sendto>     ACCTTO </sendto>
+           <value>      VALUE  </value>
+           <args>       ARGS   </args>
+           <func>       FUNC   </func>
+           ...
+         </message>
+         <account>
+           <acctID> ACCTFROM </acctID>
+           <balance> BAL => BAL -Int (GLIMIT *Int GPRICE) </balance>
+           <nonce> NONCE => NONCE +Int 1 </nonce>
+           ...
+         </account>
+      requires ACCTTO =/=K .Account
+```
+
 ```{.k .standalone}
     syntax IELECommand ::= "#adjustGas"
  // -----------------------------------
@@ -377,6 +458,10 @@ Here we perform pre-proccesing on account data which allows "pretty" specificati
     rule load "account" : { (ACCT:Int) : { "code"    : ((CODE:String)        => #parseByteStack(CODE)) } }
 ```
 
+```{.k .standalone .bytes}
+    rule load "account" : { (ACCT:Int) : { "code"    : ((CODE:String)        => #parseByteStack(CODE)) } }
+```
+
 ```{.k .standalone}
     rule load "account" : { (ACCT:Int) : { "storage" : ({ STORAGE:JSONs } => #parseMap({ STORAGE })) } }
 
@@ -395,6 +480,15 @@ The individual fields of the accounts are dealt with here.
 
 ```{.k .standalone .wordstack}
     rule <k> load "account" : { ACCT : { "code" : (CODE:WordStack) } } => . ... </k>
+         <account>
+           <acctID> ACCT </acctID>
+           <code> _ => #dasmContract(CODE, Main) </code>
+           ...
+         </account>
+```
+
+```{.k .standalone .bytes}
+    rule <k> load "account" : { ACCT : { "code" : (CODE:Bytes) } } => . ... </k>
          <account>
            <acctID> ACCT </acctID>
            <code> _ => #dasmContract(CODE, Main) </code>
@@ -455,6 +549,18 @@ Here we load the environmental information.
  // -----------------------------------------------------------------------------------------------
     rule <k> load "exec" : { "data" : [DATA:Int, LEN:Int] } => . ... </k> <callData> _ => LEN , DATA , .Ints </callData>
     rule <k> load "exec" : { "code" : (CODE:WordStack) } => . ... </k>
+         (<program>  _ </program> => #loadCode(#dasmContract(CODE, Main)))
+         <schedule> SCHED </schedule>
+```
+
+```{.k .standalone .bytes}
+    rule <k> load "exec" : { "code"     : ((CODE:String)   => #parseByteStack(CODE)) } ... </k>
+
+    rule load "exec" : { "data" : ((DATA:String) => #parseByteStack(DATA)) }
+    rule load "exec" : { "data" : ((DATA:Bytes) => [Bytes2Int(DATA, BE, Unsigned), lengthBytes(DATA)]) }
+ // -----------------------------------------------------------------------------------------------
+    rule <k> load "exec" : { "data" : [DATA:Int, LEN:Int] } => . ... </k> <callData> _ => LEN , DATA , .Ints </callData>
+    rule <k> load "exec" : { "code" : (CODE:Bytes) } => . ... </k>
          (<program>  _ </program> => #loadCode(#dasmContract(CODE, Main)))
          <schedule> SCHED </schedule>
 ```
@@ -540,6 +646,29 @@ The `"transactions"` key loads the transactions.
          </messages>
 ```
 
+```{.k .standalone .bytes}
+    rule <k> load "transactionsSorted" : { "arguments" : [ ARGS ],  "contractCode" : TI , "from" : FROM, "function" : FUNC, "gasLimit" : TG , "gasPrice" : TP , "nonce" : TN , "to" : TT , "value" : TV , .JSONs } => . ... </k>
+         <txOrder>   ... .List => ListItem(!ID) </txOrder>
+         <txPending> ... .List => ListItem(!ID) </txPending>
+         <messages>
+           ( .Bag
+          => <message>
+               <msgID>      !ID:Int               </msgID>
+               <txNonce>    #parseHexWord(TN)     </txNonce>
+               <txGasPrice> #parseHexWord(TP)     </txGasPrice>
+               <txGasLimit> #parseHexWord(TG)     </txGasLimit>
+               <sendto>     #asAccount(TT)        </sendto>
+               <func>       String2IeleName(FUNC) </func>
+               <value>      #parseHexWord(TV)     </value>
+               <from>       #parseHexWord(FROM)   </from>
+               <data>       #parseByteStack(TI)   </data>
+               <args>       #toInts(ARGS)         </args>
+             </message>
+           )
+           ...
+         </messages>
+```
+
 ```{.k .standalone}
     syntax Ints ::= #toInts ( JSONs ) [function]
  // -----------------------------------------------
@@ -571,6 +700,10 @@ The `"transactions"` key loads the transactions.
 ```
 
 ```{.k .standalone .wordstack}
+    rule check "account" : { (ACCT:Int) : { "code"    : ((CODE:String)        => #parseByteStack(CODE)) } }
+```
+
+```{.k .standalone .bytes}
     rule check "account" : { (ACCT:Int) : { "code"    : ((CODE:String)        => #parseByteStack(CODE)) } }
 ```
 
@@ -614,6 +747,22 @@ The `"transactions"` key loads the transactions.
            <acctID> ACCT </acctID>
            ...
          </account>
+```
+
+```{.k .standalone .bytes}
+    rule <k> check "account" : { ACCT : { "code" : (CODE:Bytes) } } => . ... </k>
+         <account>
+           <acctID> ACCT </acctID>
+           <code> CONTRACT </code>
+           ...
+         </account>
+         requires lengthBytes(CODE) =/=Int 0 andBool #unparseByteStack(CODE) ==String #contractBytes(CONTRACT, #mainContract(CONTRACT))
+    rule <k> check "account" : { ACCT : { "code" : (CODE:Bytes) } } => . ... </k>
+         <account>
+           <acctID> ACCT </acctID>
+           ...
+         </account>
+         requires lengthBytes(CODE) ==Int 0
 ```
 
 Here we check the other post-conditions associated with an EVM test.

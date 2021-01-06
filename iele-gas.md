@@ -823,6 +823,21 @@ Note: These are all functions as the operator `#compute` has already loaded all 
     rule G0(SCHED, N : REST, ISCREATE::Bool) => Gtxdatanonzero < SCHED > +Int G0(SCHED, REST, ISCREATE) requires N =/=Int 0
 ```
 
+```{.k .bytes}
+    syntax Int ::= G0 ( Schedule , Bytes , Ints )  [function, klabel(G0create)]
+                 | G0 ( Schedule , String , Ints ) [function, klabel(G0call)]
+                 | G0 ( Schedule , Bytes , Bool )  [function, klabel(G0aux)]
+ // ---------------------------------------------------------------------------
+    rule G0(SCHED, BS, true)  => Gtxcreate    < SCHED > requires lengthBytes(BS) ==Int 0
+    rule G0(SCHED, BS, false) => Gtransaction < SCHED > requires lengthBytes(BS) ==Int 0
+
+    rule G0(SCHED, BS, ARGS) => G0(SCHED, #parseByteStackRaw(#rlpEncodeLength(#rlpEncodeString(#unparseByteStack(BS)) +String #rlpEncodeInts(ARGS), 192)), true)
+    rule G0(SCHED, FUNC, ARGS) => G0(SCHED, #parseByteStackRaw(#rlpEncodeLength(#rlpEncodeString(FUNC) +String #rlpEncodeInts(ARGS), 192)), false)
+
+    rule G0(SCHED, BS, ISCREATE::Bool) => Gtxdatazero    < SCHED > +Int G0(SCHED, substrBytes(BS, 1, lengthBytes(BS)), ISCREATE) requires lengthBytes(BS) =/=Int 0 andBool BS[0] ==Int 0
+    rule G0(SCHED, BS, ISCREATE::Bool) => Gtxdatanonzero < SCHED > +Int G0(SCHED, substrBytes(BS, 1, lengthBytes(BS)), ISCREATE) requires lengthBytes(BS) =/=Int 0 andBool BS[0] =/=Int 0
+```
+
 ```k
     syntax Int ::= "G*" "(" Int "," Int "," Int ")" [function]
  // ----------------------------------------------------------
