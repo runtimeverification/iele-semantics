@@ -806,7 +806,9 @@ Note: These are all functions as the operator `#compute` has already loaded all 
     syntax Int ::= #allBut64th ( Int ) [function]
  // ---------------------------------------------
     rule #allBut64th(N) => N -Int (N /Int 64)
+```
 
+```{.k .wordstack}
     syntax Int ::= G0 ( Schedule , WordStack , Ints ) [function, klabel(G0create)]
                  | G0 ( Schedule , String , Ints )    [function, klabel(G0call)]
                  | G0 ( Schedule , WordStack , Bool ) [function, klabel(G0aux)]
@@ -819,7 +821,9 @@ Note: These are all functions as the operator `#compute` has already loaded all 
 
     rule G0(SCHED, 0 : REST, ISCREATE::Bool) => Gtxdatazero    < SCHED > +Int G0(SCHED, REST, ISCREATE)
     rule G0(SCHED, N : REST, ISCREATE::Bool) => Gtxdatanonzero < SCHED > +Int G0(SCHED, REST, ISCREATE) requires N =/=Int 0
+```
 
+```k
     syntax Int ::= "G*" "(" Int "," Int "," Int ")" [function]
  // ----------------------------------------------------------
     rule G*(GAVAIL, GLIMIT, REFUND) => GAVAIL +Int minInt((GLIMIT -Int GAVAIL)/Int 2, REFUND)

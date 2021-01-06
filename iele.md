@@ -149,7 +149,13 @@ In the comments next to each cell, we explain the purpose of the cell.
                         <func>       deposit:IeleName    </func>               // Function to call by transaction
                         <value>      0          </value>              // Value in funds to transfer by transaction
                         <from>       0          </from>               // Sender of transaction
+```
+
+```{.k .wordstack}
                         <data>       .WordStack </data>               // Arguments to function called by transaction
+```
+
+```k
                         <args>       .Ints      </args>
                       </message>
                     </messages>

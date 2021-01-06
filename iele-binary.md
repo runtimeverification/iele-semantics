@@ -125,7 +125,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
 -   `#dasmInstruction` disassembles the registers for a single instruction.
 -   `#dasmOpCode` interperets a `Int` as an `OpCode`.
 
-```k
+```{.k .wordstack}
 
     syntax Contract ::= #dasmContract ( WordStack , IeleName )       [function]
                       | #dasmContract ( WordStack , IeleName , WordStack ) [function, klabel(#dasmContractAux1)]
@@ -451,7 +451,9 @@ After interpreting the strings representing programs as a `WordStack`, it should
  // ----------------------------------------------------------------------
     rule #dasmLoad(97, LEN, POS, WS) => LOADPOS(LEN +Int POS, #asUnsigned(WS [ POS .. LEN ]))
     rule #dasmLoad(98, LEN, POS, WS) => LOADNEG(LEN +Int POS, #asUnsigned(WS [ POS .. LEN ]))
+```
 
+```k
 endmodule
 ```
 

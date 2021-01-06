@@ -237,7 +237,7 @@ IELE makes use of a stack in some places in order to represent lists of integers
 The stack and some standard operations over it are provided here.
 This stack also serves as a cons-list, so we provide some standard cons-list manipulation tools.
 
-```k
+```{.k .wordstack}
     syntax WordStack [flatPredicate]
     syntax WordStack ::= ".WordStack" | Int ":" WordStack
  // -----------------------------------------------------
@@ -249,7 +249,7 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
 -   `#drop(N , WS)` removes the first $N$ elements of a `WordStack`.
 -   `WS [ N .. W ]` access the range of `WS` beginning with `N` of width `W`.
 
-```k
+```{.k .wordstack}
     syntax WordStack ::= WordStack "++" WordStack [function, right]
  // ---------------------------------------------------------------
     rule .WordStack ++ WS' => WS'
@@ -281,7 +281,7 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
 
 -   `WS [ N := WS' ]` sets elements starting at $N$ of $WS$ to $WS'$ (padding with zeros as needed).
 
-```k
+```{.k .wordstack}
     syntax WordStack ::= WordStack "[" Int ":=" WordStack "]" [function, klabel(assignWordStackRange)]
  // --------------------------------------------------------------------------------------------------
     rule WS1::WordStack [ N := WS2::WordStack ] => #take(N, WS1) ++ WS2 ++ #drop(N +Int #sizeWordStack(WS2), WS1)
@@ -290,7 +290,7 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
 -   `#sizeWordStack` calculates the size of a `WordStack`.
 -   `_in_` determines if a `Int` occurs in a `WordStack`.
 
-```k
+```{.k .wordstack}
     syntax Int ::= #sizeWordStack ( WordStack )       [function, smtlib(sizeWordStack)]
                  | #sizeWordStack ( WordStack , Int ) [function, klabel(sizeWordStackAux), smtlib(sizeWordStackAux)]
  // ----------------------------------------------------------------------------------------------------------------
@@ -301,7 +301,7 @@ This stack also serves as a cons-list, so we provide some standard cons-list man
 
 -   `#padToWidth(N, WS)` makes sure that a `WordStack` is the correct size.
 
-```k
+```{.k .wordstack}
     syntax WordStack ::= #padToWidth ( Int , WordStack ) [function]
  // ---------------------------------------------------------------
     rule #padToWidth(N, WS) => WS                     requires notBool #sizeWordStack(WS) <Int N
@@ -332,13 +332,15 @@ The local memory of execution is a byte-array (instead of a word-array).
 -   `B [ N .. W ]` access the range of `B` beginning with `N` of width `W` (padding with zeros as needed).
 -   `B [ N := B' ]` sets elements starting at $N$ of $B$ to $B'$ (padding with zeros as needed).
 
-```k
+```{.k .wordstack}
     syntax Int ::= #asUnsigned ( WordStack ) [function]
  // ---------------------------------------------------
     rule #asUnsigned( .WordStack )    => 0
     rule #asUnsigned( W : .WordStack) => W
     rule #asUnsigned( W0 : W1 : WS )  => #asUnsigned(((W0 <<Int 8) |Int W1) : WS)
+```
 
+```k
     syntax Account ::= #asAccount ( String ) [function]
  // ------------------------------------------------------
     rule #asAccount("") => .Account
@@ -435,7 +437,9 @@ These parsers can interperet hex-encoded strings as `Int`s, `WordStack`s, and `M
  // -------------------------------------------------------------------
     rule #alignHexString(S) => S             requires         lengthString(S) modInt 2 ==Int 0
     rule #alignHexString(S) => "0" +String S requires notBool lengthString(S) modInt 2 ==Int 0
+```
 
+```{.k .wordstack}
     syntax WordStack ::= #parseByteStack ( String )    [function]
                        | #parseHexBytes     ( String ) [function]
                        | #parseHexBytesAux  ( String ) [function]
@@ -457,7 +461,9 @@ These parsers can interperet hex-encoded strings as `Int`s, `WordStack`s, and `M
     rule #parseHexBytesAux(BS) => .WordStack                                                                               requires lengthBytes(BS) ==Int 0
 
     rule #parseByteStackRaw(S) => #parseHexBytesAux(String2Bytes(S))
+```
 
+```k
     syntax Map ::= #parseMap ( JSON ) [function]
  // --------------------------------------------
     rule #parseMap( { .JSONs                   } ) => .Map
@@ -476,7 +482,7 @@ We need to interperet a `WordStack` as a `String` again so that we can call `Kec
 
 -   `#unparseByteStack` turns a stack of bytes (as a `WordStack`) into a `String`.
 
-```k
+```{.k .wordstack}
     syntax String ::= #unparseByteStack ( WordStack )                [function]
                     | #unparseByteStack ( WordStack , StringBuffer ) [function, klabel(#unparseByteStackAux)]
  // ---------------------------------------------------------------------------------------------------------
@@ -541,7 +547,9 @@ Decoding
     syntax LengthPrefixType ::= "#str" | "#list"
     syntax LengthPrefix ::= LengthPrefixType "(" Int "," Int ")"
  // ------------------------------------------------------------
+```
 
+```{.k .wordstack}
     syntax Int ::= #loadLen ( WordStack ) [function]
  // ------------------------------------------------
     rule #loadLen ( B0 : WS ) => 1                               requires B0  <Int 128 orBool  B0 >=Int 192
@@ -553,7 +561,9 @@ Decoding
     rule #loadOffset ( B0 : WS ) => 0           requires B0  <Int 128 orBool  B0 >=Int 192
     rule #loadOffset ( B0 : WS ) => 1           requires B0 >=Int 128 andBool B0  <Int 184
     rule #loadOffset ( B0 : WS ) => B0 -Int 182 requires B0 >=Int 184 andBool B0  <Int 192
+```
 
+```k
     syntax JSON ::= #rlpDecode(String)               [function, klabel(rlpDecode), symbol]
                   | #rlpDecode(String, LengthPrefix) [function, klabel(#rlpDecodeAux)]
  // ----------------------------------------------------------------------------------
