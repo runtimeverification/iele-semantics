@@ -46,7 +46,8 @@ export PATH:=$(IELE_BIN):$(PATH)
         build build-interpreter build-vm build-haskell build-node build-testnode \
 		install install-interpreter install-vm uninstall \
         split-tests split-vm-tests split-blockchain-tests \
-        test-evm test-vm test-blockchain test-iele test-iele-failing test-iele-slow test-iele-node test-wellformed test-bad-packet test-interactive
+        test-evm test-vm test-blockchain test-wellformed test-bad-packet test-interactive \
+        test-iele test-iele-failing test-iele-slow test-iele-node assemble-iele-test
 .SECONDARY:
 
 all: build split-tests
@@ -123,6 +124,7 @@ passing_vm_targets=$(passing_vm_tests:=.test)
 passing_blockchain_targets=$(passing_blockchain_tests:=.test)
 
 iele_tests=$(wildcard tests/iele/*/*/*.iele.json)
+iele_assembled=$(iele_tests:=.test-assembled)
 iele_quick_tests=$(filter-out $(slow_tests), $(iele_tests))
 iele_passing_tests=$(filter-out $(failing_tests), $(iele_quick_tests))
 iele_slow=$(slow_tests:=.test)
@@ -141,6 +143,7 @@ test-iele: $(iele_targets)
 test-iele-slow: $(iele_slow)
 test-iele-failing: $(iele_failing)
 test-iele-node: $(iele_node_targets)
+assemble-iele-test: $(iele_assembled)
 test-wellformed: $(well_formedness_targets)
 
 test-bad-packet:

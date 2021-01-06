@@ -22,14 +22,15 @@ pipeline {
         }
       }
       stages {
-        stage('Build')       { steps { sh 'make build       -j4' } }
-        stage('Split Tests') { steps { sh 'make split-tests -j4' } }
+        stage('Build')               { steps { sh 'make build       -j4'        } }
+        stage('Split Tests')         { steps { sh 'make split-tests -j4'        } }
+        stage('Assemble Iele Tests') { steps { sh 'make assemble-iele-test -j4' } }
         stage('Test') {
           options { timeout(time: 30, unit: 'MINUTES') }
           parallel {
             stage('EVM Tests')            { steps { sh 'make test-vm -j4'                        } }
             stage('IELE Tests')           { steps { sh 'make test-iele -j4'                      } }
-            stage('IELE Tests (Haskell)') { steps { sh 'sleep 10; make test-iele -j2 TEST_BACKEND=haskell' } }
+            stage('IELE Tests (Haskell)') { steps { sh 'make test-iele -j4 TEST_BACKEND=haskell' } }
             stage('Well Formed Check')    { steps { sh 'make test-wellformed -j4'                } }
             stage('Interactive')          { steps { sh 'make test-interactive'                   } }
             stage('Node') {
