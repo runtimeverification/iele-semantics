@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+<meta charset="utf-8" />
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+/>
+<meta
+  name="description"
+  content="Design and implement your programming language and software analysis tools with mathematical rigor."
+/>
+<meta name="keywords" content="runtime, verification, rv, k" />
+<meta name="author" content="IELE Semantics | Runtime Verification Inc" />
+<meta name="robots" content="index, follow" />
+
+<!--favicon icon-->
+<link rel="icon" type="image/png" href="../assets/img/favicon.ico" />
+
+<title>IELE Semantics | Runtime Verification Inc</title>
+
+<!-- <base href="/k/" /> -->
+
+<!--web fonts-->
+<link
+  href="https://fonts.googleapis.com/css?family=Nunito:300,400,600,700,800"
+  rel="stylesheet"
+/>
+<link
+  href="https://fonts.googleapis.com/css?family=Lora:400i"
+  rel="stylesheet"
+/>
+
+<link
+  href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css"
+  rel="stylesheet"
+/>
+
+<link href="../assets/css/index.css" rel="stylesheet" />
+
+<!--[if (gt IE 9) |!(IE)]><!-->
+<!--<link rel="stylesheet" href="/assets/vendor/custom-nav/css/effects/fade-menu.css"/>-->
+<!-- <link rel="stylesheet" href="../assets/k/vl-nav/css/effects/slide-menu.css" /> -->
+<!--<![endif]-->
+
+  </head>
+
+  <body>
+<header
+  class="navbar navbar-expand navbar-dark flex-column flex-md-row bd-navbar"
+>
+  <a class="logo-link" href="../index.html"> IELE Semantics </a>
+  <ul class="navbar-nav ml-md-auto">
+    <li class="nav-item">
+      <a
+        class="nav-link pl-2 pr-1 mx-1 py-3 my-n2"
+        href="https://github.com/runtimeverification/iele-semantics"
+        target="_blank"
+        rel="noopener"
+        aria-label="GitHub"
+      >
+        <i class="fab fa-github"></i>
+      </a>
+    </li>
+  </ul>
+  <!--
+  <a
+    class="btn btn-rv-blue d-none d-lg-inline-block mb-3 mb-md-0 ml-md-3"
+    href="../downloads"
+    >Download</a
+  >
+  -->
+</header>
+
+
+    <div class="container-fluid">
+      <div class="row flex-xl-nowrap">
+<div class="col-12 col-md-3 col-xl-2 bd-sidebar mb-3">
+  <form
+    role="search"
+    class="bd-search d-flex align-items-center justify-content-between"
+  >
+    <input
+      type="search"
+      class="form-control"
+      placeholder="Search..."
+      aria-label="Search for..."
+      autocomplete="false"
+      id="search-box"
+    />
+    <button
+      class="btn bd-search-docs-toggle d-md-none p-0 ml-3 collapsed"
+      type="button"
+      aria-label="Toggle docs navigation"
+      style="font-size: 1.4rem"
+    >
+      <i class="fas fa-bars"></i>
+    </button>
+  </form>
+  <nav class="collapse bd-links" aria-label="Main navigation">
+    <div class="bd-toc-item">
+      <a class="bd-toc-link" href="../">Homepage</a>
+      <a class="bd-toc-link" href="../INSTALL">Install</a>
+      <a class="bd-toc-link" href="../Design">Design</a>
+    </div>
+  </nav>
+</div>
+
+        <main
+          class="col-12 col-md-9 col-xl-8 py-md-3 pl-md-5 bd-content"
+          role="main"
+        >
+          <div class="markdown-preview"><html><head></head><body><h1 id="iele-gas-cost">IELE Gas Cost</h1>
+<p>The authoritative reference for gas costs is
+<a href="../iele-gas/">iele-gas.md</a>. It&apos;s a
+<a href="https://en.wikipedia.org/wiki/Literate_programming" target="_blank" rel="noopener">literate program</a>
+that can&apos;t get out of date with the source because it <em>is</em>
+the source. It also contains text explaining the source, but that text
+assumes you know <a href="https://runtimeverification.com/k/" target="_blank" rel="noopener">K</a>. So it&apos;s too
+hard to read for most people.</p>
+<p>If you&apos;re &quot;most people&quot;, this document provides information you can
+use to understand a contract&apos;s gas cost.</p>
+<h2 id="background">Background</h2>
+<p>There are two main architectural differences between IELE and the
+<a href="https://en.wikipedia.org/wiki/Ethereum#Virtual_Machine" target="_blank" rel="noopener">Ethereum Virtual Machine</a>
+(EVM) that affect gas costs: variable-sized &quot;words&quot; and a simpler
+model for memory.</p>
+<h4 id="terminology">Terminology</h4>
+<p>In EVM, there are
+<a href="https://solidity.readthedocs.io/en/v0.4.24/introduction-to-smart-contracts.html?highlight=memory#storage-memory-and-the-stack" target="_blank" rel="noopener">three places to store data</a>:
+<em>storage</em>, <em>memory</em>, and <em>stack</em>. The first two names are unfortunate
+because they&apos;re also generic terms. (It&apos;s hard to talk about where a
+program puts data without using either &quot;memory&quot; or &quot;storage.&quot;) We
+disambiguate by referring to <em>blockchain storage</em> and <em>transaction
+memory</em>.</p>
+<p>The EVM&apos;s three types of storage are made from two different sorts of
+&quot;stuff.&quot; Stack and blockchain storage are made from 256-bit
+words. Memory can be thought of as an arbitrarily extensible byte
+array, with different values identified by their byte index and
+length.</p>
+<p>In IELE, all types of storage are made of arbitrarily extensible
+<em>flexwords</em>. A flexword is scaled to fit its contents. That is, if you
+replace the number 0 in a flexword with a number that requires 1024
+bits, the flexword will grow to accommodate the number. (Overflow is
+impossible.)</p>
+<h4 id="flexwords">Flexwords</h4>
+<p>Because the hardware underlying the virtual machine has 64-bit words,
+it&apos;s most efficient if the smallest flexword is 64 bits long and
+expands in 64-bit units.</p>
+<p>Because of this, it&apos;s relatively rare for a flexword to be as big as
+an EVM stack word (256 bits or four hardware
+words). Most often, that much space is required only for a
+cryptographic hash. Addresses (as in EVM) are 160 bits, so they fit in
+three machine words. Scratch variables like a loop index or running
+total will usually fit in one hardware word and are very unlikely to
+ever expand beyond it.</p>
+<p>The gas cost of a IELE instruction depends, in part, on the size of the
+flexwords it operates on. Adding two 256-bit flexwords requires more
+computation than two 64-bit flexwords, so it costs more. (But not by
+much: in the case of addition, an additional word costs only 0.001
+extra gas.)</p>
+<h4 id="the-iele-memory-model-and-gas-prices">The IELE memory model and gas prices</h4>
+<p>IELE replaces EVM&apos;s stack with named flexwords called <em>registers</em>. A
+register computation looks like this:</p>
+<pre><code>%result = add %first, %second
+</code></pre>
+<p>Rather than being a single byte array (as in EVM), the transaction
+memory is composed of an arbitrary number of flexwords, indexed by
+number. (So registers are named flexwords and transaction memory is
+made of numbered flexwords. The flexwords themselves are
+indistinguishable.)</p>
+<p>Rather than having different gas charges for stack and transaction
+memory, IELE charges for the maximum total number of machine words
+used by registers and transaction memory. Storage is storage, and it&apos;s all charged the same.</p>
+<p>That might seem unfair, since the EVM stack is free, whereas each
+register has to be paid for. It&apos;s better, though, to think of the EVM
+as giving you a certain amount of memory for free: a stack sized to 1024
+256-bit words plus a preallocated amount of transaction memory. IELE
+gives you the same total amount of free space, which the compiler apportions
+however it needs.</p>
+<p>As with EVM, when a IELE transaction exceeds the amount of cost-free
+memory, the cost grows very rapidly (roughly quadratically in the
+amount of excess sortage required).</p>
+<h2 id="instruction-tables">Instruction tables</h2>
+<p>The cost for every instruction is the cost of <em>computation</em> plus the
+cost of <em>data</em>. We&apos;ll summarize based on the most likely scenario. For
+example, when adding two registers, the most likely case is adding two
+64-bit words without overflow, which costs 2.801 gas. Where more complicated
+cases are simple to explain, they will be. For example, each 64-bit
+increment in the size of either addition argument adds another 0.001 gas.</p>
+<p>Tables are arranged into groups of related instructions. To save
+space, shorthand is used for some ideas.</p>
+<ul>
+<li>
+<p><a id="size"><strong>size n</strong></a> is in 64 bit units.  &quot;Size 2&quot;
+means a flexword of length 2 (128 bits). There are no fractional sizes; you
+can have a 64-bit flexword and a 128-bit flexword, but nothing
+in between.</p>
+</li>
+<li>
+<p><a id="wordcost"><strong>wordcost n</strong></a> means each additional machine
+word adds <em>n</em> to the cost. <em>n</em> is usually very small.</p>
+</li>
+<li>
+<p><a id="maxargs" class="anchor"><strong>maxargs</strong></a> means the relevant size is the
+largest of the operands.</p>
+</li>
+<li>
+<p><a id="minargs" class="anchor"><strong>minargs</strong></a> means the relevant size is the
+smallest of the operands.</p>
+</li>
+<li>
+<p><a id="sumargs" class="anchor"><strong>sumargs</strong></a> means the relevant size is the sum
+of the sizes of the operands.</p>
+</li>
+</ul>
+<p>In all cases where a value is assigned to a destination register, we
+assume that register doesn&apos;t need to be resized into a larger
+flexword. For example, for arithmetic operations, we assume no
+overflow.</p>
+<p>In the table below, &quot;typical cost&quot; means that all operands are of
+<a href="#size">size</a> 1. Costs are displayed to three digits of precision so
+that the small <a href="#wordcost">wordcosts</a> have a non-zero value.</p>
+<h3 id="1.-register-operations">1. Register operations</h3>
+<h4 id="assignment-to-a-register">Assignment to a register</h4>
+<p>This covers assignment from another register or a constant. Loading
+and storing transaction memory are covered below.</p>
+<table>
+<thead>
+<tr>
+<th>Instruction</th>
+<th>Typical Cost</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dest = src</td>
+<td>2.000</td>
+<td>Independent of the size of <code>src</code>.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="arithmetic">Arithmetic</h4>
+<table>
+<thead>
+<tr>
+<th>Instruction</th>
+<th>Typical Cost</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>add</td>
+<td>2.801</td>
+<td>fixed cost 2.800, <a href="#wordcost">wordcost</a> 0.001, <a href="#maxargs">maxargs</a></td>
+</tr>
+<tr>
+<td>mul</td>
+<td>4.912</td>
+<td>grows fast for larger flexwords</td>
+</tr>
+<tr>
+<td>div</td>
+<td>4.913</td>
+<td>cost calculations are complicated</td>
+</tr>
+<tr>
+<td>mod</td>
+<td>4.913</td>
+<td>same as <code>div</code></td>
+</tr>
+<tr>
+<td>exp</td>
+<td>5.332</td>
+<td>assumes the result fits in 1 word, otherwise grows very quickly</td>
+</tr>
+</tbody>
+</table>
+<h4 id="comparison-operators">Comparison operators</h4>
+<table>
+<thead>
+<tr>
+<th>Instruction</th>
+<th>Typical Cost</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>iszero</td>
+<td>1.800</td>
+<td>independent of word size</td>
+</tr>
+<tr>
+<td>cmp</td>
+<td>2.501</td>
+<td><a href="#wordcost">wordcost</a> 0.01</td>
+</tr>
+</tbody>
+</table>
+<h4 id="bitwise-arithmetic">Bitwise arithmetic</h4>
+<table>
+<thead>
+<tr>
+<th>Instruction</th>
+<th>Typical Cost</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>not</td>
+<td>2.703</td>
+<td>fixed cost 2.700, <a href="#wordcost">wordcost</a> 0.003</td>
+</tr>
+<tr>
+<td>and</td>
+<td>2.901</td>
+<td><a href="#minargs"><em>minargs</em></a>, fixed cost 2.900, <a href="#wordcost">wordcost</a> 0.001</td>
+</tr>
+<tr>
+<td>or</td>
+<td>2.901</td>
+<td><a href="#maxargs">maxargs</a>, fixed cost 2.900, <a href="#wordcost">wordcost</a> 0.001</td>
+</tr>
+<tr>
+<td>xor</td>
+<td>2.703</td>
+<td><a href="#maxargs">maxargs</a>, fixed cost 2.700, <a href="#wordcost">wordcost</a> 0.003</td>
+</tr>
+<tr>
+<td>shift</td>
+<td>2.902</td>
+<td><a href="#sumargs">sumargs</a></td>
+</tr>
+<tr>
+<td>log2</td>
+<td>2.301</td>
+<td><a href="#wordcost">wordcost</a> 0.001</td>
+</tr>
+</tbody>
+</table>
+<h4 id="byte-access">Byte access</h4>
+<table>
+<thead>
+<tr>
+<th>Instruction</th>
+<th>Typical Cost</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>byte</td>
+<td>2.500</td>
+<td>independent of word size</td>
+</tr>
+<tr>
+<td>twos</td>
+<td>3.101</td>
+<td><a href="#wordcost">wordcost</a> 0.001</td>
+</tr>
+<tr>
+<td>sext</td>
+<td>3.305</td>
+<td><a href="#wordcost">wordcost</a> 0.005</td>
+</tr>
+<tr>
+<td>bswap</td>
+<td>3.310</td>
+<td><a href="#wordcost">wordcost</a> 0.01</td>
+</tr>
+</tbody>
+</table>
+<h4 id="modular-arithmetic">Modular arithmetic</h4>
+<p>We&apos;ll look at two common cases: <a href="#size">size</a> 1 and <a href="#size">size</a> 4.</p>
+<table>
+<thead>
+<tr>
+<th>Instruction</th>
+<th>1-word Cost</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>addmod</td>
+<td>7.727</td>
+<td>cost of addition + cost of <code>mod</code></td>
+</tr>
+<tr>
+<td>mulmod</td>
+<td>9.838</td>
+<td>cost of multiplication + cost of <code>mod</code></td>
+</tr>
+<tr>
+<td>expmod</td>
+<td>6.203 to 6.797</td>
+<td>depends on actual number of bits necessary to represent modulus</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Instruction</th>
+<th>4-word cost</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>addmod</td>
+<td>7.793</td>
+<td></td>
+</tr>
+<tr>
+<td>mulmod</td>
+<td>10.096</td>
+<td></td>
+</tr>
+<tr>
+<td>expmod</td>
+<td>12.897 to 14.913</td>
+<td>depends on actual number of bits necessary to represent modulus</td>
+</tr>
+</tbody>
+</table>
+<h4 id="jump-statements">Jump statements</h4>
+<table>
+<thead>
+<tr>
+<th>Instruction</th>
+<th>Typical Cost</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>br (unconditional)</td>
+<td>5</td>
+<td></td>
+</tr>
+<tr>
+<td>br (conditional)</td>
+<td>5</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h4 id="function-call%2Freturn">Function call/return</h4>
+<p>The cost of function call <code>call @foo (ARGS)</code> is</p>
+<pre><code>[1.000 * N_REGISTERS] + 6.800
+</code></pre>
+<p>where N_REGISTERS is the number of registers used by the function being called.</p>
+<p>For example, suppose we are attempting to call a function <code>foo (arg1, arg2)</code> which makes use of 3 registers.
+Then we can express the cost as:</p>
+<pre><code>[ 1.000 * 3 ] + 6.800 = 3.000 + 6.800 = 9.800
+</code></pre>
+<p>The cost of return (<code>ret ARGS</code>) is zero.</p>
+<h4 id="sha3">SHA3</h4>
+<table>
+<thead>
+<tr>
+<th>Instruction</th>
+<th>Typical Cost</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sha3</td>
+<td>8.320</td>
+<td><a href="#wordcost">wordcost</a> 0.020</td>
+</tr>
+</tbody>
+</table>
+<h4 id="local-and-network-state-operations">Local and network state operations</h4>
+<table>
+<thead>
+<tr>
+<th>Instruction</th>
+<th>Typical Cost</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>@iele.balance</td>
+<td>400</td>
+<td></td>
+</tr>
+<tr>
+<td>@iele.extcodesize</td>
+<td>700</td>
+<td></td>
+</tr>
+<tr>
+<td>@iele.blockhash</td>
+<td>20</td>
+<td></td>
+</tr>
+<tr>
+<td>calladdress</td>
+<td>700</td>
+<td></td>
+</tr>
+<tr>
+<td>@iele.address</td>
+<td>2</td>
+<td></td>
+</tr>
+<tr>
+<td>@iele.beneficiary</td>
+<td>2</td>
+<td></td>
+</tr>
+<tr>
+<td>@iele.caller</td>
+<td>2</td>
+<td></td>
+</tr>
+<tr>
+<td>@iele.callvalue</td>
+<td>2</td>
+<td></td>
+</tr>
+<tr>
+<td>@iele.codesize</td>
+<td>2</td>
+<td></td>
+</tr>
+<tr>
+<td>@iele.difficulty</td>
+<td>2</td>
+<td></td>
+</tr>
+<tr>
+<td>@iele.gas</td>
+<td>2</td>
+<td></td>
+</tr>
+<tr>
+<td>@iele.gaslimit</td>
+<td>2</td>
+<td></td>
+</tr>
+<tr>
+<td>@iele.gasprice</td>
+<td>2</td>
+<td></td>
+</tr>
+<tr>
+<td>@iele.msize</td>
+<td>2</td>
+<td></td>
+</tr>
+<tr>
+<td>@iele.number</td>
+<td>2</td>
+<td></td>
+</tr>
+<tr>
+<td>@iele.origin</td>
+<td>2</td>
+<td></td>
+</tr>
+<tr>
+<td>@iele.timestamp</td>
+<td>2</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="2.-operations-on-transaction-memory">2. Operations on <a href="#terminology">transaction memory</a></h3>
+<h4 id="loading-and-storing">Loading and storing</h4>
+<p>It&apos;s worth describing the four instructions before looking at their cost.</p>
+<ol>
+<li>
+<p><code>%register = load %address</code></p>
+<p><code>%address</code> is a register that contains a number identifying a
+transaction memory flexword. The content of that flexword is
+transferred into the register named <code>%register</code>.</p>
+<p>The address can also be a constant (as in <code>load 5</code>). It makes no
+difference to the cost.</p>
+</li>
+<li>
+<p><code>%register = load %address, %start, %length</code></p>
+<p>Instead of loading the entire flexword at <code>%address</code>, transfer
+<code>%length</code> bytes starting at byte <code>%start</code>.</p>
+</li>
+<li>
+<p><code>store %register, %address</code></p>
+<p>Transfer the contents of <code>%register</code> into <code>%address</code>.</p>
+</li>
+<li>
+<p><code>store %register, %address, %start, %length</code></p>
+<p>Replace the part of <code>%address</code> identified by <code>%start</code> and <code>%length</code> with the
+contents of <code>%register</code>.</p>
+</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Instruction</th>
+<th>Typical Cost</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>load %address</td>
+<td>2.903</td>
+<td><a href="#wordcost">wordcost</a> 0.003</td>
+</tr>
+<tr>
+<td>load %address, %start, %length</td>
+<td>3.303</td>
+<td><a href="#wordcost">wordcost</a> 0.003</td>
+</tr>
+<tr>
+<td>store %register, %address</td>
+<td>2.804</td>
+<td><a href="#wordcost">wordcost</a> 0.004</td>
+</tr>
+<tr>
+<td>store %register, %address, %start, %length</td>
+<td>3.904</td>
+<td><a href="#wordcost">wordcost</a> 0.004</td>
+</tr>
+</tbody>
+</table>
+<h4 id="logging">Logging</h4>
+<p>The <code>log</code> instruction takes an address in transaction memory plus up
+to four topics.</p>
+<table>
+<thead>
+<tr>
+<th>Instruction</th>
+<th>Typical Cost</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>log address</td>
+<td>383</td>
+<td><a href="#wordcost">wordcost</a> 8 (of memory data)</td>
+</tr>
+<tr>
+<td>log address, topic</td>
+<td>758</td>
+<td>each topic adds 375</td>
+</tr>
+<tr>
+<td>log address, t, t</td>
+<td>1133</td>
+<td></td>
+</tr>
+<tr>
+<td>log address, t, t, t</td>
+<td>1508</td>
+<td></td>
+</tr>
+<tr>
+<td>log address, t, t, t, t</td>
+<td>1883</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="3.-blockchain-operations">3. Blockchain operations</h3>
+<h4 id="loading-and-storing-1">Loading and storing</h4>
+<p>The typical cost assumes the offset into blockchain storage fits
+inside one machine word, as does the content to be transferred.</p>
+<table>
+<thead>
+<tr>
+<th>Instruction</th>
+<th>Typical Cost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sload %offset</td>
+<td>200</td>
+</tr>
+</tbody>
+</table>
+<p>Fixed cost is 190.<br>
+Each machine word used by <code>offset</code> adds 8.<br>
+Each machine word transferred adds 2.</p>
+<table>
+<thead>
+<tr>
+<th>Instruction</th>
+<th>Typical Cost</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sstore %value, %offset <strong>creates</strong> an entry</td>
+<td>8900.700</td>
+<td><a href="#wordcost">wordcost</a> 1875, <a href="#sumargs">sumargs</a></td>
+</tr>
+<tr>
+<td>sstore %value, %offset <strong>changes</strong> an entry</td>
+<td>4959.700</td>
+<td><a href="#wordcost">wordcost</a> 1875</td>
+</tr>
+<tr>
+<td>sstore 0, %offset <strong>deletes</strong> an entry</td>
+<td>4959.700</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Note: when updating an entry, the wordcost is charged if the
+blockchain entry must grow to hold the new value.</p>
+<h4 id="contract-call-(external-function-call)">Contract call (external function call)</h4>
+<p>The cost of a contract call is the same as in EVM, with the exception
+of a cost of 1.000 per argument or return value register (regardless
+of their size).</p>
+<p>Here are the components of the cost:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Cost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Base cost for any call</td>
+<td>700</td>
+</tr>
+<tr>
+<td>Addition if a non-zero value is sent</td>
+<td>9000*</td>
+</tr>
+<tr>
+<td>Addition if a new empty account is created</td>
+<td>25000</td>
+</tr>
+<tr>
+<td>Addition for each argument or return value</td>
+<td>1</td>
+</tr>
+</tbody>
+</table>
+<p>* Of the 9000 gas, 2300 is delivered to the called contract as a
+<a href="https://ethereum.stackexchange.com/questions/5992/how-much-computation-can-be-done-in-a-fallback-function" target="_blank" rel="noopener">stipend</a>
+to fund minimal computation.</p>
+<h4 id="contract-creation">Contract creation</h4>
+<table>
+<thead>
+<tr>
+<th>Instruction</th>
+<th>Constant cost</th>
+<th>Additional cost for contract bytes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>create</td>
+<td>32000</td>
+<td><a href="#wordcost">wordcost</a> 2</td>
+</tr>
+<tr>
+<td>copycreate</td>
+<td>33000</td>
+<td><a href="#wordcost">wordcost</a> 2</td>
+</tr>
+</tbody>
+</table>
+<h4 id="contract-destruction">Contract destruction</h4>
+<table>
+<thead>
+<tr>
+<th>Instruction</th>
+<th>Cost</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>selfdestruct</td>
+<td>0</td>
+<td>account to receive funds exists</td>
+</tr>
+<tr>
+<td>selfdestruct</td>
+<td>25000</td>
+<td>account to receive funds must be created</td>
+</tr>
+</tbody>
+</table>
+<h4 id="precompiled-contracts">Precompiled contracts</h4>
+<table>
+<thead>
+<tr>
+<th>Contract</th>
+<th>Constant cost</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ecrecover (recovery of ECDSA signature)</td>
+<td>3000.0</td>
+<td></td>
+</tr>
+<tr>
+<td>sha256 (hash function)</td>
+<td>25.030</td>
+<td><a href="#wordcost">wordcost</a> 0.03, <a href="#maxargs">maxargs</a></td>
+</tr>
+<tr>
+<td>ripemd160 (hash function)</td>
+<td>25.030</td>
+<td><a href="#wordcost">wordcost</a> 0.03, <a href="#maxargs">maxargs</a></td>
+</tr>
+<tr>
+<td>identity</td>
+<td>0</td>
+<td></td>
+</tr>
+<tr>
+<td>ecpairing (checking a pairing equation on curve alt_bn128)</td>
+<td>126000</td>
+<td><a href="#wordcost">wordcost</a> 26000</td>
+</tr>
+<tr>
+<td>ecadd (addition on elliptic curve alt_bn128)</td>
+<td>35.000</td>
+<td></td>
+</tr>
+<tr>
+<td>ecmul (Scalar multiplication on elliptic curve alt_bn128)</td>
+<td>1700.000</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Note: the contract for modular exponentiation has been replaced by the
+<code>expmod</code> instruction.</p>
+</body></html></div>
+        </main>
+      </div>
+    </div>
+<footer class="app-footer text-md-left text-center">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-2 mb-md-0 mb-4">
+        <span class="pr-md-5 pr-0 py-3">
+          <a href="https://runtimeverification.com" target="_blank">
+            <picture>
+              <source
+                srcset="../assets/img/rv-logo-dark.png"
+                media="(prefers-color-scheme: dark)"
+              />
+              <img
+                class="pr-3 footer-logo"
+                src="../assets/img/rv-logo.png"
+                alt="Runtime Verification Inc logo"
+              />
+            </picture>
+          </a>
+        </span>
+      </div>
+      <div class="col-md-6 mb-md-0 mb-4"></div>
+      <div class="col-md-4 text-md-right">
+        <p class="copyright">
+          &copy; 2020 Runtime Verification Inc. All right reserved.
+        </p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Typist/1.2/typist.min.js"></script>
+    <script src="../assets/js/index.js"></script>
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-QL0D8HRYFW"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+      gtag("config", "G-QL0D8HRYFW");
+    </script>
+  </body>
+</html>
