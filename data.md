@@ -340,6 +340,20 @@ The local memory of execution is a byte-array (instead of a word-array).
     rule #asUnsigned( W0 : W1 : WS )  => #asUnsigned(((W0 <<Int 8) |Int W1) : WS)
 ```
 
+```{.k .bytes}
+    syntax Int ::= #asUnsigned ( Bytes ) [function]
+ // -----------------------------------------------
+    rule #asUnsigned( BS ) => Bytes2Int(BS, BE, Unsigned)
+
+    syntax Bytes ::= #take ( Int , Bytes ) [function]
+ // -------------------------------------------------
+    rule #take(N, BS) => BS[0 .. N]
+
+    syntax Bytes ::= #drop ( Int , Bytes ) [function]
+ // -------------------------------------------------
+    rule #drop(N, BS) => BS[N .. lengthBytes(BS) -Int N]
+```
+
 ```k
     syntax Account ::= #asAccount ( String ) [function]
  // ------------------------------------------------------
