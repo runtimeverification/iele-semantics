@@ -128,16 +128,12 @@ After interpreting the strings representing programs as a `WordStack`, it should
 ```{.k .bytes}
     syntax Contract ::= #dasmContract ( Bytes , IeleName )                                                                  [function]
                       | #dasmContract ( Int , Int , Bytes , IeleName )                                                      [function]
-                      | #dasmContract ( Int , Int , Bytes , IeleName , Bytes )                                              [function]
                       | #dasmContract ( Int , Int , Bytes , Int , Map, IeleName , TopLevelDefinitions, Int , Int , String ) [function]
  // ----------------------------------------------------------------------------------------------------------------------------------
     rule #dasmContract( BS, NAME ) => #dasmContract( 0, lengthBytes(BS), BS, NAME )
     rule #dasmContract( _, 0, BS, NAME ) => #emptyCode
-    rule #dasmContract( I, N, BS, NAME ) => #dasmContract(I +Int 4, #asUnsigned(I, 4, BS), BS, NAME, BS[I .. 4])
+    rule #dasmContract( I, N, BS, NAME ) => #dasmContract(I +Int 6, #asUnsigned(I, 4, BS) -Int 2, BS, BS[I +Int 5], 0 |-> init, NAME, .TopLevelDefinitions, 1, #asUnsigned(I, 4, BS) +Int 4, #unparseByteStack(BS[I .. N]))
       requires N >=Int 5 andBool BS[I +Int 4] ==Int 99
-
-    rule #dasmContract( I, N, BS, NAME, BS2 ) => #dasmContract(I +Int 2, N -Int 2, BS, BS[I +Int 1], 0 |-> init, NAME, .TopLevelDefinitions, 1, N +Int 4 , #unparseByteStack(BS2 +Bytes (BS[I .. N])))
-      requires N >=Int 2 andBool BS[I] ==Int 99 andBool lengthBytes(BS2) ==Int 4
 
     rule #dasmContract( I, N, BS, NBITS, FUNCS, NAME, DEFS, M, SIZE, BYTES )
       => #dasmContract( I +Int 3 +Int #asUnsigned(I +Int 1, 2, BS), N -Int (3 +Int #asUnsigned(I +Int 1, 2, BS)), BS, NBITS, M |-> String2IeleName(#unparseByteStack(BS[I +Int 3 .. #asUnsigned(I +Int 1, 2, BS)])) FUNCS, NAME, DEFS, M +Int 1, SIZE, BYTES )
