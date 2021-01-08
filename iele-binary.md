@@ -147,7 +147,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
       => #dasmContract( I +Int 3, #asUnsigned(BS[I +Int 1 .. 2]), BS, NAME +.+IeleName M) ++Contract #dasmContract(I +Int (3 +Int #asUnsigned(BS[I +Int 1 .. 2])), N -Int (3 +Int #asUnsigned(BS[I +Int 1 .. 2])), BS, NBITS, FUNCS, NAME, external contract NAME +.+IeleName M DEFS, M +Int 1, SIZE, BYTES)
       requires N >=Int 3 andBool BS[I] ==Int 106
 
-    rule #dasmContract( I, N, BS, NBITS, FUNCS, NAME, DEFS, M, SIZE, BYTES ) => contract NAME ! SIZE BYTES { DEFS ++TopLevelDefinitions #dasmFunctions(BS[I .. N], NBITS, FUNCS, NAME) } .Contract [owise]
+    rule #dasmContract( I, N, BS, NBITS, FUNCS, NAME, DEFS, M, SIZE, BYTES ) => contract NAME ! SIZE BYTES { DEFS ++TopLevelDefinitions #dasmFunctions(I, N, BS, NBITS, FUNCS, NAME) } .Contract [owise]
 
     syntax Bool ::= #isValidContract(Bytes)                   [function]
                   | #isValidContract(Int, Int, Bytes)         [function, klabel(isValidContractAux)]
@@ -167,7 +167,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
 
     rule #isValidStringTable(I, N, BS, _) => false
       requires N >=Int 3 andBool BS[I] ==Int 106 andBool #asUnsigned(BS[I +Int 1 .. 2]) ==Int 0
-    rule #isValidStringTable(I, N, BS, NBITS) => #isValidFunctions(BS[I .. N], NBITS, N) [owise]
+    rule #isValidStringTable(I, N, BS, NBITS) => #isValidFunctions(I, N, BS, NBITS) [owise]
 
     syntax priorities contractDefinitionList > contractAppend
     syntax priorities topLevelDefinitionList > topLevelAppend
@@ -181,50 +181,48 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule D Ds ++TopLevelDefinitions Ds' => D (Ds ++TopLevelDefinitions Ds')
     rule N +.+IeleName M => String2IeleName(IeleName2String(N) +String "." +String IeleName2String(M)) 
 
-    syntax TopLevelDefinitions ::= #dasmFunctions ( Bytes , Int , Map , IeleName ) [function]
-    syntax TopLevelDefinitions ::= #dasmFunction ( Bool , IeleName , IeleName , Int , Bytes , Int , Map , Instructions , K ) [function]
- // -----------------------------------------------------------------------------------------------------------------------------------
-    rule #dasmFunctions(BS, NBITS, FUNCS, NAME) => #dasmFunction(false, getIeleName(FUNCS [ #asUnsigned(BS[1 .. 2]) ] orDefault #asUnsigned(BS[1 .. 2])), NAME, #asUnsigned(BS[3 .. 2]), #drop(5, BS), NBITS, FUNCS, .Instructions, .K)
-      requires lengthBytes(BS) >=Int 5 andBool BS[0] ==Int 103
-    rule #dasmFunctions(BS, NBITS, FUNCS, NAME) => #dasmFunction(true , getIeleName(FUNCS [ #asUnsigned(BS[1 .. 2]) ] orDefault #asUnsigned(BS[1 .. 2])), NAME, #asUnsigned(BS[3 .. 2]), #drop(5, BS), NBITS, FUNCS, .Instructions, .K)
-      requires lengthBytes(BS) >=Int 5 andBool BS[0] ==Int 104
-    rule #dasmFunctions(BS, _, _, _) => .TopLevelDefinitions requires lengthBytes(BS) ==Int 0
+    syntax TopLevelDefinitions ::= #dasmFunctions ( Int, Int , Bytes , Int , Map , IeleName ) [function]
+    syntax TopLevelDefinitions ::= #dasmFunction ( Bool , IeleName , IeleName , Int , Int , Int , Bytes , Int , Map , Instructions , K ) [function]
+ // -----------------------------------------------------------------------------------------------------------------------------------------------
+    rule #dasmFunctions(I, N, BS, NBITS, FUNCS, NAME) => #dasmFunction(false, getIeleName(FUNCS [ #asUnsigned(BS[I +Int 1 .. 2]) ] orDefault #asUnsigned(BS[I +Int 1 .. 2])), NAME, #asUnsigned(BS[I +Int 3 .. 2]), I +Int 5, N -Int 5, BS, NBITS, FUNCS, .Instructions, .K)
+      requires N >=Int 5 andBool BS[I] ==Int 103
+    rule #dasmFunctions(I, N, BS, NBITS, FUNCS, NAME) => #dasmFunction(true , getIeleName(FUNCS [ #asUnsigned(BS[I +Int 1 .. 2]) ] orDefault #asUnsigned(BS[I +Int 1 .. 2])), NAME, #asUnsigned(BS[I +Int 3 .. 2]), I +Int 5, N -Int 5, BS, NBITS, FUNCS, .Instructions, .K)
+      requires N >=Int 5 andBool BS[I] ==Int 104
+    rule #dasmFunctions(_, 0, _, _, _, _) => .TopLevelDefinitions
 
-    syntax Bool ::= #isValidFunctions(Bytes, Int, Int)           [function]
-                  | #isValidFunction(Bytes, Int, Int)            [function]
-                  | #isValidInstruction(OpCode, Bytes, Int, Int) [function]
-                  | #isValidLoad(Bytes, Int)                     [function]
- // -----------------------------------------------------------------------
-    rule #isValidFunctions(BS, NBITS, SIZE) => #isValidFunction(#drop(5, BS), NBITS, SIZE -Int 5)
-      requires lengthBytes(BS) >=Int 5 andBool (BS[0] ==Int 103 orBool BS[0] ==Int 104)
-    rule #isValidFunctions(BS, _, 0) => true requires lengthBytes(BS) ==Int 0
-    rule #isValidFunctions(_, _, _) => false [owise]
+    syntax Bool ::= #isValidFunctions(Int, Int, Bytes, Int)           [function]
+                  | #isValidFunction(Int, Int, Bytes, Int)            [function]
+                  | #isValidInstruction(OpCode, Int, Int, Bytes, Int) [function]
+                  | #isValidLoad(Int, Int, Bytes)                     [function]
+ // ----------------------------------------------------------------------------
+    rule #isValidFunctions(I, N, BS, NBITS) => #isValidFunction(I +Int 5, N -Int 5, BS, NBITS)
+      requires N >=Int 5 andBool (BS[I] ==Int 103 orBool BS[I] ==Int 104)
+    rule #isValidFunctions(_, 0, BS, _) => true
+    rule #isValidFunctions(_, _, _, _) => false [owise]
 
-    rule #isValidFunction(BS, NBITS, SIZE) => #isValidFunctions(BS, NBITS, SIZE)
-      requires lengthBytes(BS) >=Int 1 andBool (BS[0] ==Int 103 orBool BS[0] ==Int 104)
-    rule #isValidFunction(BS, _, 0) => true requires lengthBytes(BS) ==Int 0
-    rule #isValidFunction(BS, NBITS, SIZE) => #isValidLoad(#drop(1, BS), SIZE -Int 1) andBool #isValidInstruction(#dasmOpCode(BS), BS, NBITS, SIZE)
-      requires lengthBytes(BS) >=Int 1 andBool (BS[0] ==Int 97 orBool BS[0] ==Int 98)
-    rule #isValidFunction(BS, NBITS, SIZE) => #isValidInstruction(#dasmOpCode(BS), BS, NBITS, SIZE) [owise]
+    rule #isValidFunction(I, N, BS, NBITS) => #isValidFunctions(I, N, BS, NBITS)
+      requires N >=Int 1 andBool (BS[I] ==Int 103 orBool BS[I] ==Int 104)
+    rule #isValidFunction(_, 0, BS, _) => true
+    rule #isValidFunction(I, N, BS, NBITS) => #isValidLoad(I +Int 1, N -Int 1, BS) andBool #isValidInstruction(#dasmOpCode(BS[I .. N]), I, N, BS, NBITS)
+      requires N >=Int 1 andBool (BS[I] ==Int 97 orBool BS[I] ==Int 98)
+    rule #isValidFunction(I, N, BS, NBITS) => #isValidInstruction(#dasmOpCode(BS[I .. N]), I, N, BS, NBITS) [owise]
 
-    rule #isValidInstruction(encodingError(), _, _, _) => false
-    rule #isValidInstruction(OP:OpCode, WS, NBITS, SIZE) => SIZE >=Int #opWidth(OP, NBITS) andBool #isValidFunction(#drop(#opWidth(OP, NBITS), WS), NBITS, SIZE -Int #opWidth(OP, NBITS)) [owise]
+    rule #isValidInstruction(encodingError(), _, _, _, _) => false
+    rule #isValidInstruction(OP:OpCode, I, N, BS, NBITS) => N >=Int #opWidth(OP, NBITS) andBool #isValidFunction(I +Int #opWidth(OP, NBITS), N -Int #opWidth(OP, NBITS), BS, NBITS) [owise]
 
-    rule #isValidLoad(BS, SIZE) => SIZE >=Int #loadLen(BS) +Int #loadOffset(BS)
+    rule #isValidLoad(I, N, BS) => N >=Int #loadLen(BS[I .. N]) +Int #loadOffset(BS[I .. N])
 
-    rule #dasmFunction(false, NAME, CNAME, SIG, BS, NBITS, FUNCS, INSTRS, .K) => define @ NAME ( SIG ) { #toBlocks(INSTRS) } #dasmFunctions(BS, NBITS, FUNCS, CNAME)
-      requires lengthBytes(BS) >=Int 1 andBool (BS[0] ==Int 103 orBool BS[0] ==Int 104)
-    rule #dasmFunction(true, NAME, CNAME, SIG, BS, NBITS, FUNCS, INSTRS, .K) => define public @ NAME ( SIG ) { #toBlocks(INSTRS) } #dasmFunctions(BS, NBITS, FUNCS, CNAME)
-      requires lengthBytes(BS) >=Int 1 andBool (BS[0] ==Int 103 orBool BS[0] ==Int 104)
+    rule #dasmFunction(false, NAME, CNAME, SIG, I, N, BS, NBITS, FUNCS, INSTRS, .K) => define @ NAME ( SIG ) { #toBlocks(INSTRS) } #dasmFunctions(I, N, BS, NBITS, FUNCS, CNAME)
+      requires N >=Int 1 andBool (BS[I] ==Int 103 orBool BS[I] ==Int 104)
+    rule #dasmFunction(true, NAME, CNAME, SIG, I, N, BS, NBITS, FUNCS, INSTRS, .K) => define public @ NAME ( SIG ) { #toBlocks(INSTRS) } #dasmFunctions(I, N, BS, NBITS, FUNCS, CNAME)
+      requires N >=Int 1 andBool (BS[I] ==Int 103 orBool BS[I] ==Int 104)
 
-    rule #dasmFunction(false, NAME, CNAME, SIG, BS, NBITS, FUNCS, INSTRS, .K) => define @ NAME ( SIG ) { #toBlocks(INSTRS) } .TopLevelDefinitions
-      requires lengthBytes(BS) ==Int 0
-    rule #dasmFunction(true, NAME, CNAME, SIG, BS, NBITS, FUNCS, INSTRS, .K) => define public @ NAME ( SIG ) { #toBlocks(INSTRS) } .TopLevelDefinitions
-      requires lengthBytes(BS) ==Int 0
+    rule #dasmFunction(false, NAME, CNAME, SIG, I, 0, BS, NBITS, FUNCS, INSTRS, .K) => define @ NAME ( SIG ) { #toBlocks(INSTRS) } .TopLevelDefinitions
+    rule #dasmFunction(true, NAME, CNAME, SIG, I, 0, BS, NBITS, FUNCS, INSTRS, .K) => define public @ NAME ( SIG ) { #toBlocks(INSTRS) } .TopLevelDefinitions
 
-    rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, BS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, BS, NBITS, FUNCS, INSTRS, #dasmOpCode(BS)) [owise]
+    rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, I, N, BS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, I, N, BS, NBITS, FUNCS, INSTRS, #dasmOpCode(BS[I .. N])) [owise]
 
-    rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, BS, NBITS, FUNCS, INSTRS, OP:OpCode) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, #drop(#opWidth(OP, NBITS), BS), NBITS, FUNCS, #dasmInstruction(OP, #take(#opWidth(OP, NBITS) -Int #opCodeWidth(OP), #drop(#opCodeWidth(OP), BS)), NBITS, FUNCS, CNAME) INSTRS, .K)
+    rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, I, N, BS, NBITS, FUNCS, INSTRS, OP:OpCode) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, I +Int #opWidth(OP, NBITS), N -Int #opWidth(OP, NBITS), BS, NBITS, FUNCS, #dasmInstruction(OP, #take(#opWidth(OP, NBITS) -Int #opCodeWidth(OP), #drop(#opCodeWidth(OP), BS[I .. N])), NBITS, FUNCS, CNAME) INSTRS, .K)
 
     syntax Blocks ::= #toBlocks ( Instructions ) [function]
                     | #toBlocks ( Instructions , Blocks ) [function, klabel(#toBlockAux)]
