@@ -126,25 +126,28 @@ After interpreting the strings representing programs as a `WordStack`, it should
 -   `#dasmOpCode` interperets a `Int` as an `OpCode`.
 
 ```{.k .bytes}
-    syntax Contract ::= #dasmContract ( Bytes , IeleName )                                                      [function]
-                      | #dasmContract ( Bytes , IeleName , Bytes )                                              [function, klabel(#dasmContractAux1)]
-                      | #dasmContract ( Bytes , Int , Map, IeleName , TopLevelDefinitions, Int , Int , String ) [function, klabel(#dasmContractAux2)]
- // -------------------------------------------------------------------------------------------------------------------------------------------------
-    rule #dasmContract( BS, _ ) => #emptyCode requires lengthBytes(BS) ==Int 0
-    rule #dasmContract( BS, NAME ) => #dasmContract(BS[4 .. #asUnsigned(BS[0 .. 4])], NAME, BS[0 .. 4])
-      requires lengthBytes(BS) >=Int 5 andBool BS[4] ==Int 99
+    syntax Contract ::= #dasmContract ( Bytes , IeleName )                                                                  [function]
+                      | #dasmContract ( Int , Int , Bytes , IeleName )                                                      [function]
+                      | #dasmContract ( Int , Int , Bytes , IeleName , Bytes )                                              [function]
+                      | #dasmContract ( Int , Int , Bytes , Int , Map, IeleName , TopLevelDefinitions, Int , Int , String ) [function]
+ // ----------------------------------------------------------------------------------------------------------------------------------
+    rule #dasmContract( BS, NAME ) => #dasmContract( 0, lengthBytes(BS), BS, NAME )
+    rule #dasmContract( _, 0, BS, NAME ) => #emptyCode
+    rule #dasmContract( I, N, BS, NAME ) => #dasmContract(I +Int 4, #asUnsigned(BS[I .. 4]), BS, NAME, BS[I .. 4])
+      requires N >=Int 5 andBool BS[I +Int 4] ==Int 99
 
-    rule #dasmContract( BS, NAME, BS2 ) => #dasmContract(#drop(2, BS), BS[1], 0 |-> init, NAME, .TopLevelDefinitions, 1, lengthBytes(BS) +Int 4 , #unparseByteStack(BS2 +Bytes BS))
-      requires lengthBytes(BS) >=Int 2 andBool BS[0] ==Int 99 andBool lengthBytes(BS2) ==Int 4
+    rule #dasmContract( I, N, BS, NAME, BS2 ) => #dasmContract(I +Int 2, N -Int 2, BS, BS[I +Int 1], 0 |-> init, NAME, .TopLevelDefinitions, 1, N +Int 4 , #unparseByteStack(BS2 +Bytes (BS[I .. N])))
+      requires N >=Int 2 andBool BS[I] ==Int 99 andBool lengthBytes(BS2) ==Int 4
 
-    rule #dasmContract( BS, NBITS, FUNCS, NAME, DEFS, N, SIZE, BYTES )
-      => #dasmContract(#drop(3 +Int #asUnsigned(BS[1 .. 2]), BS), NBITS, N |-> String2IeleName(#unparseByteStack(BS[3 .. #asUnsigned(BS[1 .. 2])])) FUNCS, NAME, DEFS, N +Int 1, SIZE, BYTES )
-      requires lengthBytes(BS) >=Int 3 andBool BS[0] ==Int 105
-    rule #dasmContract( BS, NBITS, FUNCS, NAME, DEFS, N, SIZE, BYTES )
-      => #dasmContract(BS[3 .. #asUnsigned(BS[1 .. 2])], NAME +.+IeleName N) ++Contract #dasmContract(#drop(3 +Int #asUnsigned(BS[1 .. 2]), BS), NBITS, FUNCS, NAME, external contract NAME +.+IeleName N DEFS, N +Int 1, SIZE, BYTES)
-      requires lengthBytes(BS) >=Int 3 andBool BS[0] ==Int 106
+    rule #dasmContract( I, N, BS, NBITS, FUNCS, NAME, DEFS, M, SIZE, BYTES )
+      => #dasmContract( I +Int 3 +Int #asUnsigned(BS[I +Int 1 .. 2]), N -Int (3 +Int #asUnsigned(BS[I +Int 1 .. 2])), BS, NBITS, M |-> String2IeleName(#unparseByteStack(BS[I +Int 3 .. #asUnsigned(BS[I +Int 1 .. 2])])) FUNCS, NAME, DEFS, M +Int 1, SIZE, BYTES )
+      requires N >=Int 3 andBool BS[I] ==Int 105
 
-    rule #dasmContract( BS, NBITS, FUNCS, NAME, DEFS, N, SIZE, BYTES ) => contract NAME ! SIZE BYTES { DEFS ++TopLevelDefinitions #dasmFunctions(BS, NBITS, FUNCS, NAME) } .Contract [owise]
+    rule #dasmContract( I, N, BS, NBITS, FUNCS, NAME, DEFS, M, SIZE, BYTES )
+      => #dasmContract( I +Int 3, #asUnsigned(BS[I +Int 1 .. 2]), BS, NAME +.+IeleName M) ++Contract #dasmContract(I +Int (3 +Int #asUnsigned(BS[I +Int 1 .. 2])), N -Int (3 +Int #asUnsigned(BS[I +Int 1 .. 2])), BS, NBITS, FUNCS, NAME, external contract NAME +.+IeleName M DEFS, M +Int 1, SIZE, BYTES)
+      requires N >=Int 3 andBool BS[I] ==Int 106
+
+    rule #dasmContract( I, N, BS, NBITS, FUNCS, NAME, DEFS, M, SIZE, BYTES ) => contract NAME ! SIZE BYTES { DEFS ++TopLevelDefinitions #dasmFunctions(BS[I .. N], NBITS, FUNCS, NAME) } .Contract [owise]
 
     syntax Bool ::= #isValidContract(Bytes)              [function]
                   | #isValidContract(Bytes, Int)         [function, klabel(isValidContractAux)]
