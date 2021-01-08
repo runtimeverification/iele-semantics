@@ -222,7 +222,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
 
     rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, I, N, BS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, I, N, BS, NBITS, FUNCS, INSTRS, #dasmOpCode(BS[I .. N])) [owise]
 
-    rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, I, N, BS, NBITS, FUNCS, INSTRS, OP:OpCode) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, I +Int #opWidth(OP, NBITS), N -Int #opWidth(OP, NBITS), BS, NBITS, FUNCS, #dasmInstruction(OP, #take(#opWidth(OP, NBITS) -Int #opCodeWidth(OP), #drop(#opCodeWidth(OP), BS[I .. N])), NBITS, FUNCS, CNAME) INSTRS, .K)
+    rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, I, N, BS, NBITS, FUNCS, INSTRS, OP:OpCode) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, I +Int #opWidth(OP, NBITS), N -Int #opWidth(OP, NBITS), BS, NBITS, FUNCS, #dasmInstruction(OP, I +Int #opCodeWidth(OP), #opWidth(OP, NBITS) -Int #opCodeWidth(OP), BS, NBITS, FUNCS, CNAME) INSTRS, .K)
 
     syntax Blocks ::= #toBlocks ( Instructions ) [function]
                     | #toBlocks ( Instructions , Blocks ) [function, klabel(#toBlockAux)]
@@ -241,12 +241,12 @@ After interpreting the strings representing programs as a `WordStack`, it should
 
     syntax PseudoInstruction ::= label ( Int )
     syntax Instruction ::= PseudoInstruction
-    syntax Instruction ::= #dasmInstruction ( OpCode , Bytes , Int , Map , IeleName ) [function]
+    syntax Instruction ::= #dasmInstruction ( OpCode , Int , Int , Bytes , Int , Map , IeleName ) [function]
                          | #dasmInstruction ( OpCode , Int , Int , Int , Map , IeleName ) [function, klabel(#dasmInstructionAux)]
  // -----------------------------------------------------------------------------------------------------------------------------
-    rule #dasmInstruction ( LOADPOS(N, W), BS, NBITS, FUNCS, NAME ) => #dasmInstruction(LOADPOS(N, W), #asUnsigned(#take(NBITS up/Int 8, BS)),                            NBITS, (1 <<Int NBITS) -Int 1, FUNCS, NAME)
-    rule #dasmInstruction ( LOADNEG(N, W), BS, NBITS, FUNCS, NAME ) => #dasmInstruction(LOADNEG(N, W), #asUnsigned(#take(NBITS up/Int 8, BS)),                            NBITS, (1 <<Int NBITS) -Int 1, FUNCS, NAME)
-    rule #dasmInstruction ( OP,            BS, NBITS, FUNCS, NAME ) => #dasmInstruction(OP,            #asUnsigned(#take(#opWidth(OP, NBITS) -Int #opCodeWidth(OP), BS)), NBITS, (1 <<Int NBITS) -Int 1, FUNCS, NAME) [owise]
+    rule #dasmInstruction ( LOADPOS(M, W), I, N, BS, NBITS, FUNCS, NAME ) => #dasmInstruction(LOADPOS(M, W), #asUnsigned(BS[I .. NBITS up/Int 8]),                            NBITS, (1 <<Int NBITS) -Int 1, FUNCS, NAME)
+    rule #dasmInstruction ( LOADNEG(M, W), I, N, BS, NBITS, FUNCS, NAME ) => #dasmInstruction(LOADNEG(M, W), #asUnsigned(BS[I .. NBITS up/Int 8]),                            NBITS, (1 <<Int NBITS) -Int 1, FUNCS, NAME)
+    rule #dasmInstruction ( OP,            I, N, BS, NBITS, FUNCS, NAME ) => #dasmInstruction(OP,            #asUnsigned(BS[I .. #opWidth(OP, NBITS) -Int #opCodeWidth(OP)]), NBITS, (1 <<Int NBITS) -Int 1, FUNCS, NAME) [owise]
 
     rule #dasmInstruction ( LOADPOS ( _, I ),  R, W, M, _, _ ) => %(R, W, M, 0) = I
     rule #dasmInstruction ( LOADNEG ( _, I ),  R, W, M, _, _ ) => %(R, W, M, 0) = (0 -Int I)
