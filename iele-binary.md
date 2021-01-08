@@ -203,9 +203,9 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #isValidFunction(I, N, BS, NBITS) => #isValidFunctions(I, N, BS, NBITS)
       requires N >=Int 1 andBool (BS[I] ==Int 103 orBool BS[I] ==Int 104)
     rule #isValidFunction(_, 0, BS, _) => true
-    rule #isValidFunction(I, N, BS, NBITS) => #isValidLoad(I +Int 1, N -Int 1, BS) andBool #isValidInstruction(#dasmOpCode(BS[I .. N]), I, N, BS, NBITS)
+    rule #isValidFunction(I, N, BS, NBITS) => #isValidLoad(I +Int 1, N -Int 1, BS) andBool #isValidInstruction(#dasmOpCode(I, N, BS), I, N, BS, NBITS)
       requires N >=Int 1 andBool (BS[I] ==Int 97 orBool BS[I] ==Int 98)
-    rule #isValidFunction(I, N, BS, NBITS) => #isValidInstruction(#dasmOpCode(BS[I .. N]), I, N, BS, NBITS) [owise]
+    rule #isValidFunction(I, N, BS, NBITS) => #isValidInstruction(#dasmOpCode(I, N, BS), I, N, BS, NBITS) [owise]
 
     rule #isValidInstruction(encodingError(), _, _, _, _) => false
     rule #isValidInstruction(OP:OpCode, I, N, BS, NBITS) => N >=Int #opWidth(OP, NBITS) andBool #isValidFunction(I +Int #opWidth(OP, NBITS), N -Int #opWidth(OP, NBITS), BS, NBITS) [owise]
@@ -220,7 +220,7 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmFunction(false, NAME, CNAME, SIG, I, 0, BS, NBITS, FUNCS, INSTRS, .K) => define @ NAME ( SIG ) { #toBlocks(INSTRS) } .TopLevelDefinitions
     rule #dasmFunction(true, NAME, CNAME, SIG, I, 0, BS, NBITS, FUNCS, INSTRS, .K) => define public @ NAME ( SIG ) { #toBlocks(INSTRS) } .TopLevelDefinitions
 
-    rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, I, N, BS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, I, N, BS, NBITS, FUNCS, INSTRS, #dasmOpCode(BS[I .. N])) [owise]
+    rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, I, N, BS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, I, N, BS, NBITS, FUNCS, INSTRS, #dasmOpCode(I, N, BS)) [owise]
 
     rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, I, N, BS, NBITS, FUNCS, INSTRS, OP:OpCode) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, I +Int #opWidth(OP, NBITS), N -Int #opWidth(OP, NBITS), BS, NBITS, FUNCS, #dasmInstruction(OP, I +Int #opCodeWidth(OP), #opWidth(OP, NBITS) -Int #opCodeWidth(OP), BS, NBITS, FUNCS, CNAME) INSTRS, .K)
 
@@ -388,91 +388,91 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #numArgs ( CREATE(_, ARGS) )              => 3 +Int ARGS
     rule #numArgs ( COPYCREATE(ARGS) )             => 4 +Int ARGS
 
-    syntax OpCode ::= #dasmOpCode ( Bytes )      [function]
-                    | #dasmOpCode ( Int, Bytes ) [function]
- // -------------------------------------------------------
-    rule #dasmOpCode( BS ) => #dasmOpCode( BS[0], #drop(1, BS) ) requires lengthBytes(BS) >=Int 1
-    rule #dasmOpCode( _  ) => encodingError() [owise]
-    rule #dasmOpCode( _, _  ) => encodingError() [owise]
+    syntax OpCode ::= #dasmOpCode ( Int, Int, Bytes )      [function]
+                    | #dasmOpCode ( Int, Int, Int, Bytes ) [function]
+ // -----------------------------------------------------------------
+    rule #dasmOpCode( I, N, BS ) => #dasmOpCode( BS[I], I +Int 1, N -Int 1, BS ) requires N >=Int 1
+    rule #dasmOpCode( _, _, _  ) => encodingError() [owise]
 
-    rule #dasmOpCode(   1 ,  _ ) => ADD ()
-    rule #dasmOpCode(   2 ,  _ ) => MUL ()
-    rule #dasmOpCode(   3 ,  _ ) => SUB ()
-    rule #dasmOpCode(   4 ,  _ ) => DIV ()
-    rule #dasmOpCode(   6 ,  _ ) => MOD ()
-    rule #dasmOpCode(   7 ,  _ ) => EXP ()
-    rule #dasmOpCode(   8 ,  _ ) => ADDMOD ()
-    rule #dasmOpCode(   9 ,  _ ) => MULMOD ()
-    rule #dasmOpCode(  10 ,  _ ) => EXPMOD ()
-    rule #dasmOpCode(  11 ,  _ ) => SIGNEXTEND ()
-    rule #dasmOpCode(  12 ,  _ ) => TWOS ()
-    rule #dasmOpCode(  13 ,  _ ) => BSWAP ()
-    rule #dasmOpCode(  15 ,  _ ) => NE ()
-    rule #dasmOpCode(  16 ,  _ ) => LT ()
-    rule #dasmOpCode(  17 ,  _ ) => GT ()
-    rule #dasmOpCode(  18 ,  _ ) => LE ()
-    rule #dasmOpCode(  19 ,  _ ) => GE ()
-    rule #dasmOpCode(  20 ,  _ ) => EQ ()
-    rule #dasmOpCode(  21 ,  _ ) => ISZERO ()
-    rule #dasmOpCode(  22 ,  _ ) => AND ()
-    rule #dasmOpCode(  23 ,  _ ) => OR ()
-    rule #dasmOpCode(  24 ,  _ ) => XOR ()
-    rule #dasmOpCode(  25 ,  _ ) => NOT ()
-    rule #dasmOpCode(  26 ,  _ ) => BYTE ()
-    rule #dasmOpCode(  27 ,  _ ) => SHIFT ()
-    rule #dasmOpCode(  28 ,  _ ) => LOGARITHM2 ()
-    rule #dasmOpCode(  32 ,  _ ) => SHA3 ()
-    rule #dasmOpCode(  48 ,  _ ) => ADDRESS ()
-    rule #dasmOpCode(  49 ,  _ ) => BALANCE ()
-    rule #dasmOpCode(  50 ,  _ ) => ORIGIN ()
-    rule #dasmOpCode(  51 ,  _ ) => CALLER ()
-    rule #dasmOpCode(  52 ,  _ ) => CALLVALUE ()
-    rule #dasmOpCode(  56 ,  _ ) => CODESIZE ()
-    rule #dasmOpCode(  58 ,  _ ) => GASPRICE ()
-    rule #dasmOpCode(  59 ,  _ ) => EXTCODESIZE ()
-    rule #dasmOpCode(  64 ,  _ ) => BLOCKHASH ()
-    rule #dasmOpCode(  65 ,  _ ) => BENEFICIARY ()
-    rule #dasmOpCode(  66 ,  _ ) => TIMESTAMP ()
-    rule #dasmOpCode(  67 ,  _ ) => NUMBER ()
-    rule #dasmOpCode(  68 ,  _ ) => DIFFICULTY ()
-    rule #dasmOpCode(  69 ,  _ ) => GASLIMIT ()
-    rule #dasmOpCode(  80 ,  _ ) => MLOADN ()
-    rule #dasmOpCode(  81 ,  _ ) => MLOAD ()
-    rule #dasmOpCode(  82 ,  _ ) => MSTOREN ()
-    rule #dasmOpCode(  83 ,  _ ) => MSTORE ()
-    rule #dasmOpCode(  84 ,  _ ) => SLOAD ()
-    rule #dasmOpCode(  85 ,  _ ) => SSTORE ()
-    rule #dasmOpCode(  86 ,  _ ) => MSIZE ()
-    rule #dasmOpCode(  87 ,  _ ) => GAS ()
-    rule #dasmOpCode(  96 ,  _ ) => MOVE ()
-    rule #dasmOpCode(  97 , BS ) => #dasmLoad(97, #loadLen(BS), #loadOffset(BS), BS)
-    rule #dasmOpCode(  98 , BS ) => #dasmLoad(98, #loadLen(BS), #loadOffset(BS), BS)
-    rule #dasmOpCode( 100 , BS ) => BR     ( #asUnsigned(BS[0 .. 2]) ) requires lengthBytes(BS) >=Int 2
-    rule #dasmOpCode( 101 , BS ) => BRC    ( #asUnsigned(BS[0 .. 2]) ) requires lengthBytes(BS) >=Int 2
-    rule #dasmOpCode( 102 , BS ) => BRLABEL( #asUnsigned(BS[0 .. 2]) ) requires lengthBytes(BS) >=Int 2
-    rule #dasmOpCode( 160 ,  _ ) => LOG0 ()
-    rule #dasmOpCode( 161 ,  _ ) => LOG1 ()
-    rule #dasmOpCode( 162 ,  _ ) => LOG2 ()
-    rule #dasmOpCode( 163 ,  _ ) => LOG3 ()
-    rule #dasmOpCode( 164 ,  _ ) => LOG4 ()
-    rule #dasmOpCode( 240 , BS ) => CREATE        ( #asUnsigned(BS[0 .. 2]), #asUnsigned(BS[2 .. 2])                          ) requires lengthBytes(BS) >=Int 4
-    rule #dasmOpCode( 241 , BS ) => COPYCREATE    ( #asUnsigned(BS[0 .. 2])                                                   ) requires lengthBytes(BS) >=Int 2
-    rule #dasmOpCode( 242 , BS ) => CALL          ( #asUnsigned(BS[0 .. 2]), #asUnsigned(BS[2 .. 2]), #asUnsigned(BS[4 .. 2]) ) requires lengthBytes(BS) >=Int 6
-    rule #dasmOpCode( 243 , BS ) => CALLDYN       ( #asUnsigned(BS[0 .. 2]), #asUnsigned(BS[2 .. 2])                          ) requires lengthBytes(BS) >=Int 4
-    rule #dasmOpCode( 244 , BS ) => STATICCALL    ( #asUnsigned(BS[0 .. 2]), #asUnsigned(BS[2 .. 2]), #asUnsigned(BS[4 .. 2]) ) requires lengthBytes(BS) >=Int 6
-    rule #dasmOpCode( 245 , BS ) => STATICCALLDYN ( #asUnsigned(BS[0 .. 2]), #asUnsigned(BS[2 .. 2])                          ) requires lengthBytes(BS) >=Int 4
-    rule #dasmOpCode( 246 , BS ) => RETURN        ( #asUnsigned(BS[0 .. 2])                                                   ) requires lengthBytes(BS) >=Int 2
-    rule #dasmOpCode( 247 ,  _ ) => REVERT()
-    rule #dasmOpCode( 248 , BS ) => LOCALCALL    ( #asUnsigned(BS[0 .. 2]), #asUnsigned(BS[2 .. 2]), #asUnsigned(BS[4 .. 2]) ) requires lengthBytes(BS) >=Int 6
-    rule #dasmOpCode( 249 , BS ) => LOCALCALLDYN ( #asUnsigned(BS[0 .. 2]), #asUnsigned(BS[2 .. 2])                          ) requires lengthBytes(BS) >=Int 4
-    rule #dasmOpCode( 250 , BS ) => CALLADDRESS  ( #asUnsigned(BS[0 .. 2])                                                   ) requires lengthBytes(BS) >=Int 2
-    rule #dasmOpCode( 254 ,  _ ) => INVALID ()
-    rule #dasmOpCode( 255 ,  _ ) => SELFDESTRUCT ()
+    rule #dasmOpCode(   1 , _, _,  _ ) => ADD ()
+    rule #dasmOpCode(   2 , _, _,  _ ) => MUL ()
+    rule #dasmOpCode(   3 , _, _,  _ ) => SUB ()
+    rule #dasmOpCode(   4 , _, _,  _ ) => DIV ()
+    rule #dasmOpCode(   6 , _, _,  _ ) => MOD ()
+    rule #dasmOpCode(   7 , _, _,  _ ) => EXP ()
+    rule #dasmOpCode(   8 , _, _,  _ ) => ADDMOD ()
+    rule #dasmOpCode(   9 , _, _,  _ ) => MULMOD ()
+    rule #dasmOpCode(  10 , _, _,  _ ) => EXPMOD ()
+    rule #dasmOpCode(  11 , _, _,  _ ) => SIGNEXTEND ()
+    rule #dasmOpCode(  12 , _, _,  _ ) => TWOS ()
+    rule #dasmOpCode(  13 , _, _,  _ ) => BSWAP ()
+    rule #dasmOpCode(  15 , _, _,  _ ) => NE ()
+    rule #dasmOpCode(  16 , _, _,  _ ) => LT ()
+    rule #dasmOpCode(  17 , _, _,  _ ) => GT ()
+    rule #dasmOpCode(  18 , _, _,  _ ) => LE ()
+    rule #dasmOpCode(  19 , _, _,  _ ) => GE ()
+    rule #dasmOpCode(  20 , _, _,  _ ) => EQ ()
+    rule #dasmOpCode(  21 , _, _,  _ ) => ISZERO ()
+    rule #dasmOpCode(  22 , _, _,  _ ) => AND ()
+    rule #dasmOpCode(  23 , _, _,  _ ) => OR ()
+    rule #dasmOpCode(  24 , _, _,  _ ) => XOR ()
+    rule #dasmOpCode(  25 , _, _,  _ ) => NOT ()
+    rule #dasmOpCode(  26 , _, _,  _ ) => BYTE ()
+    rule #dasmOpCode(  27 , _, _,  _ ) => SHIFT ()
+    rule #dasmOpCode(  28 , _, _,  _ ) => LOGARITHM2 ()
+    rule #dasmOpCode(  32 , _, _,  _ ) => SHA3 ()
+    rule #dasmOpCode(  48 , _, _,  _ ) => ADDRESS ()
+    rule #dasmOpCode(  49 , _, _,  _ ) => BALANCE ()
+    rule #dasmOpCode(  50 , _, _,  _ ) => ORIGIN ()
+    rule #dasmOpCode(  51 , _, _,  _ ) => CALLER ()
+    rule #dasmOpCode(  52 , _, _,  _ ) => CALLVALUE ()
+    rule #dasmOpCode(  56 , _, _,  _ ) => CODESIZE ()
+    rule #dasmOpCode(  58 , _, _,  _ ) => GASPRICE ()
+    rule #dasmOpCode(  59 , _, _,  _ ) => EXTCODESIZE ()
+    rule #dasmOpCode(  64 , _, _,  _ ) => BLOCKHASH ()
+    rule #dasmOpCode(  65 , _, _,  _ ) => BENEFICIARY ()
+    rule #dasmOpCode(  66 , _, _,  _ ) => TIMESTAMP ()
+    rule #dasmOpCode(  67 , _, _,  _ ) => NUMBER ()
+    rule #dasmOpCode(  68 , _, _,  _ ) => DIFFICULTY ()
+    rule #dasmOpCode(  69 , _, _,  _ ) => GASLIMIT ()
+    rule #dasmOpCode(  80 , _, _,  _ ) => MLOADN ()
+    rule #dasmOpCode(  81 , _, _,  _ ) => MLOAD ()
+    rule #dasmOpCode(  82 , _, _,  _ ) => MSTOREN ()
+    rule #dasmOpCode(  83 , _, _,  _ ) => MSTORE ()
+    rule #dasmOpCode(  84 , _, _,  _ ) => SLOAD ()
+    rule #dasmOpCode(  85 , _, _,  _ ) => SSTORE ()
+    rule #dasmOpCode(  86 , _, _,  _ ) => MSIZE ()
+    rule #dasmOpCode(  87 , _, _,  _ ) => GAS ()
+    rule #dasmOpCode(  96 , _, _,  _ ) => MOVE ()
+    rule #dasmOpCode(  97 , I, N, BS ) => #dasmLoad(97, #loadLen(BS[I .. N]), #loadOffset(BS[I .. N]), I, N, BS)
+    rule #dasmOpCode(  98 , I, N, BS ) => #dasmLoad(98, #loadLen(BS[I .. N]), #loadOffset(BS[I .. N]), I, N, BS)
+    rule #dasmOpCode( 100 , I, N, BS ) => BR     ( #asUnsigned(BS[I .. 2]) ) requires N >=Int 2
+    rule #dasmOpCode( 101 , I, N, BS ) => BRC    ( #asUnsigned(BS[I .. 2]) ) requires N >=Int 2
+    rule #dasmOpCode( 102 , I, N, BS ) => BRLABEL( #asUnsigned(BS[I .. 2]) ) requires N >=Int 2
+    rule #dasmOpCode( 160 , _, _,  _ ) => LOG0 ()
+    rule #dasmOpCode( 161 , _, _,  _ ) => LOG1 ()
+    rule #dasmOpCode( 162 , _, _,  _ ) => LOG2 ()
+    rule #dasmOpCode( 163 , _, _,  _ ) => LOG3 ()
+    rule #dasmOpCode( 164 , _, _,  _ ) => LOG4 ()
+    rule #dasmOpCode( 240 , I, N, BS ) => CREATE        ( #asUnsigned(BS[I .. 2]), #asUnsigned(BS[I +Int 2 .. 2])                                 ) requires N >=Int 4
+    rule #dasmOpCode( 241 , I, N, BS ) => COPYCREATE    ( #asUnsigned(BS[I .. 2])                                                                 ) requires N >=Int 2
+    rule #dasmOpCode( 242 , I, N, BS ) => CALL          ( #asUnsigned(BS[I .. 2]), #asUnsigned(BS[I +Int 2 .. 2]), #asUnsigned(BS[I +Int 4 .. 2]) ) requires N >=Int 6
+    rule #dasmOpCode( 243 , I, N, BS ) => CALLDYN       ( #asUnsigned(BS[I .. 2]), #asUnsigned(BS[I +Int 2 .. 2])                                 ) requires N >=Int 4
+    rule #dasmOpCode( 244 , I, N, BS ) => STATICCALL    ( #asUnsigned(BS[I .. 2]), #asUnsigned(BS[I +Int 2 .. 2]), #asUnsigned(BS[I +Int 4 .. 2]) ) requires N >=Int 6
+    rule #dasmOpCode( 245 , I, N, BS ) => STATICCALLDYN ( #asUnsigned(BS[I .. 2]), #asUnsigned(BS[I +Int 2 .. 2])                                 ) requires N >=Int 4
+    rule #dasmOpCode( 246 , I, N, BS ) => RETURN        ( #asUnsigned(BS[I .. 2])                                                                 ) requires N >=Int 2
+    rule #dasmOpCode( 247 , _, _,  _ ) => REVERT()
+    rule #dasmOpCode( 248 , I, N, BS ) => LOCALCALL    ( #asUnsigned(BS[I .. 2]), #asUnsigned(BS[I +Int 2 .. 2]), #asUnsigned(BS[I +Int 4 .. 2])  ) requires N >=Int 6
+    rule #dasmOpCode( 249 , I, N, BS ) => LOCALCALLDYN ( #asUnsigned(BS[I .. 2]), #asUnsigned(BS[I +Int 2 .. 2])                                  ) requires N >=Int 4
+    rule #dasmOpCode( 250 , I, N, BS ) => CALLADDRESS  ( #asUnsigned(BS[I .. 2])                                                                  ) requires N >=Int 2
+    rule #dasmOpCode( 254 , _, _,  _ ) => INVALID ()
+    rule #dasmOpCode( 255 , _, _,  _ ) => SELFDESTRUCT ()
+    rule #dasmOpCode(   _ , _, _,  _ ) => encodingError() [owise]
 
-    syntax OpCode ::= #dasmLoad ( Int , Int , Int , Bytes ) [function]
- // ----------------------------------------------------------------------
-    rule #dasmLoad(97, LEN, POS, BS) => LOADPOS(LEN +Int POS, #asUnsigned(BS [ POS .. LEN ]))
-    rule #dasmLoad(98, LEN, POS, BS) => LOADNEG(LEN +Int POS, #asUnsigned(BS [ POS .. LEN ]))
+    syntax OpCode ::= #dasmLoad ( Int , Int , Int , Int , Int , Bytes ) [function]
+ // ------------------------------------------------------------------------------
+    rule #dasmLoad(97, LEN, POS, I, N, BS) => LOADPOS(LEN +Int POS, #asUnsigned(BS [ I +Int POS .. LEN ]))
+    rule #dasmLoad(98, LEN, POS, I, N, BS) => LOADNEG(LEN +Int POS, #asUnsigned(BS [ I +Int POS .. LEN ]))
 ```
 
 ```{.k .wordstack}
