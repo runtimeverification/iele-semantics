@@ -149,25 +149,25 @@ After interpreting the strings representing programs as a `WordStack`, it should
 
     rule #dasmContract( I, N, BS, NBITS, FUNCS, NAME, DEFS, M, SIZE, BYTES ) => contract NAME ! SIZE BYTES { DEFS ++TopLevelDefinitions #dasmFunctions(BS[I .. N], NBITS, FUNCS, NAME) } .Contract [owise]
 
-    syntax Bool ::= #isValidContract(Bytes)              [function]
-                  | #isValidContract(Bytes, Int)         [function, klabel(isValidContractAux)]
-                  | #isValidStringTable(Bytes, Int, Int) [function]
- // ---------------------------------------------------------------
-    rule #isValidContract(CODE) => #isValidContract(CODE, lengthBytes(CODE))
-    rule #isValidContract(BS, 0) => true requires lengthBytes(BS) ==Int 0
-    rule #isValidContract(BS, SIZE) => SIZE -Int 4 >=Int #asUnsigned(BS[0 .. 4]) andBool #isValidStringTable(BS[6 .. #asUnsigned(BS[0 .. 4]) -Int 2], BS[5], #asUnsigned(BS[0 .. 4]) -Int 2)
-      requires lengthBytes(BS) >=Int 6 andBool BS[4] ==Int 99
-    rule #isValidContract(_, _) => false [owise]
+    syntax Bool ::= #isValidContract(Bytes)                   [function]
+                  | #isValidContract(Int, Int, Bytes)         [function, klabel(isValidContractAux)]
+                  | #isValidStringTable(Int, Int, Bytes, Int) [function]
+ // --------------------------------------------------------------------
+    rule #isValidContract(CODE) => #isValidContract(0, lengthBytes(CODE), CODE)
+    rule #isValidContract(_, 0, BS) => true
+    rule #isValidContract(I, N, BS) => N -Int 4 >=Int #asUnsigned(BS[I .. 4]) andBool #isValidStringTable(I +Int 6, #asUnsigned(BS[I .. 4]) -Int 2, BS, BS[I +Int 5])
+      requires N >=Int 6 andBool BS[I +Int 4] ==Int 99
+    rule #isValidContract(_, _, _) => false [owise]
 
-    rule #isValidStringTable(BS, NBITS, SIZE) => SIZE -Int 3 >=Int #asUnsigned(BS[1 .. 2]) andBool #isValidStringTable(#drop(3 +Int #asUnsigned(BS[1 .. 2]), BS), NBITS, SIZE -Int 3 -Int #asUnsigned(BS[1 .. 2]))
-      requires lengthBytes(BS) >=Int 3 andBool BS[0] ==Int 105
+    rule #isValidStringTable(I, N, BS, NBITS) => N -Int 3 >=Int #asUnsigned(BS[I +Int 1 .. 2]) andBool #isValidStringTable(I +Int (3 +Int #asUnsigned(BS[I +Int 1 .. 2])), N -Int (3 +Int #asUnsigned(BS[I +Int 1 .. 2])), BS, NBITS)
+      requires N >=Int 3 andBool BS[I] ==Int 105
 
-    rule #isValidStringTable(BS, NBITS, SIZE) => SIZE -Int 3 >=Int #asUnsigned(BS[1 .. 2]) andBool #isValidContract(BS[3 .. #asUnsigned(BS[1 .. 2])], #asUnsigned(BS[1 .. 2])) andBool #isValidStringTable(#drop(3 +Int #asUnsigned(BS[1 .. 2]), BS), NBITS, SIZE -Int 3 -Int #asUnsigned(BS[1 .. 2]))
-      requires lengthBytes(BS) >=Int 3 andBool BS[0] ==Int 106 andBool #asUnsigned(BS[1 .. 2]) =/=Int 0
+    rule #isValidStringTable(I, N, BS, NBITS) => N -Int 3 >=Int #asUnsigned(BS[I +Int 1 .. 2]) andBool #isValidContract(I +Int 3, #asUnsigned(BS[I +Int 1 .. 2]), BS) andBool #isValidStringTable(I +Int (3 +Int #asUnsigned(BS[I +Int 1 .. 2])), N -Int (3 +Int #asUnsigned(BS[I +Int 1 .. 2])), BS, NBITS)
+      requires N >=Int 3 andBool BS[I] ==Int 106 andBool #asUnsigned(BS[I +Int 1 .. 2]) =/=Int 0
 
-    rule #isValidStringTable(BS, _, _) => false
-      requires lengthBytes(BS) >=Int 3 andBool BS[0] ==Int 106 andBool #asUnsigned(BS[1 .. 2]) ==Int 0
-    rule #isValidStringTable(BS, NBITS, SIZE) => #isValidFunctions(BS, NBITS, SIZE) [owise]
+    rule #isValidStringTable(I, N, BS, _) => false
+      requires N >=Int 3 andBool BS[I] ==Int 106 andBool #asUnsigned(BS[I +Int 1 .. 2]) ==Int 0
+    rule #isValidStringTable(I, N, BS, NBITS) => #isValidFunctions(BS[I .. N], NBITS, N) [owise]
 
     syntax priorities contractDefinitionList > contractAppend
     syntax priorities topLevelDefinitionList > topLevelAppend
