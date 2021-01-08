@@ -133,18 +133,18 @@ After interpreting the strings representing programs as a `WordStack`, it should
  // ----------------------------------------------------------------------------------------------------------------------------------
     rule #dasmContract( BS, NAME ) => #dasmContract( 0, lengthBytes(BS), BS, NAME )
     rule #dasmContract( _, 0, BS, NAME ) => #emptyCode
-    rule #dasmContract( I, N, BS, NAME ) => #dasmContract(I +Int 4, #asUnsigned(BS[I .. 4]), BS, NAME, BS[I .. 4])
+    rule #dasmContract( I, N, BS, NAME ) => #dasmContract(I +Int 4, #asUnsigned(I, 4, BS), BS, NAME, BS[I .. 4])
       requires N >=Int 5 andBool BS[I +Int 4] ==Int 99
 
     rule #dasmContract( I, N, BS, NAME, BS2 ) => #dasmContract(I +Int 2, N -Int 2, BS, BS[I +Int 1], 0 |-> init, NAME, .TopLevelDefinitions, 1, N +Int 4 , #unparseByteStack(BS2 +Bytes (BS[I .. N])))
       requires N >=Int 2 andBool BS[I] ==Int 99 andBool lengthBytes(BS2) ==Int 4
 
     rule #dasmContract( I, N, BS, NBITS, FUNCS, NAME, DEFS, M, SIZE, BYTES )
-      => #dasmContract( I +Int 3 +Int #asUnsigned(BS[I +Int 1 .. 2]), N -Int (3 +Int #asUnsigned(BS[I +Int 1 .. 2])), BS, NBITS, M |-> String2IeleName(#unparseByteStack(BS[I +Int 3 .. #asUnsigned(BS[I +Int 1 .. 2])])) FUNCS, NAME, DEFS, M +Int 1, SIZE, BYTES )
+      => #dasmContract( I +Int 3 +Int #asUnsigned(I +Int 1, 2, BS), N -Int (3 +Int #asUnsigned(I +Int 1, 2, BS)), BS, NBITS, M |-> String2IeleName(#unparseByteStack(BS[I +Int 3 .. #asUnsigned(I +Int 1, 2, BS)])) FUNCS, NAME, DEFS, M +Int 1, SIZE, BYTES )
       requires N >=Int 3 andBool BS[I] ==Int 105
 
     rule #dasmContract( I, N, BS, NBITS, FUNCS, NAME, DEFS, M, SIZE, BYTES )
-      => #dasmContract( I +Int 3, #asUnsigned(BS[I +Int 1 .. 2]), BS, NAME +.+IeleName M) ++Contract #dasmContract(I +Int (3 +Int #asUnsigned(BS[I +Int 1 .. 2])), N -Int (3 +Int #asUnsigned(BS[I +Int 1 .. 2])), BS, NBITS, FUNCS, NAME, external contract NAME +.+IeleName M DEFS, M +Int 1, SIZE, BYTES)
+      => #dasmContract( I +Int 3, #asUnsigned(I +Int 1, 2, BS), BS, NAME +.+IeleName M) ++Contract #dasmContract(I +Int (3 +Int #asUnsigned(I +Int 1, 2, BS)), N -Int (3 +Int #asUnsigned(I +Int 1, 2, BS)), BS, NBITS, FUNCS, NAME, external contract NAME +.+IeleName M DEFS, M +Int 1, SIZE, BYTES)
       requires N >=Int 3 andBool BS[I] ==Int 106
 
     rule #dasmContract( I, N, BS, NBITS, FUNCS, NAME, DEFS, M, SIZE, BYTES ) => contract NAME ! SIZE BYTES { DEFS ++TopLevelDefinitions #dasmFunctions(I, N, BS, NBITS, FUNCS, NAME) } .Contract [owise]
@@ -155,18 +155,18 @@ After interpreting the strings representing programs as a `WordStack`, it should
  // --------------------------------------------------------------------
     rule #isValidContract(CODE) => #isValidContract(0, lengthBytes(CODE), CODE)
     rule #isValidContract(_, 0, BS) => true
-    rule #isValidContract(I, N, BS) => N -Int 4 >=Int #asUnsigned(BS[I .. 4]) andBool #isValidStringTable(I +Int 6, #asUnsigned(BS[I .. 4]) -Int 2, BS, BS[I +Int 5])
+    rule #isValidContract(I, N, BS) => N -Int 4 >=Int #asUnsigned(I, 4, BS) andBool #isValidStringTable(I +Int 6, #asUnsigned(I, 4, BS) -Int 2, BS, BS[I +Int 5])
       requires N >=Int 6 andBool BS[I +Int 4] ==Int 99
     rule #isValidContract(_, _, _) => false [owise]
 
-    rule #isValidStringTable(I, N, BS, NBITS) => N -Int 3 >=Int #asUnsigned(BS[I +Int 1 .. 2]) andBool #isValidStringTable(I +Int (3 +Int #asUnsigned(BS[I +Int 1 .. 2])), N -Int (3 +Int #asUnsigned(BS[I +Int 1 .. 2])), BS, NBITS)
+    rule #isValidStringTable(I, N, BS, NBITS) => N -Int 3 >=Int #asUnsigned(I +Int 1, 2, BS) andBool #isValidStringTable(I +Int (3 +Int #asUnsigned(I +Int 1, 2, BS)), N -Int (3 +Int #asUnsigned(I +Int 1, 2, BS)), BS, NBITS)
       requires N >=Int 3 andBool BS[I] ==Int 105
 
-    rule #isValidStringTable(I, N, BS, NBITS) => N -Int 3 >=Int #asUnsigned(BS[I +Int 1 .. 2]) andBool #isValidContract(I +Int 3, #asUnsigned(BS[I +Int 1 .. 2]), BS) andBool #isValidStringTable(I +Int (3 +Int #asUnsigned(BS[I +Int 1 .. 2])), N -Int (3 +Int #asUnsigned(BS[I +Int 1 .. 2])), BS, NBITS)
-      requires N >=Int 3 andBool BS[I] ==Int 106 andBool #asUnsigned(BS[I +Int 1 .. 2]) =/=Int 0
+    rule #isValidStringTable(I, N, BS, NBITS) => N -Int 3 >=Int #asUnsigned(I +Int 1, 2, BS) andBool #isValidContract(I +Int 3, #asUnsigned(I +Int 1, 2, BS), BS) andBool #isValidStringTable(I +Int (3 +Int #asUnsigned(I +Int 1, 2, BS)), N -Int (3 +Int #asUnsigned(I +Int 1, 2, BS)), BS, NBITS)
+      requires N >=Int 3 andBool BS[I] ==Int 106 andBool #asUnsigned(I +Int 1, 2, BS) =/=Int 0
 
     rule #isValidStringTable(I, N, BS, _) => false
-      requires N >=Int 3 andBool BS[I] ==Int 106 andBool #asUnsigned(BS[I +Int 1 .. 2]) ==Int 0
+      requires N >=Int 3 andBool BS[I] ==Int 106 andBool #asUnsigned(I +Int 1, 2, BS) ==Int 0
     rule #isValidStringTable(I, N, BS, NBITS) => #isValidFunctions(I, N, BS, NBITS) [owise]
 
     syntax priorities contractDefinitionList > contractAppend
@@ -184,9 +184,9 @@ After interpreting the strings representing programs as a `WordStack`, it should
     syntax TopLevelDefinitions ::= #dasmFunctions ( Int, Int , Bytes , Int , Map , IeleName ) [function]
     syntax TopLevelDefinitions ::= #dasmFunction ( Bool , IeleName , IeleName , Int , Int , Int , Bytes , Int , Map , Instructions , K ) [function]
  // -----------------------------------------------------------------------------------------------------------------------------------------------
-    rule #dasmFunctions(I, N, BS, NBITS, FUNCS, NAME) => #dasmFunction(false, getIeleName(FUNCS [ #asUnsigned(BS[I +Int 1 .. 2]) ] orDefault #asUnsigned(BS[I +Int 1 .. 2])), NAME, #asUnsigned(BS[I +Int 3 .. 2]), I +Int 5, N -Int 5, BS, NBITS, FUNCS, .Instructions, .K)
+    rule #dasmFunctions(I, N, BS, NBITS, FUNCS, NAME) => #dasmFunction(false, getIeleName(FUNCS [ #asUnsigned(I +Int 1, 2, BS) ] orDefault #asUnsigned(I +Int 1, 2, BS)), NAME, #asUnsigned(I +Int 3, 2, BS), I +Int 5, N -Int 5, BS, NBITS, FUNCS, .Instructions, .K)
       requires N >=Int 5 andBool BS[I] ==Int 103
-    rule #dasmFunctions(I, N, BS, NBITS, FUNCS, NAME) => #dasmFunction(true , getIeleName(FUNCS [ #asUnsigned(BS[I +Int 1 .. 2]) ] orDefault #asUnsigned(BS[I +Int 1 .. 2])), NAME, #asUnsigned(BS[I +Int 3 .. 2]), I +Int 5, N -Int 5, BS, NBITS, FUNCS, .Instructions, .K)
+    rule #dasmFunctions(I, N, BS, NBITS, FUNCS, NAME) => #dasmFunction(true , getIeleName(FUNCS [ #asUnsigned(I +Int 1, 2, BS) ] orDefault #asUnsigned(I +Int 1, 2, BS)), NAME, #asUnsigned(I +Int 3, 2, BS), I +Int 5, N -Int 5, BS, NBITS, FUNCS, .Instructions, .K)
       requires N >=Int 5 andBool BS[I] ==Int 104
     rule #dasmFunctions(_, 0, _, _, _, _) => .TopLevelDefinitions
 
@@ -244,9 +244,9 @@ After interpreting the strings representing programs as a `WordStack`, it should
     syntax Instruction ::= #dasmInstruction ( OpCode , Int , Int , Bytes , Int , Map , IeleName ) [function]
                          | #dasmInstruction ( OpCode , Int , Int , Int , Map , IeleName ) [function, klabel(#dasmInstructionAux)]
  // -----------------------------------------------------------------------------------------------------------------------------
-    rule #dasmInstruction ( LOADPOS(M, W), I, N, BS, NBITS, FUNCS, NAME ) => #dasmInstruction(LOADPOS(M, W), #asUnsigned(BS[I .. NBITS up/Int 8]),                            NBITS, (1 <<Int NBITS) -Int 1, FUNCS, NAME)
-    rule #dasmInstruction ( LOADNEG(M, W), I, N, BS, NBITS, FUNCS, NAME ) => #dasmInstruction(LOADNEG(M, W), #asUnsigned(BS[I .. NBITS up/Int 8]),                            NBITS, (1 <<Int NBITS) -Int 1, FUNCS, NAME)
-    rule #dasmInstruction ( OP,            I, N, BS, NBITS, FUNCS, NAME ) => #dasmInstruction(OP,            #asUnsigned(BS[I .. #opWidth(OP, NBITS) -Int #opCodeWidth(OP)]), NBITS, (1 <<Int NBITS) -Int 1, FUNCS, NAME) [owise]
+    rule #dasmInstruction ( LOADPOS(M, W), I, N, BS, NBITS, FUNCS, NAME ) => #dasmInstruction(LOADPOS(M, W), #asUnsigned(I, NBITS up/Int 8, BS),                            NBITS, (1 <<Int NBITS) -Int 1, FUNCS, NAME)
+    rule #dasmInstruction ( LOADNEG(M, W), I, N, BS, NBITS, FUNCS, NAME ) => #dasmInstruction(LOADNEG(M, W), #asUnsigned(I, NBITS up/Int 8, BS),                            NBITS, (1 <<Int NBITS) -Int 1, FUNCS, NAME)
+    rule #dasmInstruction ( OP,            I, N, BS, NBITS, FUNCS, NAME ) => #dasmInstruction(OP,            #asUnsigned(I, #opWidth(OP, NBITS) -Int #opCodeWidth(OP), BS), NBITS, (1 <<Int NBITS) -Int 1, FUNCS, NAME) [owise]
 
     rule #dasmInstruction ( LOADPOS ( _, I ),  R, W, M, _, _ ) => %(R, W, M, 0) = I
     rule #dasmInstruction ( LOADNEG ( _, I ),  R, W, M, _, _ ) => %(R, W, M, 0) = (0 -Int I)
@@ -446,33 +446,33 @@ After interpreting the strings representing programs as a `WordStack`, it should
     rule #dasmOpCode(  96 , _, _,  _ ) => MOVE ()
     rule #dasmOpCode(  97 , I, N, BS ) => #dasmLoad(97, #loadLen(BS[I .. N]), #loadOffset(BS[I .. N]), I, N, BS)
     rule #dasmOpCode(  98 , I, N, BS ) => #dasmLoad(98, #loadLen(BS[I .. N]), #loadOffset(BS[I .. N]), I, N, BS)
-    rule #dasmOpCode( 100 , I, N, BS ) => BR     ( #asUnsigned(BS[I .. 2]) ) requires N >=Int 2
-    rule #dasmOpCode( 101 , I, N, BS ) => BRC    ( #asUnsigned(BS[I .. 2]) ) requires N >=Int 2
-    rule #dasmOpCode( 102 , I, N, BS ) => BRLABEL( #asUnsigned(BS[I .. 2]) ) requires N >=Int 2
+    rule #dasmOpCode( 100 , I, N, BS ) => BR     ( #asUnsigned(I, 2, BS) ) requires N >=Int 2
+    rule #dasmOpCode( 101 , I, N, BS ) => BRC    ( #asUnsigned(I, 2, BS) ) requires N >=Int 2
+    rule #dasmOpCode( 102 , I, N, BS ) => BRLABEL( #asUnsigned(I, 2, BS) ) requires N >=Int 2
     rule #dasmOpCode( 160 , _, _,  _ ) => LOG0 ()
     rule #dasmOpCode( 161 , _, _,  _ ) => LOG1 ()
     rule #dasmOpCode( 162 , _, _,  _ ) => LOG2 ()
     rule #dasmOpCode( 163 , _, _,  _ ) => LOG3 ()
     rule #dasmOpCode( 164 , _, _,  _ ) => LOG4 ()
-    rule #dasmOpCode( 240 , I, N, BS ) => CREATE        ( #asUnsigned(BS[I .. 2]), #asUnsigned(BS[I +Int 2 .. 2])                                 ) requires N >=Int 4
-    rule #dasmOpCode( 241 , I, N, BS ) => COPYCREATE    ( #asUnsigned(BS[I .. 2])                                                                 ) requires N >=Int 2
-    rule #dasmOpCode( 242 , I, N, BS ) => CALL          ( #asUnsigned(BS[I .. 2]), #asUnsigned(BS[I +Int 2 .. 2]), #asUnsigned(BS[I +Int 4 .. 2]) ) requires N >=Int 6
-    rule #dasmOpCode( 243 , I, N, BS ) => CALLDYN       ( #asUnsigned(BS[I .. 2]), #asUnsigned(BS[I +Int 2 .. 2])                                 ) requires N >=Int 4
-    rule #dasmOpCode( 244 , I, N, BS ) => STATICCALL    ( #asUnsigned(BS[I .. 2]), #asUnsigned(BS[I +Int 2 .. 2]), #asUnsigned(BS[I +Int 4 .. 2]) ) requires N >=Int 6
-    rule #dasmOpCode( 245 , I, N, BS ) => STATICCALLDYN ( #asUnsigned(BS[I .. 2]), #asUnsigned(BS[I +Int 2 .. 2])                                 ) requires N >=Int 4
-    rule #dasmOpCode( 246 , I, N, BS ) => RETURN        ( #asUnsigned(BS[I .. 2])                                                                 ) requires N >=Int 2
+    rule #dasmOpCode( 240 , I, N, BS ) => CREATE        ( #asUnsigned(I, 2, BS), #asUnsigned(I +Int 2, 2, BS)                               ) requires N >=Int 4
+    rule #dasmOpCode( 241 , I, N, BS ) => COPYCREATE    ( #asUnsigned(I, 2, BS)                                                             ) requires N >=Int 2
+    rule #dasmOpCode( 242 , I, N, BS ) => CALL          ( #asUnsigned(I, 2, BS), #asUnsigned(I +Int 2, 2, BS), #asUnsigned(I +Int 4, 2, BS) ) requires N >=Int 6
+    rule #dasmOpCode( 243 , I, N, BS ) => CALLDYN       ( #asUnsigned(I, 2, BS), #asUnsigned(I +Int 2, 2, BS)                               ) requires N >=Int 4
+    rule #dasmOpCode( 244 , I, N, BS ) => STATICCALL    ( #asUnsigned(I, 2, BS), #asUnsigned(I +Int 2, 2, BS), #asUnsigned(I +Int 4, 2, BS) ) requires N >=Int 6
+    rule #dasmOpCode( 245 , I, N, BS ) => STATICCALLDYN ( #asUnsigned(I, 2, BS), #asUnsigned(I +Int 2, 2, BS)                               ) requires N >=Int 4
+    rule #dasmOpCode( 246 , I, N, BS ) => RETURN        ( #asUnsigned(I, 2, BS)                                                             ) requires N >=Int 2
     rule #dasmOpCode( 247 , _, _,  _ ) => REVERT()
-    rule #dasmOpCode( 248 , I, N, BS ) => LOCALCALL    ( #asUnsigned(BS[I .. 2]), #asUnsigned(BS[I +Int 2 .. 2]), #asUnsigned(BS[I +Int 4 .. 2])  ) requires N >=Int 6
-    rule #dasmOpCode( 249 , I, N, BS ) => LOCALCALLDYN ( #asUnsigned(BS[I .. 2]), #asUnsigned(BS[I +Int 2 .. 2])                                  ) requires N >=Int 4
-    rule #dasmOpCode( 250 , I, N, BS ) => CALLADDRESS  ( #asUnsigned(BS[I .. 2])                                                                  ) requires N >=Int 2
+    rule #dasmOpCode( 248 , I, N, BS ) => LOCALCALL    ( #asUnsigned(I, 2, BS), #asUnsigned(I +Int 2, 2, BS), #asUnsigned(I +Int 4, 2, BS)  ) requires N >=Int 6
+    rule #dasmOpCode( 249 , I, N, BS ) => LOCALCALLDYN ( #asUnsigned(I, 2, BS), #asUnsigned(I +Int 2, 2, BS)                                ) requires N >=Int 4
+    rule #dasmOpCode( 250 , I, N, BS ) => CALLADDRESS  ( #asUnsigned(I, 2, BS)                                                              ) requires N >=Int 2
     rule #dasmOpCode( 254 , _, _,  _ ) => INVALID ()
     rule #dasmOpCode( 255 , _, _,  _ ) => SELFDESTRUCT ()
     rule #dasmOpCode(   _ , _, _,  _ ) => encodingError() [owise]
 
     syntax OpCode ::= #dasmLoad ( Int , Int , Int , Int , Int , Bytes ) [function]
  // ------------------------------------------------------------------------------
-    rule #dasmLoad(97, LEN, POS, I, N, BS) => LOADPOS(LEN +Int POS, #asUnsigned(BS [ I +Int POS .. LEN ]))
-    rule #dasmLoad(98, LEN, POS, I, N, BS) => LOADNEG(LEN +Int POS, #asUnsigned(BS [ I +Int POS .. LEN ]))
+    rule #dasmLoad(97, LEN, POS, I, N, BS) => LOADPOS(LEN +Int POS, #asUnsigned(I +Int POS, LEN , BS))
+    rule #dasmLoad(98, LEN, POS, I, N, BS) => LOADNEG(LEN +Int POS, #asUnsigned(I +Int POS, LEN , BS))
 ```
 
 ```{.k .wordstack}

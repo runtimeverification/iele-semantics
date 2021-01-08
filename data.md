@@ -341,9 +341,12 @@ The local memory of execution is a byte-array (instead of a word-array).
 ```
 
 ```{.k .bytes}
-    syntax Int ::= #asUnsigned ( Bytes ) [function]
- // -----------------------------------------------
-    rule #asUnsigned( BS ) => Bytes2Int(BS, BE, Unsigned)
+    syntax Int ::= #asUnsigned ( Int , Int , Bytes )      [function]
+                 | #asUnsigned ( Int , Int , Bytes, Int ) [function]
+ // ----------------------------------------------------------------
+    rule #asUnsigned( I, N, BS ) => #asUnsigned(I, N, BS, 0)
+    rule #asUnsigned( _, 0, _, X )  => X
+    rule #asUnsigned( I, N, BS, X ) => #asUnsigned( I +Int 1, N -Int 1, BS, (X *Int 256) +Int BS[I] ) requires N >Int 0
 
     syntax Bytes ::= #take ( Int , Bytes ) [function]
  // -------------------------------------------------
