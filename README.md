@@ -13,8 +13,8 @@ In this repository we provide a model of IELE in K.
     This file contains the **configuration** (a map of the state), and a simple imperative execution machine which IELE lives on top of.
     It deals with the semantics of opcodes and parsing/unparsing/assembling/disassembling.
 -   [iele-gas.md](iele-gas.md) describes gas price computations. [iele-gas-summary.md](iele-gas-summary.md) summarizes them in a format readable by those who don't know K. 
--   Finally, the file [Design.md](Design.md) discusses the design rationale of IELE.
-    It also provides more detailed descriptions of various IELE features, as well as differences and similarities with EVM and LLVM.
+-   [iele-binary.md](iele-binary.md) defines the mnemonic for each opcode, and the disassembler.
+-   [iele-node.md](iele-node.md) defines the protobuf communication protocol used to plug the IELE VM into anonther client to make a full node.
 -   [iele-testing.md](iele-testing.md) loads test-files from the [Ethereum Test Set](https://github.com/ethereum/tests) and executes them, checking that the output is correct.
     If the output is correct, the entire configuration is cleared.
     If any check fails, the configuration retains the failed check at the top of the `<k>` cell.
