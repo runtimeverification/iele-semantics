@@ -30,12 +30,12 @@ See [INSTALL.md](INSTALL.md).
 
 ### Help/Version
 
-Calling `kiele help` will and `kiele version` will output the user guide and the KIELE version, respectively.
+Calling `kiele help` and `kiele version` will output the user guide and the KIELE version, respectively.
 
 ### Assembler
 
 The assembler takes textual IELE and produces IELE bytecode.
-For examplle, on the following file `iele-examples/factorial.iele`:
+For example, on the following file `iele-examples/factorial.iele`:
 
 ```iele
 contract Factorial {
