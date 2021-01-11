@@ -808,21 +808,6 @@ Note: These are all functions as the operator `#compute` has already loaded all 
     rule #allBut64th(N) => N -Int (N /Int 64)
 ```
 
-```{.k .wordstack}
-    syntax Int ::= G0 ( Schedule , WordStack , Ints ) [function, klabel(G0create)]
-                 | G0 ( Schedule , String , Ints )    [function, klabel(G0call)]
-                 | G0 ( Schedule , WordStack , Bool ) [function, klabel(G0aux)]
- // ---------------------------------------------------------------------------
-    rule G0(SCHED, .WordStack, true)  => Gtxcreate    < SCHED >
-    rule G0(SCHED, .WordStack, false) => Gtransaction < SCHED >
-
-    rule G0(SCHED, WS, ARGS) => G0(SCHED, #parseByteStackRaw(#rlpEncodeLength(#rlpEncodeString(#unparseByteStack(WS)) +String #rlpEncodeInts(ARGS), 192)), true)
-    rule G0(SCHED, FUNC, ARGS) => G0(SCHED, #parseByteStackRaw(#rlpEncodeLength(#rlpEncodeString(FUNC) +String #rlpEncodeInts(ARGS), 192)), false)
-
-    rule G0(SCHED, 0 : REST, ISCREATE::Bool) => Gtxdatazero    < SCHED > +Int G0(SCHED, REST, ISCREATE)
-    rule G0(SCHED, N : REST, ISCREATE::Bool) => Gtxdatanonzero < SCHED > +Int G0(SCHED, REST, ISCREATE) requires N =/=Int 0
-```
-
 ```{.k .bytes}
     syntax Int ::= G0 ( Schedule , Bytes , Ints )  [function, klabel(G0create)]
                  | G0 ( Schedule , String , Ints ) [function, klabel(G0call)]

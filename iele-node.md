@@ -39,15 +39,6 @@ module IELE-NODE
  // ----------------------------------------------------------------
 ```
 
-```{.k .node .wordstack}
-    rule <k> #lookupCode(ACCT) => . ... </k>
-         <account>
-           <acctID> ACCT </acctID>
-           <code> .Contract => #dasmContract(#parseByteStackRaw(#getCode(ACCT)), Main) </code>
-           ...
-         </account>
-```
-
 ```{.k .node .bytes}
     rule <k> #lookupCode(ACCT) => . ... </k>
          <account>
@@ -69,33 +60,6 @@ module IELE-NODE
 
     rule <k> (.K => #loadAccount ACCTFROM) ~> runVM(... from: ACCTFROM) ... </k>
          <activeAccounts> .Set </activeAccounts>
-```
-
-```{.k .node .wordstack}
-    rule <k> runVM(true, _, ACCTFROM, CODESTR, ARGS, VALUE, GPRICE, GAVAIL, CB, DIFF, NUMB, GLIMIT, TS, _)
-          => #fun(CODE => #fun(CONTRACT =>
-             #checkContract CONTRACT
-          ~> #create ACCTFROM #newAddr(ACCTFROM, NONCE -Int 1) (GAVAIL *Int Sgasdivisor < SCHED >) VALUE CONTRACT #toInts(ARGS)
-          ~> #codeDeposit #newAddr(ACCTFROM, NONCE -Int 1) #sizeWordStack(CODE) CONTRACT %0 %1 true
-          ~> #trimAccounts)(#if #isValidContract(CODE) #then #dasmContract(CODE, Main) #else #illFormed #fi))(#parseByteStackRaw(CODESTR))
-         ...
-         </k>
-         <schedule> SCHED </schedule>
-         <gasPrice> _ => GPRICE </gasPrice>
-         <origin> _ => ACCTFROM </origin>
-         <callDepth> _ => -1 </callDepth>
-         <beneficiary> _ => CB </beneficiary>
-         <difficulty> _ => DIFF </difficulty>
-         <number> _ => NUMB </number>
-         <gasLimit> _ => GLIMIT </gasLimit>
-         <timestamp> _ => TS </timestamp>
-         <account>
-           <acctID> ACCTFROM </acctID>
-           <nonce> NONCE </nonce>
-           ...
-         </account>
-         <activeAccounts> ACCTS </activeAccounts>
-      requires ACCTFROM in ACCTS
 ```
 
 ```{.k .node .bytes}
