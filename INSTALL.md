@@ -139,14 +139,20 @@ curl -sSL https://get.haskellstack.org/ | sh
 These commands build and install K and KIELE:
 
 ```sh
-git clone git@github.com:runtimeverification/iele-semantics.git
+git clone https://github.com/runtimeverification/iele-semantics.git
 cd iele-semantics
 git submodule update --init --recursive
-curl -sSL https://github.com/kframework/k/releases/download/$(cat deps/k_release)/kframework_5.0.0_amd64_bionic.deb
-sudo apt-get install --yes ./kframework_5.0.0_amd64_bionic.deb
+curl -sSL https://github.com/kframework/k/releases/download/$(cat deps/k_release)/kframework_5.0.0_amd64_bionic.deb --output kframework.deb
+sudo apt-get install --yes ./kframework.deb
 sudo bash -c 'OPAMROOT=/usr/lib/kframework/opamroot k-configure-opam'
 sudo bash -c 'OPAMROOT=/usr/lib/kframework/opamroot opam install --yes ocaml-protoc rlp yojson zarith hex uuidm cryptokit'
 export OPAMROOT=/usr/lib/kframework/opamroot
 eval $(opam config env)
-make COVERAGE=k
+make build -j4
+```
+
+Finally, set the install directory on PATH:
+
+```sh
+export PATH=$(pwd)/.build/lib:$PATH
 ```
