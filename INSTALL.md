@@ -67,21 +67,7 @@ It is safe to skip any of these dependencies that are already installed.
 Follow the instructions below.
 Perform all steps as your normal (non-root) user.
 You may find the same instructions and our public key at <https://runtimeverification.cachix.org>.
-
-#### curl
-
-Install curl using your distribution's package manager:
-
-```.sh
-# Ubuntu and Debian
-sudo apt install curl
-
-# Fedora, RHEL, and CentOS
-sudo yum install curl
-
-# Arch Linux
-sudo pacman -Sy curl
-```
+To follow this instructions, you will need `curl` installed on your system <https://curl.haxx.se/download.html>.
 
 #### Nix
 
