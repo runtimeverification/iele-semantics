@@ -117,6 +117,12 @@ Then you can run an individual test, and see the post-state with:
 kiele interpret tests/iele/danse/factorial/factorial_positive.iele.json.test-assembled
 ```
 
+You may also run the interpreter with the Haskell backend instead (though it is significantly slower):
+
+```sh
+kiele interpret --backend haskell tests/iele/danse/factorial/factorial_positive.iele.json.test-assembled
+```
+
 **NOTE**: Printing the post-state will not work unless you are using a from-source build of KIELE.
           Instead, you should inspect the exit code of `kiele interpret` to see if the test passed or failed, by adding option `--no-unparse` to skip printing the post-state.
 
