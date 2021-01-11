@@ -64,13 +64,18 @@ run_interpret() {
 run_krun() {
     check_k_install
     krun --directory "$backend_dir"                        \
-        -cSCHEDULE="$schedule"      -pSCHEDULE='printf %s' \
-        -cMODE="$mode"              -pMODE='printf %s'     \
+        -cSCHEDULE="$schedule"      -pSCHEDULE='cat' \
         "$run_file" "$@"
 }
 
 run_check() {
-    run_krun --parser "kast --directory $INSTALL_LIB/check -s Contract" --output none "$@"
+    if run_krun --output none "$@"; then
+        echo "Contract is well-formed."
+	exit 0
+    else
+	echo "Contract is ill-formed."
+        exit 1
+    fi
 }
 
 run_vm() {
@@ -120,8 +125,8 @@ backend='standalone'
 [[ "$run_command" != 'check' ]] || backend='check'
 debug=false
 unparse=true
-mode='`NORMAL`(.KList)'
-schedule='`DEFAULT`(.KList)'
+mode='LblNORMAL{}()'
+schedule='LblDEFAULT{}()'
 kiele_port='8545'
 kiele_host='127.0.0.1'
 module='IELE-TESTING'
@@ -133,10 +138,10 @@ while [[ $# -gt 0 ]]; do
         --backend)    backend="$2"              ; shift 2 ;;
         --debug)      debug=true                ; shift   ;;
         --no-unparse) unparse=false             ; shift   ;;
-        --mode)       mode='`'$2'`(.KList)'     ; shift 2 ;;
+        --mode)       mode='Lbl'$2'{}()'        ; shift 2 ;;
         --module)     module="$2"               ; shift 2 ;;
         --definition) definition="$2"           ; shift 2 ;;
-        --schedule)   schedule='`'$2'`(.KList)' ; shift 2 ;;
+        --schedule)   schedule='Lbl'$2'{}()'    ; shift 2 ;;
         -p|--port)    kiele_port="$2"           ; shift 2 ;;
         -h|--host)    kiele_host="$2"           ; shift 2 ;;
         *)            args+=("$1")              ; shift   ;;
@@ -153,7 +158,7 @@ fi
 case "$run_command" in
     assemble)  run_assemble  "$@" ;;
     interpret) run_interpret "$@" ;;
-    krun)      run_krun      "$@" ;;
+    krun)      run_krun      -cMODE="$mode"              -pMODE='cat'   "$@"  ;;
     check)     run_check     "$@" ;;
     vm)        run_vm        "$@" ;;
     *) $0 help ; fatal "Unknown command: $run_command" ;;

@@ -219,7 +219,7 @@ endif
 
 $(BUILD_DIR)/check/well-formedness-kompiled/interpreter: $(checker_files) $(protobuf_out) $(libff_out)
 	$(KOMPILE) --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE --md-selector "(k & ! node) | standalone" \
-	                                --syntax-module IELE-SYNTAX well-formedness.md --directory $(BUILD_DIR)/check --hook-namespaces KRYPTO \
+	                                --syntax-module IELE-SYNTAX well-formedness.md --directory $(BUILD_DIR)/check --hook-namespaces KRYPTO --gen-glr-bison-parser \
 	                                --backend llvm -ccopt $(protobuf_out) $(KOMPILE_CPP_OPTS) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
 
 $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter: MD_SELECTOR="(k & ! node) | standalone"
@@ -303,6 +303,10 @@ install_bins :=      \
 
 install_libs :=                                            \
     standalone/iele-testing-kompiled/syntaxDefinition.kore \
+    standalone/iele-testing-kompiled/macros.kore           \
+    check/well-formedness-kompiled/sort_PGM.txt            \
+    check/well-formedness-kompiled/sort_SCHEDULE.txt       \
+    check/well-formedness-kompiled/parser_PGM              \
     kore-json.py                                           \
     version
 
@@ -314,6 +318,9 @@ $(IELE_LIB)/version:
 	echo "$(KIELE_RELEASE_TAG)" > $@
 
 $(IELE_LIB)/standalone/iele-testing-kompiled/%: $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
+	install -D $(dir $<)$* $@
+
+$(IELE_LIB)/check/well-formedness-kompiled/%: $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
 	install -D $(dir $<)$* $@
 
 $(IELE_LIB)/kore-json.py: kore-json.py
