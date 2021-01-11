@@ -361,17 +361,18 @@ These parsers can interperet hex-encoded strings as `Int`s, `Bytes`s, and `Map`s
 ```
 
 ```k
-    syntax Bytes ::= #parseHexBytes     ( String ) [function]
-                   | #parseHexBytesAux  ( String ) [function]
-                   | #parseByteStack    ( String ) [function, memo]
+    syntax Bytes ::= #parseByteStack    ( String ) [function, memo]
                    | #parseByteStackRaw ( String ) [function]
  // ---------------------------------------------------------------
-    rule #parseByteStack(S) => #parseHexBytes(replaceAll(S, "0x", ""))
-
     rule #parseHexBytes(S)     => #parseHexBytesAux(#alignHexString(S))
     rule #parseHexBytesAux("") => .Bytes
     rule #parseHexBytesAux(S)  => Int2Bytes(lengthString(S) /Int 2, String2Base(S, 16), BE)
       requires lengthString(S) >=Int 2
+
+    syntax Bytes ::= #parseHexBytes     ( String ) [function]
+                   | #parseHexBytesAux  ( String ) [function]
+ // ---------------------------------------------------------
+    rule #parseByteStack(S) => #parseHexBytes(replaceAll(S, "0x", ""))
 
     rule #parseByteStackRaw(S) => String2Bytes(S)
 ```

@@ -807,9 +807,9 @@ Note: These are all functions as the operator `#compute` has already loaded all 
  // ---------------------------------------------
     rule #allBut64th(N) => N -Int (N /Int 64)
 
-    syntax Int ::= G0 ( Schedule , Bytes , Ints )  [function, klabel(G0create)]
+    syntax Int ::= G0 ( Schedule , Bytes  , Ints ) [function, klabel(G0create)]
                  | G0 ( Schedule , String , Ints ) [function, klabel(G0call)]
-                 | G0 ( Schedule , Bytes , Bool )  [function, klabel(G0aux)]
+                 | G0 ( Schedule , Bytes  , Bool ) [function, klabel(G0aux)]
  // ---------------------------------------------------------------------------
     rule G0(SCHED, BS, true)  => Gtxcreate    < SCHED > requires lengthBytes(BS) ==Int 0
     rule G0(SCHED, BS, false) => Gtransaction < SCHED > requires lengthBytes(BS) ==Int 0
