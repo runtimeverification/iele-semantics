@@ -262,14 +262,6 @@ The local memory of execution is a byte-array (instead of a word-array).
     rule #asUnsigned( _, 0, _, X )  => X
     rule #asUnsigned( I, N, BS, X ) => #asUnsigned( I +Int 1, N -Int 1, BS, (X *Int 256) +Int BS[I] ) requires N >Int 0
 
-    syntax Bytes ::= #take ( Int , Bytes ) [function]
- // -------------------------------------------------
-    rule #take(N, BS) => BS[0 .. N]
-
-    syntax Bytes ::= #drop ( Int , Bytes ) [function]
- // -------------------------------------------------
-    rule #drop(N, BS) => BS[N .. lengthBytes(BS) -Int N]
-
     syntax Account ::= #asAccount ( String ) [function]
  // ------------------------------------------------------
     rule #asAccount("") => .Account

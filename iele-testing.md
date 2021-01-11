@@ -577,7 +577,7 @@ The `"transactions"` key loads the transactions.
            <code> CONTRACT </code>
            ...
          </account>
-         requires lengthBytes(CODE) =/=Int 0 andBool #unparseByteStack(CODE) ==String #contractBytes(CONTRACT, #mainContract(CONTRACT))
+         requires lengthBytes(CODE) =/=Int 0 andBool Bytes2String(CODE) ==String #contractBytes(CONTRACT, #mainContract(CONTRACT))
     rule <k> check "account" : { ACCT : { "code" : (CODE:Bytes) } } => . ... </k>
          <account>
            <acctID> ACCT </acctID>
