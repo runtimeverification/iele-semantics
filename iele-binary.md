@@ -118,14 +118,14 @@ contains enough information to determine and decode the rest of the operation.
                     | encodingError()
 ```
 
-After interpreting the strings representing programs as a `WordStack`, it should be changed into a `Contract` for use by the IELE semantics.
+After interpreting the strings representing programs as a `Bytes`, it should be changed into a `Contract` for use by the IELE semantics.
 
--   `#dasmContract` interperets `WordStack` as a `Contract`.
--   `#dasmFunction` interprets a single function of a contract represented as a `WordStack` into a `TopLevelDefinition`
+-   `#dasmContract` interperets `Bytes` as a `Contract`.
+-   `#dasmFunction` interprets a single function of a contract represented as a `Bytes` into a `TopLevelDefinition`
 -   `#dasmInstruction` disassembles the registers for a single instruction.
 -   `#dasmOpCode` interperets a `Int` as an `OpCode`.
 
-```{.k .bytes}
+```k
     syntax Contract ::= #dasmContract ( Bytes , IeleName )                                                                  [function]
                       | #dasmContract ( Int , Int , Bytes , IeleName )                                                      [function]
                       | #dasmContract ( Int , Int , Bytes , Int , Map, IeleName , TopLevelDefinitions, Int , Int , String ) [function]

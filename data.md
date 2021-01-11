@@ -254,7 +254,7 @@ The local memory of execution is a byte-array (instead of a word-array).
 -   `B [ N .. W ]` access the range of `B` beginning with `N` of width `W` (padding with zeros as needed).
 -   `B [ N := B' ]` sets elements starting at $N$ of $B$ to $B'$ (padding with zeros as needed).
 
-```{.k .bytes}
+```k
     syntax Int ::= #asUnsigned ( Int , Int , Bytes )      [function]
                  | #asUnsigned ( Int , Int , Bytes, Int ) [function]
  // ----------------------------------------------------------------
@@ -269,9 +269,7 @@ The local memory of execution is a byte-array (instead of a word-array).
     syntax Bytes ::= #drop ( Int , Bytes ) [function]
  // -------------------------------------------------
     rule #drop(N, BS) => BS[N .. lengthBytes(BS) -Int N]
-```
 
-```k
     syntax Account ::= #asAccount ( String ) [function]
  // ------------------------------------------------------
     rule #asAccount("") => .Account
@@ -344,7 +342,7 @@ Here we provide some standard parser/unparser functions for that format.
 Parsing
 -------
 
-These parsers can interperet hex-encoded strings as `Int`s, `WordStack`s, and `Map`s.
+These parsers can interperet hex-encoded strings as `Int`s, `Bytes`s, and `Map`s.
 
 -   `#parseHexWord` interperets a string as a single hex-encoded `Word`.
 -   `#parseByteStack` interperets a string as a hex-encoded stack of bytes, but makes sure to remove the leading "0x".
@@ -370,7 +368,7 @@ These parsers can interperet hex-encoded strings as `Int`s, `WordStack`s, and `M
     rule #alignHexString(S) => "0" +String S requires notBool lengthString(S) modInt 2 ==Int 0
 ```
 
-```{.k .bytes}
+```k
     syntax Bytes ::= #parseHexBytes     ( String ) [function]
                    | #parseHexBytesAux  ( String ) [function]
                    | #parseByteStack    ( String ) [function, memo]
@@ -401,11 +399,11 @@ These parsers can interperet hex-encoded strings as `Int`s, `WordStack`s, and `M
 Unparsing
 ---------
 
-We need to interperet a `WordStack` as a `String` again so that we can call `Keccak256` on it from `KRYPTO`.
+We need to interperet a `Bytes` as a `String` again so that we can call `Keccak256` on it from `KRYPTO`.
 
--   `#unparseByteStack` turns a stack of bytes (as a `WordStack`) into a `String`.
+-   `#unparseByteStack` turns a stack of bytes (as a `Bytes`) into a `String`.
 
-```{.k .bytes}
+```k
     syntax String ::= #unparseByteStack ( Bytes ) [function, klabel(unparseByteStack), symbol]
  // ------------------------------------------------------------------------------------------
     rule #unparseByteStack(WS) => Bytes2String(WS)
@@ -457,7 +455,7 @@ Encoding
 Decoding
 --------
 
--   `#loadLen` and `#loadOffset` decode a `WordStack` into a single string in an RLP-like encoding which does not allow lists in its structure.
+-   `#loadLen` and `#loadOffset` decode a `Bytes` into a single string in an RLP-like encoding which does not allow lists in its structure.
 -   `#rlpDecode` RLP decodes a single `String` into a `JSON`.
 -   `#rlpDecodeList` RLP decodes a single `String` into a `JSONs`, interpereting the string as the RLP encoding of a list.
 
@@ -465,9 +463,7 @@ Decoding
     syntax LengthPrefixType ::= "#str" | "#list"
     syntax LengthPrefix ::= LengthPrefixType "(" Int "," Int ")"
  // ------------------------------------------------------------
-```
 
-```{.k .bytes}
     syntax Int ::= #loadLen ( Bytes ) [function]
  // --------------------------------------------
     rule #loadLen ( WS ) => 1                                                           requires WS[0]  <Int 128 orBool  WS[0] >=Int 192
@@ -479,9 +475,7 @@ Decoding
     rule #loadOffset ( WS ) => 0              requires WS[0]  <Int 128 orBool  WS[0] >=Int 192
     rule #loadOffset ( WS ) => 1              requires WS[0] >=Int 128 andBool WS[0]  <Int 184
     rule #loadOffset ( WS ) => WS[0] -Int 182 requires WS[0] >=Int 184 andBool WS[0]  <Int 192
-```
 
-```k
     syntax JSON ::= #rlpDecode(String)               [function, klabel(rlpDecode), symbol]
                   | #rlpDecode(String, LengthPrefix) [function, klabel(#rlpDecodeAux)]
  // ----------------------------------------------------------------------------------

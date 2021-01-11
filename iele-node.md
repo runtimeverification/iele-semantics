@@ -37,18 +37,14 @@ module IELE-NODE
 
     syntax String ::= #getCode(Int) [function, hook(BLOCKCHAIN.getCode)]
  // ----------------------------------------------------------------
-```
 
-```{.k .node .bytes}
     rule <k> #lookupCode(ACCT) => . ... </k>
          <account>
            <acctID> ACCT </acctID>
            <code> .Contract => #dasmContract(#parseByteStackRaw(#getCode(ACCT)), Main) </code>
            ...
          </account>
-```
 
-```{.k .node}
     syntax Int ::= #getBlockhash(Int) [function, hook(BLOCKCHAIN.getBlockhash)]
  // -----------------------------------------------------------------------
     rule #exec REG = call @iele.blockhash ( N ) => #load REG #getBlockhash(N)
@@ -60,9 +56,7 @@ module IELE-NODE
 
     rule <k> (.K => #loadAccount ACCTFROM) ~> runVM(... from: ACCTFROM) ... </k>
          <activeAccounts> .Set </activeAccounts>
-```
 
-```{.k .node .bytes}
     rule <k> runVM(true, _, ACCTFROM, CODESTR, ARGS, VALUE, GPRICE, GAVAIL, CB, DIFF, NUMB, GLIMIT, TS, _)
           => #fun(CODE => #fun(CONTRACT =>
              #checkContract CONTRACT
@@ -87,9 +81,7 @@ module IELE-NODE
          </account>
          <activeAccounts> ACCTS </activeAccounts>
       requires ACCTFROM in ACCTS
-```
 
-```{.k .node}
     rule <k> runVM(false, ACCTTO, ACCTFROM, _, ARGS, VALUE, GPRICE, GAVAIL, CB, DIFF, NUMB, GLIMIT, TS, FUNC)
           => #call ACCTFROM ACCTTO @ String2IeleName(FUNC) (GAVAIL *Int Sgasdivisor < SCHED >) VALUE #toInts(ARGS) false
           ~> #endVM

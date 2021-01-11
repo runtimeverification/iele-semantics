@@ -95,9 +95,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
  // --------------------------------
     rule <k> startTx => #finalizeBlock ... </k>
          <txPending> .List </txPending>
-```
 
-```{.k .standalone .bytes}
     rule <k> startTx => loadTx(TS) ... </k>
          <txPending> ListItem(TXID:Int) ... </txPending>
          <message>
@@ -367,13 +365,7 @@ Here we perform pre-proccesing on account data which allows "pretty" specificati
 
     rule load "account" : { (ACCT:Int) : { "balance" : ((VAL:String)         => #parseWord(VAL)) } }
     rule load "account" : { (ACCT:Int) : { "nonce"   : ((VAL:String)         => #parseWord(VAL)) } }
-```
-
-```{.k .standalone .bytes}
     rule load "account" : { (ACCT:Int) : { "code"    : ((CODE:String)        => #parseByteStack(CODE)) } }
-```
-
-```{.k .standalone}
     rule load "account" : { (ACCT:Int) : { "storage" : ({ STORAGE:JSONs } => #parseMap({ STORAGE })) } }
 
 ```
@@ -387,18 +379,14 @@ The individual fields of the accounts are dealt with here.
            <balance> _ => BAL </balance>
            ...
          </account>
-```
 
-```{.k .standalone .bytes}
     rule <k> load "account" : { ACCT : { "code" : (CODE:Bytes) } } => . ... </k>
          <account>
            <acctID> ACCT </acctID>
            <code> _ => #dasmContract(CODE, Main) </code>
            ...
          </account>
-```
 
-```{.k .standalone}
     rule <k> load "account" : { ACCT : { "nonce" : (NONCE:Int) } } => . ... </k>
          <account>
            <acctID> ACCT </acctID>
@@ -441,9 +429,6 @@ Here we load the environmental information.
     rule <k> load "exec" : { "gas"      : (GAVAIL:Int)   } => . ... </k> <gas>       _ => GAVAIL   </gas>
     rule <k> load "exec" : { "value"    : (VALUE:Int)    } => . ... </k> <callValue> _ => VALUE    </callValue>
     rule <k> load "exec" : { "origin"   : (ORIG:Int)     } => . ... </k> <origin>    _ => ORIG     </origin>
-```
-
-```{.k .standalone .bytes}
     rule <k> load "exec" : { "code"     : ((CODE:String)   => #parseByteStack(CODE)) } ... </k>
 
     rule load "exec" : { "data" : ((DATA:String) => #parseByteStack(DATA)) }
@@ -511,9 +496,7 @@ The `"transactions"` key loads the transactions.
 
 ```{.k .standalone}
     rule load "transactions" : { TX } => load "transactionsSorted" : { #sortJSONList(TX) }
-```
 
-```{.k .standalone .bytes}
     rule <k> load "transactionsSorted" : { "arguments" : [ ARGS ],  "contractCode" : TI , "from" : FROM, "function" : FUNC, "gasLimit" : TG , "gasPrice" : TP , "nonce" : TN , "to" : TT , "value" : TV , .JSONs } => . ... </k>
          <txOrder>   ... .List => ListItem(!ID) </txOrder>
          <txPending> ... .List => ListItem(!ID) </txPending>
@@ -534,9 +517,7 @@ The `"transactions"` key loads the transactions.
            )
            ...
          </messages>
-```
 
-```{.k .standalone}
     syntax Ints ::= #toInts ( JSONs ) [function]
  // -----------------------------------------------
     rule #toInts(.JSONs) => .Ints
@@ -564,13 +545,7 @@ The `"transactions"` key loads the transactions.
     rule check "account" : { ((ACCTID:String) => #parseAddr(ACCTID)) : ACCT }
     rule check "account" : { (ACCT:Int) : { "balance" : ((VAL:String)         => #parseWord(VAL)) } }
     rule check "account" : { (ACCT:Int) : { "nonce"   : ((VAL:String)         => #parseWord(VAL)) } }
-```
-
-```{.k .standalone .bytes}
     rule check "account" : { (ACCT:Int) : { "code"    : ((CODE:String)        => #parseByteStack(CODE)) } }
-```
-
-```{.k .standalone}
     rule check "account" : { (ACCT:Int) : { "storage" : ({ STORAGE:JSONs } => #parseMap({ STORAGE })) } }
 
 
@@ -595,9 +570,7 @@ The `"transactions"` key loads the transactions.
            ...
          </account>
       requires #removeZeros(ACCTSTORAGE) ==K STORAGE
-```
 
-```{.k .standalone .bytes}
     rule <k> check "account" : { ACCT : { "code" : (CODE:Bytes) } } => . ... </k>
          <account>
            <acctID> ACCT </acctID>
