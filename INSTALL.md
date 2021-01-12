@@ -67,21 +67,7 @@ It is safe to skip any of these dependencies that are already installed.
 Follow the instructions below.
 Perform all steps as your normal (non-root) user.
 You may find the same instructions and our public key at <https://runtimeverification.cachix.org>.
-
-#### curl
-
-Install curl using your distribution's package manager:
-
-```.sh
-# Ubuntu and Debian
-sudo apt install curl
-
-# Fedora, RHEL, and CentOS
-sudo yum install curl
-
-# Arch Linux
-sudo pacman -Sy curl
-```
+To follow this instructions, you will need `curl` installed on your system <https://curl.haxx.se/download.html>.
 
 #### Nix
 
@@ -153,14 +139,20 @@ curl -sSL https://get.haskellstack.org/ | sh
 These commands build and install K and KIELE:
 
 ```sh
-git clone git@github.com:runtimeverification/iele-semantics.git
+git clone https://github.com/runtimeverification/iele-semantics.git
 cd iele-semantics
 git submodule update --init --recursive
-curl -sSL https://github.com/kframework/k/releases/download/$(cat deps/k_release)/kframework_5.0.0_amd64_bionic.deb
-sudo apt-get install --yes ./kframework_5.0.0_amd64_bionic.deb
+curl -sSL https://github.com/kframework/k/releases/download/$(cat deps/k_release)/kframework_5.0.0_amd64_bionic.deb --output kframework.deb
+sudo apt-get install --yes ./kframework.deb
 sudo bash -c 'OPAMROOT=/usr/lib/kframework/opamroot k-configure-opam'
 sudo bash -c 'OPAMROOT=/usr/lib/kframework/opamroot opam install --yes ocaml-protoc rlp yojson zarith hex uuidm cryptokit'
 export OPAMROOT=/usr/lib/kframework/opamroot
 eval $(opam config env)
-make COVERAGE=k
+make build -j4
+```
+
+Finally, set the install directory on PATH:
+
+```sh
+export PATH=$(pwd)/.build/lib:$PATH
 ```
