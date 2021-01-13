@@ -35,6 +35,7 @@ IELE_BIN         := $(BUILD_DIR)/bin
 IELE_LIB         := $(BUILD_DIR)/lib/kiele
 IELE_ASSEMBLE    := $(IELE_BIN)/iele-assemble
 IELE_INTERPRETER := $(IELE_BIN)/iele-interpreter
+IELE_COVERAGE    := $(IELE_BIN)/iele-coverage
 IELE_CHECK       := $(IELE_BIN)/iele-check
 IELE_VM          := $(IELE_BIN)/iele-vm
 IELE_TEST_VM     := $(IELE_BIN)/iele-test-vm
@@ -43,7 +44,7 @@ IELE_TEST_CLIENT := $(IELE_BIN)/iele-test-client
 export PATH:=$(IELE_BIN):$(PATH)
 
 .PHONY: all clean distclean libff protobuf coverage \
-        build build-interpreter build-vm build-haskell build-node build-testnode \
+        build build-interpreter build-coverage build-vm build-haskell build-node build-testnode \
 		install install-interpreter install-vm uninstall \
         split-tests split-vm-tests split-blockchain-tests \
         test-evm test-vm test-blockchain test-wellformed test-bad-packet test-interactive \
@@ -189,7 +190,7 @@ tests/evm-to-iele/evm-to-iele: $(wildcard tests/evm-to-iele/*.ml tests/evm-to-ie
 # Build Source Files
 # ------------------
 
-k_files:=iele-testing.md data.md iele.md iele-gas.md iele-binary.md plugin/plugin/krypto.md iele-syntax.md iele-node.md well-formedness.md
+k_files:=iele-testing.md data.md iele.md iele-gas.md iele-binary.md plugin/plugin/krypto.md iele-syntax.md iele-node.md well-formedness.md iele-coverage.md
 checker_files:=iele-syntax.md well-formedness.md data.md
 
 # LLVM Builds
@@ -231,6 +232,12 @@ $(BUILD_DIR)/%/iele-testing-kompiled/interpreter: $(k_files) $(protobuf_out) $(l
 					--syntax-module IELE-SYNTAX iele-testing.md --directory $(BUILD_DIR)/$* --hook-namespaces "KRYPTO BLOCKCHAIN" \
 	                --backend llvm -ccopt $(protobuf_out) $(KOMPILE_CPP_OPTS) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
 
+$(BUILD_DIR)/coverage/iele-coverage-kompiled/interpreter: $(k_files) $(protobuf_out) $(libff_out)
+	@echo "== kompile: $@"
+	$(KOMPILE) --debug --main-module IELE-COVERAGE --verbose --md-selector "(k & ! node) | standalone" \
+					--syntax-module IELE-SYNTAX iele-coverage.md --directory $(BUILD_DIR)/coverage --hook-namespaces "KRYPTO BLOCKCHAIN" \
+	                --backend llvm -ccopt $(protobuf_out) $(KOMPILE_CPP_OPTS) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
+
 LLVM_KOMPILE_INCLUDE_OPTS := -I $(PLUGIN)/plugin-c/ -I $(PROTO) -I $(BUILD_DIR)/plugin-node -I vm/c/ -I vm/c/iele/ -I $(LOCAL_INCLUDE)
 LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(LOCAL_LIB) -lff -lprotobuf -lgmp -lprocps -lcryptopp -lsecp256k1 -lssl -lcrypto
 ifeq ($(UNAME_S),Darwin)
@@ -245,6 +252,12 @@ $(IELE_CHECK): $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
 build-interpreter: $(IELE_INTERPRETER)
 
 $(IELE_INTERPRETER): $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
+	@mkdir -p $(IELE_BIN)
+	cp $< $@
+
+build-coverage: $(IELE_COVERAGE) $(IELE_LIB)/coverage/iele-coverage-kompiled/syntaxDefinition.kore
+
+$(IELE_COVERAGE): $(BUILD_DIR)/coverage/iele-coverage-kompiled/interpreter
 	@mkdir -p $(IELE_BIN)
 	cp $< $@
 
@@ -297,6 +310,7 @@ install_bins :=      \
     iele-assemble    \
     iele-check       \
     iele-interpreter \
+    iele-coverage    \
     iele-test-vm     \
     iele-vm          \
     kiele
@@ -314,6 +328,9 @@ $(IELE_LIB)/version:
 	echo "$(KIELE_RELEASE_TAG)" > $@
 
 $(IELE_LIB)/standalone/iele-testing-kompiled/%: $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
+	install -D $(dir $<)$* $@
+
+$(IELE_LIB)/coverage/iele-coverage-kompiled/%: $(BUILD_DIR)/coverage/iele-coverage-kompiled/interpreter
 	install -D $(dir $<)$* $@
 
 $(IELE_LIB)/kore-json.py: kore-json.py
