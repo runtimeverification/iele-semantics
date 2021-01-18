@@ -44,7 +44,7 @@ run_interpret() {
         standalone)
             debugger=()
             ! $debug || debugger+=(gdb --args)
-            "${debugger[@]}"  iele-interpreter "$kast" -1 "$output" "$@" || status="$?"
+            "${debugger[@]}"  iele-interpreter "$kast" "$depth" "$output" "$@" || status="$?"
             ;;
         haskell)
             check_k_install
@@ -55,7 +55,7 @@ run_interpret() {
             definition='iele-coverage'
             debugger=()
             ! $debug || debugger+=(gdb --args)
-            "${debugger[@]}"  iele-coverage "$kast" -1 "$output" "$@" || status="$?"
+            "${debugger[@]}"  iele-coverage "$kast" "$depth" "$output" "$@" || status="$?"
             ;;
         *)
             fatal "Unknown backend: $backend"
@@ -112,7 +112,7 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
                  <assemble arg> is an argument to the assembler
                  <interpret arg> is an argument you want to pass to the interpreter
                  <K arg> is an argument you want to pass to K
-                 <KIELE arg> is one of (--no-unparse|--debug|--host|--port|--mode|--schedule|--module|--definition)
+                 <KIELE arg> is one of (--no-unparse|--debug|--host|--port|--mode|--schedule|--module|--definition|--depth)
     "
     exit 0
 fi
@@ -133,6 +133,7 @@ kiele_port='8545'
 kiele_host='127.0.0.1'
 module='IELE-TESTING'
 definition='iele-testing'
+depth=-1
 args=()
 while [[ $# -gt 0 ]]; do
     arg="$1"
@@ -144,6 +145,7 @@ while [[ $# -gt 0 ]]; do
         --module)     module="$2"               ; shift 2 ;;
         --definition) definition="$2"           ; shift 2 ;;
         --schedule)   schedule='`'$2'`(.KList)' ; shift 2 ;;
+        --depth)      depth=$2                  ; shift 2 ;;
         -p|--port)    kiele_port="$2"           ; shift 2 ;;
         -h|--host)    kiele_host="$2"           ; shift 2 ;;
         *)            args+=("$1")              ; shift   ;;
