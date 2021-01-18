@@ -195,6 +195,14 @@ checker_files:=iele-syntax.md well-formedness.md data.md
 # LLVM Builds
 # -----------
 
+UNAME_S := $(shell uname -s)
+
+ifeq ($(UNAME_S),Darwin)
+OPENSSL_ROOT       := $(shell brew --prefix openssl)
+MACOS_INCLUDE_OPTS := -ccopt -I -ccopt $(OPENSSL_ROOT)/include
+MACOS_LINK_OPTS    := -ccopt -L -ccopt $(OPENSSL_ROOT)/lib
+endif
+
 build-node: $(IELE_VM)
 build-testnode : $(IELE_TEST_VM) $(IELE_TEST_CLIENT)
 
@@ -204,6 +212,10 @@ KOMPILE_INCLUDE_OPTS := -ccopt -I -ccopt $(PLUGIN)/plugin-c -ccopt -I -ccopt $(P
 KOMPILE_LINK_OPTS    := -ccopt -L -ccopt /usr/local/lib -ccopt -L -ccopt $(LOCAL_LIB) -ccopt -lprotobuf -ccopt -lff -ccopt -lcryptopp -ccopt -lsecp256k1 -ccopt -lprocps -ccopt -lssl -ccopt -lcrypto
 KOMPILE_CPP_FILES    := $(PLUGIN)/plugin-c/k.cpp $(PLUGIN)/plugin-c/crypto.cpp $(PROTO)/blockchain.cpp $(PROTO)/world.cpp $(PLUGIN)/plugin-c/blake2.cpp $(PLUGIN)/plugin-c/plugin_util.cpp
 KOMPILE_CPP_OPTS     := $(addprefix -ccopt , $(KOMPILE_CPP_FILES))
+ifeq ($(UNAME_S),Darwin)
+KOMPILE_INCLUDE_OPTS += $(MACOS_INCLUDE_OPTS)
+KOMPILE_LINK_OPTS    += $(MACOS_LINK_OPTS)
+endif
 
 $(BUILD_DIR)/check/well-formedness-kompiled/interpreter: $(checker_files) $(protobuf_out) $(libff_out)
 	$(KOMPILE) --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE --md-selector "(k & ! node) | standalone" \
@@ -221,6 +233,10 @@ $(BUILD_DIR)/%/iele-testing-kompiled/interpreter: $(k_files) $(protobuf_out) $(l
 
 LLVM_KOMPILE_INCLUDE_OPTS := -I $(PLUGIN)/plugin-c/ -I $(PROTO) -I $(BUILD_DIR)/plugin-node -I vm/c/ -I vm/c/iele/ -I $(LOCAL_INCLUDE)
 LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(LOCAL_LIB) -lff -lprotobuf -lgmp -lprocps -lcryptopp -lsecp256k1
+ifeq ($(UNAME_S),Darwin)
+LLVM_KOMPILE_INCLUDE_OPTS += $(MACOS_INCLUDE_OPTS)
+LLVM_KOMPILE_LINK_OPTS    += $(MACOS_LINK_OPTS)
+endif
 
 $(IELE_CHECK): $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
 	@mkdir -p $(IELE_BIN)
