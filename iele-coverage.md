@@ -38,16 +38,87 @@ module IELE-COVERAGE
          <bytecodeCoverages>
            ( .Bag
           => <bytecodeCoverage>
-               <bytecodeHash> HASH                                                </bytecodeHash>
-               <bytecode>     #contractBytes(CONTRACT)                            </bytecode>
-               <coverageData> .Bytes[0 .. lengthString(#contractBytes(CONTRACT))] </coverageData>
+               <bytecodeHash> HASH                                               </bytecodeHash>
+               <bytecode>     #contractBytes(CONTRACT)                           </bytecode>
+               <coverageData> padRightBytes(.Bytes, #sizeContract(CONTRACT), 48) </coverageData>
                ...
              </bytecodeCoverage>
            )
            ...
          </bytecodeCoverages>
       [owise]
+```
 
+Semantics Overrides
+===================
+
+- These higher priority rules inject coverage related semantics into already existing rules
+
+```k
+    rule <k> #mkCall ACCTFROM ACCTTO CODE FUNC GLIMIT VALUE ARGS STATIC:Bool
+          => #initCoverage(CODE) ~> #initVM(ARGS) ~> #initFun(FUNC, #sizeRegs(ARGS), false)
+         ...
+         </k>
+         <callDepth> CD => CD +Int 1 </callDepth>
+         <callData> _ => ARGS </callData>
+         <callValue> _ => VALUE </callValue>
+         <id> _ => ACCTTO </id>
+         <gas> _ => GLIMIT </gas>
+         <caller> _ => ACCTFROM </caller>
+         (<program> _ </program> => CODE:ProgramCell)
+         <static> OLDSTATIC:Bool => OLDSTATIC orBool STATIC </static>
+      [priority(35)]
+
+    rule <mode> EXECMODE </mode>
+         <k> #mkCreate ACCTFROM ACCTTO CODE GAVAIL VALUE ARGS
+          => #initCoverage( CODE, #parseHexWord(Keccak256(#contractBytes(CODE))) ) ~> #initVM(ARGS) ~> #initFun(init, #sizeRegs(ARGS), true)
+         ...
+         </k>
+         <schedule> SCHED </schedule>
+         <id> ACCT => ACCTTO </id>
+         <gas> OLDGAVAIL => GAVAIL </gas>
+         (<program> _ </program> => #loadCode(CODE))
+         <caller> _ => ACCTFROM </caller>
+         <callDepth> CD => CD +Int 1 </callDepth>
+         <callData> _ => .Ints </callData>
+         <callValue> _ => VALUE </callValue>
+         <account>
+           <acctID> ACCTTO </acctID>
+           <nonce> NONCE => NONCE +Int 1 </nonce>
+           ...
+         </account>
+      [priority(35)]
+
+    rule <k> #popCallStack => #initCoverage( <program> PROGRAM </program> ) ... </k>
+         <callFrame> _ => <program> PROGRAM </program> FRAME </callFrame>
+         <callStack> (ListItem(<callFrame> <program> PROGRAM </program> FRAME </callFrame>) => .List) ... </callStack> [priority(35)]
+
+    rule <k> index( _, OP ) OPS::Instructions BLOCKS::LabeledBlocks => OP OPS BLOCKS ... </k> <typeChecking> true </typeChecking> [priority(35)]
+    rule <k> index( _, OP ) OPS::Instructions                       => OP OPS        ... </k> <typeChecking> true </typeChecking> [priority(35)]
+
+    rule <typeChecking> false </typeChecking>
+         <k> index( I, OP ) OPS::Instructions BLOCKS::LabeledBlocks => OP OPS BLOCKS ... </k>
+         <coverageHash> HASH </coverageHash>
+         <bytecodeCoverage>
+           <bytecodeHash> HASH                  </bytecodeHash>
+           <coverageData> DATA => DATA[I <- 49] </coverageData>
+           ...
+         </bytecodeCoverage>
+      [priority(35)]
+
+    rule <typeChecking> false </typeChecking>
+         <k> index( I, OP ) OPS::Instructions => OP OPS ... </k>
+         <coverageHash> HASH </coverageHash>
+         <bytecodeCoverage>
+           <bytecodeHash> HASH                  </bytecodeHash>
+           <coverageData> DATA => DATA[I <- 49] </coverageData>
+           ...
+         </bytecodeCoverage>
+      [priority(35)]
+
+    rule #dasmContract( BS, NAME ) => #indexContract( #dasmContract( 0, lengthBytes(BS), BS, NAME ) ) [priority(35)]
+
+    rule #registers( index( _, OP) => OP )
 ```
 
 Index Contract Instructions
@@ -121,8 +192,8 @@ Index the Instructions
                        )
 ```
 
-indexContract Helpers
----------------------
+Helper Functions
+----------------
 
 - FUNC.withBlocks( BLOCKS ) : Insert Blocks into a function definition
 - FUNC.blocks               : Get the Blocks from a function definition
@@ -130,6 +201,7 @@ indexContract Helpers
 - CONTRACT.defs             : Get the TopLevelDefinitions from a contract
 - CONTRACT.withNoDefs       : Get a contract without its TopLevelDefinitions
 - #reverse{Contract,Defs}   : Reverse a list of ContractDefinition or TopLevelDefinition
+- #sizeContract( CONTRACT ) : Get the size of a contract in Instructions
 
 ```k
     syntax FunctionDefinition ::= FunctionDefinition ".withBlocks" "(" Blocks ")" [function]
@@ -169,6 +241,24 @@ indexContract Helpers
     rule #reverseDefs( DEFS ) => #reverseDefs( DEFS, .TopLevelDefinitions )
     rule #reverseDefs( DEF DEFS,             RESULT ) => #reverseDefs( DEFS, DEF RESULT )
     rule #reverseDefs( .TopLevelDefinitions, RESULT ) => RESULT
+
+    syntax Int ::= #sizeContract( Contract ) [function]
+                 | #sizeContract( K, Int )   [function, klabel(contractSizeAux)]
+ // ----------------------------------------------------------------------------
+    rule #sizeContract( CONTRACT ) => #sizeContract( CONTRACT, 0 )
+
+    rule #sizeContract( .Contract ~> _, I ) => I
+
+    rule #sizeContract( ( CONTRACT:ContractDefinition CONTRACTS:Contract => CONTRACT ~> CONTRACTS ) ~> _, _ )
+    rule #sizeContract( ( CONTRACT:ContractDefinition => CONTRACT.defs ) ~> _, _ )
+    rule #sizeContract( ( .TopLevelDefinitions => .K ) ~> _, _ )
+    rule #sizeContract( ( DEF:TopLevelDefinition DEFS:TopLevelDefinitions => DEF ~> DEFS ) ~> _, _ )
+    rule #sizeContract( ( DEF:TopLevelDefinition => .K ) ~> _, _ ) requires isGlobalDefinition(DEF) orBool isContractDeclaration(DEF)
+    rule #sizeContract( ( FUNC => FUNC.blocks ) ~> _, _ )
+    rule #sizeContract( ( .Instructions .LabeledBlocks => .K ) ~> _, _ )
+    rule #sizeContract( (               .LabeledBlocks => .K ) ~> _, _ )
+    rule #sizeContract( ( .Instructions _ : UNLABELEDBLOCK:Instructions LABELEDBLOCKS:LabeledBlocks => UNLABELEDBLOCK LABELEDBLOCKS ) ~> _, _ )
+    rule #sizeContract( ( INSTR UNLABELEDBLOCK:Instructions LABELEDBLOCKS:LabeledBlocks => UNLABELEDBLOCK LABELEDBLOCKS ) ~> _, I => I +Int 1 )
 
 endmodule
 ```
