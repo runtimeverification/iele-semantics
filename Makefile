@@ -89,6 +89,7 @@ TEST_BACKEND  = standalone
 TEST_MODE     = NORMAL
 TEST_SCHEDULE = DEFAULT
 TEST_PORT     = 10000
+TEST_ARGS     = --no-unparse
 
 split-tests: split-vm-tests split-blockchain-tests
 
@@ -167,7 +168,7 @@ tests/VMTests/%:        TEST_MODE     = VMTESTS
 %.iele.test-wellformed: TEST_SCHEDULE = DANSE
 
 %.json.test: %.json.test-assembled
-	$(TEST) interpret --backend $(TEST_BACKEND) --mode $(TEST_MODE) --schedule $(TEST_SCHEDULE) --no-unparse $<
+	$(TEST) interpret --backend $(TEST_BACKEND) --mode $(TEST_MODE) --schedule $(TEST_SCHEDULE) $(TEST_ARGS) $<
 
 %.json.test-assembled: %.json
 	$(TEST_ASSEMBLE) $< > $@
