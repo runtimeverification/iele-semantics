@@ -433,7 +433,7 @@ Here we load the environmental information.
 
     rule load "exec" : { "data" : ((DATA:String) => #parseByteStack(DATA)) }
     rule load "exec" : { "data" : ((DATA:Bytes) => [Bytes2Int(DATA, BE, Unsigned), lengthBytes(DATA)]) }
- // -----------------------------------------------------------------------------------------------
+ // ----------------------------------------------------------------------------------------------------
     rule <k> load "exec" : { "data" : [DATA:Int, LEN:Int] } => . ... </k> <callData> _ => LEN , DATA , .Ints </callData>
     rule <k> load "exec" : { "code" : (CODE:Bytes) } => . ... </k>
          (<program>  _ </program> => #loadCode(#dasmContract(CODE, Main)))
