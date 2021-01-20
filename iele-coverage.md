@@ -7,8 +7,9 @@ module IELE-COVERAGE
     configuration
         <kiele/>
         <coverage>
-          <coverageHash>  0 </coverageHash>
-          <coverageIndex> 0 </coverageIndex>
+          <coverageHash>   0         </coverageHash>
+          <coverageIndex>  0         </coverageIndex>
+          <opcodeCoverage> .Coverage </opcodeCoverage>
           <bytecodeCoverages>
             <bytecodeCoverage multiplicity="*" type="Map">
               <bytecodeHash> 0      </bytecodeHash>
@@ -17,106 +18,104 @@ module IELE-COVERAGE
             </bytecodeCoverage>
           </bytecodeCoverages>
         </coverage>
+```
 
-    syntax KItem ::= #initCoverage( ProgramCell )
-                   | #initCoverage( Contract, Int )
- // -----------------------------------------------
-    rule <k> #initCoverage( <program> ... <contractCode> CONTRACT </contractCode> </program> )
-          => #initCoverage( CONTRACT, #parseHexWord(Keccak256(#contractBytes(CONTRACT))) ) ... </k>
+Coverage Initialization Semantics
+=================================
 
-    rule <k> #initCoverage( CONTRACT, HASH ) => . ... </k>
-         <coverageHash> _ => HASH </coverageHash>
-         <bytecodeCoverage>
-           <bytecodeHash> HASH </bytecodeHash>
-           <bytecode>     CODE </bytecode>
-           <coverageData> _    </coverageData>
-         </bytecodeCoverage>
+```k
+    syntax KItem ::= "#initCoverage"
+                   | "#finishCoverage"
+ // ----------------------------------
+    rule <k> #initCoverage => . ... </k>
+         <contractCode> CONTRACT </contractCode>
+         <coverageHash> HASH </coverageHash>
+         <opcodeCoverage> _ => coverage() </opcodeCoverage>
+         <bytecodeCoverage> <bytecodeHash> HASH </bytecodeHash> <bytecode> CODE </bytecode> ... </bytecodeCoverage>
       requires CODE ==String #contractBytes(CONTRACT)
 
-    rule <k> #initCoverage( CONTRACT, HASH ) => . ... </k>
-         <coverageHash> _ => HASH </coverageHash>
+    rule <k> #initCoverage ... </k>
+         <contractCode> CONTRACT </contractCode>
+         <coverageHash> HASH => keccak(String2Bytes(#contractBytes(CONTRACT))) </coverageHash>
+         <bytecodeCoverage> <bytecodeHash> HASH </bytecodeHash> <bytecode> CODE </bytecode> ... </bytecodeCoverage>
+      requires CODE =/=String #contractBytes(CONTRACT)
+
+    rule <k> #initCoverage ... </k>
+         <contractCode> CONTRACT </contractCode>
+         <coverageHash> _ => keccak(String2Bytes(#contractBytes(CONTRACT))) </coverageHash>
          <bytecodeCoverages>
            ( .Bag
           => <bytecodeCoverage>
-               <bytecodeHash> HASH                                               </bytecodeHash>
+               <bytecodeHash> keccak(String2Bytes(#contractBytes(CONTRACT)))     </bytecodeHash>
                <bytecode>     #contractBytes(CONTRACT)                           </bytecode>
-               <coverageData> padRightBytes(.Bytes, #sizeContract(CONTRACT), 48) </coverageData>
+               <coverageData> padRightBytes(.Bytes, #sizeContract(CONTRACT), 0) </coverageData>
                ...
              </bytecodeCoverage>
            )
            ...
          </bytecodeCoverages>
       [owise]
+
+
+    rule <k> #finishCoverage => . ... </k>
+         <coverageHash>  HASH </coverageHash>
+         <coverageIndex> I    </coverageIndex>
+         <opcodeCoverage> OPCODE_COVERAGE => .Coverage </opcodeCoverage>
+         <bytecodeCoverage>
+           <bytecodeHash> HASH </bytecodeHash>
+           <coverageData> DATA => DATA[I <- DATA[I] |Int #coverageAsByte(OPCODE_COVERAGE)] </coverageData>
+           ...
+         </bytecodeCoverage>
+
+    rule <typeChecking> false </typeChecking>
+         <k> index( I, OP ) OPS::Instructions BLOCKS::LabeledBlocks => OP OPS BLOCKS ... </k>
+         <coverageIndex>  _ => I    </coverageIndex>
+         <opcodeCoverage> .Coverage </opcodeCoverage>
+      [priority(35)]
+
+    rule <typeChecking> false </typeChecking>
+         <k> index( I, OP ) OPS::Instructions => OP OPS ... </k>
+         <coverageIndex>  _ => I    </coverageIndex>
+         <opcodeCoverage> .Coverage </opcodeCoverage>
+      [priority(35)]
+
+```
+
+Coverage Collection Semantics
+=============================
+
+```k
+    syntax Coverage ::= ".Coverage" | coverage ( visited: Bool, exception: Bool, b3: Bool, b4: Bool, b5: Bool, b6: Bool, b7: Bool, b8: Bool )
+ // -----------------------------------------------------------------------------------------------------------------------------------------
+
+    syntax Coverage ::= coverage() [function]
+ // -----------------------------------------
+    rule coverage() => coverage( false, false, false, false, false, false, false, false )
+
+    syntax Int ::= #coverageAsByte    ( Coverage       ) [function]
+                 | #coverageAsByteAux ( Coverage , Int ) [function]
+ // ---------------------------------------------------------------
+    rule #coverageAsByte(C) => #coverageAsByteAux(C, 0)
+
+    rule #coverageAsByteAux(_, B) => B [owise]
+    rule #coverageAsByteAux( coverage(... visited   : true => false) , B => B |Int 1   )
+    rule #coverageAsByteAux( coverage(... exception : true => false) , B => B |Int 2   )
+    rule #coverageAsByteAux( coverage(... b3        : true => false) , B => B |Int 4   )
+    rule #coverageAsByteAux( coverage(... b4        : true => false) , B => B |Int 8   )
+    rule #coverageAsByteAux( coverage(... b5        : true => false) , B => B |Int 16  )
+    rule #coverageAsByteAux( coverage(... b6        : true => false) , B => B |Int 32  )
+    rule #coverageAsByteAux( coverage(... b7        : true => false) , B => B |Int 64  )
+    rule #coverageAsByteAux( coverage(... b8        : true => false) , B => B |Int 128 )
 ```
 
 Semantics Overrides
 ===================
 
-- These higher priority rules inject coverage related semantics into already existing rules
+- These rules work around issues of already existing rules made by the coverage semantics
 
 ```k
-    rule <k> #mkCall ACCTFROM ACCTTO CODE FUNC GLIMIT VALUE ARGS STATIC:Bool
-          => #initCoverage(CODE) ~> #initVM(ARGS) ~> #initFun(FUNC, #sizeRegs(ARGS), false)
-         ...
-         </k>
-         <callDepth> CD => CD +Int 1 </callDepth>
-         <callData> _ => ARGS </callData>
-         <callValue> _ => VALUE </callValue>
-         <id> _ => ACCTTO </id>
-         <gas> _ => GLIMIT </gas>
-         <caller> _ => ACCTFROM </caller>
-         (<program> _ </program> => CODE:ProgramCell)
-         <static> OLDSTATIC:Bool => OLDSTATIC orBool STATIC </static>
-      [priority(35)]
-
-    rule <mode> EXECMODE </mode>
-         <k> #mkCreate ACCTFROM ACCTTO CODE GAVAIL VALUE ARGS
-          => #initCoverage( CODE, #parseHexWord(Keccak256(#contractBytes(CODE))) ) ~> #initVM(ARGS) ~> #initFun(init, #sizeRegs(ARGS), true)
-         ...
-         </k>
-         <schedule> SCHED </schedule>
-         <id> ACCT => ACCTTO </id>
-         <gas> OLDGAVAIL => GAVAIL </gas>
-         (<program> _ </program> => #loadCode(CODE))
-         <caller> _ => ACCTFROM </caller>
-         <callDepth> CD => CD +Int 1 </callDepth>
-         <callData> _ => .Ints </callData>
-         <callValue> _ => VALUE </callValue>
-         <account>
-           <acctID> ACCTTO </acctID>
-           <nonce> NONCE => NONCE +Int 1 </nonce>
-           ...
-         </account>
-      [priority(35)]
-
-    rule <k> #popCallStack => #initCoverage( <program> PROGRAM </program> ) ... </k>
-         <callFrame> _ => <program> PROGRAM </program> FRAME </callFrame>
-         <callStack> (ListItem(<callFrame> <program> PROGRAM </program> FRAME </callFrame>) => .List) ... </callStack> [priority(35)]
-
     rule <k> index( _, OP ) OPS::Instructions BLOCKS::LabeledBlocks => OP OPS BLOCKS ... </k> <typeChecking> true </typeChecking> [priority(35)]
     rule <k> index( _, OP ) OPS::Instructions                       => OP OPS        ... </k> <typeChecking> true </typeChecking> [priority(35)]
-
-    rule <typeChecking> false </typeChecking>
-         <k> index( I, OP ) OPS::Instructions BLOCKS::LabeledBlocks => OP OPS BLOCKS ... </k>
-         <coverageHash> HASH </coverageHash>
-         <bytecodeCoverage>
-           <bytecodeHash> HASH                  </bytecodeHash>
-           <coverageData> DATA => DATA[I <- 49] </coverageData>
-           ...
-         </bytecodeCoverage>
-      [priority(35)]
-
-    rule <typeChecking> false </typeChecking>
-         <k> index( I, OP ) OPS::Instructions => OP OPS ... </k>
-         <coverageHash> HASH </coverageHash>
-         <bytecodeCoverage>
-           <bytecodeHash> HASH                  </bytecodeHash>
-           <coverageData> DATA => DATA[I <- 49] </coverageData>
-           ...
-         </bytecodeCoverage>
-      [priority(35)]
-
-    rule #dasmContract( BS, NAME ) => #indexContract( #dasmContract( 0, lengthBytes(BS), BS, NAME ) ) [priority(35)]
 
     rule #registers( index( _, OP) => OP )
 ```
@@ -128,6 +127,8 @@ Index Contract Instructions
 - #indexContract will traverse a Contract and give an index to each of the instructions in the ContractDefinitions.
 
 ```k
+    rule #dasmContract( BS, NAME ) => #indexContract( #dasmContract( 0, lengthBytes(BS), BS, NAME ) ) [priority(35)]
+
     syntax Instruction ::= index( Int, Instruction )
 
     syntax Contract ::= #indexContract( Contract )                                            [function]
