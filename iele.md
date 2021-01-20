@@ -149,7 +149,7 @@ In the comments next to each cell, we explain the purpose of the cell.
                         <func>       deposit:IeleName    </func>               // Function to call by transaction
                         <value>      0          </value>              // Value in funds to transfer by transaction
                         <from>       0          </from>               // Sender of transaction
-                        <data>       .WordStack </data>               // Arguments to function called by transaction
+                        <data>       .Bytes     </data>               // Arguments to function called by transaction
                         <args>       .Ints      </args>
                       </message>
                     </messages>
@@ -1699,7 +1699,7 @@ module IELE-PRECOMPILED
 
     syntax InternalOp ::= #ecpairing(List, List, Bytes, Bytes, Int)
  // -----------------------------------------------------------------------
-    rule (.K => #checkPoint) ~> #ecpairing((.List => ListItem((Bytes2Int(G1 [ 0 .. 32 ], BE, Unsigned), Bytes2Int(G1 [ 32 .. 32 ], BE, Unsigned))::G1Point)) _, (.List => ListItem((Bytes2Int(G2 [ 32 .. 32 ], BE, Unsigned) x Bytes2Int(G2 [ 0 .. 32 ], BE, Unsigned) , Bytes2Int(G2 [ 96 .. 32 ], BE, Unsigned) x Bytes2Int(G2 [ 64 .. 32 ], BE, Unsigned)))) _, G1 => G1 [ 64 .. lengthBytes(G1) ], G2 => G2 [ 128 .. lengthBytes(G2) ], LEN => LEN -Int 1)
+    rule (.K => #checkPoint) ~> #ecpairing((.List => ListItem((#asUnsigned(0, 32, G1), #asUnsigned(32, 32, G1))::G1Point)) _, (.List => ListItem((#asUnsigned(32, 32, G2) x #asUnsigned(0, 32, G2) , #asUnsigned(96, 32, G2) x #asUnsigned(64, 32, G2)))) _, G1 => G1 [ 64 .. lengthBytes(G1) ], G2 => G2 [ 128 .. lengthBytes(G2) ], LEN => LEN -Int 1)
       requires LEN >Int 0
     rule <k> #ecpairing(A, B, _, _, 0) => #end ... </k>
          <output> _ => bool2Word(BN128AtePairing(A, B)) , .Ints </output>

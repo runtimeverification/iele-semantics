@@ -43,7 +43,7 @@ For verification purposes, it's much easier to specify a program in terms of its
 To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a "pretti-fication" to the nicer input form.
 
 ```{.k .standalone}
-    syntax JSON ::= Int | WordStack | Bytes | Map | SubstateLogEntry | Account
+    syntax JSON ::= Int | Bytes | Map | SubstateLogEntry | Account
     syntax JSONKey ::= Int
  // ------------------------------------------------------------------
 
@@ -116,7 +116,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
           => #fun(CONTRACT =>
              #checkContract CONTRACT
           ~> #create ACCTFROM #newAddr(ACCTFROM, NONCE) ((GLIMIT -Int G0(SCHED, CODE, ARGS))*Int Sgasdivisor < SCHED >) VALUE CONTRACT ARGS
-          ~> #codeDeposit #newAddr(ACCTFROM, NONCE) #sizeWordStack(CODE) CONTRACT %0 %1 true ~> #adjustGas ~> #finalizeTx(false) ~> startTx)(#if #isValidContract(CODE) #then #dasmContract(CODE, Main) #else #illFormed #fi)
+          ~> #codeDeposit #newAddr(ACCTFROM, NONCE) lengthBytes(CODE) CONTRACT %0 %1 true ~> #adjustGas ~> #finalizeTx(false) ~> startTx)(#if #isValidContract(CODE) #then #dasmContract(CODE, Main) #else #illFormed #fi)
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -174,7 +174,9 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
            ...
          </account>
       requires ACCTTO =/=K .Account
+```
 
+```{.k .standalone}
     syntax IELECommand ::= "#adjustGas"
  // -----------------------------------
     rule <k> #adjustGas => . ... </k>
@@ -378,7 +380,7 @@ The individual fields of the accounts are dealt with here.
            ...
          </account>
 
-    rule <k> load "account" : { ACCT : { "code" : (CODE:WordStack) } } => . ... </k>
+    rule <k> load "account" : { ACCT : { "code" : (CODE:Bytes) } } => . ... </k>
          <account>
            <acctID> ACCT </acctID>
            <code> _ => #dasmContract(CODE, Main) </code>
@@ -430,10 +432,10 @@ Here we load the environmental information.
     rule <k> load "exec" : { "code"     : ((CODE:String)   => #parseByteStack(CODE)) } ... </k>
 
     rule load "exec" : { "data" : ((DATA:String) => #parseByteStack(DATA)) }
-    rule load "exec" : { "data" : ((DATA:WordStack) => [#asUnsigned(DATA), #sizeWordStack(DATA)]) }
- // -----------------------------------------------------------------------------------------------
+    rule load "exec" : { "data" : ((DATA:Bytes) => [Bytes2Int(DATA, BE, Unsigned), lengthBytes(DATA)]) }
+ // ----------------------------------------------------------------------------------------------------
     rule <k> load "exec" : { "data" : [DATA:Int, LEN:Int] } => . ... </k> <callData> _ => LEN , DATA , .Ints </callData>
-    rule <k> load "exec" : { "code" : (CODE:WordStack) } => . ... </k>
+    rule <k> load "exec" : { "code" : (CODE:Bytes) } => . ... </k>
          (<program>  _ </program> => #loadCode(#dasmContract(CODE, Main)))
          <schedule> SCHED </schedule>
 ```
@@ -569,18 +571,19 @@ The `"transactions"` key loads the transactions.
          </account>
       requires #removeZeros(ACCTSTORAGE) ==K STORAGE
 
-    rule <k> check "account" : { ACCT : { "code" : (CODE:WordStack) } } => . ... </k>
+    rule <k> check "account" : { ACCT : { "code" : (CODE:Bytes) } } => . ... </k>
          <account>
            <acctID> ACCT </acctID>
            <code> CONTRACT </code>
            ...
          </account>
-         requires #unparseByteStack(CODE) ==String #contractBytes(CONTRACT, #mainContract(CONTRACT))
-    rule <k> check "account" : { ACCT : { "code" : .WordStack } } => . ... </k>
+         requires lengthBytes(CODE) =/=Int 0 andBool Bytes2String(CODE) ==String #contractBytes(CONTRACT, #mainContract(CONTRACT))
+    rule <k> check "account" : { ACCT : { "code" : (CODE:Bytes) } } => . ... </k>
          <account>
            <acctID> ACCT </acctID>
            ...
          </account>
+         requires lengthBytes(CODE) ==Int 0
 ```
 
 Here we check the other post-conditions associated with an EVM test.
