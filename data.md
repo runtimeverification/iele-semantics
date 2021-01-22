@@ -230,84 +230,6 @@ Data Structures
 
 Several data-structures and operations over `Int` are useful to have around.
 
-Word Stack
-----------
-
-IELE makes use of a stack in some places in order to represent lists of integers.
-The stack and some standard operations over it are provided here.
-This stack also serves as a cons-list, so we provide some standard cons-list manipulation tools.
-
-```k
-    syntax WordStack [flatPredicate]
-    syntax WordStack ::= ".WordStack" | Int ":" WordStack
- // -----------------------------------------------------
-```
-
--   `_++_` acts as `WordStack` append.
--   `#rev` reverses a `WordStack`.
--   `#take(N , WS)` keeps the first $N$ elements of a `WordStack` (passing with zeros as needed).
--   `#drop(N , WS)` removes the first $N$ elements of a `WordStack`.
--   `WS [ N .. W ]` access the range of `WS` beginning with `N` of width `W`.
-
-```k
-    syntax WordStack ::= WordStack "++" WordStack [function, right]
- // ---------------------------------------------------------------
-    rule .WordStack ++ WS' => WS'
-    rule (W : WS)   ++ WS' => W : (WS ++ WS')
-
-    syntax WordStack ::= #rev ( WordStack , WordStack ) [function]
- // --------------------------------------------------------------
-    rule #rev ( .WordStack , WS ) => WS
-    rule #rev ( W : WS1 , WS2 ) => #rev(WS1, W : WS2)
-
-    syntax WordStack ::= #take ( Int , WordStack ) [function]
-                       | #take ( Int , WordStack , WordStack ) [function, klabel(#takeAux)]
- // ---------------------------------------------------------------------------------------
-    rule #take(N, WS)             => #take(N, WS, .WordStack)
-    rule #take(0, _, WS)          => #rev(WS, .WordStack)
-    rule #take(N, .WordStack, WS) => #take(N -Int 1, .WordStack, 0 : WS)  requires N >Int 0
-    rule #take(N, (W : WS1), WS2) => #take(N -Int 1, WS1,        W : WS2) requires N >Int 0
-
-    syntax WordStack ::= #drop ( Int , WordStack ) [function]
- // ---------------------------------------------------------
-    rule #drop(0, WS)         => WS
-    rule #drop(N, .WordStack) => .WordStack
-    rule #drop(N, (W : WS))   => #drop(N -Int 1, WS) [owise]
-
-    syntax WordStack ::= WordStack "[" Int ".." Int "]" [function]
- // --------------------------------------------------------------
-    rule WS::WordStack [ START .. WIDTH ] => #take(chop(WIDTH), #drop(chop(START), WS))
-```
-
--   `WS [ N := WS' ]` sets elements starting at $N$ of $WS$ to $WS'$ (padding with zeros as needed).
-
-```k
-    syntax WordStack ::= WordStack "[" Int ":=" WordStack "]" [function, klabel(assignWordStackRange)]
- // --------------------------------------------------------------------------------------------------
-    rule WS1::WordStack [ N := WS2::WordStack ] => #take(N, WS1) ++ WS2 ++ #drop(N +Int #sizeWordStack(WS2), WS1)
-```
-
--   `#sizeWordStack` calculates the size of a `WordStack`.
--   `_in_` determines if a `Int` occurs in a `WordStack`.
-
-```k
-    syntax Int ::= #sizeWordStack ( WordStack )       [function, smtlib(sizeWordStack)]
-                 | #sizeWordStack ( WordStack , Int ) [function, klabel(sizeWordStackAux), smtlib(sizeWordStackAux)]
- // ----------------------------------------------------------------------------------------------------------------
-    rule #sizeWordStack ( WS ) => #sizeWordStack(WS, 0)
-    rule #sizeWordStack ( .WordStack, SIZE ) => SIZE
-    rule #sizeWordStack ( W : WS, SIZE )     => #sizeWordStack(WS, SIZE +Int 1)
-```
-
--   `#padToWidth(N, WS)` makes sure that a `WordStack` is the correct size.
-
-```k
-    syntax WordStack ::= #padToWidth ( Int , WordStack ) [function]
- // ---------------------------------------------------------------
-    rule #padToWidth(N, WS) => WS                     requires notBool #sizeWordStack(WS) <Int N
-    rule #padToWidth(N, WS) => #padToWidth(N, 0 : WS) requires #sizeWordStack(WS) <Int N
-```
-
 Memory
 ------
 
@@ -326,18 +248,19 @@ Byte Arrays
 
 The local memory of execution is a byte-array (instead of a word-array).
 
--   `#asUnsigned` will interpret a WordStack as a single unsigned integer (with MSB first).
+-   `#asUnsigned` will interpret a substring of a Bytes as a single unsigned integer (with MSB first).
 -   `#asAccount` will interpret a Bytes as a single account id (with MSB first).
     Differs from `Bytes2Int` only in that an empty stack represents the empty account, not account zero.
 -   `B [ N .. W ]` access the range of `B` beginning with `N` of width `W` (padding with zeros as needed).
 -   `B [ N := B' ]` sets elements starting at $N$ of $B$ to $B'$ (padding with zeros as needed).
 
 ```k
-    syntax Int ::= #asUnsigned ( WordStack ) [function]
- // ---------------------------------------------------
-    rule #asUnsigned( .WordStack )    => 0
-    rule #asUnsigned( W : .WordStack) => W
-    rule #asUnsigned( W0 : W1 : WS )  => #asUnsigned(((W0 <<Int 8) |Int W1) : WS)
+    syntax Int ::= #asUnsigned ( Int , Int , Bytes )      [function]
+                 | #asUnsigned ( Int , Int , Bytes, Int ) [function]
+ // ----------------------------------------------------------------
+    rule #asUnsigned( I, N, BS ) => #asUnsigned(I, N, BS, 0)
+    rule #asUnsigned( _, 0, _, X )  => X
+    rule #asUnsigned( I, N, BS, X ) => #asUnsigned( I +Int 1, N -Int 1, BS, (X *Int 256) +Int BS[I] ) requires N >Int 0
 
     syntax Account ::= #asAccount ( String ) [function]
  // ------------------------------------------------------
@@ -411,7 +334,7 @@ Here we provide some standard parser/unparser functions for that format.
 Parsing
 -------
 
-These parsers can interperet hex-encoded strings as `Int`s, `WordStack`s, and `Map`s.
+These parsers can interperet hex-encoded strings as `Int`s, `Bytes`s, and `Map`s.
 
 -   `#parseHexWord` interperets a string as a single hex-encoded `Word`.
 -   `#parseByteStack` interperets a string as a hex-encoded stack of bytes, but makes sure to remove the leading "0x".
@@ -435,29 +358,25 @@ These parsers can interperet hex-encoded strings as `Int`s, `WordStack`s, and `M
  // -------------------------------------------------------------------
     rule #alignHexString(S) => S             requires         lengthString(S) modInt 2 ==Int 0
     rule #alignHexString(S) => "0" +String S requires notBool lengthString(S) modInt 2 ==Int 0
+```
 
-    syntax WordStack ::= #parseByteStack ( String )    [function]
-                       | #parseHexBytes     ( String ) [function]
-                       | #parseHexBytesAux  ( String ) [function]
-                       | #parseHexBytesAux  ( Bytes  ) [function]
-                       | #parseByteStackRaw ( String ) [function]
-                       | #parseByteStackRaw ( String , WordStack , Int , Int ) [function, klabel(#parseByteStackRawAux)]
- // --------------------------------------------------------------------------------------------------------------------
+```k
+    syntax Bytes ::= #parseByteStack    ( String ) [function, memo]
+                   | #parseByteStackRaw ( String ) [function]
+ // ---------------------------------------------------------------
     rule #parseByteStack(S) => #parseHexBytes(replaceAll(S, "0x", ""))
+    rule #parseByteStackRaw(S) => String2Bytes(S)
 
-    rule #parseHexBytes(S)  => #parseHexBytesAux(#alignHexString(S))
-    rule #parseHexBytesAux("") => .WordStack
-    rule #parseHexBytesAux(S)  => #parseHexBytesAux( Int2Bytes(lengthString(S) /Int 2, String2Base(S, 16), BE) )
+    syntax Bytes ::= #parseHexBytes    ( String ) [function]
+                   | #parseHexBytesAux ( String ) [function]
+ // --------------------------------------------------------
+    rule #parseHexBytes(S)     => #parseHexBytesAux(#alignHexString(S))
+    rule #parseHexBytesAux("") => .Bytes
+    rule #parseHexBytesAux(S)  => Int2Bytes(lengthString(S) /Int 2, String2Base(S, 16), BE)
       requires lengthString(S) >=Int 2
+```
 
-    rule #parseHexBytesAux(BS) => BS[0] : BS[1] : BS[2] : BS[3] : #parseHexBytesAux( substrBytes(BS, 4, lengthBytes(BS)) ) requires lengthBytes(BS) >=Int 4
-    rule #parseHexBytesAux(BS) => BS[0] : BS[1] : BS[2] : .WordStack                                                       requires lengthBytes(BS) ==Int 3
-    rule #parseHexBytesAux(BS) => BS[0] : BS[1] : .WordStack                                                               requires lengthBytes(BS) ==Int 2
-    rule #parseHexBytesAux(BS) => BS[0] : .WordStack                                                                       requires lengthBytes(BS) ==Int 1
-    rule #parseHexBytesAux(BS) => .WordStack                                                                               requires lengthBytes(BS) ==Int 0
-
-    rule #parseByteStackRaw(S) => #parseHexBytesAux(String2Bytes(S))
-
+```k
     syntax Map ::= #parseMap ( JSON ) [function]
  // --------------------------------------------
     rule #parseMap( { .JSONs                   } ) => .Map
@@ -472,19 +391,14 @@ These parsers can interperet hex-encoded strings as `Int`s, `WordStack`s, and `M
 Unparsing
 ---------
 
-We need to interperet a `WordStack` as a `String` again so that we can call `Keccak256` on it from `KRYPTO`.
+We need to interperet a `Bytes` as a `String` again so that we can call `Keccak256` on it from `KRYPTO`.
 
--   `#unparseByteStack` turns a stack of bytes (as a `WordStack`) into a `String`.
+-   `#unparseByteStack` turns a stack of bytes (as a `Bytes`) into a `String`.
 
 ```k
-    syntax String ::= #unparseByteStack ( WordStack )                [function]
-                    | #unparseByteStack ( WordStack , StringBuffer ) [function, klabel(#unparseByteStackAux)]
- // ---------------------------------------------------------------------------------------------------------
-    rule #unparseByteStack ( WS ) => #unparseByteStack(WS, .StringBuffer)
-
-    rule #unparseByteStack( W1 : W2 : W3 : W4 : WS, BUFFER ) => #unparseByteStack(WS, BUFFER +String (chrChar(W1) +String chrChar(W2) +String chrChar(W3) +String chrChar(W4)))
-    rule #unparseByteStack( W1 : WS,                BUFFER ) => #unparseByteStack(WS, BUFFER +String chrChar(W1)) [owise]
-    rule #unparseByteStack( .WordStack,             BUFFER ) => StringBuffer2String(BUFFER)
+    syntax String ::= #unparseByteStack ( Bytes ) [function, klabel(unparseByteStack), symbol]
+ // ------------------------------------------------------------------------------------------
+    rule #unparseByteStack(WS) => Bytes2String(WS)
 ```
 
 Recursive Length Prefix (RLP)
@@ -533,7 +447,7 @@ Encoding
 Decoding
 --------
 
--   `#loadLen` and `#loadOffset` decode a `WordStack` into a single string in an RLP-like encoding which does not allow lists in its structure.
+-   `#loadLen` and `#loadOffset` decode a `Bytes` into a single string in an RLP-like encoding which does not allow lists in its structure.
 -   `#rlpDecode` RLP decodes a single `String` into a `JSON`.
 -   `#rlpDecodeList` RLP decodes a single `String` into a `JSONs`, interpereting the string as the RLP encoding of a list.
 
@@ -542,17 +456,17 @@ Decoding
     syntax LengthPrefix ::= LengthPrefixType "(" Int "," Int ")"
  // ------------------------------------------------------------
 
-    syntax Int ::= #loadLen ( WordStack ) [function]
- // ------------------------------------------------
-    rule #loadLen ( B0 : WS ) => 1                               requires B0  <Int 128 orBool  B0 >=Int 192
-    rule #loadLen ( B0 : WS ) => B0 -Int 128                     requires B0 >=Int 128 andBool B0  <Int 184
-    rule #loadLen ( B0 : WS ) => #asUnsigned(#take(B0 -Int 183, WS)) requires B0 >=Int 184 andBool B0  <Int 192
+    syntax Int ::= #loadLen ( Bytes ) [function]
+ // --------------------------------------------
+    rule #loadLen ( WS ) => 1                                  requires WS[0]  <Int 128 orBool  WS[0] >=Int 192
+    rule #loadLen ( WS ) => WS[0] -Int 128                     requires WS[0] >=Int 128 andBool WS[0]  <Int 184
+    rule #loadLen ( WS ) => #asUnsigned(0, WS[0] -Int 183, WS) requires WS[0] >=Int 184 andBool WS[0]  <Int 192
 
-    syntax Int ::= #loadOffset ( WordStack ) [function]
- // ---------------------------------------------------
-    rule #loadOffset ( B0 : WS ) => 0           requires B0  <Int 128 orBool  B0 >=Int 192
-    rule #loadOffset ( B0 : WS ) => 1           requires B0 >=Int 128 andBool B0  <Int 184
-    rule #loadOffset ( B0 : WS ) => B0 -Int 182 requires B0 >=Int 184 andBool B0  <Int 192
+    syntax Int ::= #loadOffset ( Bytes ) [function]
+ // -----------------------------------------------
+    rule #loadOffset ( WS ) => 0              requires WS[0]  <Int 128 orBool  WS[0] >=Int 192
+    rule #loadOffset ( WS ) => 1              requires WS[0] >=Int 128 andBool WS[0]  <Int 184
+    rule #loadOffset ( WS ) => WS[0] -Int 182 requires WS[0] >=Int 184 andBool WS[0]  <Int 192
 
     syntax JSON ::= #rlpDecode(String)               [function, klabel(rlpDecode), symbol]
                   | #rlpDecode(String, LengthPrefix) [function, klabel(#rlpDecodeAux)]

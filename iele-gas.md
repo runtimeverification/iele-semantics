@@ -807,18 +807,22 @@ Note: These are all functions as the operator `#compute` has already loaded all 
  // ---------------------------------------------
     rule #allBut64th(N) => N -Int (N /Int 64)
 
-    syntax Int ::= G0 ( Schedule , WordStack , Ints ) [function, klabel(G0create)]
-                 | G0 ( Schedule , String , Ints )    [function, klabel(G0call)]
-                 | G0 ( Schedule , WordStack , Bool ) [function, klabel(G0aux)]
- // ---------------------------------------------------------------------------
-    rule G0(SCHED, .WordStack, true)  => Gtxcreate    < SCHED >
-    rule G0(SCHED, .WordStack, false) => Gtransaction < SCHED >
+    syntax Int ::= G0 ( Schedule , Bytes  , Ints )         [function, klabel(G0create)]
+                 | G0 ( Schedule , String , Ints )         [function, klabel(G0call)]
+                 | G0 ( Schedule , Bytes  , Bool )         [function, klabel(G0aux)]
+                 | G0 ( Schedule , Int    , Bytes , Bool ) [function, klabel(G0auxaux)]
+ // -----------------------------------------------------------------------------------
+    rule G0(SCHED, BS, true)  => Gtxcreate    < SCHED > requires lengthBytes(BS) ==Int 0
+    rule G0(SCHED, BS, false) => Gtransaction < SCHED > requires lengthBytes(BS) ==Int 0
 
-    rule G0(SCHED, WS, ARGS) => G0(SCHED, #parseByteStackRaw(#rlpEncodeLength(#rlpEncodeString(#unparseByteStack(WS)) +String #rlpEncodeInts(ARGS), 192)), true)
+    rule G0(SCHED, BS, ARGS) => G0(SCHED, #parseByteStackRaw(#rlpEncodeLength(#rlpEncodeString(Bytes2String(BS)) +String #rlpEncodeInts(ARGS), 192)), true)
     rule G0(SCHED, FUNC, ARGS) => G0(SCHED, #parseByteStackRaw(#rlpEncodeLength(#rlpEncodeString(FUNC) +String #rlpEncodeInts(ARGS), 192)), false)
 
-    rule G0(SCHED, 0 : REST, ISCREATE::Bool) => Gtxdatazero    < SCHED > +Int G0(SCHED, REST, ISCREATE)
-    rule G0(SCHED, N : REST, ISCREATE::Bool) => Gtxdatanonzero < SCHED > +Int G0(SCHED, REST, ISCREATE) requires N =/=Int 0
+    rule G0(SCHED, BS, ISCREATE::Bool) => G0(SCHED, lengthBytes(BS), BS, ISCREATE) requires lengthBytes(BS) =/=Int 0
+
+    rule G0(SCHED, 0, BS, ISCREATE) => G0(SCHED, .Bytes, ISCREATE)
+    rule G0(SCHED, N, BS, ISCREATE) => Gtxdatazero    < SCHED > +Int G0(SCHED, N -Int 1, BS, ISCREATE) requires N =/=Int 0 andBool BS[N -Int 1] ==Int 0
+    rule G0(SCHED, N, BS, ISCREATE) => Gtxdatanonzero < SCHED > +Int G0(SCHED, N -Int 1, BS, ISCREATE) requires N =/=Int 0 andBool BS[N -Int 1] =/=Int 0
 
     syntax Int ::= "G*" "(" Int "," Int "," Int ")" [function]
  // ----------------------------------------------------------

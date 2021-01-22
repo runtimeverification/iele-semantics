@@ -37,6 +37,7 @@ module IELE-NODE
 
     syntax String ::= #getCode(Int) [function, hook(BLOCKCHAIN.getCode)]
  // ----------------------------------------------------------------
+
     rule <k> #lookupCode(ACCT) => . ... </k>
          <account>
            <acctID> ACCT </acctID>
@@ -60,7 +61,7 @@ module IELE-NODE
           => #fun(CODE => #fun(CONTRACT =>
              #checkContract CONTRACT
           ~> #create ACCTFROM #newAddr(ACCTFROM, NONCE -Int 1) (GAVAIL *Int Sgasdivisor < SCHED >) VALUE CONTRACT #toInts(ARGS)
-          ~> #codeDeposit #newAddr(ACCTFROM, NONCE -Int 1) #sizeWordStack(CODE) CONTRACT %0 %1 true
+          ~> #codeDeposit #newAddr(ACCTFROM, NONCE -Int 1) lengthBytes(CODE) CONTRACT %0 %1 true
           ~> #trimAccounts)(#if #isValidContract(CODE) #then #dasmContract(CODE, Main) #else #illFormed #fi))(#parseByteStackRaw(CODESTR))
          ...
          </k>
@@ -149,9 +150,6 @@ module IELE-NODE
  // ----------------------------------------
     rule #toList(.Ints) => .List
     rule #toList(I , L) => ListItem(I) #toList(L)
-
-    syntax String ::= unparseByteStack(Bytes) [function, symbol]
-    rule unparseByteStack(B::Bytes) => Bytes2String(B)
 
     syntax KItem ::= vmResult(return: List,gas: Int,refund: Int,status: Int,selfdestruct: List,logs: List,AccountsCell, touched: List)
     syntax KItem ::= extractConfig(GeneratedTopCell) [function, symbol]

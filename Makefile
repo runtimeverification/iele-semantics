@@ -33,6 +33,7 @@ PROTO=$(abspath proto)
 
 IELE_BIN         := $(BUILD_DIR)/bin
 IELE_LIB         := $(BUILD_DIR)/lib/kiele
+IELE_RUNNER      := $(IELE_BIN)/kiele
 IELE_ASSEMBLE    := $(IELE_BIN)/iele-assemble
 IELE_INTERPRETER := $(IELE_BIN)/iele-interpreter
 IELE_CHECK       := $(IELE_BIN)/iele-check
@@ -238,19 +239,19 @@ LLVM_KOMPILE_INCLUDE_OPTS += $(MACOS_INCLUDE_OPTS)
 LLVM_KOMPILE_LINK_OPTS    += $(MACOS_LINK_OPTS)
 endif
 
-$(IELE_CHECK): $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
+$(IELE_CHECK): $(BUILD_DIR)/check/well-formedness-kompiled/interpreter $(IELE_RUNNER)
 	@mkdir -p $(IELE_BIN)
 	cp $< $@
 
 build-interpreter: $(IELE_INTERPRETER)
 
-$(IELE_INTERPRETER): $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
+$(IELE_INTERPRETER): $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter $(IELE_RUNNER)
 	@mkdir -p $(IELE_BIN)
 	cp $< $@
 
 build-vm: $(IELE_VM)
 
-$(IELE_VM): $(BUILD_DIR)/node/iele-testing-kompiled/interpreter $(wildcard vm/c/*.cpp vm/c/*.h) $(protobuf_out)
+$(IELE_VM): $(BUILD_DIR)/node/iele-testing-kompiled/interpreter $(wildcard vm/c/*.cpp vm/c/*.h) $(protobuf_out) $(IELE_RUNNER)
 	@mkdir -p $(IELE_BIN)
 	llvm-kompile $(BUILD_DIR)/node/iele-testing-kompiled/definition.kore $(BUILD_DIR)/node/iele-testing-kompiled/dt library vm/c/main.cpp vm/c/vm.cpp $(KOMPILE_CPP_FILES) $(protobuf_out) vm/c/iele/semantics.cpp $(LLVM_KOMPILE_INCLUDE_OPTS) $(LLVM_KOMPILE_LINK_OPTS) -o $(IELE_VM) -g
 
@@ -306,7 +307,7 @@ install_libs :=                                            \
     kore-json.py                                           \
     version
 
-$(IELE_BIN)/kiele: kiele
+$(IELE_RUNNER): kiele
 	install -D $< $@
 
 $(IELE_LIB)/version:
@@ -363,7 +364,7 @@ $(BUILD_DIR)/plugin-ocaml/msg_types.ml: $(PROTO)/proto/msg.proto
 	mkdir -p $(BUILD_DIR)/plugin-ocaml
 	eval `opam config env` && ocaml-protoc $< -ml_out $(BUILD_DIR)/plugin-ocaml
 
-$(IELE_TEST_VM): $(wildcard vm/*.ml vm/*.mli) $(BUILD_DIR)/plugin-ocaml/msg_types.ml
+$(IELE_TEST_VM): $(wildcard vm/*.ml vm/*.mli) $(BUILD_DIR)/plugin-ocaml/msg_types.ml $(IELE_VM)
 	@mkdir -p $(IELE_BIN)
 	cp vm/*.ml vm/*.mli $(BUILD_DIR)/plugin-ocaml/*.ml $(BUILD_DIR)/plugin-ocaml/*.mli $(IELE_BIN)
 	cd $(IELE_BIN) && eval `opam config env` && ocamlfind $(OCAMLC) -g -o iele-test-vm msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml ieleClientUtils.ml ieleVmTest.ml -package dynlink -package zarith -package str -package uuidm -package unix -package rlp -package yojson -package hex -package cryptokit -package ocaml-protoc -linkpkg -linkall -thread -safe-string
