@@ -124,10 +124,11 @@ Index Contract Instructions
 ===========================
 
 - To collect coverage we need to know which instruction in the contract we are executing.
-- #indexContract will traverse a Contract and give an index to each of the instructions in the ContractDefinitions.
+- #indexContract will traverse a Contract and give an index to each of the instructions in the bottom ContractDefinition.
 
 ```k
-    rule #dasmContract( BS, NAME ) => #indexContract( #dasmContract( 0, lengthBytes(BS), BS, NAME ) ) [priority(35)]
+    rule #dasmContract( BS, NAME ) => #indexContract( #reverseContract( #dasmContract( 0, lengthBytes(BS), BS, NAME ) ) ) [priority(35)]
+    rule #subcontract ( (contract NAME ! _ _ { _ } #as CONTRACT) _, NAME ) => #indexContract( CONTRACT .Contract )        [priority(35)]
 
     syntax Instruction ::= index( Int, Instruction )
 
@@ -135,25 +136,23 @@ Index Contract Instructions
                       | #indexContract( ctx: K, index: Int, currentDefs: TopLevelDefinitions,
                                         currentInstrs: Instructions, result: Contract )       [function, klabel(indexContractAus)]
  // ----------------------------------------------------------------------------------------------------
-    rule #indexContract( CONTRACT ) => #indexContract( CONTRACT ~> indexContractReturn, 0, .TopLevelDefinitions, .Instructions, .Contract )
+    rule #indexContract( CONTRACT ) => #indexContract( CONTRACT, 0, .TopLevelDefinitions, .Instructions, .Contract )
 
     syntax KItem ::= "indexContractReturn"
  // --------------------------------------
-    rule #indexContract( ... ctx: indexContractReturn ~> _, result: RESULT ) => #reverseContract( RESULT )
+    rule #indexContract( ... ctx: indexContractReturn ~> .Contract ~> _, result: RESULT ) => RESULT
+    rule #indexContract( ... ctx: indexContractReturn ~> (CONTRACT:ContractDefinition CONTRACTS => CONTRACTS) ~> _, result: RESULT => CONTRACT RESULT )
 
     rule #indexContract( ... ctx: ( .Contract => .K ) ~> _ )
-    rule #indexContract( ... ctx: ( CONTRACT:ContractDefinition CONTRACTS => CONTRACT ~> CONTRACTS ) ~> _ )
+    rule #indexContract( ... ctx: ( CONTRACT:ContractDefinition CONTRACTS => CONTRACT ~> indexContractReturn ~> CONTRACTS ) ~> _ )
 
     rule #indexContract( ... ctx:         ( CONTRACT:ContractDefinition => .K ) ~> _,
-                             currentDefs: DEFS => .TopLevelDefinitions,
+                             currentDefs: DEFS,
                              result:      RESULT => CONTRACT.withDefs( #reverseDefs( DEFS ) ) RESULT
                        )
       requires CONTRACT.defs ==K .TopLevelDefinitions
 
-    rule #indexContract( ... ctx:         ( CONTRACT => CONTRACT.defs ~> CONTRACT.withNoDefs ) ~> _,
-                             index:       _ => 0,
-                             currentDefs: _ => .TopLevelDefinitions
-                       )
+    rule #indexContract( ... ctx: ( CONTRACT => CONTRACT.defs ~> CONTRACT.withNoDefs ) ~> _ )
       requires CONTRACT.defs =/=K .TopLevelDefinitions
 ```
 
@@ -246,11 +245,11 @@ Helper Functions
     syntax Int ::= #sizeContract( Contract ) [function]
                  | #sizeContract( K, Int )   [function, klabel(contractSizeAux)]
  // ----------------------------------------------------------------------------
-    rule #sizeContract( CONTRACT ) => #sizeContract( CONTRACT, 0 )
+    rule #sizeContract( CONTRACT ) => #sizeContract( #reverseContract( CONTRACT ), 0 )
 
     rule #sizeContract( .Contract ~> _, I ) => I
 
-    rule #sizeContract( ( CONTRACT:ContractDefinition CONTRACTS:Contract => CONTRACT ~> CONTRACTS ) ~> _, _ )
+    rule #sizeContract( ( CONTRACT:ContractDefinition CONTRACTS:Contract => CONTRACT ~> .Contract ) ~> _, _ )
     rule #sizeContract( ( CONTRACT:ContractDefinition => CONTRACT.defs ) ~> _, _ )
     rule #sizeContract( ( .TopLevelDefinitions => .K ) ~> _, _ )
     rule #sizeContract( ( DEF:TopLevelDefinition DEFS:TopLevelDefinitions => DEF ~> DEFS ) ~> _, _ )
