@@ -1,9 +1,0 @@
-/.build
-/tests/VMTests
-/tests/BlockchainTests
-/tests/**/*.test-assembled
-/tmp
-/.kompile*
-/.kprove*
-/.krun*
-result*
