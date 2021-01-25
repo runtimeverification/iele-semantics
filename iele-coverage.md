@@ -56,7 +56,6 @@ Coverage Initialization Semantics
          </bytecodeCoverages>
       [owise]
 
-
     rule <k> #finishCoverage => . ... </k>
          <coverageHash>  HASH </coverageHash>
          <coverageIndex> I    </coverageIndex>
@@ -67,18 +66,21 @@ Coverage Initialization Semantics
            ...
          </bytecodeCoverage>
 
-    rule <typeChecking> false </typeChecking>
-         <k> index( I, OP ) OPS::Instructions BLOCKS::LabeledBlocks => OP OPS BLOCKS ... </k>
+    rule <k> (. => #finishCoverage) ~> #end ... </k> <opcodeCoverage> coverage(...) </opcodeCoverage> <typeChecking> false </typeChecking> [priority(35)]
+    rule <k> (. => #finishCoverage) ~> index( _, _ ) _::Instructions _::LabeledBlocks ... </k> <typeChecking> false </typeChecking> <opcodeCoverage> coverage(...) </opcodeCoverage> [priority(35)]
+    rule <k> (. => #finishCoverage) ~> index( _, _ ) _::Instructions                  ... </k> <typeChecking> false </typeChecking> <opcodeCoverage> coverage(...) </opcodeCoverage> [priority(35)]
+
+    rule <k> index( I, OP ) OPS::Instructions BLOCKS::LabeledBlocks => #initCoverage ~> OP OPS BLOCKS ... </k>
+         <typeChecking> false </typeChecking>
          <coverageIndex>  _ => I    </coverageIndex>
          <opcodeCoverage> .Coverage </opcodeCoverage>
       [priority(35)]
 
-    rule <typeChecking> false </typeChecking>
-         <k> index( I, OP ) OPS::Instructions => OP OPS ... </k>
+    rule <k> index( I, OP ) OPS::Instructions => #initCoverage ~> OP OPS ... </k>
+         <typeChecking> false </typeChecking>
          <coverageIndex>  _ => I    </coverageIndex>
          <opcodeCoverage> .Coverage </opcodeCoverage>
       [priority(35)]
-
 ```
 
 Coverage Collection Semantics
@@ -106,6 +108,9 @@ Coverage Collection Semantics
     rule #coverageAsByteAux( coverage(... b6        : true => false) , B => B |Int 32  )
     rule #coverageAsByteAux( coverage(... b7        : true => false) , B => B |Int 64  )
     rule #coverageAsByteAux( coverage(... b8        : true => false) , B => B |Int 128 )
+
+    rule <k> #exceptional? [ _:Instruction ] ... </k> <opcodeCoverage> coverage(... visited:   false => true ) </opcodeCoverage> [priority(35)]
+    rule <k> #exception _                    ... </k> <opcodeCoverage> coverage(... exception: false => true ) </opcodeCoverage> [priority(35)]
 ```
 
 Semantics Overrides
