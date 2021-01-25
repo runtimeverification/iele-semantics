@@ -111,6 +111,9 @@ Coverage Collection Semantics
 
     rule <k> #exceptional? [ _:Instruction ] ... </k> <opcodeCoverage> coverage(... visited:   false => true ) </opcodeCoverage> [priority(35)]
     rule <k> #exception _                    ... </k> <opcodeCoverage> coverage(... exception: false => true ) </opcodeCoverage> [priority(35)]
+
+    rule <k> #exec br I:Int, _ ... </k> <opcodeCoverage> coverage(... b3: false => true ) </opcodeCoverage> requires I =/=Int 0 [priority(35)]
+    rule <k> #exec br 0    , _ ... </k> <opcodeCoverage> coverage(... b4: false => true ) </opcodeCoverage>                     [priority(35)]
 ```
 
 Semantics Overrides
