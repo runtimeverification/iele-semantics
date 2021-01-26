@@ -47,7 +47,7 @@ export PATH:=$(IELE_BIN):$(PATH)
         build build-interpreter build-vm build-haskell build-node build-testnode \
 		install install-interpreter install-vm uninstall \
         split-tests split-vm-tests split-blockchain-tests \
-        test-evm test-vm test-blockchain test-wellformed test-bad-packet test-interactive \
+        test-evm test-vm test-blockchain test-wellformed test-illformed test-bad-packet test-interactive \
         test-iele test-iele-failing test-iele-slow test-iele-node assemble-iele-test
 .SECONDARY:
 
@@ -135,7 +135,9 @@ iele_node_targets=$(iele_tests:=.nodetest)
 
 iele_contracts=$(wildcard iele-examples/*.iele tests/iele/*/*/*.iele)
 well_formed_contracts=$(filter-out $(wildcard tests/iele/*/ill-formed/*.iele), $(iele_contracts))
+ill_formed_contracts=$(wildcard tests/iele/*/ill-formed/*.iele)
 well_formedness_targets=$(well_formed_contracts:=.test-wellformed)
+ill_formedness_targets=$(ill_formed_contracts:=.test-illformed)
 
 test-evm: test-vm test-blockchain
 test-vm: $(passing_vm_targets)
@@ -146,6 +148,7 @@ test-iele-failing: $(iele_failing)
 test-iele-node: $(iele_node_targets)
 assemble-iele-test: $(iele_assembled)
 test-wellformed: $(well_formedness_targets)
+test-illformed: $(ill_formedness_targets)
 
 test-bad-packet:
 	netcat 127.0.0.1 $(TEST_PORT) -q 2 < tests/bad-packet
@@ -165,6 +168,7 @@ test-interactive: iele-examples/erc20.iele tests/iele/danse/factorial/factorial_
 
 tests/VMTests/%:        TEST_MODE     = VMTESTS
 %.iele.test-wellformed: TEST_SCHEDULE = DANSE
+%.iele.test-illformed:  TEST_SCHEDULE = DANSE
 
 %.json.test: %.json.test-assembled
 	$(TEST) interpret --backend $(TEST_BACKEND) --mode $(TEST_MODE) --schedule $(TEST_SCHEDULE) --no-unparse $<
@@ -174,6 +178,9 @@ tests/VMTests/%:        TEST_MODE     = VMTESTS
 
 %.iele.test-wellformed: %.iele
 	$(TEST) check --backend check --mode $(TEST_MODE) --schedule $(TEST_SCHEDULE) $<
+
+%.iele.test-illformed: %.iele
+	! $(TEST) check --backend check --mode $(TEST_MODE) --schedule $(TEST_SCHEDULE) $<
 
 %.nodetest: %
 	iele-test-vm $< $(TEST_PORT)
