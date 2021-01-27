@@ -32,6 +32,7 @@ pipeline {
             stage('IELE Tests')           { steps { sh 'make test-iele -j4'                      } }
             stage('IELE Tests (Haskell)') { steps { sh 'make test-iele -j4 TEST_BACKEND=haskell' } }
             stage('Well Formed Check')    { steps { sh 'make test-wellformed -j4'                } }
+            stage('Ill Formed Check')     { steps { sh 'make test-illformed -j4'                 } }
             stage('Interactive')          { steps { sh 'make test-interactive'                   } }
             stage('Node') {
               steps {
@@ -148,6 +149,15 @@ pipeline {
                     --file "release.md" "${KIELE_RELEASE_TAG}"
               '''
             }
+          }
+        }
+        stage('Update Dependents') {
+          steps {
+            build job: 'rv-devops/master', propagate: false, wait: false                                                   \
+                , parameters: [ booleanParam ( name: 'UPDATE_DEPS'         , value: true                                 ) \
+                              , string       ( name: 'UPDATE_DEPS_REPO'    , value: 'runtimeverification/iele-semantics' ) \
+                              , string       ( name: 'UPDATE_DEPS_VERSION' , value: "${env.KIELE_RELEASE_TAG}"           ) \
+                              ]
           }
         }
         stage('GitHub Pages') {
