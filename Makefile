@@ -22,14 +22,15 @@ BISECT=-package bisect_ppx
 PREDICATES=-predicates coverage
 endif
 
+IELE_DIR       := $(abspath .)
 BUILD_DIR      := $(abspath .build)
 KORE_SUBMODULE := $(BUILD_DIR)/kore
 BUILD_LOCAL    := $(BUILD_DIR)/local
 LOCAL_LIB      := $(BUILD_LOCAL)/lib
 LOCAL_INCLUDE  := $(BUILD_LOCAL)/include
 
-PLUGIN=$(abspath plugin)
-PROTO=$(abspath proto)
+PLUGIN=$(IELE_DIR)/plugin
+PROTO=$(IELE_DIR)/proto
 
 IELE_BIN         := $(BUILD_DIR)/bin
 IELE_LIB         := $(BUILD_DIR)/lib/kiele
@@ -84,7 +85,7 @@ $(protobuf_out): $(PROTO)/proto/msg.proto
 # -----
 
 TEST          = kiele
-TEST_ASSEMBLE = ./assemble-iele-test
+TEST_ASSEMBLE = $(IELE_DIR)/assemble-iele-test
 TEST_BACKEND  = standalone
 TEST_MODE     = NORMAL
 TEST_SCHEDULE = DEFAULT
@@ -198,8 +199,8 @@ tests/evm-to-iele/evm-to-iele: $(wildcard tests/evm-to-iele/*.ml tests/evm-to-ie
 # Build Source Files
 # ------------------
 
-k_files:=iele-testing.md data.md iele.md iele-gas.md iele-binary.md plugin/plugin/krypto.md iele-syntax.md iele-node.md well-formedness.md
-checker_files:=iele-syntax.md well-formedness.md data.md
+k_files:=$(addprefix $(IELE_DIR)/,iele-testing.md data.md iele.md iele-gas.md iele-binary.md plugin/plugin/krypto.md iele-syntax.md iele-node.md well-formedness.md)
+checker_files:=$(addprefix $(IELE_DIR)/,iele-syntax.md well-formedness.md data.md)
 
 # LLVM Builds
 # -----------
@@ -218,6 +219,7 @@ build-testnode : $(IELE_TEST_VM) $(IELE_TEST_CLIENT)
 KOMPILE=kompile
 
 KOMPILE_INCLUDE_OPTS := -ccopt -I -ccopt $(PLUGIN)/plugin-c -ccopt -I -ccopt $(PROTO) -ccopt -I -ccopt $(BUILD_DIR)/plugin-node -ccopt -I -ccopt $(LOCAL_INCLUDE)
+KOMPILE_INCLUDE_OPTS += -I $(IELE_DIR)
 KOMPILE_LINK_OPTS    := -ccopt -L -ccopt /usr/local/lib -ccopt -L -ccopt $(LOCAL_LIB) -ccopt -lprotobuf -ccopt -lff -ccopt -lcryptopp -ccopt -lsecp256k1 -ccopt -lprocps -ccopt -lssl -ccopt -lcrypto
 KOMPILE_CPP_FILES    := $(PLUGIN)/plugin-c/k.cpp $(PLUGIN)/plugin-c/crypto.cpp $(PROTO)/blockchain.cpp $(PROTO)/world.cpp $(PLUGIN)/plugin-c/blake2.cpp $(PLUGIN)/plugin-c/plugin_util.cpp
 KOMPILE_CPP_OPTS     := $(addprefix -ccopt , $(KOMPILE_CPP_FILES))
@@ -315,7 +317,7 @@ install_libs :=                                            \
     kore-json.py                                           \
     version
 
-$(IELE_RUNNER): kiele
+$(IELE_RUNNER): $(IELE_DIR)/kiele
 	install -D $< $@
 
 $(IELE_LIB)/version:
@@ -325,7 +327,7 @@ $(IELE_LIB)/version:
 $(IELE_LIB)/standalone/iele-testing-kompiled/%: $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
 	install -D $(dir $<)$* $@
 
-$(IELE_LIB)/kore-json.py: kore-json.py
+$(IELE_LIB)/kore-json.py: $(IELE_DIR)/kore-json.py
 	install -D $< $@
 
 $(INSTALL_BIN)/%: $(IELE_BIN)/%
