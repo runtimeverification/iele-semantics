@@ -286,7 +286,7 @@ $(haskell_kompiled): $(k_files)
 # --------------
 
 $(IELE_ASSEMBLE):
-	cd iele-assemble && stack install --local-bin-path $(IELE_BIN)
+	cd $(IELE_DIR)/iele-assemble && stack install --local-bin-path $(IELE_BIN)
 
 # Coverage Processing
 # -------------------
