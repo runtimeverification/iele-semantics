@@ -50,13 +50,6 @@ run_interpret() {
             check_k_install
             kore-exec "$backend_dir/$definition-kompiled/definition.kore" --pattern "$kast" --module "$module" --output "$output" "$@" || status="$?"
             ;;
-        coverage)
-            module='IELE-COVERAGE'
-            definition='iele-coverage'
-            debugger=()
-            ! $debug || debugger+=(gdb --args)
-            "${debugger[@]}"  iele-coverage "$kast" "$depth" "$output" "$@" || status="$?"
-            ;;
         *)
             fatal "Unknown backend: $backend"
             ;;
@@ -91,11 +84,11 @@ run_command="$1" ; shift
 
 if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
     echo "
-        usage: $0 assemble                                                                       <pgm> <assemble arg>*
-               $0 interpret    [--backend (standalone|haskell|coverage)]            <KIELE arg>* <pgm> <interpret arg>*
-               $0 krun         [--backend (standalone|haskell|coverage|node|check)] <KIELE arg>* <pgm> <K arg>*
-               $0 check                                                             <KIELE arg>* <pgm> <K arg>*
-               $0 vm                                                                <KIELE arg>*
+        usage: $0 assemble                                                              <pgm> <assemble arg>*
+               $0 interpret    [--backend (standalone|haskell)]            <KIELE arg>* <pgm> <interpret arg>*
+               $0 krun         [--backend (standalone|haskell|node|check)] <KIELE arg>* <pgm> <K arg>*
+               $0 check                                                    <KIELE arg>* <pgm> <K arg>*
+               $0 vm                                                       <KIELE arg>*
 
                $0 [help|--help|version|--version]
 
