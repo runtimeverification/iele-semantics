@@ -96,7 +96,7 @@ TEST_DIR      = $(IELE_DIR)/tests
 split-tests: split-vm-tests split-blockchain-tests
 
 invalid_iele_tests_file=$(TEST_DIR)/failing.expected
-invalid_iele_tests= $(shell cat $(invalid_iele_tests_file))
+invalid_iele_tests= $(addprefix $(IELE_DIR)/, $(shell cat $(invalid_iele_tests_file)))
 
 split-vm-tests: $(patsubst $(TEST_DIR)/ethereum-tests/%.json,$(TEST_DIR)/%/make.timestamp, $(filter-out $(invalid_iele_tests), $(wildcard $(TEST_DIR)/ethereum-tests/VMTests/*/*.json)))
 
