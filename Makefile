@@ -105,8 +105,8 @@ split-blockchain-tests: $(patsubst $(TEST_DIR)/ethereum-tests/%.json,$(TEST_DIR)
 vm_tests=$(wildcard $(TEST_DIR)/VMTests/*/*/*.iele.json)
 blockchain_tests=$(wildcard $(TEST_DIR)/BlockchainTests/*/*/*/*.iele.json)
 all_tests=$(vm_tests) $(blockchain_tests)
-failing_tests = $(shell cat $(TEST_DIR)/failing.$(TEST_BACKEND))
-slow_tests    = $(shell cat $(TEST_DIR)/slow.$(TEST_BACKEND))
+failing_tests = $(addprefix $(IELE_DIR)/,$(shell cat $(TEST_DIR)/failing.$(TEST_BACKEND)))
+slow_tests    = $(addprefix $(IELE_DIR)/,$(shell cat $(TEST_DIR)/slow.$(TEST_BACKEND)))
 skipped_tests=$(failing_tests) \
     $(wildcard $(TEST_DIR)/VMTests/vmPerformance/*/*.json) \
     $(wildcard $(TEST_DIR)/BlockchainTests/GeneralStateTests/*/*/*_Frontier.iele.json) \
