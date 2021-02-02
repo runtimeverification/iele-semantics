@@ -48,7 +48,9 @@ run_interpret() {
             ;;
         haskell)
             check_k_install
-            kore-exec "$backend_dir/$definition-kompiled/definition.kore" --pattern "$kast" --module "$module" --output "$output" "$@" || status="$?"
+            depth_switch=()
+            [[ "$depth" == "-1" ]] || depth_switch+=(--depth "$depth")
+            kore-exec "$backend_dir/$definition-kompiled/definition.kore" --pattern "$kast" --module "$module" --output "$output" "${depth_switch[@]}" "$@" || status="$?"
             ;;
         *)
             fatal "Unknown backend: $backend"
@@ -66,6 +68,7 @@ run_krun() {
     krun --directory "$backend_dir"                        \
         -cSCHEDULE="$schedule"      -pSCHEDULE='printf %s' \
         -cMODE="$mode"              -pMODE='printf %s'     \
+        --depth "$depth"                                   \
         "$run_file" "$@"
 }
 
