@@ -210,7 +210,7 @@ CallResult run_transaction(CallContext ctx) {
   block* init_config = (block *)evaluateFunctionSymbol(tag2, arr);
   block* final_config = take_steps(-1, init_config);
   static uint32_t tag3 = getTagForSymbolName("LblextractConfig{}");
-  arr[0] = final_config;
+  arr[0] = (block *)final_config->children[0];
   tx_result* extracted = (tx_result *)evaluateFunctionSymbol(tag3, arr);
   std::string ret_data = get_output_data(&extracted->rets);
   std::string gasLeft = of_z(extracted->gas);
