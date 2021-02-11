@@ -45,7 +45,8 @@ IELE_TEST_CLIENT := $(IELE_BIN)/iele-test-client
 export PATH:=$(IELE_BIN):$(PATH)
 
 .PHONY: all clean distclean libff protobuf coverage \
-		install install-interpreter install-vm install-kiele uninstall \
+        build build-interpreter build-vm build-check build-haskell build-node build-testnode \
+		install install-interpreter install-vm install-kiele install-check uninstall \
         split-tests split-vm-tests split-blockchain-tests \
         test-evm test-vm test-blockchain test-wellformed test-illformed test-bad-packet test-interactive \
         test-iele test-iele-failing test-iele-slow test-iele-node assemble-iele-test
@@ -248,6 +249,8 @@ LLVM_KOMPILE_INCLUDE_OPTS += $(MACOS_INCLUDE_OPTS)
 LLVM_KOMPILE_LINK_OPTS    += $(MACOS_LINK_OPTS)
 endif
 
+build-check: $(IELE_CHECK)
+
 $(IELE_CHECK): $(BUILD_DIR)/check/well-formedness-kompiled/interpreter $(IELE_RUNNER)
 	@mkdir -p $(IELE_BIN)
 	cp $< $@
@@ -342,6 +345,8 @@ install: $(patsubst %, $(INSTALL_BIN)/%, $(install_bins))
 install-interpreter: $(INSTALL_BIN)/iele-interpreter
 
 install-vm: $(INSTALL_BIN)/iele-vm
+
+install-check: $(INSTALL_BIN)/iele-check
 
 install-kiele: $(INSTALL_BIN)/kiele
 
