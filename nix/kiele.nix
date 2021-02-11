@@ -1,4 +1,4 @@
-{ stdenv, nix-gitignore, wrapPython
+{ stdenv, wrapPython, src, cleanSourceWith
 , protobuf
 , cryptopp, libff, mpfr, secp256k1
 , jemalloc, libffi, ncurses
@@ -7,29 +7,19 @@
 
 stdenv.mkDerivation {
   name = "kiele-0.2.0";
-  src =
-    let
-      path = ./..;
-      patterns = [
-        "result*"
-        "/iele-assemble"
-        "/iele-examples"
-        "/nix"
-        "/package"
-        "/tests"
-        "/web"
-      ];
-      inherit (nix-gitignore) gitignoreFilterPure withGitignoreFile;
-      filter =
-        gitignoreFilterPure
-          (_: _: true)
-          (withGitignoreFile patterns path)
-          path;
-    in
-      builtins.path {
-        inherit path filter;
-        name = "iele-semantics";
-      };
+  src = cleanSourceWith {
+    name = "iele-semantics";
+    inherit src;
+    ignore = [
+      "*.nix"
+      "/iele-assemble"
+      "/iele-examples"
+      "/nix"
+      "/package"
+      "/tests"
+      "/web"
+    ];
+  };
   nativeBuildInputs = [
     protobuf python wrapPython
     k haskell-backend llvm-backend clang

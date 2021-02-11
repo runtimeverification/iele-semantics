@@ -3,6 +3,7 @@
 let
   sources = import ./nix/sources.nix {};
   pkgs = import sources."nixpkgs" {};
+  ttuegel = import sources."nix-lib" { inherit pkgs; };
   inherit (pkgs.lib) importJSON;
   kframework =
     let
@@ -20,10 +21,16 @@ let
 in
 
 let
+  src = ttuegel.cleanGitSubtree {
+    name = "iele-semantics";
+    src = ./.;
+  };
   libff = callPackage ./nix/libff.nix {
     stdenv = llvmPackages.stdenv;
   };
   kiele = callPackage ./nix/kiele.nix {
+    inherit src;
+    inherit (ttuegel) cleanSourceWith;
     inherit libff;
     inherit k haskell-backend llvm-backend clang;
     inherit (pkgs.python3Packages) wrapPython python;
