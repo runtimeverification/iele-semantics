@@ -26,6 +26,7 @@ let
   kiele = callPackage ./nix/kiele.nix {
     inherit libff;
     inherit k haskell-backend llvm-backend clang;
+    inherit (pkgs.python3Packages) wrapPython python;
   };
   iele-assemble = import ./iele-assemble {};
 

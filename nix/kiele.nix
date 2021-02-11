@@ -1,8 +1,8 @@
-{ stdenv, nix-gitignore
+{ stdenv, nix-gitignore, wrapPython
 , protobuf
 , cryptopp, libff, mpfr, secp256k1
 , jemalloc, libffi, ncurses
-, k, haskell-backend, llvm-backend, clang
+, k, haskell-backend, llvm-backend, clang, python
 }:
 
 stdenv.mkDerivation {
@@ -31,7 +31,7 @@ stdenv.mkDerivation {
         name = "iele-semantics";
       };
   nativeBuildInputs = [
-    protobuf
+    protobuf python wrapPython
     k haskell-backend llvm-backend clang
   ];
   buildInputs = [
@@ -45,10 +45,14 @@ stdenv.mkDerivation {
   ];
   buildFlags = [
     "build-interpreter"
-    "build-vm"
   ];
+  preBuild = ''
+    sed -i kiele \
+      -e "/^INSTALL_BIN=/ c INSTALL_BIN=\"$out/bin\"" \
+      -e "/^export LD_LIBRARY_PATH=/ d"
+    patchPythonScript kore-json.py
+  '';
   installTargets = [
-    "install-interpreter"
-    "install-vm"
+    "install-kiele"
   ];
 }
