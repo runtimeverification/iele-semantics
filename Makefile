@@ -45,8 +45,7 @@ IELE_TEST_CLIENT := $(IELE_BIN)/iele-test-client
 export PATH:=$(IELE_BIN):$(PATH)
 
 .PHONY: all clean distclean libff protobuf coverage \
-        build build-interpreter build-vm build-haskell build-node build-testnode \
-		install install-interpreter install-vm uninstall \
+		install install-interpreter install-vm install-kiele uninstall \
         split-tests split-vm-tests split-blockchain-tests \
         test-evm test-vm test-blockchain test-wellformed test-illformed test-bad-packet test-interactive \
         test-iele test-iele-failing test-iele-slow test-iele-node assemble-iele-test
@@ -336,11 +335,15 @@ $(INSTALL_BIN)/%: $(IELE_BIN)/%
 $(INSTALL_LIB)/%: $(IELE_LIB)/%
 	install -D $< $@
 
-install: $(patsubst %, $(INSTALL_BIN)/%, $(install_bins)) $(patsubst %, $(INSTALL_LIB)/%, $(install_libs))
+$(INSTALL_BIN)/kiele: $(patsubst %, $(INSTALL_LIB)/%, $(install_libs))
+
+install: $(patsubst %, $(INSTALL_BIN)/%, $(install_bins))
 
 install-interpreter: $(INSTALL_BIN)/iele-interpreter
 
 install-vm: $(INSTALL_BIN)/iele-vm
+
+install-kiele: $(INSTALL_BIN)/kiele
 
 uninstall:
 	rm $(patsubst %, $(INSTALL_BIN)/%, $(install_bins))
