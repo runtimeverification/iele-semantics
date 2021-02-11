@@ -125,7 +125,7 @@ On MacOS, you need the following:
 ```sh
 brew tap homebrew/homebrew-cask homebrew-cask-versions
 brew cask install java8
-brew install maven opam pkg-config gmp mpfr automake libtool
+brew install maven opam pkg-config gmp mpfr automake libtool protobuf cmake openssl
 ```
 
 On all systems, you need Haskell Stack:
