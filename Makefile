@@ -3,6 +3,11 @@
 
 UNAME_S := $(shell uname -s)
 
+ifeq ($(UNAME_S),Darwin)
+CPATH=/usr/local/include
+export CPATH
+endif
+
 ifeq ($(BYTE),yes)
 EXT=cmo
 LIBEXT=cma
