@@ -1,6 +1,8 @@
 # Common to all versions of K
 # ===========================
 
+UNAME_S := $(shell uname -s)
+
 ifeq ($(BYTE),yes)
 EXT=cmo
 LIBEXT=cma
@@ -62,15 +64,20 @@ distclean: clean
 # Dependencies
 # ------------
 
+ifeq ($(UNAME_S),Darwin)
+OPENSSL_ROOT     := $(shell brew --prefix openssl)
+MACOS_CMAKE_OPTS := -DOPENSSL_ROOT_DIR=$(OPENSSL_ROOT) -DWITH_PROCPS=off
+endif
+
 libff_out := $(LOCAL_LIB)/libff.a
 
 libff: $(libff_out)
 
 $(libff_out): $(PLUGIN)/deps/libff/CMakeLists.txt
 	@mkdir -p $(PLUGIN)/deps/libff/build
-	cd $(PLUGIN)/deps/libff/build                                                   \
-	   && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(BUILD_LOCAL) \
-	   && make -s -j4                                                               \
+	cd $(PLUGIN)/deps/libff/build                                                                       \
+	   && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(BUILD_LOCAL) $(MACOS_CMAKE_OPTS) \
+	   && make -s -j4                                                                                   \
 	   && make install
 
 protobuf_out := $(BUILD_DIR)/plugin-node/proto/msg.pb.cc
@@ -206,10 +213,7 @@ checker_files:=$(addprefix $(IELE_DIR)/,iele-syntax.md well-formedness.md data.m
 # LLVM Builds
 # -----------
 
-UNAME_S := $(shell uname -s)
-
 ifeq ($(UNAME_S),Darwin)
-OPENSSL_ROOT       := $(shell brew --prefix openssl)
 MACOS_INCLUDE_OPTS := -ccopt -I -ccopt $(OPENSSL_ROOT)/include
 MACOS_LINK_OPTS    := -ccopt -L -ccopt $(OPENSSL_ROOT)/lib
 endif
