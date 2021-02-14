@@ -338,7 +338,10 @@ $(INSTALL_BIN)/%: $(IELE_BIN)/%
 $(INSTALL_LIB)/%: $(IELE_LIB)/%
 	install -D $< $@
 
-$(INSTALL_BIN)/kiele: $(patsubst %, $(INSTALL_LIB)/%, $(install_libs))
+$(INSTALL_BIN)/iele-interpreter: $(INSTALL_LIB)/standalone/iele-testing-kompiled/syntaxDefinition.kore
+
+$(INSTALL_BIN)/kiele: $(INSTALL_LIB)/kore-json.py
+$(INSTALL_BIN)/kiele: $(INSTALL_LIB)/version
 
 install: $(patsubst %, $(INSTALL_BIN)/%, $(install_bins))
 
