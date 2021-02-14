@@ -26,7 +26,7 @@ stdenv.mkDerivation {
     ignore = [ "*.nix" "/nix" ];
   };
   preferLocalBuild = true;
-  nativeBuildInputs = [ kiele (lib.getBin ncurses) python ];
+  nativeBuildInputs = [ kiele ncurses python ];
   enableParallelBuilding = true;
   postPatch = ''
     patchShebangs assemble-iele-test
@@ -42,9 +42,7 @@ stdenv.mkDerivation {
   ];
   installPhase = ''
     runHook preInstall
-
     touch "$out"
-
     runHook postInstall
   '';
 }
