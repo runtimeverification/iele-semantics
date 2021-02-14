@@ -1,4 +1,4 @@
-{ stdenv, lib, wrapPython, src, cleanSourceWith
+{ stdenv, lib, src, cleanSourceWith
 , protobuf
 , cryptopp, libff, mpfr, secp256k1
 , jemalloc, libffi, ncurses
@@ -27,7 +27,12 @@ let
 
   mkIELE = target: f: stdenv.mkDerivation (f {
     pname = "iele-${target}";
-    inherit version src;
+    inherit version;
+    src = cleanSourceWith {
+      name = "iele-semantics";
+      inherit src;
+      ignore = [ "kiele" ];
+    };
     nativeBuildInputs = [ protobuf k haskell-backend llvm-backend clang ];
     buildInputs = [
       cryptopp libff mpfr secp256k1
@@ -48,19 +53,22 @@ let
 
   iele-check = mkIELE "check" (x: x);
 
+  host-PATH = lib.makeBinPath [ k llvm-backend haskell-backend ];
+
 in
 
 stdenv.mkDerivation {
   pname = "kiele";
   inherit version src;
-  nativeBuildInputs = [ k python wrapPython ];
+  nativeBuildInputs = [ k python ];
   makeFlags = [ "INSTALL_PREFIX=${builtins.placeholder "out"}" ];
   postPatch = ''
     sed -i kiele \
       -e "/^INSTALL_BIN=/ c INSTALL_BIN=\"$out/bin\"" \
-      -e "/^export LD_LIBRARY_PATH=/ d"
+      -e "/^export LD_LIBRARY_PATH=/ d" \
+      -e '2 i export PATH="${host-PATH}:$PATH"'
 
-    patchPythonScript kore-json.py
+    patchShebangs kore-json.py
   '';
   buildPhase = "true";
   installTargets = [ "install-kiele" ];
@@ -71,6 +79,7 @@ stdenv.mkDerivation {
     ln -s ${lib.getBin iele-vm}/bin/iele-vm $out/bin
 
     ln -s ${lib.getLib iele-interpreter}/lib/kiele/standalone $out/lib/kiele
+    ln -s ${lib.getLib iele-check}/lib/kiele/check $out/lib/kiele
   '';
   passthru = { inherit iele-assemble iele-check iele-interpreter iele-vm; };
 }
