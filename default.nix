@@ -34,6 +34,7 @@ let
     inherit libff;
     inherit k haskell-backend llvm-backend clang;
     inherit (pkgs.python3Packages) wrapPython python;
+    inherit (iele-assemble) iele-assemble;
   };
   iele-assemble = import ./iele-assemble {};
 
