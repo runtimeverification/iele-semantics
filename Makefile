@@ -249,21 +249,23 @@ LLVM_KOMPILE_INCLUDE_OPTS += $(MACOS_INCLUDE_OPTS)
 LLVM_KOMPILE_LINK_OPTS    += $(MACOS_LINK_OPTS)
 endif
 
+build-kiele: $(IELE_RUNNER)
+
 build-check: $(IELE_CHECK)
 
-$(IELE_CHECK): $(BUILD_DIR)/check/well-formedness-kompiled/interpreter $(IELE_RUNNER)
+$(IELE_CHECK): $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
 	@mkdir -p $(IELE_BIN)
 	cp $< $@
 
 build-interpreter: $(IELE_INTERPRETER)
 
-$(IELE_INTERPRETER): $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter $(IELE_RUNNER)
+$(IELE_INTERPRETER): $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
 	@mkdir -p $(IELE_BIN)
 	cp $< $@
 
 build-vm: $(IELE_VM)
 
-$(IELE_VM): $(BUILD_DIR)/node/iele-testing-kompiled/interpreter $(wildcard vm/c/*.cpp vm/c/*.h) $(protobuf_out) $(IELE_RUNNER)
+$(IELE_VM): $(BUILD_DIR)/node/iele-testing-kompiled/interpreter $(wildcard vm/c/*.cpp vm/c/*.h) $(protobuf_out)
 	@mkdir -p $(IELE_BIN)
 	llvm-kompile $(BUILD_DIR)/node/iele-testing-kompiled/definition.kore $(BUILD_DIR)/node/iele-testing-kompiled/dt library vm/c/main.cpp vm/c/vm.cpp $(KOMPILE_CPP_FILES) $(protobuf_out) vm/c/iele/semantics.cpp $(LLVM_KOMPILE_INCLUDE_OPTS) $(LLVM_KOMPILE_LINK_OPTS) -o $(IELE_VM) -g
 
