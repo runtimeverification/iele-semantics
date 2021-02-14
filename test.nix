@@ -34,7 +34,7 @@ stdenv.mkDerivation {
   configurePhase = ''
     echo $PATH
   '';
-  buildFlags = [ "test-interactive" "test-iele" ];
+  buildFlags = [ "test-interactive" "test-iele" "test-wellformed" ];
   installPhase = ''
     runHook preInstall
 
