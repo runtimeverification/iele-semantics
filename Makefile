@@ -331,6 +331,9 @@ $(IELE_LIB)/version:
 $(IELE_LIB)/standalone/iele-testing-kompiled/%: $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
 	install -D $(dir $<)$* $@
 
+$(IELE_LIB)/check/well-formedness-kompiled/%: $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
+	install -D $(dir $<)$* $@
+
 $(IELE_LIB)/kore-json.py: $(IELE_DIR)/kore-json.py
 	install -D $< $@
 
@@ -341,6 +344,9 @@ $(INSTALL_LIB)/%: $(IELE_LIB)/%
 	install -D $< $@
 
 $(INSTALL_BIN)/iele-interpreter: $(INSTALL_LIB)/standalone/iele-testing-kompiled/syntaxDefinition.kore
+
+$(INSTALL_BIN)/iele-check: $(INSTALL_LIB)/check/well-formedness-kompiled/compiled.bin
+$(INSTALL_BIN)/iele-check: $(INSTALL_LIB)/check/well-formedness-kompiled/interpreter
 
 $(INSTALL_BIN)/kiele: $(INSTALL_LIB)/kore-json.py
 $(INSTALL_BIN)/kiele: $(INSTALL_LIB)/version
