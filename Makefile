@@ -323,6 +323,12 @@ coverage:
 # Install
 # -------
 
+INSTALL=install -D
+
+ifeq ($(UNAME_S),Darwin)
+INSTALL=install
+endif
+
 KIELE_VERSION     ?= 0.2.0
 KIELE_RELEASE_TAG ?= v$(KIELE_VERSION)-$(shell git rev-parse --short HEAD)
 
@@ -344,23 +350,28 @@ install_libs :=                                            \
     version
 
 $(IELE_RUNNER): $(IELE_DIR)/kiele
-	install -D $< $@
+	@mkdir -p $(dir $@)
+	$(INSTALL) $< $@
 
 $(IELE_LIB)/version:
 	@mkdir -p $(IELE_LIB)
 	echo "$(KIELE_RELEASE_TAG)" > $@
 
 $(IELE_LIB)/standalone/iele-testing-kompiled/%: $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
-	install -D $(dir $<)$* $@
+	@mkdir -p $(dir $@)
+	$(INSTALL) $(dir $<)$* $@
 
 $(IELE_LIB)/kore-json.py: $(IELE_DIR)/kore-json.py
-	install -D $< $@
+	@mkdir -p $(dir $@)
+	$(INSTALL) $< $@
 
 $(INSTALL_BIN)/%: $(IELE_BIN)/%
-	install -D $< $@
+	@mkdir -p $(dir $@)
+	$(INSTALL) $< $@
 
 $(INSTALL_LIB)/%: $(IELE_LIB)/%
-	install -D $< $@
+	@mkdir -p $(dir $@)
+	$(INSTALL) $< $@
 
 install: $(patsubst %, $(INSTALL_BIN)/%, $(install_bins)) $(patsubst %, $(INSTALL_LIB)/%, $(install_libs))
 
