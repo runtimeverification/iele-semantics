@@ -18,7 +18,7 @@ else
 EXT=cmx
 LIBEXT=cmxa
 DLLEXT=cmxs
-OCAMLC=opt -O3 -cclib -Wl,-rpath=/usr/local/lib
+OCAMLC=opt -O3
 LIBFLAG=-shared
 endif
 
