@@ -52,7 +52,7 @@ IELE_TEST_CLIENT := $(IELE_BIN)/iele-test-client
 SHELL=/bin/bash
 export PATH:=$(IELE_BIN):$(PATH)
 
-.PHONY: all clean distclean libff protobuf coverage secp256k1 \
+.PHONY: all clean distclean libff protobuf coverage secp256k1 cryptopp \
         build build-interpreter build-vm build-haskell build-node build-testnode \
 		install install-interpreter install-vm uninstall \
         split-tests split-vm-tests split-blockchain-tests \
@@ -107,6 +107,15 @@ $(PLUGIN)/deps/secp256k1/Makefile: $(PLUGIN)/deps/secp256k1/autogen.sh
 	cd $(PLUGIN)/deps/secp256k1 \
 	   && ./autogen.sh          \
 	   && ./configure prefix=$(BUILD_LOCAL) --enable-module-recovery
+
+libcryptopp_out := $(LOCAL_LIB)/libcryptopp.a
+
+cryptopp: $(libcryptopp_out)
+
+$(libcryptopp_out): $(PLUGIN)/deps/cryptopp/GNUmakefile
+	cd $(PLUGIN)/deps/cryptopp \
+	   && make libcryptopp.a   \
+	   && make install PREFIX=$(BUILD_LOCAL)
 
 # Tests
 # -----
@@ -255,7 +264,7 @@ KOMPILE_INCLUDE_OPTS += $(addprefix -ccopt , $(MACOS_INCLUDE_OPTS))
 KOMPILE_LINK_OPTS    += $(addprefix -ccopt , $(MACOS_LINK_OPTS))
 endif
 
-$(BUILD_DIR)/check/well-formedness-kompiled/interpreter: $(checker_files) $(protobuf_out) $(libff_out) $(libsecp256k1_out)
+$(BUILD_DIR)/check/well-formedness-kompiled/interpreter: $(checker_files) $(protobuf_out) $(libff_out) $(libsecp256k1_out) $(libcryptopp_out)
 	$(KOMPILE) --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE --md-selector "(k & ! node) | standalone" \
 	                                --syntax-module IELE-SYNTAX well-formedness.md --directory $(BUILD_DIR)/check --hook-namespaces KRYPTO \
 	                                --backend llvm -ccopt $(protobuf_out) $(KOMPILE_CPP_OPTS) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
@@ -263,7 +272,7 @@ $(BUILD_DIR)/check/well-formedness-kompiled/interpreter: $(checker_files) $(prot
 $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter: MD_SELECTOR="(k & ! node) | standalone"
 $(BUILD_DIR)/node/iele-testing-kompiled/interpreter: MD_SELECTOR="(k & ! standalone) | node"
 
-$(BUILD_DIR)/%/iele-testing-kompiled/interpreter: $(k_files) $(protobuf_out) $(libff_out) $(libsecp256k1_out)
+$(BUILD_DIR)/%/iele-testing-kompiled/interpreter: $(k_files) $(protobuf_out) $(libff_out) $(libsecp256k1_out) $(libcryptopp_out)
 	@echo "== kompile: $@"
 	$(KOMPILE) --debug --main-module IELE-TESTING --verbose --md-selector $(MD_SELECTOR) \
 					--syntax-module IELE-SYNTAX iele-testing.md --directory $(BUILD_DIR)/$* --hook-namespaces "KRYPTO BLOCKCHAIN" \
@@ -288,7 +297,7 @@ $(IELE_INTERPRETER): $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter $
 
 build-vm: $(IELE_VM)
 
-$(IELE_VM): $(BUILD_DIR)/node/iele-testing-kompiled/interpreter $(wildcard vm/c/*.cpp vm/c/*.h) $(protobuf_out) $(IELE_RUNNER) $(libsecp256k1_out)
+$(IELE_VM): $(BUILD_DIR)/node/iele-testing-kompiled/interpreter $(wildcard vm/c/*.cpp vm/c/*.h) $(protobuf_out) $(IELE_RUNNER) $(libsecp256k1_out) $(libcryptopp_out)
 	@mkdir -p $(IELE_BIN)
 	llvm-kompile $(BUILD_DIR)/node/iele-testing-kompiled/definition.kore $(BUILD_DIR)/node/iele-testing-kompiled/dt library vm/c/main.cpp vm/c/vm.cpp $(KOMPILE_CPP_FILES) $(protobuf_out) vm/c/iele/semantics.cpp $(LLVM_KOMPILE_INCLUDE_OPTS) $(LLVM_KOMPILE_LINK_OPTS) -o $(IELE_VM) -g
 
