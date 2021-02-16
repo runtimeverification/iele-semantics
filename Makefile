@@ -235,8 +235,8 @@ checker_files:=$(addprefix $(IELE_DIR)/,iele-syntax.md well-formedness.md data.m
 LIB_PROCPS=-lprocps
 
 ifeq ($(UNAME_S),Darwin)
-MACOS_INCLUDE_OPTS := -ccopt -I -ccopt $(OPENSSL_ROOT)/include
-MACOS_LINK_OPTS    := -ccopt -L -ccopt $(OPENSSL_ROOT)/lib
+MACOS_INCLUDE_OPTS := -I $(OPENSSL_ROOT)/include
+MACOS_LINK_OPTS    := -L $(OPENSSL_ROOT)/lib
 LIB_PROCPS=
 endif
 
@@ -250,8 +250,8 @@ KOMPILE_LINK_OPTS    := $(addprefix -ccopt , -L /usr/local/lib -L $(LOCAL_LIB) -
 KOMPILE_CPP_FILES    := $(PLUGIN)/plugin-c/k.cpp $(PLUGIN)/plugin-c/crypto.cpp $(PROTO)/blockchain.cpp $(PROTO)/world.cpp $(PLUGIN)/plugin-c/blake2.cpp $(PLUGIN)/plugin-c/plugin_util.cpp
 KOMPILE_CPP_OPTS     := $(addprefix -ccopt , $(KOMPILE_CPP_FILES))
 ifeq ($(UNAME_S),Darwin)
-KOMPILE_INCLUDE_OPTS += $(MACOS_INCLUDE_OPTS)
-KOMPILE_LINK_OPTS    += $(MACOS_LINK_OPTS)
+KOMPILE_INCLUDE_OPTS += $(addprefix -ccopt , $(MACOS_INCLUDE_OPTS))
+KOMPILE_LINK_OPTS    += $(addprefix -ccopt , $(MACOS_LINK_OPTS))
 endif
 
 $(BUILD_DIR)/check/well-formedness-kompiled/interpreter: $(checker_files) $(protobuf_out) $(libff_out) $(libsecp256k1_out)
