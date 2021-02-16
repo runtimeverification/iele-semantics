@@ -49,6 +49,7 @@ IELE_VM          := $(IELE_BIN)/iele-vm
 IELE_TEST_VM     := $(IELE_BIN)/iele-test-vm
 IELE_TEST_CLIENT := $(IELE_BIN)/iele-test-client
 
+SHELL=/bin/bash
 export PATH:=$(IELE_BIN):$(PATH)
 
 .PHONY: all clean distclean libff protobuf coverage secp256k1 \
