@@ -232,9 +232,12 @@ checker_files:=$(addprefix $(IELE_DIR)/,iele-syntax.md well-formedness.md data.m
 # LLVM Builds
 # -----------
 
+LIB_PROCPS=-lprocps
+
 ifeq ($(UNAME_S),Darwin)
 MACOS_INCLUDE_OPTS := -ccopt -I -ccopt $(OPENSSL_ROOT)/include
 MACOS_LINK_OPTS    := -ccopt -L -ccopt $(OPENSSL_ROOT)/lib
+LIB_PROCPS=
 endif
 
 build-node: $(IELE_VM)
@@ -243,7 +246,7 @@ build-testnode : $(IELE_TEST_VM) $(IELE_TEST_CLIENT)
 KOMPILE=kompile
 
 KOMPILE_INCLUDE_OPTS := $(addprefix -ccopt , -I $(PLUGIN)/plugin-c -I $(PROTO) -I $(BUILD_DIR)/plugin-node -I $(LOCAL_INCLUDE)) -I $(IELE_DIR)
-KOMPILE_LINK_OPTS    := $(addprefix -ccopt , -L /usr/local/lib -L $(LOCAL_LIB) -lprotobuf -lff -lcryptopp -lsecp256k1 -lprocps -lssl -lcrypto)
+KOMPILE_LINK_OPTS    := $(addprefix -ccopt , -L /usr/local/lib -L $(LOCAL_LIB) -lprotobuf -lff -lcryptopp -lsecp256k1 $(LIB_PROCPS) -lssl -lcrypto)
 KOMPILE_CPP_FILES    := $(PLUGIN)/plugin-c/k.cpp $(PLUGIN)/plugin-c/crypto.cpp $(PROTO)/blockchain.cpp $(PROTO)/world.cpp $(PLUGIN)/plugin-c/blake2.cpp $(PLUGIN)/plugin-c/plugin_util.cpp
 KOMPILE_CPP_OPTS     := $(addprefix -ccopt , $(KOMPILE_CPP_FILES))
 ifeq ($(UNAME_S),Darwin)
@@ -266,7 +269,7 @@ $(BUILD_DIR)/%/iele-testing-kompiled/interpreter: $(k_files) $(protobuf_out) $(l
 	                --backend llvm -ccopt $(protobuf_out) $(KOMPILE_CPP_OPTS) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
 
 LLVM_KOMPILE_INCLUDE_OPTS := -I $(PLUGIN)/plugin-c/ -I $(PROTO) -I $(BUILD_DIR)/plugin-node -I vm/c/ -I vm/c/iele/ -I $(LOCAL_INCLUDE)
-LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(LOCAL_LIB) -lff -lprotobuf -lgmp -lprocps -lcryptopp -lsecp256k1 -lssl -lcrypto
+LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(LOCAL_LIB) -lff -lprotobuf -lgmp $(LIB_PROCPS) -lcryptopp -lsecp256k1 -lssl -lcrypto
 ifeq ($(UNAME_S),Darwin)
 LLVM_KOMPILE_INCLUDE_OPTS += $(MACOS_INCLUDE_OPTS)
 LLVM_KOMPILE_LINK_OPTS    += $(MACOS_LINK_OPTS)
