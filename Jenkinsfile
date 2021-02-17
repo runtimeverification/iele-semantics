@@ -137,7 +137,7 @@ pipeline {
                 sh '''
                   mv bionic/kiele_${KIELE_VERSION}_amd64_bionic.deb kiele_amd64_bionic.deb
                   docker login --username "${DOCKERHUB_TOKEN_USR}" --password "${DOCKERHUB_TOKEN_PSW}"
-                  docker image build . --file package/docker/Dockerfile --tag "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}"
+                  docker image build . --file package/docker/Dockerfile --tag "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}" --build-arg K_COMMIT=$(cat deps/k_release | cut --delimiter="-" --field="2")
                   docker image push "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}"
                   docker tag "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}" "${DOCKERHUB_REPO}:${BIONIC_BRANCH_TAG}"
                   docker push "${DOCKERHUB_REPO}:${BIONIC_BRANCH_TAG}"
