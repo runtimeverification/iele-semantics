@@ -45,8 +45,8 @@ IELE_TEST_CLIENT := $(IELE_BIN)/iele-test-client
 export PATH:=$(IELE_BIN):$(PATH)
 
 .PHONY: all clean distclean libff protobuf coverage \
-        build build-interpreter build-vm build-haskell build-node build-testnode \
-		install install-interpreter install-vm uninstall \
+        build build-interpreter build-vm build-check build-haskell build-node build-testnode \
+		install install-interpreter install-vm install-kiele install-check uninstall \
         split-tests split-vm-tests split-blockchain-tests \
         test-evm test-vm test-blockchain test-wellformed test-illformed test-bad-packet test-interactive \
         test-iele test-iele-failing test-iele-slow test-iele-node assemble-iele-test
@@ -249,19 +249,23 @@ LLVM_KOMPILE_INCLUDE_OPTS += $(MACOS_INCLUDE_OPTS)
 LLVM_KOMPILE_LINK_OPTS    += $(MACOS_LINK_OPTS)
 endif
 
-$(IELE_CHECK): $(BUILD_DIR)/check/well-formedness-kompiled/interpreter $(IELE_RUNNER)
+build-kiele: $(IELE_RUNNER)
+
+build-check: $(IELE_CHECK)
+
+$(IELE_CHECK): $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
 	@mkdir -p $(IELE_BIN)
 	cp $< $@
 
 build-interpreter: $(IELE_INTERPRETER)
 
-$(IELE_INTERPRETER): $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter $(IELE_RUNNER)
+$(IELE_INTERPRETER): $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
 	@mkdir -p $(IELE_BIN)
 	cp $< $@
 
 build-vm: $(IELE_VM)
 
-$(IELE_VM): $(BUILD_DIR)/node/iele-testing-kompiled/interpreter $(wildcard vm/c/*.cpp vm/c/*.h) $(protobuf_out) $(IELE_RUNNER)
+$(IELE_VM): $(BUILD_DIR)/node/iele-testing-kompiled/interpreter $(wildcard vm/c/*.cpp vm/c/*.h) $(protobuf_out)
 	@mkdir -p $(IELE_BIN)
 	llvm-kompile $(BUILD_DIR)/node/iele-testing-kompiled/definition.kore $(BUILD_DIR)/node/iele-testing-kompiled/dt library vm/c/main.cpp vm/c/vm.cpp $(KOMPILE_CPP_FILES) $(protobuf_out) vm/c/iele/semantics.cpp $(LLVM_KOMPILE_INCLUDE_OPTS) $(LLVM_KOMPILE_LINK_OPTS) -o $(IELE_VM) -g
 
@@ -327,6 +331,9 @@ $(IELE_LIB)/version:
 $(IELE_LIB)/standalone/iele-testing-kompiled/%: $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
 	install -D $(dir $<)$* $@
 
+$(IELE_LIB)/check/well-formedness-kompiled/%: $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
+	install -D $(dir $<)$* $@
+
 $(IELE_LIB)/kore-json.py: $(IELE_DIR)/kore-json.py
 	install -D $< $@
 
@@ -336,11 +343,23 @@ $(INSTALL_BIN)/%: $(IELE_BIN)/%
 $(INSTALL_LIB)/%: $(IELE_LIB)/%
 	install -D $< $@
 
-install: $(patsubst %, $(INSTALL_BIN)/%, $(install_bins)) $(patsubst %, $(INSTALL_LIB)/%, $(install_libs))
+$(INSTALL_BIN)/iele-interpreter: $(INSTALL_LIB)/standalone/iele-testing-kompiled/syntaxDefinition.kore
+
+$(INSTALL_BIN)/iele-check: $(INSTALL_LIB)/check/well-formedness-kompiled/compiled.bin
+$(INSTALL_BIN)/iele-check: $(INSTALL_LIB)/check/well-formedness-kompiled/interpreter
+
+$(INSTALL_BIN)/kiele: $(INSTALL_LIB)/kore-json.py
+$(INSTALL_BIN)/kiele: $(INSTALL_LIB)/version
+
+install: $(patsubst %, $(INSTALL_BIN)/%, $(install_bins))
 
 install-interpreter: $(INSTALL_BIN)/iele-interpreter
 
 install-vm: $(INSTALL_BIN)/iele-vm
+
+install-check: $(INSTALL_BIN)/iele-check
+
+install-kiele: $(INSTALL_BIN)/kiele
 
 uninstall:
 	rm $(patsubst %, $(INSTALL_BIN)/%, $(install_bins))
