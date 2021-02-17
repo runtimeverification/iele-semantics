@@ -133,7 +133,7 @@ pipeline {
             stage('Build Image') {
               agent { label 'docker' }
               steps {
-                dir('bionic') { unstash 'bionic' }
+                dir('bionic') { unstash 'bionic-kiele' }
                 sh '''
                   mv bionic/kiele_${KIELE_VERSION}_amd64_bionic.deb kiele_amd64_bionic.deb
                   docker login --username "${DOCKERHUB_TOKEN_USR}" --password "${DOCKERHUB_TOKEN_PSW}"
