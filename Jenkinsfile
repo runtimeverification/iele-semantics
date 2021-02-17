@@ -110,6 +110,57 @@ pipeline {
             }
           }
         }
+        stage('DockerHub') {
+          when {
+            branch 'master'
+            beforeAgent true
+          }
+          environment {
+            DOCKERHUB_TOKEN   = credentials('rvdockerhub')
+            BIONIC_COMMIT_TAG = "ubuntu-bionic-${env.SHORT_REV}"
+            BIONIC_BRANCH_TAG = "ubuntu-bionic-${env.BRANCH_NAME}"
+            DOCKERHUB_REPO    = "runtimeverificationinc/runtimeverification-iele-semantics"
+          }
+          stages {
+            stage('Build Image') {
+              agent { label 'docker' }
+              steps {
+                dir('bionic') { unstash 'bionic' }
+                sh '''
+                  mv bionic/kiele_${KIELE_VERSION}_amd64_bionic.deb kiele_amd64_bionic.deb
+                  docker login --username "${DOCKERHUB_TOKEN_USR}" --password "${DOCKERHUB_TOKEN_PSW}"
+                  docker image build . --file package/docker/Dockerfile --tag "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}"
+                  docker image push "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}"
+                  docker tag "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}" "${DOCKERHUB_REPO}:${BIONIC_BRANCH_TAG}"
+                  docker push "${DOCKERHUB_REPO}:${BIONIC_BRANCH_TAG}"
+                '''
+              }
+            }
+            stage('Test Bionic Image') {
+              agent {
+                docker {
+                  image "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}"
+                  args '-u 0'
+                  reuseNode true
+                }
+              }
+              steps {
+                sh '''
+                  cd ~
+                  kiele help
+                  kiele --help
+                  kiele version
+                  kiele --version
+                  git clone 'https://github.com/runtimeverification/iele-semantics'
+                  cd iele-semantics
+                  kiele assemble iele-examples/erc20.iele
+                  echo
+                  kiele check --schedule DANSE iele-examples/erc20.iele
+                '''
+              }
+            }
+          }
+        }
       }
     }
     stage('Deploy') {
