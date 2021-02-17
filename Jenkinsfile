@@ -21,6 +21,10 @@ pipeline {
           additionalBuildArgs '--build-arg K_COMMIT=$(cat deps/k_release | cut --delimiter="-" --field="2") --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g)'
         }
       }
+      when {
+        branch 'master'
+        beforeAgent true
+      }
       stages {
         stage('Build')               { steps { sh 'make build       -j4'        } }
         stage('Split Tests')         { steps { sh 'make split-tests -j4'        } }
@@ -93,6 +97,10 @@ pipeline {
               }
             }
             stage('Test Package') {
+              when {
+                branch 'master'
+                beforeAgent true
+              }
               agent {
                 dockerfile {
                   filename "kiele-${env.KIELE_VERSION}-src/package/debian/Dockerfile.test"
@@ -111,10 +119,10 @@ pipeline {
           }
         }
         stage('DockerHub') {
-          when {
-            branch 'master'
-            beforeAgent true
-          }
+          // when {
+          //   branch 'master'
+          //   beforeAgent true
+          // }
           environment {
             DOCKERHUB_TOKEN   = credentials('rvdockerhub')
             BIONIC_COMMIT_TAG = "ubuntu-bionic-${env.SHORT_REV}"
