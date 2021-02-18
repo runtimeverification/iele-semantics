@@ -312,6 +312,7 @@ install_bins :=      \
     iele-assemble    \
     iele-check       \
     iele-interpreter \
+    iele-test-client \
     iele-test-vm     \
     iele-vm          \
     kiele
