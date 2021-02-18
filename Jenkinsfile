@@ -184,11 +184,11 @@ pipeline {
             stage('Build Image') {
               agent { label 'docker' }
               steps {
-                dir('bionic') { unstash 'bionic-kiele' }
-                dir('focal')  { unstash 'focal-kiele'  }
+                unstash 'bionic-kiele'
+                unstash 'focal-kiele'
                 sh '''
-                  mv bionic/kiele_${KIELE_VERSION}_amd64_bionic.deb kiele_amd64_bionic.deb
-                  mv focal/kiele_${KIELE_VERSION}_amd64_focal.deb   kiele_amd64_focal.deb
+                  mv kiele_${KIELE_VERSION}_amd64_bionic.deb kiele_amd64_bionic.deb
+                  mv kiele_${KIELE_VERSION}_amd64_focal.deb  kiele_amd64_focal.deb
                   docker login --username "${DOCKERHUB_TOKEN_USR}" --password "${DOCKERHUB_TOKEN_PSW}"
                   docker image build . --file package/docker/Dockerfile --tag "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}" --build-arg K_COMMIT=$(cat deps/k_release | cut --delimiter="-" --field="2") --build-arg DISTRO='bionic'
                   docker image build . --file package/docker/Dockerfile --tag "${DOCKERHUB_REPO}:${FOCAL_COMMIT_TAG}"  --build-arg K_COMMIT=$(cat deps/k_release | cut --delimiter="-" --field="2") --build-arg DISTRO='focal'
@@ -264,6 +264,7 @@ pipeline {
           steps {
             unstash 'bin-kiele'
             unstash 'bionic-kiele'
+            unstash 'focal-kiele'
             sshagent(['2b3d8d6b-0855-4b59-864a-6b3ddf9c9d1a']) {
               sh '''
                 git clone 'ssh://github.com/runtimeverification/iele-semantics.git' kiele-release
@@ -281,6 +282,7 @@ pipeline {
                 hub release create                                                                      \
                     --attach "../kiele-${KIELE_VERSION}-bin.tar.gz#KIELE Linux Binary"                  \
                     --attach "../kiele_${KIELE_VERSION}_amd64_bionic.deb#Ubuntu Bionic (18.04) Package" \
+                    --attach "../kiele_${KIELE_VERSION}_amd64_focal.deb#Ubuntu Focal (20.04) Package"   \
                     --file "release.md" "${KIELE_RELEASE_TAG}"
               '''
             }
