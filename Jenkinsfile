@@ -118,6 +118,55 @@ pipeline {
             }
           }
         }
+        stage('Ubuntu Focal') {
+          when {
+            branch 'master'
+            beforeAgent true
+          }
+          stages {
+            stage('Build Package') {
+              agent {
+                dockerfile {
+                  dir "kiele-${env.KIELE_VERSION}-src/package/debian"
+                  additionalBuildArgs '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg BASE_IMAGE=ubuntu:focal'
+                  reuseNode true
+                }
+              }
+              steps {
+                dir("kiele-${env.KIELE_VERSION}-bionic") {
+                  checkout scm
+                  sh './package/debian/build-package.sh ${K_SHORT_REV} focal'
+                  stash name: 'focal-kframework', includes: "kframework-focal.deb"
+                }
+                stash name: 'focal-kiele', includes: "kiele_${env.KIELE_VERSION}_amd64_focal.deb"
+              }
+            }
+            stage('Test Package') {
+              agent {
+                dockerfile {
+                  filename "kiele-${env.KIELE_VERSION}-src/package/debian/Dockerfile.test"
+                  additionalBuildArgs '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg BASE_IMAGE=ubuntu:focal'
+                  reuseNode true
+                }
+              }
+              options { timeout(time: 15, unit: 'MINUTES') }
+              steps {
+                dir("kiele-${env.KIELE_VERSION}-focal-test") {
+                  unstash 'focal-kiele'
+                  sh '''
+                    sudo apt-get update && sudo apt-get upgrade --yes
+                    sudo apt-get install --yes netcat
+                    sudo apt-get install --yes ./kiele_${KIELE_VERSION}_amd64_focal.deb
+                    git clone 'https://github.com/runtimeverification/iele-semantics'
+                    cd iele-semantics
+                    git checkout ${LONG_REV}
+                    ./package/test-package.sh 9001
+                  '''
+                }
+              }
+            }
+          }
+        }
         stage('DockerHub') {
           when {
             branch 'master'
