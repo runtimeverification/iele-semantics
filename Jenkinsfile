@@ -160,8 +160,14 @@ pipeline {
                   kiele version
                   kiele --version
                   git clone 'https://github.com/runtimeverification/iele-semantics'
-                  cd iele-semantics
-                  kiele assemble iele-examples/erc20.iele
+                  make test-vm -j4
+                  make test-iele -j4
+                  kiele vm --port ${TEST_PORT} &
+                  pid=$!
+                  sleep 3
+                  make test-iele-node  -j4 TEST_PORT=${TEST_PORT}
+                  make test-bad-packet -j4 TEST_PORT=${TEST_PORT}
+                  kill $pid
                 '''
               }
             }
