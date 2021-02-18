@@ -111,8 +111,9 @@ pipeline {
               options { timeout(time: 15, unit: 'MINUTES') }
               steps {
                 dir("kiele-${env.KIELE_VERSION}-bionic-test") {
+                  checkout scm
                   unstash 'bionic-kiele'
-                  sh '../kiele-${KIELE_VERSION}-bionic/package/debian/test-package.sh ${KIELE_VERSION} bionic ${LONG_REV} 9001'
+                  sh './package/debian/test-package.sh ${KIELE_VERSION} bionic ${LONG_REV} 9001'
                 }
               }
             }
@@ -153,26 +154,10 @@ pipeline {
                 }
               }
               steps {
-                sh '''
-                  cd ~
-                  kiele help
-                  kiele --help
-                  kiele version
-                  kiele --version
-                  git clone 'https://github.com/runtimeverification/iele-semantics'
-                  cd iele-semantics
-                  git fetch --all
-                  git checkout "${LONG_REV}"
-                  make test-vm -j4
-                  make test-iele -j4
-                  export TEST_PORT=9002
-                  kiele vm --port ${TEST_PORT} &
-                  pid=$!
-                  sleep 3
-                  make test-iele-node  -j4 TEST_PORT=${TEST_PORT}
-                  make test-bad-packet -j4 TEST_PORT=${TEST_PORT}
-                  kill $pid
-                '''
+                dir("kiele-${env.KIELE_VERSION}-docker-bionic-test") {
+                  checkout scm
+                  sh './package/test-package.sh ${LONG_REV} 9001'
+                }
               }
             }
           }
