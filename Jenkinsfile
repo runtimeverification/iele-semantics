@@ -111,9 +111,15 @@ pipeline {
               options { timeout(time: 15, unit: 'MINUTES') }
               steps {
                 dir("kiele-${env.KIELE_VERSION}-bionic-test") {
-                  checkout scm
                   unstash 'bionic-kiele'
-                  sh './package/debian/test-package.sh ${KIELE_VERSION} bionic ${LONG_REV} 9001'
+                  sh '''
+                    sudo apt-get update && sudo apt-get upgrade --yes
+                    sudo apt-get install --yes netcat
+                    sudo apt-get install --yes ./kiele_${KIELE_VERSION}_amd64_bionic.deb
+                    git clone 'https://github.com/runtimeverification/iele-semantics'
+                    cd iele-semantics
+                    ./package/test-package.sh ${LONG_REV} 9001
+                  '''
                 }
               }
             }
@@ -155,8 +161,11 @@ pipeline {
               }
               steps {
                 dir("kiele-${env.KIELE_VERSION}-docker-bionic-test") {
-                  checkout scm
-                  sh './package/test-package.sh ${LONG_REV} 9001'
+                  sh '''
+                    git clone 'https://github.com/runtimeverification/iele-semantics'
+                    cd iele-semantics
+                    ./package/test-package.sh ${LONG_REV} 9001
+                  '''
                 }
               }
             }

@@ -7,7 +7,7 @@ TEST_PORT="$1"      ; shift
 
 git clean -dffx
 git checkout "$KIELE_REVISION"
-git submodule update --init --recursive
+git submodule update --init --recursive -- tests/ethereum-tests
 
 make test-vm -j4
 make test-iele -j4
