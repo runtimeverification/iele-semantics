@@ -13,5 +13,6 @@ sudo bash -c 'OPAMROOT=/usr/lib/kframework/opamroot k-configure-opam'
 sudo bash -c 'OPAMROOT=/usr/lib/kframework/opamroot opam install --yes ocaml-protoc rlp yojson zarith hex uuidm cryptokit'
 export OPAMROOT=/usr/lib/kframework/opamroot
 cp -r package/debian ./
+mv package/debian/control.${UBUNTU_RELEASE} package/debian/control
 dpkg-buildpackage
 mv ../kiele_${KIELE_VERSION}_amd64.deb ../kiele_${KIELE_VERSION}_amd64_${UBUNTU_RELEASE}.deb
