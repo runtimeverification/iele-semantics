@@ -5,8 +5,7 @@ set -euxo pipefail
 KIELE_REVISION="$1" ; shift
 TEST_PORT="$1"      ; shift
 
-git clone 'https://github.com/runtimeverification/iele-semantics'
-cd iele-semantics
+git clean -dffx
 git checkout "$KIELE_REVISION"
 git submodule update --init --recursive
 
