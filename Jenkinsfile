@@ -118,7 +118,8 @@ pipeline {
                     sudo apt-get install --yes ./kiele_${KIELE_VERSION}_amd64_bionic.deb
                     git clone 'https://github.com/runtimeverification/iele-semantics'
                     cd iele-semantics
-                    ./package/test-package.sh ${LONG_REV} 9001
+                    git checkout ${LONG_REV}
+                    ./package/test-package.sh 9001
                   '''
                 }
               }
@@ -164,7 +165,8 @@ pipeline {
                   sh '''
                     git clone 'https://github.com/runtimeverification/iele-semantics'
                     cd iele-semantics
-                    ./package/test-package.sh ${LONG_REV} 9001
+                    git checkout ${LONG_REV}
+                    ./package/test-package.sh 9001
                   '''
                 }
               }

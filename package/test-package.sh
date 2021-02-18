@@ -2,12 +2,7 @@
 
 set -euxo pipefail
 
-KIELE_REVISION="$1" ; shift
-TEST_PORT="$1"      ; shift
-
-git clean -dffx
-git checkout "$KIELE_REVISION"
-git submodule update --init --recursive -- tests/ethereum-tests
+TEST_PORT="$1" ; shift
 
 make test-vm -j4
 make test-iele -j4
