@@ -154,8 +154,7 @@ pipeline {
                 dir("kiele-${env.KIELE_VERSION}-focal-test") {
                   unstash 'focal-kiele'
                   sh '''
-                    sudo apt-get update && sudo apt-get upgrade --yes
-                    sudo apt-get install --yes netcat
+                    sudo apt-get update && sudo apt-get upgrade --yes && sudo apt-get install --yes netcat
                     sudo apt-get install --yes ./kiele_${KIELE_VERSION}_amd64_focal.deb
                     git clone 'https://github.com/runtimeverification/iele-semantics'
                     cd iele-semantics
@@ -212,7 +211,7 @@ pipeline {
               steps {
                 dir("kiele-${env.KIELE_VERSION}-docker-bionic-test") {
                   sh '''
-                    apt-get install --yes netcat
+                    apt-get update && apt-get upgrade --yes && apt-get install --yes netcat
                     cd ~
                     git clone 'https://github.com/runtimeverification/iele-semantics'
                     cd iele-semantics
@@ -233,7 +232,7 @@ pipeline {
               steps {
                 dir("kiele-${env.KIELE_VERSION}-docker-focal-test") {
                   sh '''
-                    apt-get install --yes netcat
+                    apt-get update && apt-get upgrade --yes && apt-get install --yes netcat
                     cd ~
                     git clone 'https://github.com/runtimeverification/iele-semantics'
                     cd iele-semantics
