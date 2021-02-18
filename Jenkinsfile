@@ -176,6 +176,8 @@ pipeline {
             DOCKERHUB_TOKEN   = credentials('rvdockerhub')
             BIONIC_COMMIT_TAG = "ubuntu-bionic-${env.SHORT_REV}"
             BIONIC_BRANCH_TAG = "ubuntu-bionic-${env.BRANCH_NAME}"
+            FOCAL_COMMIT_TAG  = "ubuntu-focal-${env.SHORT_REV}"
+            FOCAL_BRANCH_TAG  = "ubuntu-focal-${env.BRANCH_NAME}"
             DOCKERHUB_REPO    = "runtimeverificationinc/runtimeverification-iele-semantics"
           }
           stages {
@@ -183,13 +185,19 @@ pipeline {
               agent { label 'docker' }
               steps {
                 dir('bionic') { unstash 'bionic-kiele' }
+                dir('focal')  { unstash 'focal-kiele'  }
                 sh '''
                   mv bionic/kiele_${KIELE_VERSION}_amd64_bionic.deb kiele_amd64_bionic.deb
+                  mv focal/kiele_${KIELE_VERSION}_amd64_focal.deb   kiele_amd64_focal.deb
                   docker login --username "${DOCKERHUB_TOKEN_USR}" --password "${DOCKERHUB_TOKEN_PSW}"
                   docker image build . --file package/docker/Dockerfile --tag "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}" --build-arg K_COMMIT=$(cat deps/k_release | cut --delimiter="-" --field="2") --build-arg DISTRO='bionic'
+                  docker image build . --file package/docker/Dockerfile --tag "${DOCKERHUB_REPO}:${FOCAL_COMMIT_TAG}"  --build-arg K_COMMIT=$(cat deps/k_release | cut --delimiter="-" --field="2") --build-arg DISTRO='focal'
                   docker image push "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}"
+                  docker image push "${DOCKERHUB_REPO}:${FOCAL_COMMIT_TAG}"
                   docker tag "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}" "${DOCKERHUB_REPO}:${BIONIC_BRANCH_TAG}"
+                  docker tag "${DOCKERHUB_REPO}:${FOCAL_COMMIT_TAG}"  "${DOCKERHUB_REPO}:${FOCAL_BRANCH_TAG}"
                   docker push "${DOCKERHUB_REPO}:${BIONIC_BRANCH_TAG}"
+                  docker push "${DOCKERHUB_REPO}:${FOCAL_BRANCH_TAG}"
                 '''
               }
             }
@@ -203,6 +211,27 @@ pipeline {
               }
               steps {
                 dir("kiele-${env.KIELE_VERSION}-docker-bionic-test") {
+                  sh '''
+                    apt-get install --yes netcat
+                    cd ~
+                    git clone 'https://github.com/runtimeverification/iele-semantics'
+                    cd iele-semantics
+                    git checkout ${LONG_REV}
+                    ./package/test-package.sh 9001
+                  '''
+                }
+              }
+            }
+            stage('Test Focal Image') {
+              agent {
+                docker {
+                  image "${DOCKERHUB_REPO}:${FOCAL_COMMIT_TAG}"
+                  args '-u 0'
+                  reuseNode true
+                }
+              }
+              steps {
+                dir("kiele-${env.KIELE_VERSION}-docker-focal-test") {
                   sh '''
                     apt-get install --yes netcat
                     cd ~
