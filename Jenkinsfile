@@ -163,6 +163,7 @@ pipeline {
               steps {
                 dir("kiele-${env.KIELE_VERSION}-docker-bionic-test") {
                   sh '''
+                    apt-get install --yes netcat
                     cd ~
                     git clone 'https://github.com/runtimeverification/iele-semantics'
                     cd iele-semantics
