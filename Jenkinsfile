@@ -165,6 +165,7 @@ pipeline {
                   git checkout "${LONG_REV}"
                   make test-vm -j4
                   make test-iele -j4
+                  export TEST_PORT=9002
                   kiele vm --port ${TEST_PORT} &
                   pid=$!
                   sleep 3
