@@ -55,10 +55,10 @@ pipeline {
       stages {
         stage('Checkout SCM') { steps { dir("kiele-${KIELE_VERSION}-src") { checkout scm } } }
         stage('Binary Package') {
-          when {
-            branch 'master'
-            beforeAgent true
-          }
+          // when {
+          //   branch 'master'
+          //   beforeAgent true
+          // }
           agent {
             dockerfile {
               reuseNode true
@@ -119,10 +119,10 @@ pipeline {
           }
         }
         stage('Ubuntu Focal') {
-          when {
-            branch 'master'
-            beforeAgent true
-          }
+          // when {
+          //   branch 'master'
+          //   beforeAgent true
+          // }
           stages {
             stage('Build Package') {
               agent {
@@ -168,10 +168,10 @@ pipeline {
           }
         }
         stage('DockerHub') {
-          when {
-            branch 'master'
-            beforeAgent true
-          }
+          // when {
+          //   branch 'master'
+          //   beforeAgent true
+          // }
           environment {
             DOCKERHUB_TOKEN   = credentials('rvdockerhub')
             BIONIC_COMMIT_TAG = "ubuntu-bionic-${env.SHORT_REV}"
