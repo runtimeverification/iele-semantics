@@ -162,8 +162,6 @@ pipeline {
                   git clone 'https://github.com/runtimeverification/iele-semantics'
                   cd iele-semantics
                   kiele assemble iele-examples/erc20.iele
-                  echo
-                  kiele check --schedule DANSE iele-examples/erc20.iele
                 '''
               }
             }
