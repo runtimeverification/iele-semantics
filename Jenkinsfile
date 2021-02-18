@@ -160,6 +160,9 @@ pipeline {
                   kiele version
                   kiele --version
                   git clone 'https://github.com/runtimeverification/iele-semantics'
+                  cd iele-semantics
+                  git fetch --all
+                  git checkout "${LONG_REV}"
                   make test-vm -j4
                   make test-iele -j4
                   kiele vm --port ${TEST_PORT} &
