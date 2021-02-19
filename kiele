@@ -42,15 +42,19 @@ run_interpret() {
     kore-json.py "$run_file" "$schedule" "$mode" > "$kast"
     case "$backend" in
         standalone)
-            debugger=()
-            ! $debug || debugger+=(gdb --args)
-            "${debugger[@]}"  iele-interpreter "$kast" "$depth" "$output" "$@" || status="$?"
+            interpret_cmd=(iele-interpreter "$kast" "$depth" "$output" "$@")
+            if $debug; then
+                gdb --args "${interpret_cmd[@]}"
+            else
+                "${interpret_cmd[@]}" || status="$?"
+            fi
             ;;
         haskell)
             check_k_install
-            depth_switch=()
-            [[ "$depth" == "-1" ]] || depth_switch+=(--depth "$depth")
-            kore-exec "$backend_dir/$definition-kompiled/definition.kore" --pattern "$kast" --module "$module" --output "$output" "${depth_switch[@]}" "$@" || status="$?"
+            kore_cmd=(kore-exec "$backend_dir/$definition-kompiled/definition.kore" --pattern "$kast" --module "$module" --output "$output")
+            [[ "$depth" == "-1" ]] || kore_cmd+=(--depth "$depth")
+            kore_cmd+=("$@")
+            ${kore_cmd[@]} || status="$?"
             ;;
         *)
             fatal "Unknown backend: $backend"
@@ -147,7 +151,9 @@ while [[ $# -gt 0 ]]; do
         *)            args+=("$1")              ; shift   ;;
     esac
 done
-set -- "${args[@]}"
+if [[ "${#args[@]}" -gt 0 ]]; then
+  set -- "${args[@]}"
+fi
 backend_dir="${backend_dir:-$INSTALL_LIB/$backend}"
 
 if [[ "$run_command" != 'vm' ]]; then
