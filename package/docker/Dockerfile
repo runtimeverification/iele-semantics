@@ -2,6 +2,7 @@ ARG K_COMMIT
 ARG DISTRO
 FROM runtimeverificationinc/kframework-k:ubuntu-${DISTRO}-${K_COMMIT}
 
+ARG DISTRO
 COPY kiele_amd64_${DISTRO}.deb /kiele_amd64_${DISTRO}.deb
 RUN    apt-get update                                   \
     && apt-get upgrade --yes                            \
