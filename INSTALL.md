@@ -13,13 +13,9 @@ Our most up-to-date packages are available at <https://github.com/runtimeverific
 **NOTE**: We do not currently support running K on native Windows.
 To use K on Windows, you are encouraged to install [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10) and follow the instructions for Ubuntu Bionic.
 
-# Installing K
-
-First make sure you have the `kframework` package installed, see instructions here: <https://github.com/kframework/k/releases>.
-
 ## Ubuntu Bionic package
 
-Download the appropriate "Ubuntu Bionic" package from the GitHub, via the [Releases](https://github.com/kframework/k/releases) page.
+Download the appropriate "Ubuntu Bionic" package from the GitHub, via the [Releases](https://github.com/runtimeverification/iele-semantics/releases) page.
 Releases are generated as often as possible from `master` build.
 Assuming you have downloaded KIELE version `X.Y.Z`, install the package with `apt`:
 
@@ -35,7 +31,7 @@ Install the following runtime dependencies:
 sudo apt-get install --yes libcrypto++-dev libjemalloc-dev libmpfr-dev libprotobuf-dev libsecp256k1-dev
 ```
 
-Download the "KIELE Linux Binary" package from the GitHub, via the [Releases](https://github.com/kframework/k/releases) page.
+Download the "KIELE Linux Binary" package from the GitHub, via the [Releases](https://github.com/runtimeverification/iele-semantics/releases) page.
 Releases are generated as often as possible from `master` build.
 
 Assuming you have downloaded KIELE version `X.Y.Z`, extract the tarball:
@@ -56,18 +52,6 @@ And make sure it's on `PATH`:
 
 ```sh
 export PATH=$HOME/local/bin:$PATH
-```
-
-## MacOS Homebrew package
-
-Look in `deps/k_release` for the currently supported release of K.
-
-Go to `https://github.com/kframework/k/releases/tag/<k_release>` and download the `Mac OS X Homebrew Bottle` resource.
-
-Install the downloaded K package:
-
-```sh
-brew install kframework-5.0.0.mojave.bottle.XX.tar.gz
 ```
 
 ## Nix
@@ -119,7 +103,15 @@ git submodule update --init --recursive
 nix-env -f . -i
 ```
 
-# Build IELE from source
+# Build from source
+
+## Installing K
+
+First make sure you have the `kframework` package installed.
+
+Look in `deps/k_release` for the currently supported tag release of K, you will need to install that one.
+
+see instructions here: https://github.com/kframework/k/releases/tag/<k_release>.
 
 ## System Dependencies
 
