@@ -104,7 +104,141 @@ pipeline {
               steps {
                 dir("kiele-${env.KIELE_VERSION}-bionic-test") {
                   unstash 'bionic-kiele'
-                  sh '../kiele-${KIELE_VERSION}-bionic/package/debian/test-package.sh ${KIELE_VERSION} bionic ${LONG_REV} 9001'
+                  sh '''
+                    sudo apt-get update && sudo apt-get upgrade --yes
+                    sudo apt-get install --yes netcat
+                    sudo apt-get install --yes ./kiele_${KIELE_VERSION}_amd64_bionic.deb
+                    git clone 'https://github.com/runtimeverification/iele-semantics'
+                    cd iele-semantics
+                    git checkout ${LONG_REV}
+                    ./package/test-package.sh 9001
+                  '''
+                }
+              }
+            }
+          }
+        }
+        stage('Ubuntu Focal') {
+          when {
+            branch 'master'
+            beforeAgent true
+          }
+          stages {
+            stage('Build Package') {
+              agent {
+                dockerfile {
+                  dir "kiele-${env.KIELE_VERSION}-src/package/debian"
+                  additionalBuildArgs '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg BASE_IMAGE=ubuntu:focal'
+                  reuseNode true
+                }
+              }
+              steps {
+                dir("kiele-${env.KIELE_VERSION}-bionic") {
+                  checkout scm
+                  sh './package/debian/build-package.sh ${K_SHORT_REV} focal'
+                  stash name: 'focal-kframework', includes: "kframework-focal.deb"
+                }
+                stash name: 'focal-kiele', includes: "kiele_${env.KIELE_VERSION}_amd64_focal.deb"
+              }
+            }
+            stage('Test Package') {
+              agent {
+                dockerfile {
+                  filename "kiele-${env.KIELE_VERSION}-src/package/debian/Dockerfile.test"
+                  additionalBuildArgs '--build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg BASE_IMAGE=ubuntu:focal'
+                  reuseNode true
+                }
+              }
+              options { timeout(time: 15, unit: 'MINUTES') }
+              steps {
+                dir("kiele-${env.KIELE_VERSION}-focal-test") {
+                  unstash 'focal-kiele'
+                  sh '''
+                    sudo apt-get update && sudo apt-get upgrade --yes && sudo apt-get install --yes netcat
+                    sudo apt-get install --yes ./kiele_${KIELE_VERSION}_amd64_focal.deb
+                    git clone 'https://github.com/runtimeverification/iele-semantics'
+                    cd iele-semantics
+                    git checkout ${LONG_REV}
+                    ./package/test-package.sh 9001
+                  '''
+                }
+              }
+            }
+          }
+        }
+        stage('DockerHub') {
+          when {
+            branch 'master'
+            beforeAgent true
+          }
+          environment {
+            DOCKERHUB_TOKEN   = credentials('rvdockerhub')
+            BIONIC_COMMIT_TAG = "ubuntu-bionic-${env.SHORT_REV}"
+            BIONIC_BRANCH_TAG = "ubuntu-bionic-${env.BRANCH_NAME}"
+            FOCAL_COMMIT_TAG  = "ubuntu-focal-${env.SHORT_REV}"
+            FOCAL_BRANCH_TAG  = "ubuntu-focal-${env.BRANCH_NAME}"
+            DOCKERHUB_REPO    = "runtimeverificationinc/runtimeverification-iele-semantics"
+          }
+          stages {
+            stage('Build Image') {
+              agent { label 'docker' }
+              steps {
+                unstash 'bionic-kiele'
+                unstash 'focal-kiele'
+                sh '''
+                  mv kiele_${KIELE_VERSION}_amd64_bionic.deb kiele_amd64_bionic.deb
+                  mv kiele_${KIELE_VERSION}_amd64_focal.deb  kiele_amd64_focal.deb
+                  docker login --username "${DOCKERHUB_TOKEN_USR}" --password "${DOCKERHUB_TOKEN_PSW}"
+                  docker image build . --file package/docker/Dockerfile --tag "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}" --build-arg K_COMMIT=$(cat deps/k_release | cut --delimiter="-" --field="2") --build-arg DISTRO='bionic'
+                  docker image build . --file package/docker/Dockerfile --tag "${DOCKERHUB_REPO}:${FOCAL_COMMIT_TAG}"  --build-arg K_COMMIT=$(cat deps/k_release | cut --delimiter="-" --field="2") --build-arg DISTRO='focal'
+                  docker image push "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}"
+                  docker image push "${DOCKERHUB_REPO}:${FOCAL_COMMIT_TAG}"
+                  docker tag "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}" "${DOCKERHUB_REPO}:${BIONIC_BRANCH_TAG}"
+                  docker tag "${DOCKERHUB_REPO}:${FOCAL_COMMIT_TAG}"  "${DOCKERHUB_REPO}:${FOCAL_BRANCH_TAG}"
+                  docker push "${DOCKERHUB_REPO}:${BIONIC_BRANCH_TAG}"
+                  docker push "${DOCKERHUB_REPO}:${FOCAL_BRANCH_TAG}"
+                '''
+              }
+            }
+            stage('Test Bionic Image') {
+              agent {
+                docker {
+                  image "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}"
+                  args '-u 0'
+                  reuseNode true
+                }
+              }
+              steps {
+                dir("kiele-${env.KIELE_VERSION}-docker-bionic-test") {
+                  sh '''
+                    apt-get update && apt-get upgrade --yes && apt-get install --yes netcat
+                    cd ~
+                    git clone 'https://github.com/runtimeverification/iele-semantics'
+                    cd iele-semantics
+                    git checkout ${LONG_REV}
+                    ./package/test-package.sh 9001
+                  '''
+                }
+              }
+            }
+            stage('Test Focal Image') {
+              agent {
+                docker {
+                  image "${DOCKERHUB_REPO}:${FOCAL_COMMIT_TAG}"
+                  args '-u 0'
+                  reuseNode true
+                }
+              }
+              steps {
+                dir("kiele-${env.KIELE_VERSION}-docker-focal-test") {
+                  sh '''
+                    apt-get update && apt-get upgrade --yes && apt-get install --yes netcat
+                    cd ~
+                    git clone 'https://github.com/runtimeverification/iele-semantics'
+                    cd iele-semantics
+                    git checkout ${LONG_REV}
+                    ./package/test-package.sh 9001
+                  '''
                 }
               }
             }
@@ -129,6 +263,7 @@ pipeline {
           steps {
             unstash 'bin-kiele'
             unstash 'bionic-kiele'
+            unstash 'focal-kiele'
             sshagent(['2b3d8d6b-0855-4b59-864a-6b3ddf9c9d1a']) {
               sh '''
                 git clone 'ssh://github.com/runtimeverification/iele-semantics.git' kiele-release
@@ -146,6 +281,7 @@ pipeline {
                 hub release create                                                                      \
                     --attach "../kiele-${KIELE_VERSION}-bin.tar.gz#KIELE Linux Binary"                  \
                     --attach "../kiele_${KIELE_VERSION}_amd64_bionic.deb#Ubuntu Bionic (18.04) Package" \
+                    --attach "../kiele_${KIELE_VERSION}_amd64_focal.deb#Ubuntu Focal (20.04) Package"   \
                     --file "release.md" "${KIELE_RELEASE_TAG}"
               '''
             }
