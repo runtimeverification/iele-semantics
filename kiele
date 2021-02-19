@@ -54,7 +54,7 @@ run_interpret() {
             kore_cmd=(kore-exec "$backend_dir/$definition-kompiled/definition.kore" --pattern "$kast" --module "$module" --output "$output")
             [[ "$depth" == "-1" ]] || kore_cmd+=(--depth "$depth")
             kore_cmd+=("$@")
-            ${kore_cmd[@]} || status="$?"
+            "${kore_cmd[@]}" || status="$?"
             ;;
         *)
             fatal "Unknown backend: $backend"
