@@ -56,6 +56,18 @@ And make sure it's on `PATH`:
 export PATH=$HOME/local/bin:$PATH
 ```
 
+## MacOS Homebrew package
+
+Look in `deps/k_release` for the currently supported release of K.
+
+Go to `https://github.com/kframework/k/releases/tag/<k_release>` and download the `Mac OS X Homebrew Bottle` resource.
+
+Install the downloaded K package:
+
+```sh
+brew install kframework-5.0.0.mojave.bottle.XX.tar.gz
+```
+
 ## Nix
 
 A Nix expression is provided, with binary caching for Linux and macOS.
