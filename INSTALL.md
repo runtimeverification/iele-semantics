@@ -13,9 +13,11 @@ Our most up-to-date packages are available at <https://github.com/runtimeverific
 **NOTE**: We do not currently support running K on native Windows.
 To use K on Windows, you are encouraged to install [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10) and follow the instructions for Ubuntu Bionic.
 
-## Ubuntu Bionic package
+# Installing K
 
 First make sure you have the `kframework` package installed, see instructions here: <https://github.com/kframework/k/releases>.
+
+## Ubuntu Bionic package
 
 Download the appropriate "Ubuntu Bionic" package from the GitHub, via the [Releases](https://github.com/kframework/k/releases) page.
 Releases are generated as often as possible from `master` build.
@@ -117,9 +119,11 @@ git submodule update --init --recursive
 nix-env -f . -i
 ```
 
-## Build from source
+# Build IELE from source
 
-### System Dependencies
+## System Dependencies
+
+### Ubuntu Bionic
 
 The following packages are needed for running KIELE on Ubuntu:
 
@@ -132,7 +136,7 @@ sudo apt-get install --yes autoconf build-essential cmake curl flex gcc   \
                            python3 zlib1g-dev
 ```
 
-On MacOS, you need the following:
+### MacOS
 
 ```sh
 brew tap homebrew/homebrew-cask homebrew-cask-versions
@@ -146,9 +150,9 @@ On all systems, you need Haskell Stack:
 curl -sSL https://get.haskellstack.org/ | sh
 ```
 
-### Build K and KIELE
+## Build KIELE
 
-These commands build and install K and KIELE:
+These commands build and install KIELE:
 
 ```sh
 git clone https://github.com/runtimeverification/iele-semantics.git
