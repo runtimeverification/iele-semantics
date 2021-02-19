@@ -12,11 +12,11 @@ export PATH="$INSTALL_BIN:$INSTALL_LIB:$PATH"
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-}:/usr/local/lib
 
 check_k_install() {
-    which kore-exec &> /dev/null \
+    type -p kore-exec &> /dev/null \
         || fatal "Must have K installed! See https://github.com/kframework/k/releases."
-    which kast &> /dev/null \
+    type -p kast &> /dev/null \
         || fatal "Must have K installed! See https://github.com/kframework/k/releases."
-    which krun &> /dev/null \
+    type -p krun &> /dev/null \
         || fatal "Must have K installed! See https://github.com/kframework/k/releases."
 }
 
