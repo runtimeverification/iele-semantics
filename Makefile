@@ -94,7 +94,9 @@ $(protobuf_out): $(PROTO)/proto/msg.proto
 	mkdir -p $(BUILD_DIR)/plugin-node
 	protoc --cpp_out=$(BUILD_DIR)/plugin-node -I $(PROTO) $<
 
+ifeq ($(UNAME_S),Darwin)
 libsecp256k1_out := $(LOCAL_LIB)/libsecp256k1.a
+endif
 
 secp256k1: $(libsecp256k1_out)
 
@@ -108,7 +110,9 @@ $(PLUGIN)/deps/secp256k1/Makefile: $(PLUGIN)/deps/secp256k1/autogen.sh
 	   && ./autogen.sh          \
 	   && ./configure prefix=$(BUILD_LOCAL) --enable-module-recovery
 
+ifeq ($(UNAME_S),Darwin)
 libcryptopp_out := $(LOCAL_LIB)/libcryptopp.a
+endif
 
 cryptopp: $(libcryptopp_out)
 
