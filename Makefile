@@ -1,6 +1,13 @@
 # Common to all versions of K
 # ===========================
 
+UNAME_S := $(shell uname -s)
+
+ifeq ($(UNAME_S),Darwin)
+CPATH=/usr/local/include
+export CPATH
+endif
+
 ifeq ($(BYTE),yes)
 EXT=cmo
 LIBEXT=cma
@@ -11,7 +18,7 @@ else
 EXT=cmx
 LIBEXT=cmxa
 DLLEXT=cmxs
-OCAMLC=opt -O3 -cclib -Wl,-rpath=/usr/local/lib
+OCAMLC=opt -O3
 LIBFLAG=-shared
 endif
 
@@ -42,11 +49,14 @@ IELE_VM          := $(IELE_BIN)/iele-vm
 IELE_TEST_VM     := $(IELE_BIN)/iele-test-vm
 IELE_TEST_CLIENT := $(IELE_BIN)/iele-test-client
 
+# We set SHELL here for Mac: https://stackoverflow.com/a/25506676
+SHELL=/bin/bash
+
 export PATH:=$(IELE_BIN):$(PATH)
 
-.PHONY: all clean distclean libff protobuf coverage \
-        build build-interpreter build-vm build-haskell build-node build-testnode \
-		install install-interpreter install-vm uninstall \
+.PHONY: all clean distclean libff protobuf coverage secp256k1 cryptopp \
+        build build-interpreter build-vm build-check build-haskell build-node build-testnode \
+		install install-interpreter install-vm install-kiele install-check uninstall \
         split-tests split-vm-tests split-blockchain-tests \
         test-evm test-vm test-blockchain test-wellformed test-illformed test-bad-packet test-interactive \
         test-iele test-iele-failing test-iele-slow test-iele-node assemble-iele-test
@@ -62,15 +72,20 @@ distclean: clean
 # Dependencies
 # ------------
 
+ifeq ($(UNAME_S),Darwin)
+OPENSSL_ROOT     := $(shell brew --prefix openssl)
+MACOS_CMAKE_OPTS := -DOPENSSL_ROOT_DIR=$(OPENSSL_ROOT) -DWITH_PROCPS=off
+endif
+
 libff_out := $(LOCAL_LIB)/libff.a
 
 libff: $(libff_out)
 
 $(libff_out): $(PLUGIN)/deps/libff/CMakeLists.txt
 	@mkdir -p $(PLUGIN)/deps/libff/build
-	cd $(PLUGIN)/deps/libff/build                                                   \
-	   && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(BUILD_LOCAL) \
-	   && make -s -j4                                                               \
+	cd $(PLUGIN)/deps/libff/build                                                                       \
+	   && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(BUILD_LOCAL) $(MACOS_CMAKE_OPTS) \
+	   && make -s -j4                                                                                   \
 	   && make install
 
 protobuf_out := $(BUILD_DIR)/plugin-node/proto/msg.pb.cc
@@ -80,6 +95,33 @@ protobuf: $(protobuf_out)
 $(protobuf_out): $(PROTO)/proto/msg.proto
 	mkdir -p $(BUILD_DIR)/plugin-node
 	protoc --cpp_out=$(BUILD_DIR)/plugin-node -I $(PROTO) $<
+
+ifeq ($(UNAME_S),Darwin)
+libsecp256k1_out := $(LOCAL_LIB)/libsecp256k1.a
+endif
+
+secp256k1: $(libsecp256k1_out)
+
+$(libsecp256k1_out): $(PLUGIN)/deps/secp256k1/Makefile
+	cd $(PLUGIN)/deps/secp256k1 \
+	   && make                  \
+	   && make install
+
+$(PLUGIN)/deps/secp256k1/Makefile: $(PLUGIN)/deps/secp256k1/autogen.sh
+	cd $(PLUGIN)/deps/secp256k1 \
+	   && ./autogen.sh          \
+	   && ./configure prefix=$(BUILD_LOCAL) --enable-module-recovery
+
+ifeq ($(UNAME_S),Darwin)
+libcryptopp_out := $(LOCAL_LIB)/libcryptopp.a
+endif
+
+cryptopp: $(libcryptopp_out)
+
+$(libcryptopp_out): $(PLUGIN)/deps/cryptopp/GNUmakefile
+	cd $(PLUGIN)/deps/cryptopp \
+	   && make libcryptopp.a   \
+	   && make install PREFIX=$(BUILD_LOCAL)
 
 # Tests
 # -----
@@ -206,12 +248,12 @@ checker_files:=$(addprefix $(IELE_DIR)/,iele-syntax.md well-formedness.md data.m
 # LLVM Builds
 # -----------
 
-UNAME_S := $(shell uname -s)
+LIB_PROCPS=-lprocps
 
 ifeq ($(UNAME_S),Darwin)
-OPENSSL_ROOT       := $(shell brew --prefix openssl)
-MACOS_INCLUDE_OPTS := -ccopt -I -ccopt $(OPENSSL_ROOT)/include
-MACOS_LINK_OPTS    := -ccopt -L -ccopt $(OPENSSL_ROOT)/lib
+MACOS_INCLUDE_OPTS := -I $(OPENSSL_ROOT)/include
+MACOS_LINK_OPTS    := -L $(OPENSSL_ROOT)/lib
+LIB_PROCPS=
 endif
 
 build-node: $(IELE_VM)
@@ -220,15 +262,15 @@ build-testnode : $(IELE_TEST_VM) $(IELE_TEST_CLIENT)
 KOMPILE=kompile
 
 KOMPILE_INCLUDE_OPTS := $(addprefix -ccopt , -I $(PLUGIN)/plugin-c -I $(PROTO) -I $(BUILD_DIR)/plugin-node -I $(LOCAL_INCLUDE)) -I $(IELE_DIR)
-KOMPILE_LINK_OPTS    := $(addprefix -ccopt , -L /usr/local/lib -L $(LOCAL_LIB) -lprotobuf -lff -lcryptopp -lsecp256k1 -lprocps -lssl -lcrypto)
+KOMPILE_LINK_OPTS    := $(addprefix -ccopt , -L /usr/local/lib -L $(LOCAL_LIB) -lprotobuf -lff -lcryptopp -lsecp256k1 $(LIB_PROCPS) -lssl -lcrypto)
 KOMPILE_CPP_FILES    := $(PLUGIN)/plugin-c/k.cpp $(PLUGIN)/plugin-c/crypto.cpp $(PROTO)/blockchain.cpp $(PROTO)/world.cpp $(PLUGIN)/plugin-c/blake2.cpp $(PLUGIN)/plugin-c/plugin_util.cpp
 KOMPILE_CPP_OPTS     := $(addprefix -ccopt , $(KOMPILE_CPP_FILES))
 ifeq ($(UNAME_S),Darwin)
-KOMPILE_INCLUDE_OPTS += $(MACOS_INCLUDE_OPTS)
-KOMPILE_LINK_OPTS    += $(MACOS_LINK_OPTS)
+KOMPILE_INCLUDE_OPTS += $(addprefix -ccopt , $(MACOS_INCLUDE_OPTS))
+KOMPILE_LINK_OPTS    += $(addprefix -ccopt , $(MACOS_LINK_OPTS))
 endif
 
-$(BUILD_DIR)/check/well-formedness-kompiled/interpreter: $(checker_files) $(protobuf_out) $(libff_out)
+$(BUILD_DIR)/check/well-formedness-kompiled/interpreter: $(checker_files) $(protobuf_out) $(libff_out) $(libsecp256k1_out) $(libcryptopp_out)
 	$(KOMPILE) --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE --md-selector "(k & ! node) | standalone" \
 	                                --syntax-module IELE-SYNTAX well-formedness.md --directory $(BUILD_DIR)/check --hook-namespaces KRYPTO \
 	                                --backend llvm -ccopt $(protobuf_out) $(KOMPILE_CPP_OPTS) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
@@ -236,32 +278,36 @@ $(BUILD_DIR)/check/well-formedness-kompiled/interpreter: $(checker_files) $(prot
 $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter: MD_SELECTOR="(k & ! node) | standalone"
 $(BUILD_DIR)/node/iele-testing-kompiled/interpreter: MD_SELECTOR="(k & ! standalone) | node"
 
-$(BUILD_DIR)/%/iele-testing-kompiled/interpreter: $(k_files) $(protobuf_out) $(libff_out)
+$(BUILD_DIR)/%/iele-testing-kompiled/interpreter: $(k_files) $(protobuf_out) $(libff_out) $(libsecp256k1_out) $(libcryptopp_out)
 	@echo "== kompile: $@"
 	$(KOMPILE) --debug --main-module IELE-TESTING --verbose --md-selector $(MD_SELECTOR) \
 					--syntax-module IELE-SYNTAX iele-testing.md --directory $(BUILD_DIR)/$* --hook-namespaces "KRYPTO BLOCKCHAIN" \
 	                --backend llvm -ccopt $(protobuf_out) $(KOMPILE_CPP_OPTS) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
 
 LLVM_KOMPILE_INCLUDE_OPTS := -I $(PLUGIN)/plugin-c/ -I $(PROTO) -I $(BUILD_DIR)/plugin-node -I vm/c/ -I vm/c/iele/ -I $(LOCAL_INCLUDE)
-LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(LOCAL_LIB) -lff -lprotobuf -lgmp -lprocps -lcryptopp -lsecp256k1 -lssl -lcrypto
+LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(LOCAL_LIB) -lff -lprotobuf -lgmp $(LIB_PROCPS) -lcryptopp -lsecp256k1 -lssl -lcrypto
 ifeq ($(UNAME_S),Darwin)
 LLVM_KOMPILE_INCLUDE_OPTS += $(MACOS_INCLUDE_OPTS)
 LLVM_KOMPILE_LINK_OPTS    += $(MACOS_LINK_OPTS)
 endif
 
-$(IELE_CHECK): $(BUILD_DIR)/check/well-formedness-kompiled/interpreter $(IELE_RUNNER)
+build-kiele: $(IELE_RUNNER)
+
+build-check: $(IELE_CHECK)
+
+$(IELE_CHECK): $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
 	@mkdir -p $(IELE_BIN)
 	cp $< $@
 
 build-interpreter: $(IELE_INTERPRETER)
 
-$(IELE_INTERPRETER): $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter $(IELE_RUNNER)
+$(IELE_INTERPRETER): $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
 	@mkdir -p $(IELE_BIN)
 	cp $< $@
 
 build-vm: $(IELE_VM)
 
-$(IELE_VM): $(BUILD_DIR)/node/iele-testing-kompiled/interpreter $(wildcard vm/c/*.cpp vm/c/*.h) $(protobuf_out) $(IELE_RUNNER)
+$(IELE_VM): $(BUILD_DIR)/node/iele-testing-kompiled/interpreter $(wildcard vm/c/*.cpp vm/c/*.h) $(protobuf_out) $(libsecp256k1_out) $(libcryptopp_out)
 	@mkdir -p $(IELE_BIN)
 	llvm-kompile $(BUILD_DIR)/node/iele-testing-kompiled/definition.kore $(BUILD_DIR)/node/iele-testing-kompiled/dt library vm/c/main.cpp vm/c/vm.cpp $(KOMPILE_CPP_FILES) $(protobuf_out) vm/c/iele/semantics.cpp $(LLVM_KOMPILE_INCLUDE_OPTS) $(LLVM_KOMPILE_LINK_OPTS) -o $(IELE_VM) -g
 
@@ -297,6 +343,12 @@ coverage:
 # Install
 # -------
 
+INSTALL=install -D
+
+ifeq ($(UNAME_S),Darwin)
+INSTALL=install
+endif
+
 KIELE_VERSION     ?= 0.2.0
 KIELE_RELEASE_TAG ?= v$(KIELE_VERSION)-$(shell git rev-parse --short HEAD)
 
@@ -308,6 +360,7 @@ install_bins :=      \
     iele-assemble    \
     iele-check       \
     iele-interpreter \
+    iele-test-client \
     iele-test-vm     \
     iele-vm          \
     kiele
@@ -318,29 +371,49 @@ install_libs :=                                            \
     version
 
 $(IELE_RUNNER): $(IELE_DIR)/kiele
-	install -D $< $@
+	@mkdir -p $(dir $@)
+	$(INSTALL) $< $@
 
 $(IELE_LIB)/version:
 	@mkdir -p $(IELE_LIB)
 	echo "$(KIELE_RELEASE_TAG)" > $@
 
 $(IELE_LIB)/standalone/iele-testing-kompiled/%: $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
+	@mkdir -p $(dir $@)
+	$(INSTALL) $(dir $<)$* $@
+
+$(IELE_LIB)/check/well-formedness-kompiled/%: $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
 	install -D $(dir $<)$* $@
 
 $(IELE_LIB)/kore-json.py: $(IELE_DIR)/kore-json.py
-	install -D $< $@
+	@mkdir -p $(dir $@)
+	$(INSTALL) $< $@
 
 $(INSTALL_BIN)/%: $(IELE_BIN)/%
-	install -D $< $@
+	@mkdir -p $(dir $@)
+	$(INSTALL) $< $@
 
 $(INSTALL_LIB)/%: $(IELE_LIB)/%
-	install -D $< $@
+	@mkdir -p $(dir $@)
+	$(INSTALL) $< $@
 
-install: $(patsubst %, $(INSTALL_BIN)/%, $(install_bins)) $(patsubst %, $(INSTALL_LIB)/%, $(install_libs))
+$(INSTALL_BIN)/iele-interpreter: $(INSTALL_LIB)/standalone/iele-testing-kompiled/syntaxDefinition.kore
+
+$(INSTALL_BIN)/iele-check: $(INSTALL_LIB)/check/well-formedness-kompiled/compiled.bin
+$(INSTALL_BIN)/iele-check: $(INSTALL_LIB)/check/well-formedness-kompiled/interpreter
+
+$(INSTALL_BIN)/kiele: $(INSTALL_LIB)/kore-json.py
+$(INSTALL_BIN)/kiele: $(INSTALL_LIB)/version
+
+install: $(patsubst %, $(INSTALL_BIN)/%, $(install_bins))
 
 install-interpreter: $(INSTALL_BIN)/iele-interpreter
 
 install-vm: $(INSTALL_BIN)/iele-vm
+
+install-check: $(INSTALL_BIN)/iele-check
+
+install-kiele: $(INSTALL_BIN)/kiele
 
 uninstall:
 	rm $(patsubst %, $(INSTALL_BIN)/%, $(install_bins))
