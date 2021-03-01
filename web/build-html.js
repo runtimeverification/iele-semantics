@@ -15,4 +15,5 @@ generatePagesFromMarkdownFiles({
   outputDirectory: path.resolve(__dirname, "./public_content/"),
   websiteDirectory: path.resolve(__dirname, "./public_content/"),
   template: pageTemplate,
+  includeFileBasePath: path.resolve(__dirname, "./static_content/html/"),
 });
