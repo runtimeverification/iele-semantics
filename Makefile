@@ -59,7 +59,7 @@ export PATH:=$(IELE_BIN):$(PATH)
 		install install-interpreter install-vm install-kiele install-check uninstall \
         split-tests split-vm-tests split-blockchain-tests \
         test-evm test-vm test-blockchain test-wellformed test-illformed test-bad-packet test-interactive \
-        test-iele test-iele-failing test-iele-slow test-iele-node assemble-iele-test
+        test-iele test-iele-failing test-iele-slow test-iele-node assemble-iele-test test
 .SECONDARY:
 
 all: build split-tests
@@ -134,6 +134,8 @@ TEST_SCHEDULE = DEFAULT
 TEST_PORT     = 10000
 TEST_ARGS     = --no-unparse
 TEST_DIR      = $(IELE_DIR)/tests
+
+test: split-tests test-vm test-iele test-wellformed test-illformed test-interactive
 
 split-tests: split-vm-tests split-blockchain-tests
 
