@@ -59,7 +59,7 @@ export PATH:=$(IELE_BIN):$(PATH)
 		install install-interpreter install-vm install-kiele install-check uninstall \
         split-tests split-vm-tests split-blockchain-tests \
         test-evm test-vm test-blockchain test-wellformed test-illformed test-bad-packet test-interactive \
-        test-iele test-iele-failing test-iele-slow test-iele-node assemble-iele-test test
+        test-iele test-iele-haskell test-iele-failing test-iele-slow test-iele-node assemble-iele-test test
 .SECONDARY:
 
 all: build split-tests
@@ -135,7 +135,7 @@ TEST_PORT     = 10000
 TEST_ARGS     = --no-unparse
 TEST_DIR      = $(IELE_DIR)/tests
 
-test: split-tests test-vm test-iele test-wellformed test-illformed test-interactive
+test: split-tests test-vm test-iele test-iele-haskell test-wellformed test-illformed test-interactive
 
 split-tests: split-vm-tests split-blockchain-tests
 
@@ -190,6 +190,9 @@ test-evm: test-vm test-blockchain
 test-vm: $(passing_vm_targets)
 test-blockchain: $(passing_blockchain_targets)
 test-iele: $(iele_targets)
+.SECONDEXPANSION:
+test-iele-haskell: TEST_BACKEND=haskell
+test-iele-haskell: $$(iele_targets)
 test-iele-slow: $(iele_slow)
 test-iele-failing: $(iele_failing)
 test-iele-node: $(iele_node_targets)
