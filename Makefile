@@ -57,7 +57,7 @@ export PATH:=$(IELE_BIN):$(PATH)
 .PHONY: all clean distclean libff protobuf coverage secp256k1 cryptopp \
         build build-interpreter build-vm build-check build-haskell build-node build-testnode \
 		install install-interpreter install-vm install-kiele install-check uninstall \
-        split-tests split-vm-tests split-blockchain-tests \
+        split-tests split-vm-tests split-blockchain-tests test-node \
         test-evm test-vm test-blockchain test-wellformed test-illformed test-bad-packet test-interactive \
         test-iele test-iele-haskell test-iele-failing test-iele-slow test-iele-node assemble-iele-test test
 .SECONDARY:
@@ -135,7 +135,7 @@ TEST_PORT     = 10000
 TEST_ARGS     = --no-unparse
 TEST_DIR      = $(IELE_DIR)/tests
 
-test: split-tests test-vm test-iele test-iele-haskell test-wellformed test-illformed test-interactive
+test: split-tests test-vm test-iele test-iele-haskell test-wellformed test-illformed test-interactive test-node
 
 split-tests: split-vm-tests split-blockchain-tests
 
@@ -215,6 +215,9 @@ test-interactive: iele-examples/erc20.iele $(TEST_DIR)/iele/danse/factorial/fact
 	kiele interpret $(TEST_DIR)/iele/danse/factorial/factorial_positive.iele.json.test-assembled
 	kiele check --schedule DANSE iele-examples/erc20.iele
 	# kiele vm
+
+test-node:
+	$(TEST_DIR)/node-test.sh $(MAKEFLAGS)
 
 $(TEST_DIR)/VMTests/%:  TEST_MODE     = VMTESTS
 %.iele.test-wellformed: TEST_SCHEDULE = DANSE
