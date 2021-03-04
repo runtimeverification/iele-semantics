@@ -215,6 +215,7 @@ test-interactive: iele-examples/erc20.iele $(TEST_DIR)/iele/danse/factorial/fact
 	kiele check --schedule DANSE iele-examples/erc20.iele
 	# kiele vm
 
+test-node: TEST_PORT=9001
 test-node:
 	$(TEST_DIR)/node-test.sh $(MAKEFLAGS) --port $(TEST_PORT)
 
