@@ -190,9 +190,8 @@ test-evm: test-vm test-blockchain
 test-vm: $(passing_vm_targets)
 test-blockchain: $(passing_blockchain_targets)
 test-iele: $(iele_targets)
-.SECONDEXPANSION:
-test-iele-haskell: TEST_BACKEND=haskell
-test-iele-haskell: $$(iele_targets)
+test-iele-haskell:
+	$(MAKE) test-iele TEST_BACKEND=haskell
 test-iele-slow: $(iele_slow)
 test-iele-failing: $(iele_failing)
 test-iele-node: $(iele_node_targets)
