@@ -1,8 +1,0 @@
-contract logarithm_test {
-  define public @test_logarithm(%value) {
-    %retval = log2 %value
-    ret %retval
-  }
-
-  define @init() {}
-}
