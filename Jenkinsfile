@@ -28,25 +28,13 @@ pipeline {
         stage('Test') {
           options { timeout(time: 30, unit: 'MINUTES') }
           parallel {
-            stage('EVM Tests')            { steps { sh 'make test-vm -j4'                        } }
-            stage('IELE Tests')           { steps { sh 'make test-iele -j4'                      } }
-            stage('IELE Tests (Haskell)') { steps { sh 'make test-iele -j4 TEST_BACKEND=haskell' } }
-            stage('Well Formed Check')    { steps { sh 'make test-wellformed -j4'                } }
-            stage('Ill Formed Check')     { steps { sh 'make test-illformed -j4'                 } }
-            stage('Interactive')          { steps { sh 'make test-interactive'                   } }
-            stage('Node') {
-              steps {
-                sh '''
-                  export PATH=$(pwd)/.build/bin:$PATH
-                  kiele vm --port 9001 &
-                  pid=$!
-                  sleep 3
-                  make test-iele-node  -j4 TEST_PORT=9001
-                  make test-bad-packet -j4 TEST_PORT=9001
-                  kill $pid
-                '''
-              }
-            }
+            stage('EVM Tests')            { steps { sh 'make test-vm -j4'                  } }
+            stage('IELE Tests')           { steps { sh 'make test-iele -j4'                } }
+            stage('IELE Tests (Haskell)') { steps { sh 'make test-iele-haskell -j4'        } }
+            stage('Well Formed Check')    { steps { sh 'make test-wellformed -j4'          } }
+            stage('Ill Formed Check')     { steps { sh 'make test-illformed -j4'           } }
+            stage('Interactive')          { steps { sh 'make test-interactive'             } }
+            stage('Node')                 { steps { sh 'make test-node -j4 TEST_PORT=9001' } }
           }
         }
       }

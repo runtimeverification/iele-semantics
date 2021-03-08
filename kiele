@@ -81,7 +81,7 @@ run_check() {
 }
 
 run_vm() {
-    iele-vm "$kiele_port" "$kiele_host"
+    exec iele-vm "$kiele_port" "$kiele_host"
 }
 
 # Main
