@@ -375,6 +375,10 @@ install_bins :=      \
 
 install_libs :=                                            \
     standalone/iele-testing-kompiled/syntaxDefinition.kore \
+    check/well-formedness-kompiled/compiled.bin            \
+    check/well-formedness-kompiled/interpreter             \
+    haskell/iele-testing-kompiled/definition.kore          \
+    haskell/iele-testing-kompiled/syntaxDefinition.kore    \
     kore-json.py                                           \
     version
 
@@ -405,17 +409,8 @@ $(INSTALL_LIB)/%: $(IELE_LIB)/%
 	@mkdir -p $(dir $@)
 	$(INSTALL) $< $@
 
-$(INSTALL_BIN)/iele-interpreter: $(INSTALL_LIB)/standalone/iele-testing-kompiled/syntaxDefinition.kore
-
-$(INSTALL_BIN)/iele-check: $(INSTALL_LIB)/check/well-formedness-kompiled/compiled.bin
-$(INSTALL_BIN)/iele-check: $(INSTALL_LIB)/check/well-formedness-kompiled/interpreter
-
-$(INSTALL_BIN)/kiele: $(INSTALL_LIB)/kore-json.py
-$(INSTALL_BIN)/kiele: $(INSTALL_LIB)/version
-$(INSTALL_BIN)/kiele: $(INSTALL_LIB)/haskell/iele-testing-kompiled/definition.kore
-$(INSTALL_BIN)/kiele: $(INSTALL_LIB)/haskell/iele-testing-kompiled/syntaxDefinition.kore
-
-install: $(patsubst %, $(INSTALL_BIN)/%, $(install_bins))
+install: $(patsubst %, $(INSTALL_BIN)/%, $(install_bins)) \
+         $(patsubst %, $(INSTALL_LIB)/%, $(install_libs))
 
 install-interpreter: $(INSTALL_BIN)/iele-interpreter
 
