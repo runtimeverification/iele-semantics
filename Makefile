@@ -394,9 +394,6 @@ $(IELE_LIB)/standalone/iele-testing-kompiled/%: $(BUILD_DIR)/standalone/iele-tes
 	@mkdir -p $(dir $@)
 	$(INSTALL) $(dir $<)$* $@
 
-$(IELE_LIB)/check/well-formedness-kompiled/%: $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
-	install -D $(dir $<)$* $@
-
 $(IELE_LIB)/kore-json.py: $(IELE_DIR)/kore-json.py
 	@mkdir -p $(dir $@)
 	$(INSTALL) $< $@
@@ -431,17 +428,15 @@ release.md:
 
 build_bins := $(install_bins)
 
-build_libs := $(install_libs)      \
-    check/well-formedness-kompiled \
-    haskell/iele-testing-kompiled
+build_libs := $(install_libs)
 
-$(IELE_LIB)/haskell/iele-testing-kompiled: $(haskell_kompiled)
-	@mkdir -p $(IELE_LIB)/haskell
-	cp -r $(dir $<) $@
+$(IELE_LIB)/haskell/iele-testing-kompiled/%: $(haskell_kompiled)
+	@mkdir -p $(dir $@)
+	$(INSTALL) $(dir $<)$* $@
 
-$(IELE_LIB)/check/well-formedness-kompiled: $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
-	@mkdir -p $(IELE_LIB)/check
-	cp -r $(dir $<) $@
+$(IELE_LIB)/check/well-formedness-kompiled/%: $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
+	@mkdir -p $(dir $@)
+	$(INSTALL) $(dir $<)$* $@
 
 build: $(patsubst %, $(IELE_BIN)/%, $(build_bins)) $(patsubst %, $(IELE_LIB)/%, $(build_libs))
 
