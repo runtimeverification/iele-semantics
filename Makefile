@@ -405,8 +405,6 @@ $(INSTALL_BIN)/iele-check: $(INSTALL_LIB)/check/well-formedness-kompiled/interpr
 
 $(INSTALL_BIN)/kiele: $(INSTALL_LIB)/kore-json.py
 $(INSTALL_BIN)/kiele: $(INSTALL_LIB)/version
-$(INSTALL_BIN)/kiele: $(INSTALL_LIB)/haskell/iele-testing-kompiled/definition.kore
-$(INSTALL_BIN)/kiele: $(INSTALL_LIB)/haskell/iele-testing-kompiled/syntaxDefinition.kore
 
 $(INSTALL_BIN)/%: $(IELE_BIN)/%
 	@mkdir -p $(dir $@)
