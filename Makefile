@@ -375,6 +375,7 @@ install_bins :=      \
 
 install_libs :=                                            \
     standalone/iele-testing-kompiled/syntaxDefinition.kore \
+    standalone/iele-testing-kompiled/macros.kore           \
     kore-json.py                                           \
     version
 
