@@ -2,11 +2,17 @@
 
 set -euxo pipefail
 
-K_SHORT_REV="$1"
+K_RELEASE="$1"
 UBUNTU_RELEASE="$2"
 
-K_RELEASE="https://github.com/kframework/k/releases/download/v5.0.0-${K_SHORT_REV}"
-curl --fail --location "${K_RELEASE}/kframework_5.0.0_amd64_${UBUNTU_RELEASE}.deb" --output kframework-${UBUNTU_RELEASE}.deb
+ubuntu_release_descriptor=''
+case ${UBUNTU_RELEASE} in
+    bionic) ubuntu_release_descriptor='Bionic (18.04)' ;;
+    focal)  ubuntu_release_descriptor='Focal (20.04)'  ;;
+esac
+
+K_RELEASE_URL=$(curl -s 'https://api.github.com/repos/kframework/k/releases' | jq --raw-output '. | map(select(.tag_name == "'${K_RELEASE}'")) | map(.assets)[0] | map(select(.label == "Ubuntu '"${ubuntu_release_descriptor}"' Package"))[0] | .browser_download_url')
+curl --fail --location "${K_RELEASE_URL}" --output kframework-${UBUNTU_RELEASE}.deb
 sudo apt-get update && sudo apt-get upgrade --yes
 sudo apt-get install --yes ./kframework-${UBUNTU_RELEASE}.deb
 sudo bash -c 'OPAMROOT=/usr/lib/kframework/opamroot k-configure-opam'

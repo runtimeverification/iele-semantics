@@ -6,6 +6,7 @@ pipeline {
     SHORT_REV         = """${sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()}"""
     LONG_REV          = """${sh(returnStdout: true, script: 'git rev-parse HEAD').trim()}"""
     KIELE_RELEASE_TAG = "v${env.KIELE_VERSION}-${env.SHORT_REV}"
+    K_RELEASE         = """${sh(returnStdout: true, script: 'cat deps/k_release').trim()}"""
     K_SHORT_REV       = """${sh(returnStdout: true, script: 'cat deps/k_release | cut --delimiter="-" --field="2"').trim()}"""
   }
   options { ansiColor('xterm') }
@@ -74,7 +75,7 @@ pipeline {
               steps {
                 dir("kiele-${env.KIELE_VERSION}-bionic") {
                   checkout scm
-                  sh './package/debian/build-package.sh ${K_SHORT_REV} bionic'
+                  sh './package/debian/build-package.sh ${K_RELEASE} bionic'
                   stash name: 'bionic-kframework', includes: "kframework-bionic.deb"
                 }
                 stash name: 'bionic-kiele', includes: "kiele_${env.KIELE_VERSION}_amd64_bionic.deb"
@@ -123,7 +124,7 @@ pipeline {
               steps {
                 dir("kiele-${env.KIELE_VERSION}-bionic") {
                   checkout scm
-                  sh './package/debian/build-package.sh ${K_SHORT_REV} focal'
+                  sh './package/debian/build-package.sh ${K_RELEASE} focal'
                   stash name: 'focal-kframework', includes: "kframework-focal.deb"
                 }
                 stash name: 'focal-kiele', includes: "kiele_${env.KIELE_VERSION}_amd64_focal.deb"
