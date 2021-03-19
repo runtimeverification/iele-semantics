@@ -14,6 +14,7 @@ RUN    apt-get update         \
             curl              \
             dh-make           \
             git               \
+            jq                \
             libcrypto++-dev   \
             libffi-dev        \
             libgflags-dev     \
