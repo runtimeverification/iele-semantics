@@ -20,6 +20,18 @@ check_k_install() {
         || fatal "Must have K installed! See https://github.com/kframework/k/releases."
 }
 
+make_temp_trap() {
+    local tmpdesc tmpfile
+    tmpdesc="$1" ; shift
+    tmpfile="$(mktemp)"
+    if $debug; then
+        notif "$tmpdesc: $tmpfile"
+    else
+        trap "rm -rf $tmpfile" INT TERM EXIT
+    fi
+    echo "$tmpfile"
+}
+
 # Runners
 # -------
 
@@ -31,13 +43,8 @@ run_assemble() {
 
 run_interpret() {
     local kast output status
-    kast="$(mktemp)"
-    output="$(mktemp)"
-    if $debug; then
-        notif "kast: $kast    output: $output"
-    else
-        trap "rm -rf $kast $output" INT TERM EXIT
-    fi
+    kast=$(make_temp_trap kast)
+    output=$(make_temp_trap output)
     status=0
     kore-json.py "$run_file" "$cschedule" "$cmode" > "$kast"
     case "$backend" in
@@ -77,7 +84,11 @@ run_krun() {
 }
 
 run_check() {
-    run_krun_internal --parser "kast --directory $INSTALL_LIB/check -s Contract --output kore" --output none "$@"
+    local kore
+    kore=$(make_temp_trap kore)
+    kast --directory "$backend_dir" -s Contract --output kore "$run_file" > $kore
+    run_file="$kore"
+    run_krun_internal --parser cat --output none "$@"
 }
 
 run_vm() {
