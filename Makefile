@@ -230,10 +230,10 @@ $(TEST_DIR)/VMTests/%:  TEST_MODE     = VMTESTS
 	$(TEST_ASSEMBLE) $< > $@
 
 %.iele.test-wellformed: %.iele
-	$(TEST) check --backend check --mode $(TEST_MODE) --schedule $(TEST_SCHEDULE) $<
+	$(TEST) check --schedule $(TEST_SCHEDULE) $<
 
 %.iele.test-illformed: %.iele
-	! $(TEST) check --backend check --mode $(TEST_MODE) --schedule $(TEST_SCHEDULE) $<
+	! $(TEST) check --schedule $(TEST_SCHEDULE) $<
 
 %.nodetest: %
 	iele-test-vm $< $(TEST_PORT)
