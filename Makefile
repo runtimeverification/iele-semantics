@@ -230,7 +230,7 @@ $(TEST_DIR)/VMTests/%:  TEST_MODE     = VMTESTS
 	$(TEST_ASSEMBLE) $< > $@
 
 %.iele.test-wellformed: %.iele
-	$(TEST) check --schedule $(TEST_SCHEDULE) $<
+	$(TEST) check --schedule $(TEST_SCHEDULE) $< --debug
 
 %.iele.test-illformed: %.iele
 	! $(TEST) check --schedule $(TEST_SCHEDULE) $<
