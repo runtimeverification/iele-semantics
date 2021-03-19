@@ -7,13 +7,13 @@ in
 
 let
   ttuegel = import sources."nix-lib" { inherit pkgs; };
-  inherit (pkgs.lib) importJSON;
+
   kframework =
     let
-      src = pkgs.fetchgit {
-        inherit (importJSON ./nix/k.lock.json)
-          url rev sha256 fetchSubmodules deepClone leaveDotGit;
-      };
+      args = import (builtins.fetchurl {
+        url = "https://github.com/kframework/k/releases/download/v5.0.0-ab9d42a/release.nix";
+      });
+      src = pkgs.fetchgit args;
     in import src {};
   inherit (kframework) k haskell-backend llvm-backend clang;
   llvmPackages = pkgs.llvmPackages_10;
