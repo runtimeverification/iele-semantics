@@ -373,16 +373,25 @@ install_bins :=      \
     iele-vm          \
     kiele
 
-install_libs :=                                            \
-    check/well-formedness-kompiled/definition.kore         \
-    check/well-formedness-kompiled/macros.kore             \
-    check/well-formedness-kompiled/mainModule.txt          \
-    check/well-formedness-kompiled/syntaxDefinition.kore   \
-    standalone/iele-testing-kompiled/definition.kore       \
-    standalone/iele-testing-kompiled/macros.kore           \
-    standalone/iele-testing-kompiled/mainModule.txt        \
-    standalone/iele-testing-kompiled/syntaxDefinition.kore \
-    kore-json.py                                           \
+kompiled_libs :=          \
+	compiled.bin          \
+	definition.kore       \
+	macros.kore           \
+	mainModule.txt        \
+	syntaxDefinition.kore \
+	interpreter           \
+	mainModule.txt        \
+	configVars.sh         \
+	backend.txt
+
+iele_interpreter_libs := $(patsubst %, $(INSTALL_LIB)/standalone/iele-testing-kompiled/%, $(kompiled_libs))
+
+iele_check_libs := $(patsubst %, $(INSTALL_LIB)/check/well-formedness-kompiled/%, $(kompiled_libs))
+
+install_libs :=              \
+    $(iele_check_libs)       \
+    $(iele_interpreter_libs) \
+    kore-json.py             \
     version
 
 $(IELE_RUNNER): $(IELE_DIR)/kiele
@@ -398,7 +407,7 @@ $(IELE_LIB)/standalone/iele-testing-kompiled/%: $(BUILD_DIR)/standalone/iele-tes
 	$(INSTALL) $(dir $<)$* $@
 
 $(IELE_LIB)/check/well-formedness-kompiled/%: $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
-	install -D $(dir $<)$* $@
+	$(INSTALL) $(dir $<)$* $@
 
 $(IELE_LIB)/kore-json.py: $(IELE_DIR)/kore-json.py
 	@mkdir -p $(dir $@)
@@ -412,10 +421,9 @@ $(INSTALL_LIB)/%: $(IELE_LIB)/%
 	@mkdir -p $(dir $@)
 	$(INSTALL) $< $@
 
-$(INSTALL_BIN)/iele-interpreter: $(INSTALL_LIB)/standalone/iele-testing-kompiled/syntaxDefinition.kore
+$(INSTALL_BIN)/iele-interpreter: $(iele_interpreter_libs)
 
-$(INSTALL_BIN)/iele-check: $(INSTALL_LIB)/check/well-formedness-kompiled/compiled.bin
-$(INSTALL_BIN)/iele-check: $(INSTALL_LIB)/check/well-formedness-kompiled/interpreter
+$(INSTALL_BIN)/iele-check: $(iele_check_libs)
 
 $(INSTALL_BIN)/kiele: $(INSTALL_LIB)/kore-json.py
 $(INSTALL_BIN)/kiele: $(INSTALL_LIB)/version
