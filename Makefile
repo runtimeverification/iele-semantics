@@ -374,8 +374,14 @@ install_bins :=      \
     kiele
 
 install_libs :=                                            \
-    standalone/iele-testing-kompiled/syntaxDefinition.kore \
+    check/well-formedness-kompiled/definition.kore         \
+    check/well-formedness-kompiled/macros.kore             \
+    check/well-formedness-kompiled/mainModule.txt          \
+    check/well-formedness-kompiled/syntaxDefinition.kore   \
+    standalone/iele-testing-kompiled/definition.kore       \
     standalone/iele-testing-kompiled/macros.kore           \
+    standalone/iele-testing-kompiled/mainModule.txt        \
+    standalone/iele-testing-kompiled/syntaxDefinition.kore \
     kore-json.py                                           \
     version
 
