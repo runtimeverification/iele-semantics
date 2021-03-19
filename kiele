@@ -154,6 +154,9 @@ done
 if [[ "${#args[@]}" -gt 0 ]]; then
   set -- "${args[@]}"
 fi
+
+! $debug || set -x
+
 backend_dir="${backend_dir:-$INSTALL_LIB/$backend}"
 
 cmode='Lbl'$mode'{}()'
