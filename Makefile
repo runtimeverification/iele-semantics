@@ -431,8 +431,8 @@ install-check: $(INSTALL_BIN)/iele-check
 install-kiele: $(INSTALL_BIN)/kiele
 
 uninstall:
-	rm $(patsubst %, $(INSTALL_BIN)/%, $(install_bins))
-	rm $(patsubst %, $(INSTALL_LIB)/%, $(install_libs))
+	rm -rf $(INSTALL_BIN)/kiele
+	rm -rf $(INSTALL_LIB)/kiele
 
 release.md:
 	echo "KIELE Release - $(KIELE_RELEASE_TAG)"  > $@
@@ -443,11 +443,11 @@ build_bins := $(install_bins)
 
 build_libs := $(install_libs)
 
-$(IELE_LIB)/haskell/iele-testing-kompiled/%: $(haskell_kompiled)
+$(IELE_LIB)/standalone/iele-testing-kompiled/%: $(IELE_INTERPRETER)
 	@mkdir -p $(dir $@)
 	$(INSTALL) $(dir $<)$* $@
 
-$(IELE_LIB)/check/well-formedness-kompiled/%: $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
+$(IELE_LIB)/check/well-formedness-kompiled/%: $(IELE_CHECK)
 	@mkdir -p $(dir $@)
 	$(INSTALL) $(dir $<)$* $@
 
