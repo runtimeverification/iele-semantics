@@ -384,8 +384,8 @@ kompiled_libs :=          \
 	configVars.sh         \
 	backend.txt
 
-iele_interpreter_libs := $(patsubst %, $(INSTALL_LIB)/standalone/iele-testing-kompiled/%, $(kompiled_libs))
-iele_check_libs       := $(patsubst %, $(INSTALL_LIB)/check/well-formedness-kompiled/%, $(kompiled_libs))
+iele_interpreter_libs := $(patsubst %, standalone/iele-testing-kompiled/%, $(kompiled_libs))
+iele_check_libs       := $(patsubst %, check/well-formedness-kompiled/%,   $(kompiled_libs))
 
 install_libs :=              \
     $(iele_check_libs)       \
