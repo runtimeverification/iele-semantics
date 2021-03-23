@@ -443,11 +443,11 @@ build_libs := $(install_libs)
 
 $(IELE_LIB)/standalone/iele-testing-kompiled/%: $(IELE_INTERPRETER)
 	@mkdir -p $(dir $@)
-	$(INSTALL) $(dir $<)$* $@
+	$(INSTALL) $(BUILD_DIR)/standalone/iele-testing-kompiled/$* $@
 
 $(IELE_LIB)/check/well-formedness-kompiled/%: $(IELE_CHECK)
 	@mkdir -p $(dir $@)
-	$(INSTALL) $(dir $<)$* $@
+	$(INSTALL) $(BUILD_DIR)/check/well-formedness-kompiled/$* $@
 
 build: $(patsubst %, $(IELE_BIN)/%, $(build_bins)) $(patsubst %, $(IELE_LIB)/%, $(build_libs))
 
