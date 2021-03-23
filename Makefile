@@ -2,6 +2,7 @@
 # ===========================
 
 UNAME_S := $(shell uname -s)
+INSTALL := install -D
 
 ifeq ($(UNAME_S),Darwin)
 CPATH=/usr/local/include
@@ -305,13 +306,13 @@ build-check: $(IELE_CHECK)
 
 $(IELE_CHECK): $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
 	@mkdir -p $(IELE_BIN)
-	cp $< $@
+	$(INSTALL) $< $@
 
 build-interpreter: $(IELE_INTERPRETER)
 
 $(IELE_INTERPRETER): $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
 	@mkdir -p $(IELE_BIN)
-	cp $< $@
+	$(INSTALL) $< $@
 
 build-vm: $(IELE_VM)
 
@@ -350,8 +351,6 @@ coverage:
 
 # Install
 # -------
-
-INSTALL=install -D
 
 ifeq ($(UNAME_S),Darwin)
 INSTALL=install
@@ -440,7 +439,6 @@ release.md:
 	cat INSTALL.md                              >> $@
 
 build_bins := $(install_bins)
-
 build_libs := $(install_libs)
 
 $(IELE_LIB)/standalone/iele-testing-kompiled/%: $(IELE_INTERPRETER)
