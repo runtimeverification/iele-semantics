@@ -372,23 +372,28 @@ install_bins :=      \
     iele-vm          \
     kiele
 
-kompiled_libs :=          \
+haskell_kompiled_libs :=  \
+    backend.txt           \
     compiled.bin          \
+    configVars.sh         \
     definition.kore       \
     macros.kore           \
     mainModule.txt        \
-    syntaxDefinition.kore \
-    interpreter           \
     mainModule.txt        \
-    configVars.sh         \
-    backend.txt
+    syntaxDefinition.kore
+
+kompiled_libs :=             \
+    $(haskell_kompiled_libs) \
+    interpreter
 
 iele_interpreter_libs := $(patsubst %, standalone/iele-testing-kompiled/%, $(kompiled_libs))
+iele_haskell_libs     := $(patsubst %, haskell/iele-testing-kompiled/%,    $(kompiled_libs))
 iele_check_libs       := $(patsubst %, check/well-formedness-kompiled/%,   $(kompiled_libs))
 
 install_libs :=              \
     $(iele_check_libs)       \
     $(iele_interpreter_libs) \
+    $(iele_haskell_libs)     \
     kore-json.py             \
     version
 
@@ -444,6 +449,10 @@ build_libs := $(install_libs)
 $(IELE_LIB)/standalone/iele-testing-kompiled/%: $(IELE_INTERPRETER)
 	@mkdir -p $(dir $@)
 	$(INSTALL) $(BUILD_DIR)/standalone/iele-testing-kompiled/$* $@
+
+$(IELE_LIB)/haskell/iele-testing-kompiled/%: $(haskell_kompiled)
+	@mkdir -p $(dir $@)
+	$(INSTALL) $(BUILD_DIR)/haskell/iele-testing-kompiled/$* $@
 
 $(IELE_LIB)/check/well-formedness-kompiled/%: $(IELE_CHECK)
 	@mkdir -p $(dir $@)
