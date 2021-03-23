@@ -70,7 +70,7 @@ It is safe to skip any of these dependencies that are already installed.
 Follow the instructions below.
 Perform all steps as your normal (non-root) user.
 You may find the same instructions and our public key at <https://runtimeverification.cachix.org>.
-To follow this instructions, you will need `curl` installed on your system <https://curl.haxx.se/download.html>.
+To follow this instructions, you will need `curl` installed on your system <https://curl.se/download.html>.
 
 #### Nix
 
