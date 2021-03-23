@@ -20,6 +20,18 @@ check_k_install() {
         || fatal "Must have K installed! See https://github.com/kframework/k/releases."
 }
 
+make_temp_trap() {
+    local tmpdesc tmpfile
+    tmpdesc="$1" ; shift
+    tmpfile="$(mktemp)"
+    if $debug; then
+        notif "$tmpdesc: $tmpfile"
+    else
+        trap "rm -rf $tmpfile" INT TERM EXIT
+    fi
+    echo "$tmpfile"
+}
+
 # Runners
 # -------
 
@@ -31,15 +43,10 @@ run_assemble() {
 
 run_interpret() {
     local kast output status
-    kast="$(mktemp)"
-    output="$(mktemp)"
-    if $debug; then
-        notif "kast: $kast    output: $output"
-    else
-        trap "rm -rf $kast $output" INT TERM EXIT
-    fi
+    kast=$(make_temp_trap kast)
+    output=$(make_temp_trap output)
     status=0
-    kore-json.py "$run_file" "$schedule" "$mode" > "$kast"
+    kore-json.py "$run_file" "$cschedule" "$cmode" > "$kast"
     case "$backend" in
         standalone)
             interpret_cmd=(iele-interpreter "$kast" "$depth" "$output" "$@")
@@ -67,17 +74,21 @@ run_interpret() {
     fi
 }
 
-run_krun() {
+run_krun_internal() {
     check_k_install
-    krun --directory "$backend_dir"                        \
-        -cSCHEDULE="$schedule"      -pSCHEDULE='printf %s' \
-        -cMODE="$mode"              -pMODE='printf %s'     \
-        --depth "$depth"                                   \
-        "$run_file" "$@"
+    krun --directory "$backend_dir" -cSCHEDULE="$cschedule" -pSCHEDULE='cat' --depth "$depth" "$run_file" "$@"
+}
+
+run_krun() {
+    run_krun_internal -cMODE="$cmode" -pMODE='cat' "$@"
 }
 
 run_check() {
-    run_krun --parser "kast --directory $INSTALL_LIB/check -s Contract" --output none "$@"
+    local kore
+    kore=$(make_temp_trap kore)
+    kast --directory "$backend_dir" -s Contract --output kore "$run_file" > $kore
+    run_file="$kore"
+    run_krun_internal --parser cat --output none "$@"
 }
 
 run_vm() {
@@ -127,8 +138,8 @@ backend='standalone'
 [[ "$run_command" != 'check' ]] || backend='check'
 debug=false
 unparse=true
-mode='`NORMAL`(.KList)'
-schedule='`DEFAULT`(.KList)'
+mode='NORMAL'
+schedule='DEFAULT'
 kiele_port='8545'
 kiele_host='127.0.0.1'
 module='IELE-TESTING'
@@ -138,23 +149,29 @@ args=()
 while [[ $# -gt 0 ]]; do
     arg="$1"
     case $arg in
-        --backend)    backend="$2"              ; shift 2 ;;
-        --debug)      debug=true                ; shift   ;;
-        --no-unparse) unparse=false             ; shift   ;;
-        --mode)       mode='`'$2'`(.KList)'     ; shift 2 ;;
-        --module)     module="$2"               ; shift 2 ;;
-        --definition) definition="$2"           ; shift 2 ;;
-        --schedule)   schedule='`'$2'`(.KList)' ; shift 2 ;;
-        --depth)      depth=$2                  ; shift 2 ;;
-        -p|--port)    kiele_port="$2"           ; shift 2 ;;
-        -h|--host)    kiele_host="$2"           ; shift 2 ;;
-        *)            args+=("$1")              ; shift   ;;
+        --backend)    backend="$2"    ; shift 2 ;;
+        --debug)      debug=true      ; shift   ;;
+        --no-unparse) unparse=false   ; shift   ;;
+        --mode)       mode="$2"       ; shift 2 ;;
+        --module)     module="$2"     ; shift 2 ;;
+        --definition) definition="$2" ; shift 2 ;;
+        --schedule)   schedule="$2"   ; shift 2 ;;
+        --depth)      depth=$2        ; shift 2 ;;
+        -p|--port)    kiele_port="$2" ; shift 2 ;;
+        -h|--host)    kiele_host="$2" ; shift 2 ;;
+        *)            args+=("$1")    ; shift   ;;
     esac
 done
 if [[ "${#args[@]}" -gt 0 ]]; then
   set -- "${args[@]}"
 fi
+
+! $debug || set -x
+
 backend_dir="${backend_dir:-$INSTALL_LIB/$backend}"
+
+cmode='Lbl'$mode'{}()'
+cschedule='Lbl'$schedule'{}()'
 
 if [[ "$run_command" != 'vm' ]]; then
     run_file="$1" ; shift
