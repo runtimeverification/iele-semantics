@@ -387,7 +387,7 @@ kompiled_libs :=             \
     interpreter
 
 iele_interpreter_libs := $(patsubst %, standalone/iele-testing-kompiled/%, $(kompiled_libs))
-iele_haskell_libs     := $(patsubst %, haskell/iele-testing-kompiled/%,    $(kompiled_libs))
+iele_haskell_libs     := $(patsubst %, haskell/iele-testing-kompiled/%,    $(haskell_kompiled_libs))
 iele_check_libs       := $(patsubst %, check/well-formedness-kompiled/%,   $(kompiled_libs))
 
 install_libs :=              \
