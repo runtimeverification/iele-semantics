@@ -373,15 +373,15 @@ install_bins :=      \
     kiele
 
 kompiled_libs :=          \
-	compiled.bin          \
-	definition.kore       \
-	macros.kore           \
-	mainModule.txt        \
-	syntaxDefinition.kore \
-	interpreter           \
-	mainModule.txt        \
-	configVars.sh         \
-	backend.txt
+    compiled.bin          \
+    definition.kore       \
+    macros.kore           \
+    mainModule.txt        \
+    syntaxDefinition.kore \
+    interpreter           \
+    mainModule.txt        \
+    configVars.sh         \
+    backend.txt
 
 iele_interpreter_libs := $(patsubst %, standalone/iele-testing-kompiled/%, $(kompiled_libs))
 iele_check_libs       := $(patsubst %, check/well-formedness-kompiled/%,   $(kompiled_libs))
