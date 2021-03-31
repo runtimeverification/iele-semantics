@@ -7,7 +7,6 @@ pipeline {
     LONG_REV          = """${sh(returnStdout: true, script: 'git rev-parse HEAD').trim()}"""
     KIELE_RELEASE_TAG = "v${env.KIELE_VERSION}-${env.SHORT_REV}"
     K_RELEASE         = """${sh(returnStdout: true, script: 'cat deps/k_release').trim()}"""
-    K_SHORT_REV       = """${sh(returnStdout: true, script: 'cat deps/k_release | cut --delimiter="-" --field="2"').trim()}"""
   }
   options { ansiColor('xterm') }
   stages {
@@ -51,7 +50,7 @@ pipeline {
           agent {
             dockerfile {
               reuseNode true
-              additionalBuildArgs '--build-arg K_COMMIT=${K_SHORT_REV} --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g)'
+              additionalBuildArgs '--build-arg K_COMMIT=${K_RELEASE} --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g)'
             }
           }
           steps {
