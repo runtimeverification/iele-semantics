@@ -68,8 +68,8 @@ def print_kast(data, sort="JSON"):
     sys.stdout.write(type(data))
     raise AssertionError
 
-def print_klabel(s):
-  sys.stdout.write("Lbl" + s.replace("_", "'Unds'").replace("`", "").replace("(.KList)", "{}") + "()")
+def print_id(s):
+  sys.stdout.write(s)
 
 def print_config_map_entry(k, v, vsort, vprint):
   sys.stdout.write("Lbl'UndsPipe'-'-GT-Unds'{}(")
@@ -81,9 +81,9 @@ def print_config_map_entry(k, v, vsort, vprint):
 sys.stdout.write("LblinitGeneratedTopCell{}(Lbl'Unds'Map'Unds'{}(Lbl'Unds'Map'Unds'{}(Lbl'Unds'Map'Unds'{}(Lbl'Stop'Map{}(),")
 print_config_map_entry("PGM", data, "JSON", print_kast)
 sys.stdout.write("),")
-print_config_map_entry("SCHEDULE", sys.argv[2], "Schedule", print_klabel)
+print_config_map_entry("SCHEDULE", sys.argv[2], "Schedule", print_id)
 sys.stdout.write("),")
-print_config_map_entry("MODE", sys.argv[3], "Mode", print_klabel)
+print_config_map_entry("MODE", sys.argv[3], "Mode", print_id)
 sys.stdout.write("))\n")
 sys.stdout.write("\n")
 sys.stdout.flush()

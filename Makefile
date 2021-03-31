@@ -2,6 +2,7 @@
 # ===========================
 
 UNAME_S := $(shell uname -s)
+INSTALL := install -D
 
 ifeq ($(UNAME_S),Darwin)
 CPATH=/usr/local/include
@@ -230,10 +231,10 @@ $(TEST_DIR)/VMTests/%:  TEST_MODE     = VMTESTS
 	$(TEST_ASSEMBLE) $< > $@
 
 %.iele.test-wellformed: %.iele
-	$(TEST) check --backend check --mode $(TEST_MODE) --schedule $(TEST_SCHEDULE) $<
+	$(TEST) check --schedule $(TEST_SCHEDULE) $<
 
 %.iele.test-illformed: %.iele
-	! $(TEST) check --backend check --mode $(TEST_MODE) --schedule $(TEST_SCHEDULE) $<
+	! $(TEST) check --schedule $(TEST_SCHEDULE) $<
 
 %.nodetest: %
 	iele-test-vm $< $(TEST_PORT)
@@ -305,13 +306,13 @@ build-check: $(IELE_CHECK)
 
 $(IELE_CHECK): $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
 	@mkdir -p $(IELE_BIN)
-	cp $< $@
+	$(INSTALL) $< $@
 
 build-interpreter: $(IELE_INTERPRETER)
 
 $(IELE_INTERPRETER): $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
 	@mkdir -p $(IELE_BIN)
-	cp $< $@
+	$(INSTALL) $< $@
 
 build-vm: $(IELE_VM)
 
@@ -351,8 +352,6 @@ coverage:
 # Install
 # -------
 
-INSTALL=install -D
-
 ifeq ($(UNAME_S),Darwin)
 INSTALL=install
 endif
@@ -373,13 +372,29 @@ install_bins :=      \
     iele-vm          \
     kiele
 
-install_libs :=                                            \
-    standalone/iele-testing-kompiled/syntaxDefinition.kore \
-    check/well-formedness-kompiled/compiled.bin            \
-    check/well-formedness-kompiled/interpreter             \
-    haskell/iele-testing-kompiled/definition.kore          \
-    haskell/iele-testing-kompiled/syntaxDefinition.kore    \
-    kore-json.py                                           \
+haskell_kompiled_libs :=  \
+    backend.txt           \
+    compiled.bin          \
+    configVars.sh         \
+    definition.kore       \
+    macros.kore           \
+    mainModule.txt        \
+    mainModule.txt        \
+    syntaxDefinition.kore
+
+kompiled_libs :=             \
+    $(haskell_kompiled_libs) \
+    interpreter
+
+iele_interpreter_libs := $(patsubst %, standalone/iele-testing-kompiled/%, $(kompiled_libs))
+iele_haskell_libs     := $(patsubst %, haskell/iele-testing-kompiled/%,    $(haskell_kompiled_libs))
+iele_check_libs       := $(patsubst %, check/well-formedness-kompiled/%,   $(kompiled_libs))
+
+install_libs :=              \
+    $(iele_check_libs)       \
+    $(iele_interpreter_libs) \
+    $(iele_haskell_libs)     \
+    kore-json.py             \
     version
 
 $(IELE_RUNNER): $(IELE_DIR)/kiele
@@ -390,18 +405,12 @@ $(IELE_LIB)/version:
 	@mkdir -p $(IELE_LIB)
 	echo "$(KIELE_RELEASE_TAG)" > $@
 
-$(IELE_LIB)/standalone/iele-testing-kompiled/%: $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
-	@mkdir -p $(dir $@)
-	$(INSTALL) $(dir $<)$* $@
-
 $(IELE_LIB)/kore-json.py: $(IELE_DIR)/kore-json.py
 	@mkdir -p $(dir $@)
 	$(INSTALL) $< $@
 
-$(INSTALL_BIN)/iele-interpreter: $(INSTALL_LIB)/standalone/iele-testing-kompiled/syntaxDefinition.kore
-
-$(INSTALL_BIN)/iele-check: $(INSTALL_LIB)/check/well-formedness-kompiled/compiled.bin
-$(INSTALL_BIN)/iele-check: $(INSTALL_LIB)/check/well-formedness-kompiled/interpreter
+$(INSTALL_BIN)/iele-interpreter: $(patsubst %, $(INSTALL_LIB)/%, $(iele_interpreter_libs))
+$(INSTALL_BIN)/iele-check:       $(patsubst %, $(INSTALL_LIB)/%, $(iele_check_libs))
 
 $(INSTALL_BIN)/kiele: $(INSTALL_LIB)/kore-json.py
 $(INSTALL_BIN)/kiele: $(INSTALL_LIB)/version
@@ -426,8 +435,8 @@ install-check: $(INSTALL_BIN)/iele-check
 install-kiele: $(INSTALL_BIN)/kiele
 
 uninstall:
-	rm $(patsubst %, $(INSTALL_BIN)/%, $(install_bins))
-	rm $(patsubst %, $(INSTALL_LIB)/%, $(install_libs))
+	rm -rf $(INSTALL_BIN)/kiele
+	rm -rf $(INSTALL_LIB)/kiele
 
 release.md:
 	echo "KIELE Release - $(KIELE_RELEASE_TAG)"  > $@
@@ -435,16 +444,19 @@ release.md:
 	cat INSTALL.md                              >> $@
 
 build_bins := $(install_bins)
-
 build_libs := $(install_libs)
+
+$(IELE_LIB)/standalone/iele-testing-kompiled/%: $(IELE_INTERPRETER)
+	@mkdir -p $(dir $@)
+	$(INSTALL) $(BUILD_DIR)/standalone/iele-testing-kompiled/$* $@
 
 $(IELE_LIB)/haskell/iele-testing-kompiled/%: $(haskell_kompiled)
 	@mkdir -p $(dir $@)
-	$(INSTALL) $(dir $<)$* $@
+	$(INSTALL) $(BUILD_DIR)/haskell/iele-testing-kompiled/$* $@
 
-$(IELE_LIB)/check/well-formedness-kompiled/%: $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
+$(IELE_LIB)/check/well-formedness-kompiled/%: $(IELE_CHECK)
 	@mkdir -p $(dir $@)
-	$(INSTALL) $(dir $<)$* $@
+	$(INSTALL) $(BUILD_DIR)/check/well-formedness-kompiled/$* $@
 
 build: $(patsubst %, $(IELE_BIN)/%, $(build_bins)) $(patsubst %, $(IELE_LIB)/%, $(build_libs))
 

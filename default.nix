@@ -6,14 +6,15 @@ in
 { pkgs ? pinned }:
 
 let
+  inherit (pkgs) lib;
   ttuegel = import sources."nix-lib" { inherit pkgs; };
-  inherit (pkgs.lib) importJSON;
+
   kframework =
     let
-      src = pkgs.fetchgit {
-        inherit (importJSON ./nix/k.lock.json)
-          url rev sha256 fetchSubmodules deepClone leaveDotGit;
-      };
+      tag = lib.fileContents ./deps/k_release;
+      url = "https://github.com/kframework/k/releases/download/${tag}/release.nix";
+      args = import (builtins.fetchurl { inherit url; });
+      src = pkgs.fetchgit args;
     in import src {};
   inherit (kframework) k haskell-backend llvm-backend clang;
   llvmPackages = pkgs.llvmPackages_10;
