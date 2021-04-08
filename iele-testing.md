@@ -7,6 +7,7 @@ Actual execution of IELE is defined in [the IELE file](iele.md).
 ```k
 requires "iele.md"
 requires "iele-binary.md"
+requires "iele-coverage.md"
 ```
 
 ```{.k .node}
@@ -17,6 +18,7 @@ requires "iele-node.md"
 module IELE-TESTING
     imports IELE
     imports IELE-BINARY
+    imports IELE-COVERAGE
     imports K-REFLECTION
 ```
 
@@ -24,6 +26,11 @@ module IELE-TESTING
     imports IELE-NODE
 ```
 
+```k
+    configuration
+      <kiele/>
+      <kiele-coverage/>
+```
 A IELE simulation is a list of IELE commands.
 Some IELE commands take a specification of IELE state (eg. for an account or transaction).
 

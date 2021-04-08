@@ -251,7 +251,7 @@ $(TEST_DIR)/evm-to-iele/evm-to-iele: $(wildcard $(TEST_DIR)/evm-to-iele/*.ml $(T
 # Build Source Files
 # ------------------
 
-k_files:=$(addprefix $(IELE_DIR)/,iele-testing.md data.md iele.md iele-gas.md iele-binary.md plugin/plugin/krypto.md iele-syntax.md iele-node.md well-formedness.md)
+k_files:=$(addprefix $(IELE_DIR)/,iele-testing.md data.md iele.md iele-gas.md iele-binary.md plugin/plugin/krypto.md iele-syntax.md iele-node.md well-formedness.md iele-coverage.md)
 checker_files:=$(addprefix $(IELE_DIR)/,iele-syntax.md well-formedness.md data.md)
 
 # LLVM Builds
