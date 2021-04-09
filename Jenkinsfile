@@ -178,8 +178,8 @@ pipeline {
                   mv kiele_${KIELE_VERSION}_amd64_bionic.deb kiele_amd64_bionic.deb
                   mv kiele_${KIELE_VERSION}_amd64_focal.deb  kiele_amd64_focal.deb
                   docker login --username "${DOCKERHUB_TOKEN_USR}" --password "${DOCKERHUB_TOKEN_PSW}"
-                  docker image build . --file package/docker/Dockerfile --tag "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}" --build-arg K_COMMIT=$(cat deps/k_release | cut --delimiter="-" --field="2") --build-arg DISTRO='bionic'
-                  docker image build . --file package/docker/Dockerfile --tag "${DOCKERHUB_REPO}:${FOCAL_COMMIT_TAG}"  --build-arg K_COMMIT=$(cat deps/k_release | cut --delimiter="-" --field="2") --build-arg DISTRO='focal'
+                  docker image build . --file package/docker/Dockerfile --tag "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}" --build-arg K_COMMIT=${K_VERSION} --build-arg DISTRO='bionic'
+                  docker image build . --file package/docker/Dockerfile --tag "${DOCKERHUB_REPO}:${FOCAL_COMMIT_TAG}"  --build-arg K_COMMIT=${K_VERSION} --build-arg DISTRO='focal'
                   docker image push "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}"
                   docker image push "${DOCKERHUB_REPO}:${FOCAL_COMMIT_TAG}"
                   docker tag "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}" "${DOCKERHUB_REPO}:${BIONIC_BRANCH_TAG}"
