@@ -185,7 +185,7 @@ input_data unpack_input(bool, std::string);
 uint64_t get_schedule(mpz_ptr, CallContext*);
 bool get_error(mpz_ptr);
 
-CallResult run_transaction(CallContext ctx) {
+CallResult run_transaction(CallContext ctx, bool withCoverage) {
   std::cerr << ctx.DebugString() << std::endl;
   bool iscreate = ctx.recipientaddr().size() == 0;
   mpz_ptr to = to_z_unsigned(ctx.recipientaddr());
@@ -210,10 +210,15 @@ CallResult run_transaction(CallContext ctx) {
   static blockheader hdr2 = getBlockHeaderForSymbol(getTagForSymbolName("inj{SortSchedule{}, SortKItem{}}"));
   scheduleinj->h = hdr2;
   scheduleinj->data = (block*)schedule;
+  boolinj *enablecoverageinj = (boolinj *)koreAlloc(sizeof(boolinj));
+  static blockheader boolhdr = getBlockHeaderForSymbol(getTagForSymbolName("inj{SortBool{}, SortKItem{}}"));
+  enablecoverageinj->h = boolhdr;
+  enablecoverageinj->data = withCoverage;
   block* inj = make_k_cell(iscreate, to, from, in.code, in.args, value, gasprice, gas, beneficiary, difficulty, number, gaslimit, move_int(timestamp), in.function);
   map withSched = hook_MAP_element(configvar("$SCHEDULE"), (block *)scheduleinj);
   map withMode = hook_MAP_update(&withSched, configvar("$MODE"), (block *)modeinj);
-  map init = hook_MAP_update(&withMode, configvar("$PGM"), inj);
+  map withCover = hook_MAP_update(&withMode, configvar("$ENABLECOVERAGE"), (block *)enablecoverageinj);
+  map init = hook_MAP_update(&withCover, configvar("$PGM"), inj);
   static uint32_t tag2 = getTagForSymbolName("LblinitGeneratedTopCell{}");
   void *arr[1];
   arr[0] = &init;
@@ -254,16 +259,18 @@ CallResult run_transaction(CallContext ctx) {
     k_to_log(log, log_pb);
   }
 
-  static uint32_t tag4 = getTagForSymbolName("LblextractCoverage{}");
-  arr[0] = (block *)final_config->children[2];
-  extractedCoverages* extractedCoverage = (extractedCoverages *)evaluateFunctionSymbol(tag4, arr);
-  auto bytecodecoverages = k_to_coverage(&extractedCoverage->bytecodecoverages->data);
-  for (bytecodecoverage_cell *bytecodecoverage : bytecodecoverages) {
-    auto coveragemsg = result.add_coveragedata();
-    std::string codehash = of_z_width(32, bytecodecoverage->bytecodeHash->data);
-    std::string coveragebytes = std::string(bytecodecoverage->coverageData->data->data, len(bytecodecoverage->coverageData->data));
-    coveragemsg->set_codehash(codehash);
-    coveragemsg->set_coverage(coveragebytes);
+  if (withCoverage) {
+    static uint32_t tag4 = getTagForSymbolName("LblextractCoverage{}");
+    arr[0] = (block *)final_config->children[2];
+    extractedCoverages* extractedCoverage = (extractedCoverages *)evaluateFunctionSymbol(tag4, arr);
+    auto bytecodecoverages = k_to_coverage(&extractedCoverage->bytecodecoverages->data);
+    for (bytecodecoverage_cell *bytecodecoverage : bytecodecoverages) {
+      auto coveragemsg = result.add_coveragedata();
+      std::string codehash = of_z_width(32, bytecodecoverage->bytecodeHash->data);
+      std::string coveragebytes = std::string(bytecodecoverage->coverageData->data->data, len(bytecodecoverage->coverageData->data));
+      coveragemsg->set_codehash(codehash);
+      coveragemsg->set_coverage(coveragebytes);
+    }
   }
 
   std::cerr << result.DebugString() << std::endl;

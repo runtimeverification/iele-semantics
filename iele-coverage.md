@@ -8,9 +8,10 @@ module IELE-COVERAGE
 
     configuration
       <kiele-coverage>
-        <coverageHash>   0         </coverageHash>
-        <coverageIndex>  0         </coverageIndex>
-        <opcodeCoverage> .Coverage </opcodeCoverage>
+        <enableCoverage> $ENABLECOVERAGE:Bool </enableCoverage>
+        <coverageHash>   0                    </coverageHash>
+        <coverageIndex>  0                    </coverageIndex>
+        <opcodeCoverage> .Coverage            </opcodeCoverage>
         <bytecodeCoverages>
           <bytecodeCoverage multiplicity="*" type="Map">
             <bytecodeHash> 0      </bytecodeHash>
@@ -142,8 +143,13 @@ Index Contract Instructions
 - #indexContract will traverse a Contract and give an index to each of the instructions in the bottom ContractDefinition.
 
 ```k
-    rule #dasmContract( BS, NAME ) => #indexContract( #reverseContract( #dasmContract( 0, lengthBytes(BS), BS, NAME ) ) ) [priority(35)]
-    rule #subcontract ( (contract NAME ! _ _ { _ } #as CONTRACT) _, NAME ) => #indexContract( CONTRACT .Contract )        [priority(35)]
+    rule [[ #dasmContract( BS, NAME ) => #indexContract( #reverseContract( #dasmContract( 0, lengthBytes(BS), BS, NAME ) ) ) ]]
+         <enableCoverage> true </enableCoverage>
+      [priority(35)]
+
+    rule [[ #subcontract ( (contract NAME ! _ _ { _ } #as CONTRACT) _, NAME ) => #indexContract( CONTRACT .Contract ) ]]
+         <enableCoverage> true </enableCoverage>
+      [priority(35)]
 
     syntax Instruction ::= index( Int, Instruction )
 
