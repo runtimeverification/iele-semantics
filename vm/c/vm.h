@@ -53,4 +53,9 @@ struct kcellinj {
   kcell* data;
 };
 
+struct bytecodecoverages_cell {
+  blockheader h;
+  map data;
+};
+
 #endif

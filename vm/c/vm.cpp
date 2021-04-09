@@ -60,6 +60,16 @@ void k_to_log(struct log* log, LogEntry *pb) {
   pb->set_data(std::string(token->data, len(token)));
 }
 
+std::vector<bytecodecoverage_cell *> k_to_coverage(map* m) {
+  list l = hook_MAP_values(m);
+  std::vector<bytecodecoverage_cell *> result;
+  for (size_t i = 0; i < hook_LIST_size_long(&l); i++) {
+     bytecodecoverage_cell* elem = (bytecodecoverage_cell*) hook_LIST_get_long(&l, i);
+     result.push_back(elem);
+  }
+  return result;
+}
+
 extern uint32_t kcellInjTag;
 
 block* make_k_cell(bool iscreate, mpz_ptr to, mpz_ptr from, string *code, block *args, mpz_ptr value, mpz_ptr gasprice, mpz_ptr gas, mpz_ptr beneficiary, mpz_ptr difficulty, mpz_ptr number, mpz_ptr gaslimit, mpz_ptr timestamp, string *function) {
@@ -243,6 +253,19 @@ CallResult run_transaction(CallContext ctx) {
     auto log_pb = result.add_logs();
     k_to_log(log, log_pb);
   }
+
+  static uint32_t tag4 = getTagForSymbolName("LblextractCoverage{}");
+  arr[0] = (block *)final_config->children[2];
+  extractedCoverages* extractedCoverage = (extractedCoverages *)evaluateFunctionSymbol(tag4, arr);
+  auto bytecodecoverages = k_to_coverage(&extractedCoverage->bytecodecoverages->data);
+  for (bytecodecoverage_cell *bytecodecoverage : bytecodecoverages) {
+    auto coveragemsg = result.add_coveragedata();
+    std::string codehash = of_z_width(32, bytecodecoverage->bytecodeHash->data);
+    std::string coveragebytes = std::string(bytecodecoverage->coverageData->data->data, len(bytecodecoverage->coverageData->data));
+    coveragemsg->set_codehash(codehash);
+    coveragemsg->set_coverage(coveragebytes);
+  }
+
   std::cerr << result.DebugString() << std::endl;
   clear_cache();
   return result;

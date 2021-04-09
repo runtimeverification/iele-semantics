@@ -43,6 +43,20 @@ struct tx_result {
   list touched;
 };
 
+struct bytecodecoverage_cell {
+  blockheader h;
+  zinj *bytecodeHash;
+  stringinj *bytecode;
+  stringinj *coverageData;
+};
+
+struct bytecodecoverages_cell;
+
+struct extractedCoverages {
+  blockheader h;
+  bytecodecoverages_cell *bytecodecoverages;
+};
+
 std::string get_output_data(list *);
 
 extern uint32_t unparseByteStack;
