@@ -44,10 +44,10 @@ pipeline {
       stages {
         stage('Checkout SCM') { steps { dir("kiele-${KIELE_VERSION}-src") { checkout scm } } }
         stage('Binary Package') {
-          //when {
-          //  branch 'master'
-          //  beforeAgent true
-          //}
+          when {
+            branch 'master'
+            beforeAgent true
+          }
           agent {
             dockerfile {
               reuseNode true
@@ -108,10 +108,10 @@ pipeline {
           }
         }
         stage('Ubuntu Focal') {
-          //when {
-          //  branch 'master'
-          //  beforeAgent true
-          //}
+          when {
+            branch 'master'
+            beforeAgent true
+          }
           post { failure { slackSend color: '#cb2431' , channel: '#iele-internal' , message: "Packaging Phase Failed: ${env.BUILD_URL}" } }
           stages {
             stage('Build Package') {
@@ -157,10 +157,10 @@ pipeline {
           }
         }
         stage('DockerHub') {
-          //when {
-          //  branch 'master'
-          //  beforeAgent true
-          //}
+          when {
+            branch 'master'
+            beforeAgent true
+          }
           post { failure { slackSend color: '#cb2431' , channel: '#iele-internal' , message: "Packaging Phase Failed: ${env.BUILD_URL}" } }
           environment {
             DOCKERHUB_TOKEN   = credentials('rvdockerhub')
@@ -238,10 +238,10 @@ pipeline {
       }
     }
     stage('Deploy') {
-      //when {
-      //  branch 'master'
-      //  beforeAgent true
-      //}
+      when {
+        branch 'master'
+        beforeAgent true
+      }
       agent {
         dockerfile {
           label 'docker'
