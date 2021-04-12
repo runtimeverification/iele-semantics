@@ -58,7 +58,7 @@ export PATH:=$(IELE_BIN):$(PATH)
 .PHONY: all clean distclean libff protobuf coverage secp256k1 cryptopp \
         build build-interpreter build-vm build-check build-haskell build-node build-testnode \
 		install install-interpreter install-vm install-kiele install-check uninstall \
-        split-tests split-vm-tests split-blockchain-tests test-node \
+        split-tests split-vm-tests split-blockchain-tests test-node test-iele-coverage \
         test-evm test-vm test-blockchain test-wellformed test-illformed test-bad-packet test-interactive \
         test-iele test-iele-haskell test-iele-failing test-iele-slow test-iele-node assemble-iele-test test
 .SECONDARY:
@@ -128,6 +128,7 @@ $(libcryptopp_out): $(PLUGIN)/deps/cryptopp/GNUmakefile
 # -----
 
 TEST          = kiele
+CHECK         = git --no-pager diff --no-index --ignore-all-space -R
 TEST_ASSEMBLE = $(IELE_DIR)/assemble-iele-test
 TEST_BACKEND  = standalone
 TEST_MODE     = NORMAL
@@ -136,7 +137,7 @@ TEST_PORT     = 10000
 TEST_ARGS     = --no-unparse
 TEST_DIR      = $(IELE_DIR)/tests
 
-test: split-tests test-vm test-iele test-iele-haskell test-wellformed test-illformed test-interactive test-node
+test: split-tests test-vm test-iele test-iele-haskell test-iele-coverage test-wellformed test-illformed test-interactive test-node
 
 split-tests: split-vm-tests split-blockchain-tests
 
@@ -164,6 +165,8 @@ skipped_tests=$(failing_tests) \
     $(wildcard $(TEST_DIR)/BlockchainTests/GeneralStateTests/stStaticCall/static_Return50000*/*.iele.json) \
     $(wildcard $(TEST_DIR)/BlockchainTests/GeneralStateTests/stStaticCall/static_Call1MB1024Calldepth_d1g0v0/*.iele.json) \
 
+coverage_tests=$(TEST_DIR)/iele/danse/ERC20/transfer_Caller-MoreThanBalance.iele.json
+
 passing_tests=$(filter-out $(skipped_tests), $(all_tests))
 passing_vm_tests=$(filter-out $(skipped_tests), $(vm_tests))
 passing_blockchain_tests=$(filter-out $(skipped_tests), $(blockchain_tests))
@@ -180,6 +183,7 @@ iele_slow=$(slow_tests:=.test)
 iele_failing=$(failing_tests:=.test)
 iele_targets=$(iele_passing_tests:=.test)
 iele_node_targets=$(iele_tests:=.nodetest)
+iele_coverage_tests=$(coverage_tests:=.test-coverage)
 
 iele_contracts=$(wildcard iele-examples/*.iele $(TEST_DIR)/iele/*/*/*.iele)
 well_formed_contracts=$(filter-out $(wildcard $(TEST_DIR)/iele/*/ill-formed/*.iele), $(iele_contracts))
@@ -199,6 +203,7 @@ test-iele-node: $(iele_node_targets)
 assemble-iele-test: $(iele_assembled)
 test-wellformed: $(well_formedness_targets)
 test-illformed: $(ill_formedness_targets)
+test-iele-coverage: $(iele_coverage_tests)
 
 test-bad-packet:
 	netcat 127.0.0.1 $(TEST_PORT) -q 2 < $(TEST_DIR)/bad-packet
@@ -226,6 +231,11 @@ $(TEST_DIR)/VMTests/%:  TEST_MODE     = VMTESTS
 
 %.json.test: %.json.test-assembled
 	$(TEST) interpret --backend $(TEST_BACKEND) --mode $(TEST_MODE) --schedule $(TEST_SCHEDULE) $(TEST_ARGS) $<
+
+%.json.test-coverage: %.json.test-assembled
+	$(TEST) interpret --backend $(TEST_BACKEND) --mode $(TEST_MODE) --schedule $(TEST_SCHEDULE) --coverage $< | grep -A 30 "<kiele-coverage>" > $*.json.coverage-out
+	$(CHECK) $*.json.coverage-out $*.json.coverage-expected
+	rm -rf $*.json.coverage-out
 
 %.json.test-assembled: %.json
 	$(TEST_ASSEMBLE) $< > $@
