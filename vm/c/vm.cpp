@@ -267,8 +267,10 @@ CallResult run_transaction(CallContext ctx, bool withCoverage) {
     for (bytecodecoverage_cell *bytecodecoverage : bytecodecoverages) {
       auto coveragemsg = result.add_coveragedata();
       std::string codehash = of_z_width(32, bytecodecoverage->bytecodeHash->data);
+      std::string bytecode = std::string(bytecodecoverage->bytecode->data->data, len(bytecodecoverage->bytecode->data));
       std::string coveragebytes = std::string(bytecodecoverage->coverageData->data->data, len(bytecodecoverage->coverageData->data));
       coveragemsg->set_codehash(codehash);
+      coveragemsg->set_bytecode(bytecode);
       coveragemsg->set_coverage(coveragebytes);
     }
   }
