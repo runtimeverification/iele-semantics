@@ -113,6 +113,7 @@ pipeline {
             branch 'master'
             beforeAgent true
           }
+          post { failure { slackSend color: '#cb2431' , channel: '#iele-internal' , message: "Packaging Phase Failed: ${env.BUILD_URL}" } }
           stages {
             stage('Build Package') {
               agent {
@@ -161,6 +162,7 @@ pipeline {
             branch 'master'
             beforeAgent true
           }
+          post { failure { slackSend color: '#cb2431' , channel: '#iele-internal' , message: "Packaging Phase Failed: ${env.BUILD_URL}" } }
           environment {
             DOCKERHUB_TOKEN   = credentials('rvdockerhub')
             BIONIC_COMMIT_TAG = "ubuntu-bionic-${env.SHORT_REV}"
@@ -244,7 +246,7 @@ pipeline {
       agent {
         dockerfile {
           label 'docker'
-          additionalBuildArgs '--build-arg K_COMMIT=$(cat deps/k_release | cut --delimiter="-" --field="2") --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g)'
+          additionalBuildArgs '--build-arg K_COMMIT=${K_VERSION} --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g)'
         }
       }
       post { failure { slackSend color: '#cb2431' , channel: '#iele-internal' , message: "Deploy Phase Failed: ${env.BUILD_URL}" } }
