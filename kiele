@@ -46,7 +46,7 @@ run_interpret() {
     kast=$(make_temp_trap kast)
     output=$(make_temp_trap output)
     status=0
-    kore-json.py "$run_file" "$cschedule" "$cmode" > "$kast"
+    kore-json.py "$run_file" "$cschedule" "$cmode" "$cenablecoverage" > "$kast"
     case "$backend" in
         standalone)
             interpret_cmd=(iele-interpreter "$kast" "$depth" "$output" "$@")
@@ -80,7 +80,7 @@ run_krun_internal() {
 }
 
 run_krun() {
-    run_krun_internal -cMODE="$cmode" -pMODE='cat' "$@"
+    run_krun_internal -cMODE="$cmode" -pMODE='cat' -cENABLECOVERAGE="$cenablecoverage" -pENABLECOVERAGE='cat' "$@"
 }
 
 run_check() {
@@ -92,7 +92,9 @@ run_check() {
 }
 
 run_vm() {
-    exec iele-vm "$kiele_port" "$kiele_host"
+    cmd=(exec iele-vm "$kiele_port" "$kiele_host")
+    [[ $enablecoverage == 'true' ]] && cmd+=(--coverage)
+    "${cmd[@]}"
 }
 
 # Main
@@ -123,7 +125,8 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
                  <assemble arg> is an argument to the assembler
                  <interpret arg> is an argument you want to pass to the interpreter
                  <K arg> is an argument you want to pass to K
-                 <KIELE arg> is one of (--no-unparse|--debug|--host|--port|--mode|--schedule|--module|--definition|--depth)
+                 <KIELE arg> is one of (--no-unparse|--debug|--host|--port|--mode|--coverage
+                                       |--schedule|--module|--definition|--depth)
     "
     exit 0
 fi
@@ -140,6 +143,7 @@ debug=false
 unparse=true
 mode='NORMAL'
 schedule='DEFAULT'
+enablecoverage='false'
 kiele_port='8545'
 kiele_host='127.0.0.1'
 module='IELE-TESTING'
@@ -149,17 +153,18 @@ args=()
 while [[ $# -gt 0 ]]; do
     arg="$1"
     case $arg in
-        --backend)    backend="$2"    ; shift 2 ;;
-        --debug)      debug=true      ; shift   ;;
-        --no-unparse) unparse=false   ; shift   ;;
-        --mode)       mode="$2"       ; shift 2 ;;
-        --module)     module="$2"     ; shift 2 ;;
-        --definition) definition="$2" ; shift 2 ;;
-        --schedule)   schedule="$2"   ; shift 2 ;;
-        --depth)      depth=$2        ; shift 2 ;;
-        -p|--port)    kiele_port="$2" ; shift 2 ;;
-        -h|--host)    kiele_host="$2" ; shift 2 ;;
-        *)            args+=("$1")    ; shift   ;;
+        --backend)    backend="$2"          ; shift 2 ;;
+        --debug)      debug=true            ; shift   ;;
+        --no-unparse) unparse=false         ; shift   ;;
+        --mode)       mode="$2"             ; shift 2 ;;
+        --module)     module="$2"           ; shift 2 ;;
+        --definition) definition="$2"       ; shift 2 ;;
+        --schedule)   schedule="$2"         ; shift 2 ;;
+        --depth)      depth=$2              ; shift 2 ;;
+        --coverage)   enablecoverage='true' ; shift   ;;
+        -p|--port)    kiele_port="$2"       ; shift 2 ;;
+        -h|--host)    kiele_host="$2"       ; shift 2 ;;
+        *)            args+=("$1")          ; shift   ;;
     esac
 done
 if [[ "${#args[@]}" -gt 0 ]]; then
@@ -172,6 +177,7 @@ backend_dir="${backend_dir:-$INSTALL_LIB/$backend}"
 
 cmode='Lbl'$mode'{}()'
 cschedule='Lbl'$schedule'{}()'
+cenablecoverage='\dv{SortBool{}}("'$enablecoverage'")'
 
 if [[ "$run_command" != 'vm' ]]; then
     run_file="$1" ; shift

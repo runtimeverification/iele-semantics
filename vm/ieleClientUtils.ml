@@ -261,7 +261,7 @@ let output_framed out_chan encoder v =
 
 let send addr ctx =
   let chans = Unix.open_connection addr in
-  let hello = {version="1.1";config=Iele_config} in
+  let hello = {version="3.0";config=Iele_config} in
     output_framed (snd chans) Msg_pb.encode_hello hello;
     output_framed (snd chans) Msg_pb.encode_call_context ctx;
     let result = ref None in
