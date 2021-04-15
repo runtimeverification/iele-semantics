@@ -29,10 +29,13 @@ jobs:
     - name: Check materialization
       run: nix-build --arg checkMaterialization true iele-assemble -A project.stack-nix
 
-  test-nix:
-    name: 'Nix'
+  nix:
+    name: 'Nix / ${{ matrix.os }}'
     needs: test-nix-material
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
     - name: Check out code
       uses: actions/checkout@v2.3.4
