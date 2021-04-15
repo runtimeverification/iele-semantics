@@ -12,7 +12,7 @@ extern FILE *vm_in_chan;
 
 using namespace io::iohk::ethereum::extvm;
 
-CallResult run_transaction(CallContext ctx);
+CallResult run_transaction(CallContext ctx, bool withCoverage);
 
 extern "C" {
   void freeAllKoreMem(void);
@@ -52,17 +52,27 @@ int init(int port, in_addr host) {
 }
 
 int main(int argc, char **argv) {
-  std::string usage = std::string("Usage: ") + argv[0] + " PORT BIND_ADDRESS";
+  std::string usage = std::string("Usage: ") + argv[0] + " PORT BIND_ADDRESS [--coverage]";
+  bool withCoverage = false;
   if (argc == 2 && argv[1] == std::string("--help")) {
     std::cout << usage << std::endl;
     return 0;
   } else if (argc == 2 && argv[1] == std::string("--version")) {
     std::cout << argv[0] << " version " << VM_VERSION << std::endl;
     return 0;
-  } else if (argc != 3) {
+  } else if (argc != 3 && argc != 4) {
     std::cerr << "Incorrect number of arguments" << std::endl;
     std::cerr << usage << std::endl;
     return 1;
+  }
+  if (argc == 4) {
+    if (argv[3] == std::string("--coverage")) {
+      withCoverage = true;
+    } else {
+      std::cerr << "Unrecognized argument: " << argv[3] << std::endl;
+      std::cerr << usage << std::endl;
+      return 1;
+    }
   }
   int port = std::stoi(argv[1]);
   in_addr host;
@@ -108,7 +118,7 @@ int main(int argc, char **argv) {
     fread(&buf[0], 1, len, _if);
     Hello h;
     bool success = h.ParseFromString(buf);
-    if (success && h.version() == "1.1") {
+    if (success && h.version() == "3.0") {
       while(1) {
         fread((char *)&len, 4, 1, _if);
         if (feof(_if)) {
@@ -124,7 +134,7 @@ int main(int argc, char **argv) {
         if (!ctx.ParseFromString(buf2)) {
           break;
         }
-        CallResult result = run_transaction(ctx);
+        CallResult result = run_transaction(ctx, withCoverage);
         freeAllKoreMem();
         VMQuery q;
         *q.mutable_callresult() = result;

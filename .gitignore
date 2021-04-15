@@ -2,6 +2,7 @@
 /tests/VMTests
 /tests/BlockchainTests
 /tests/**/*.test-assembled
+/tests/**/*.coverage-out
 /tmp
 /.kompile*
 /.kprove*
