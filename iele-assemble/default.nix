@@ -9,7 +9,7 @@ let
       haskell-nix = import sources."haskell.nix" {};
       inherit (haskell-nix) nixpkgsArgs;
       args = nixpkgsArgs // { };
-    in import haskell-nix.sources.nixpkgs-2003 args;
+    in import haskell-nix.sources.nixpkgs args;
   inherit (pkgs) lib haskell-nix;
 
   project = (args: haskell-nix.stackProject args) {
