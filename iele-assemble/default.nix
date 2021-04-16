@@ -18,9 +18,15 @@ let
     src = haskell-nix.haskellLib.cleanGit { src = ./..; subDir = "iele-assemble"; };
   };
 
+  rematerialize = pkgs.writeScript "rematerialize.sh" ''
+    #!/bin/sh
+    ${project.stack-nix.passthru.updateMaterialized}
+  '';
+
   default =
     {
       inherit pkgs project;
+      inherit rematerialize;
       inherit (project.iele-assemble.components.exes) iele-assemble;
     };
 
