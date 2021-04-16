@@ -31,6 +31,11 @@ let
   };
   libff = callPackage ./nix/libff.nix {
     stdenv = llvmPackages.stdenv;
+    src = ttuegel.cleanGitSubtree {
+      name = "libff";
+      src = ./.;
+      subDir = "plugin/deps/libff";
+    };
   };
   kiele = callPackage ./nix/kiele.nix {
     inherit src;
