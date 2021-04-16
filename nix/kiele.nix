@@ -34,11 +34,7 @@ let
       ignore = [ "kiele" ];
     };
     nativeBuildInputs = [ protobuf k haskell-backend llvm-backend clang ];
-    buildInputs = [
-      cryptopp libff mpfr secp256k1
-      # TODO: propagate from llvm-backend:
-      jemalloc libffi ncurses
-    ];
+    buildInputs = [ cryptopp libff mpfr secp256k1 ];
     makeFlags = [
       "libff_out=${libff}/lib/libff.a"
       "INSTALL_PREFIX=${builtins.placeholder "out"}"
