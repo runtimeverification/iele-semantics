@@ -390,7 +390,6 @@ haskell_kompiled_libs :=  \
     macros.kore           \
     mainModule.txt        \
     mainModule.txt        \
-    parser_PGM            \
     syntaxDefinition.kore
 
 kompiled_libs :=             \
@@ -399,7 +398,7 @@ kompiled_libs :=             \
 
 iele_interpreter_libs := $(patsubst %, standalone/iele-testing-kompiled/%, $(kompiled_libs))
 iele_haskell_libs     := $(patsubst %, haskell/iele-testing-kompiled/%,    $(haskell_kompiled_libs))
-iele_check_libs       := $(patsubst %, check/well-formedness-kompiled/%,   $(kompiled_libs))
+iele_check_libs       := $(patsubst %, check/well-formedness-kompiled/%,   $(kompiled_libs) parser_PGM)
 
 install_libs :=              \
     $(iele_check_libs)       \
