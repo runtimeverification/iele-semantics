@@ -84,10 +84,6 @@ run_krun() {
 }
 
 run_check() {
-    local kore
-    kore=$(make_temp_trap kore)
-    kast --directory "$backend_dir" -s Contract --output kore "$run_file" > $kore
-    run_file="$kore"
     if run_krun_internal --output none "$@"; then
         echo "Contract is well-formed."
 	exit 0
@@ -193,7 +189,7 @@ fi
 case "$run_command" in
     assemble)  run_assemble  "$@" ;;
     interpret) run_interpret "$@" ;;
-    krun)      run_krun      -cMODE="$mode"              -pMODE='cat'   "$@"  ;;
+    krun)      run_krun      "$@" ;;
     check)     run_check     "$@" ;;
     vm)        run_vm        "$@" ;;
     *) $0 help ; fatal "Unknown command: $run_command" ;;
