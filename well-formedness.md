@@ -28,7 +28,7 @@ module IELE-WELL-FORMEDNESS
     imports IELE-COMMON
     imports IELE-DATA
     imports IELE-CONSTANTS
-    imports syntax DEFAULT-CONFIGURATION
+    imports DEFAULT-CONFIGURATION
 ```
 
 Configuration
