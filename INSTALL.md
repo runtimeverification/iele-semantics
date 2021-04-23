@@ -3,9 +3,10 @@ Installing KIELE
 
 We support the following installation methods:
 
--   [Ubuntu Bionic (18.04) package](#ubuntu-bionic-package)
+-   [Ubuntu package](#ubuntu-package)
 -   [Linux binary package](#linux-binary-package) (most other distributions)
 -   [Nix](#nix) (Linux and macOS)
+-   [Docker Images](#docker-images)
 -   [Build from source](#build-from-source) (Linux and macOS)
 
 Our most up-to-date packages are available at <https://github.com/runtimeverification/iele-semantics/releases>.
@@ -13,16 +14,18 @@ Our most up-to-date packages are available at <https://github.com/runtimeverific
 **NOTE**: We do not currently support running K on native Windows.
 To use K on Windows, you are encouraged to install [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10) and follow the instructions for Ubuntu Bionic.
 
-## Ubuntu Bionic package
+## Ubuntu Package
 
-First make sure you have the `kframework` package installed, see instructions here: <https://github.com/kframework/k/releases>.
+We provide both an Ubuntu Bionic (18.04) and Ubuntu Focal (20.04) package.
 
-Download the appropriate "Ubuntu Bionic" package from the GitHub, via the [Releases](https://github.com/kframework/k/releases) page.
+First make sure you have the appropriate `kframework` package installed, see instructions here: <https://github.com/kframework/k/releases>.
+
+Download the appropriate Ubuntu package from the GitHub, via the [Releases](https://github.com/runtimeverification/iele-semantics/releases) page.
 Releases are generated as often as possible from `master` build.
-Assuming you have downloaded KIELE version `X.Y.Z`, install the package with `apt`:
+Assuming you have downloaded KIELE version `X.Y.Z` for distro `DISTRO`, install the package with `apt`:
 
 ```sh
-sudo apt install ./kiele_X.Y.Z_amd64_bionic.deb
+sudo apt install ./kiele_X.Y.Z_amd64_DISTRO.deb
 ```
 
 ## Linux binary package
@@ -33,7 +36,7 @@ Install the following runtime dependencies:
 sudo apt-get install --yes libcrypto++-dev libjemalloc-dev libmpfr-dev libprotobuf-dev libsecp256k1-dev
 ```
 
-Download the "KIELE Linux Binary" package from the GitHub, via the [Releases](https://github.com/kframework/k/releases) page.
+Download the "KIELE Linux Binary" package from the GitHub, via the [Releases](https://github.com/runtimeverification/iele-semantics/releases) page.
 Releases are generated as often as possible from `master` build.
 
 Assuming you have downloaded KIELE version `X.Y.Z`, extract the tarball:
@@ -105,9 +108,41 @@ git submodule update --init --recursive
 nix-env -f . -i
 ```
 
-## Build from source
+## Docker Images
 
-### System Dependencies
+Docker images with KIELE pre-installed are available at the
+[runtimeverificationinc/runtimeverification-iele-semantics Docker Hub repository](https://hub.docker.com/repository/docker/runtimeverificationinc/runtimeverification-iele-semantics).
+
+Each release at `COMMIT_ID` for Ubuntu platform DISTRO has an image associated with it at
+`runtimeverificationinc/runtimeverification-iele-semantics:ubuntu-DISTRO-COMMIT_ID`.
+The latest `master` build Docker image can be accessed with `COMMIT_ID` set to
+`master`.
+
+To run the image directly:
+
+```sh
+docker run -it runtimeverificationinc/runtimeverification-iele-semantics:ubuntu-DISTRO-COMMIT_ID
+```
+
+and to make a Docker Image based on it, use the following line in your
+`Dockerfile`:
+
+```Dockerfile
+FROM runtimeverificationinc/runtimeverification-iele-semantics:ubuntu-DISTRO-COMMIT_ID
+```
+# Build from source
+
+## Installing K
+
+First make sure you have the `kframework` package installed.
+
+Look in `deps/k_release` for the currently supported tag release of K, you will need to install that one.
+
+see instructions here: https://github.com/kframework/k/releases/tag/<k_release>.
+
+## System Dependencies
+
+### Ubuntu Bionic
 
 The following packages are needed for running KIELE on Ubuntu:
 
@@ -120,12 +155,12 @@ sudo apt-get install --yes autoconf build-essential cmake curl flex gcc   \
                            python3 zlib1g-dev
 ```
 
-On MacOS, you need the following:
+### MacOS
 
 ```sh
 brew tap homebrew/homebrew-cask homebrew-cask-versions
 brew cask install java8
-brew install maven opam pkg-config gmp mpfr automake libtool
+brew install maven opam pkg-config gmp mpfr automake libtool protobuf cmake openssl
 ```
 
 On all systems, you need Haskell Stack:
@@ -134,25 +169,19 @@ On all systems, you need Haskell Stack:
 curl -sSL https://get.haskellstack.org/ | sh
 ```
 
-### Build K and KIELE
+## Build KIELE
 
-These commands build and install K and KIELE:
+These commands build and install KIELE:
 
 ```sh
 git clone https://github.com/runtimeverification/iele-semantics.git
 cd iele-semantics
 git submodule update --init --recursive
-curl -sSL https://github.com/kframework/k/releases/download/$(cat deps/k_release)/kframework_5.0.0_amd64_bionic.deb --output kframework.deb
-sudo apt-get install --yes ./kframework.deb
 sudo bash -c 'OPAMROOT=/usr/lib/kframework/opamroot k-configure-opam'
 sudo bash -c 'OPAMROOT=/usr/lib/kframework/opamroot opam install --yes ocaml-protoc rlp yojson zarith hex uuidm cryptokit'
 export OPAMROOT=/usr/lib/kframework/opamroot
 eval $(opam config env)
 make build -j4
-```
 
-Finally, set the install directory on PATH:
-
-```sh
-export PATH=$(pwd)/.build/lib:$PATH
+sudo make install
 ```

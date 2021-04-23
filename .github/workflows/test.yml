@@ -58,4 +58,7 @@ jobs:
     - name: Run unit tests
       run: nix-build iele-assemble -A project.iele-assemble.checks
 
+    - name: Run integration tests
+      run: nix-build test.nix
+
 

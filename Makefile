@@ -1,6 +1,14 @@
 # Common to all versions of K
 # ===========================
 
+UNAME_S := $(shell uname -s)
+INSTALL := install -D
+
+ifeq ($(UNAME_S),Darwin)
+CPATH=/usr/local/include
+export CPATH
+endif
+
 ifeq ($(BYTE),yes)
 EXT=cmo
 LIBEXT=cma
@@ -11,7 +19,7 @@ else
 EXT=cmx
 LIBEXT=cmxa
 DLLEXT=cmxs
-OCAMLC=opt -O3 -cclib -Wl,-rpath=/usr/local/lib
+OCAMLC=opt -O3
 LIBFLAG=-shared
 endif
 
@@ -22,17 +30,19 @@ BISECT=-package bisect_ppx
 PREDICATES=-predicates coverage
 endif
 
+IELE_DIR       := $(abspath .)
 BUILD_DIR      := $(abspath .build)
 KORE_SUBMODULE := $(BUILD_DIR)/kore
 BUILD_LOCAL    := $(BUILD_DIR)/local
 LOCAL_LIB      := $(BUILD_LOCAL)/lib
 LOCAL_INCLUDE  := $(BUILD_LOCAL)/include
 
-PLUGIN=$(abspath plugin)
-PROTO=$(abspath proto)
+PLUGIN=$(IELE_DIR)/plugin
+PROTO=$(IELE_DIR)/proto
 
 IELE_BIN         := $(BUILD_DIR)/bin
 IELE_LIB         := $(BUILD_DIR)/lib/kiele
+IELE_RUNNER      := $(IELE_BIN)/kiele
 IELE_ASSEMBLE    := $(IELE_BIN)/iele-assemble
 IELE_INTERPRETER := $(IELE_BIN)/iele-interpreter
 IELE_CHECK       := $(IELE_BIN)/iele-check
@@ -40,14 +50,17 @@ IELE_VM          := $(IELE_BIN)/iele-vm
 IELE_TEST_VM     := $(IELE_BIN)/iele-test-vm
 IELE_TEST_CLIENT := $(IELE_BIN)/iele-test-client
 
+# We set SHELL here for Mac: https://stackoverflow.com/a/25506676
+SHELL=/bin/bash
+
 export PATH:=$(IELE_BIN):$(PATH)
 
-.PHONY: all clean distclean libff protobuf coverage \
-        build build-interpreter build-vm build-haskell build-node build-testnode \
-		install install-interpreter install-vm uninstall \
-        split-tests split-vm-tests split-blockchain-tests \
-        test-evm test-vm test-blockchain test-wellformed test-bad-packet test-interactive \
-        test-iele test-iele-failing test-iele-slow test-iele-node assemble-iele-test
+.PHONY: all clean distclean libff protobuf coverage secp256k1 cryptopp \
+        build build-interpreter build-vm build-check build-haskell build-node build-testnode \
+		install install-interpreter install-vm install-kiele install-check uninstall \
+        split-tests split-vm-tests split-blockchain-tests test-node test-iele-coverage \
+        test-evm test-vm test-blockchain test-wellformed test-illformed test-bad-packet test-interactive \
+        test-iele test-iele-haskell test-iele-failing test-iele-slow test-iele-node assemble-iele-test test
 .SECONDARY:
 
 all: build split-tests
@@ -60,15 +73,20 @@ distclean: clean
 # Dependencies
 # ------------
 
+ifeq ($(UNAME_S),Darwin)
+OPENSSL_ROOT     := $(shell brew --prefix openssl)
+MACOS_CMAKE_OPTS := -DOPENSSL_ROOT_DIR=$(OPENSSL_ROOT) -DWITH_PROCPS=off
+endif
+
 libff_out := $(LOCAL_LIB)/libff.a
 
 libff: $(libff_out)
 
 $(libff_out): $(PLUGIN)/deps/libff/CMakeLists.txt
 	@mkdir -p $(PLUGIN)/deps/libff/build
-	cd $(PLUGIN)/deps/libff/build                                                   \
-	   && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(BUILD_LOCAL) \
-	   && make -s -j4                                                               \
+	cd $(PLUGIN)/deps/libff/build                                                                       \
+	   && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(BUILD_LOCAL) $(MACOS_CMAKE_OPTS) \
+	   && make -s -j4                                                                                   \
 	   && make install
 
 protobuf_out := $(BUILD_DIR)/plugin-node/proto/msg.pb.cc
@@ -79,41 +97,75 @@ $(protobuf_out): $(PROTO)/proto/msg.proto
 	mkdir -p $(BUILD_DIR)/plugin-node
 	protoc --cpp_out=$(BUILD_DIR)/plugin-node -I $(PROTO) $<
 
+ifeq ($(UNAME_S),Darwin)
+libsecp256k1_out := $(LOCAL_LIB)/libsecp256k1.a
+endif
+
+secp256k1: $(libsecp256k1_out)
+
+$(libsecp256k1_out): $(PLUGIN)/deps/secp256k1/Makefile
+	cd $(PLUGIN)/deps/secp256k1 \
+	   && make                  \
+	   && make install
+
+$(PLUGIN)/deps/secp256k1/Makefile: $(PLUGIN)/deps/secp256k1/autogen.sh
+	cd $(PLUGIN)/deps/secp256k1 \
+	   && ./autogen.sh          \
+	   && ./configure prefix=$(BUILD_LOCAL) --enable-module-recovery
+
+ifeq ($(UNAME_S),Darwin)
+libcryptopp_out := $(LOCAL_LIB)/libcryptopp.a
+endif
+
+cryptopp: $(libcryptopp_out)
+
+$(libcryptopp_out): $(PLUGIN)/deps/cryptopp/GNUmakefile
+	cd $(PLUGIN)/deps/cryptopp \
+	   && make libcryptopp.a   \
+	   && make install PREFIX=$(BUILD_LOCAL)
+
 # Tests
 # -----
 
 TEST          = kiele
-TEST_ASSEMBLE = ./assemble-iele-test
+CHECK         = git --no-pager diff --no-index --ignore-all-space -R
+TEST_ASSEMBLE = $(IELE_DIR)/assemble-iele-test
 TEST_BACKEND  = standalone
 TEST_MODE     = NORMAL
 TEST_SCHEDULE = DEFAULT
 TEST_PORT     = 10000
+TEST_ARGS     = --no-unparse
+TEST_DIR      = $(IELE_DIR)/tests
+
+test: split-tests test-vm test-iele test-iele-haskell test-iele-coverage test-wellformed test-illformed test-interactive test-node
 
 split-tests: split-vm-tests split-blockchain-tests
 
-invalid_iele_tests_file=tests/failing.expected
-invalid_iele_tests= $(shell cat $(invalid_iele_tests_file))
+invalid_iele_tests_file=$(TEST_DIR)/failing.expected
+invalid_iele_tests= $(addprefix $(IELE_DIR)/, $(shell cat $(invalid_iele_tests_file)))
 
-split-vm-tests: $(patsubst tests/ethereum-tests/%.json,tests/%/make.timestamp, $(filter-out $(invalid_iele_tests), $(wildcard tests/ethereum-tests/VMTests/*/*.json)))
+split-vm-tests: $(patsubst $(TEST_DIR)/ethereum-tests/%.json,$(TEST_DIR)/%/make.timestamp, $(filter-out $(invalid_iele_tests), $(wildcard $(TEST_DIR)/ethereum-tests/VMTests/*/*.json)))
 
-split-blockchain-tests: $(patsubst tests/ethereum-tests/%.json,tests/%/make.timestamp, $(filter-out $(invalid_iele_tests), $(wildcard tests/ethereum-tests/BlockchainTests/GeneralStateTests/*/*.json)))
+split-blockchain-tests: $(patsubst $(TEST_DIR)/ethereum-tests/%.json,$(TEST_DIR)/%/make.timestamp, $(filter-out $(invalid_iele_tests), $(wildcard $(TEST_DIR)/ethereum-tests/BlockchainTests/GeneralStateTests/*/*.json)))
 
-vm_tests=$(wildcard tests/VMTests/*/*/*.iele.json)
-blockchain_tests=$(wildcard tests/BlockchainTests/*/*/*/*.iele.json)
+vm_tests=$(wildcard $(TEST_DIR)/VMTests/*/*/*.iele.json)
+blockchain_tests=$(wildcard $(TEST_DIR)/BlockchainTests/*/*/*/*.iele.json)
 all_tests=$(vm_tests) $(blockchain_tests)
-failing_tests = $(shell cat tests/failing.$(TEST_BACKEND))
-slow_tests    = $(shell cat tests/slow.$(TEST_BACKEND))
+failing_tests = $(addprefix $(IELE_DIR)/,$(shell cat $(TEST_DIR)/failing.$(TEST_BACKEND)))
+slow_tests    = $(addprefix $(IELE_DIR)/,$(shell cat $(TEST_DIR)/slow.$(TEST_BACKEND)))
 skipped_tests=$(failing_tests) \
-    $(wildcard tests/VMTests/vmPerformance/*/*.json) \
-    $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Frontier.iele.json) \
-    $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Homestead.iele.json) \
-    $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_EIP150.iele.json) \
-    $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_EIP158.iele.json) \
-    $(wildcard tests/BlockchainTests/GeneralStateTests/*/*/*_Constantinople.iele.json) \
-    $(wildcard tests/BlockchainTests/GeneralStateTests/stQuadraticComplexityTest/*/*.iele.json) \
-    $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Call50000*/*.iele.json) \
-    $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Return50000*/*.iele.json) \
-    $(wildcard tests/BlockchainTests/GeneralStateTests/stStaticCall/static_Call1MB1024Calldepth_d1g0v0/*.iele.json) \
+    $(wildcard $(TEST_DIR)/VMTests/vmPerformance/*/*.json) \
+    $(wildcard $(TEST_DIR)/BlockchainTests/GeneralStateTests/*/*/*_Frontier.iele.json) \
+    $(wildcard $(TEST_DIR)/BlockchainTests/GeneralStateTests/*/*/*_Homestead.iele.json) \
+    $(wildcard $(TEST_DIR)/BlockchainTests/GeneralStateTests/*/*/*_EIP150.iele.json) \
+    $(wildcard $(TEST_DIR)/BlockchainTests/GeneralStateTests/*/*/*_EIP158.iele.json) \
+    $(wildcard $(TEST_DIR)/BlockchainTests/GeneralStateTests/*/*/*_Constantinople.iele.json) \
+    $(wildcard $(TEST_DIR)/BlockchainTests/GeneralStateTests/stQuadraticComplexityTest/*/*.iele.json) \
+    $(wildcard $(TEST_DIR)/BlockchainTests/GeneralStateTests/stStaticCall/static_Call50000*/*.iele.json) \
+    $(wildcard $(TEST_DIR)/BlockchainTests/GeneralStateTests/stStaticCall/static_Return50000*/*.iele.json) \
+    $(wildcard $(TEST_DIR)/BlockchainTests/GeneralStateTests/stStaticCall/static_Call1MB1024Calldepth_d1g0v0/*.iele.json) \
+
+coverage_tests=$(TEST_DIR)/iele/danse/ERC20/transfer_Caller-MoreThanBalance.iele.json
 
 passing_tests=$(filter-out $(skipped_tests), $(all_tests))
 passing_vm_tests=$(filter-out $(skipped_tests), $(vm_tests))
@@ -123,7 +175,7 @@ passing_targets=$(passing_tests:=.test)
 passing_vm_targets=$(passing_vm_tests:=.test)
 passing_blockchain_targets=$(passing_blockchain_tests:=.test)
 
-iele_tests=$(wildcard tests/iele/*/*/*.iele.json)
+iele_tests=$(wildcard $(TEST_DIR)/iele/*/*/*.iele.json)
 iele_assembled=$(iele_tests:=.test-assembled)
 iele_quick_tests=$(filter-out $(slow_tests), $(iele_tests))
 iele_passing_tests=$(filter-out $(failing_tests), $(iele_quick_tests))
@@ -131,76 +183,96 @@ iele_slow=$(slow_tests:=.test)
 iele_failing=$(failing_tests:=.test)
 iele_targets=$(iele_passing_tests:=.test)
 iele_node_targets=$(iele_tests:=.nodetest)
+iele_coverage_tests=$(coverage_tests:=.test-coverage)
 
-iele_contracts=$(wildcard iele-examples/*.iele tests/iele/*/*/*.iele)
-well_formed_contracts=$(filter-out $(wildcard tests/iele/*/ill-formed/*.iele), $(iele_contracts))
+iele_contracts=$(wildcard iele-examples/*.iele $(TEST_DIR)/iele/*/*/*.iele)
+well_formed_contracts=$(filter-out $(wildcard $(TEST_DIR)/iele/*/ill-formed/*.iele), $(iele_contracts))
+ill_formed_contracts=$(wildcard $(TEST_DIR)/iele/*/ill-formed/*.iele)
 well_formedness_targets=$(well_formed_contracts:=.test-wellformed)
+ill_formedness_targets=$(ill_formed_contracts:=.test-illformed)
 
 test-evm: test-vm test-blockchain
 test-vm: $(passing_vm_targets)
 test-blockchain: $(passing_blockchain_targets)
 test-iele: $(iele_targets)
+test-iele-haskell:
+	$(MAKE) test-iele TEST_BACKEND=haskell
 test-iele-slow: $(iele_slow)
 test-iele-failing: $(iele_failing)
 test-iele-node: $(iele_node_targets)
 assemble-iele-test: $(iele_assembled)
 test-wellformed: $(well_formedness_targets)
+test-illformed: $(ill_formedness_targets)
+test-iele-coverage: $(iele_coverage_tests)
 
 test-bad-packet:
-	netcat 127.0.0.1 $(TEST_PORT) -q 2 < tests/bad-packet
-	netcat 127.0.0.1 $(TEST_PORT) -q 2 < tests/bad-packet-2
-	iele-test-vm tests/iele/danse/sum/sum_zero.iele.json $(TEST_PORT)
+	netcat 127.0.0.1 $(TEST_PORT) -q 2 < $(TEST_DIR)/bad-packet
+	netcat 127.0.0.1 $(TEST_PORT) -q 2 < $(TEST_DIR)/bad-packet-2
+	iele-test-vm $(TEST_DIR)/iele/danse/sum/sum_zero.iele.json $(TEST_PORT)
 
-test-interactive: iele-examples/erc20.iele tests/iele/danse/factorial/factorial_positive.iele.json.test-assembled
+test-interactive: iele-examples/erc20.iele $(TEST_DIR)/iele/danse/factorial/factorial_positive.iele.json.test-assembled
 	kiele help
 	kiele --help
 	kiele version
 	kiele --version
 	kiele assemble iele-examples/erc20.iele
 	echo
-	kiele interpret tests/iele/danse/factorial/factorial_positive.iele.json.test-assembled
+	kiele interpret $(TEST_DIR)/iele/danse/factorial/factorial_positive.iele.json.test-assembled
 	kiele check --schedule DANSE iele-examples/erc20.iele
 	# kiele vm
 
-tests/VMTests/%:        TEST_MODE     = VMTESTS
+test-node: TEST_PORT=9001
+test-node:
+	$(TEST_DIR)/node-test.sh $(MAKEFLAGS) --port $(TEST_PORT)
+
+$(TEST_DIR)/VMTests/%:  TEST_MODE     = VMTESTS
 %.iele.test-wellformed: TEST_SCHEDULE = DANSE
+%.iele.test-illformed:  TEST_SCHEDULE = DANSE
 
 %.json.test: %.json.test-assembled
-	$(TEST) interpret --backend $(TEST_BACKEND) --mode $(TEST_MODE) --schedule $(TEST_SCHEDULE) --no-unparse $<
+	$(TEST) interpret --backend $(TEST_BACKEND) --mode $(TEST_MODE) --schedule $(TEST_SCHEDULE) $(TEST_ARGS) $<
+
+%.json.test-coverage: %.json.test-assembled
+	$(TEST) interpret --backend $(TEST_BACKEND) --mode $(TEST_MODE) --schedule $(TEST_SCHEDULE) --coverage $< | grep -A 30 "<kiele-coverage>" > $*.json.coverage-out
+	$(CHECK) $*.json.coverage-out $*.json.coverage-expected
+	rm -rf $*.json.coverage-out
 
 %.json.test-assembled: %.json
 	$(TEST_ASSEMBLE) $< > $@
 
 %.iele.test-wellformed: %.iele
-	$(TEST) check --backend check --mode $(TEST_MODE) --schedule $(TEST_SCHEDULE) $<
+	$(TEST) check --schedule $(TEST_SCHEDULE) $<
+
+%.iele.test-illformed: %.iele
+	! $(TEST) check --schedule $(TEST_SCHEDULE) $<
 
 %.nodetest: %
 	iele-test-vm $< $(TEST_PORT)
 
-tests/%/make.timestamp: tests/ethereum-tests/%.json tests/evm-to-iele/evm-to-iele tests/evm-to-iele/evm-test-to-iele
+$(TEST_DIR)/%/make.timestamp: $(TEST_DIR)/ethereum-tests/%.json $(TEST_DIR)/evm-to-iele/evm-to-iele $(TEST_DIR)/evm-to-iele/evm-test-to-iele
 	@echo "==   split: $@"
 	mkdir -p $(dir $@)
-	tests/split-test.py $< $(dir $@)
+	$(TEST_DIR)/split-test.py $< $(dir $@)
 	touch $@
 
-tests/evm-to-iele/evm-to-iele: $(wildcard tests/evm-to-iele/*.ml tests/evm-to-iele/*.mli)
-	cd tests/evm-to-iele && eval `opam config env` && ocamlfind $(OCAMLC) -g ieleUtil.mli ieleUtil.ml evm.mli evm.ml iele.mli iele.ml conversion.mli conversion.ml main.ml -package zarith -package hex -linkpkg -o evm-to-iele
+$(TEST_DIR)/evm-to-iele/evm-to-iele: $(wildcard $(TEST_DIR)/evm-to-iele/*.ml $(TEST_DIR)/evm-to-iele/*.mli)
+	cd $(TEST_DIR)/evm-to-iele && eval `opam config env` && ocamlfind $(OCAMLC) -g ieleUtil.mli ieleUtil.ml evm.mli evm.ml iele.mli iele.ml conversion.mli conversion.ml main.ml -package zarith -package hex -linkpkg -o evm-to-iele
 
 # Build Source Files
 # ------------------
 
-k_files:=iele-testing.md data.md iele.md iele-gas.md iele-binary.md plugin/plugin/krypto.md iele-syntax.md iele-node.md well-formedness.md
-checker_files:=iele-syntax.md well-formedness.md data.md
+k_files:=$(addprefix $(IELE_DIR)/,iele-testing.md data.md iele.md iele-gas.md iele-binary.md plugin/plugin/krypto.md iele-syntax.md iele-node.md well-formedness.md iele-coverage.md)
+checker_files:=$(addprefix $(IELE_DIR)/,iele-syntax.md well-formedness.md data.md)
 
 # LLVM Builds
 # -----------
 
-UNAME_S := $(shell uname -s)
+LIB_PROCPS=-lprocps
 
 ifeq ($(UNAME_S),Darwin)
-OPENSSL_ROOT       := $(shell brew --prefix openssl)
-MACOS_INCLUDE_OPTS := -ccopt -I -ccopt $(OPENSSL_ROOT)/include
-MACOS_LINK_OPTS    := -ccopt -L -ccopt $(OPENSSL_ROOT)/lib
+MACOS_INCLUDE_OPTS := -I $(OPENSSL_ROOT)/include
+MACOS_LINK_OPTS    := -L $(OPENSSL_ROOT)/lib
+LIB_PROCPS=
 endif
 
 build-node: $(IELE_VM)
@@ -208,16 +280,16 @@ build-testnode : $(IELE_TEST_VM) $(IELE_TEST_CLIENT)
 
 KOMPILE=kompile
 
-KOMPILE_INCLUDE_OPTS := -ccopt -I -ccopt $(PLUGIN)/plugin-c -ccopt -I -ccopt $(PROTO) -ccopt -I -ccopt $(BUILD_DIR)/plugin-node -ccopt -I -ccopt $(LOCAL_INCLUDE)
-KOMPILE_LINK_OPTS    := -ccopt -L -ccopt /usr/local/lib -ccopt -L -ccopt $(LOCAL_LIB) -ccopt -lprotobuf -ccopt -lff -ccopt -lcryptopp -ccopt -lsecp256k1 -ccopt -lprocps -ccopt -lssl -ccopt -lcrypto
+KOMPILE_INCLUDE_OPTS := $(addprefix -ccopt , -I $(PLUGIN)/plugin-c -I $(PROTO) -I $(BUILD_DIR)/plugin-node -I $(LOCAL_INCLUDE)) -I $(IELE_DIR)
+KOMPILE_LINK_OPTS    := $(addprefix -ccopt , -L /usr/local/lib -L $(LOCAL_LIB) -lprotobuf -lff -lcryptopp -lsecp256k1 $(LIB_PROCPS) -lssl -lcrypto)
 KOMPILE_CPP_FILES    := $(PLUGIN)/plugin-c/k.cpp $(PLUGIN)/plugin-c/crypto.cpp $(PROTO)/blockchain.cpp $(PROTO)/world.cpp $(PLUGIN)/plugin-c/blake2.cpp $(PLUGIN)/plugin-c/plugin_util.cpp
 KOMPILE_CPP_OPTS     := $(addprefix -ccopt , $(KOMPILE_CPP_FILES))
 ifeq ($(UNAME_S),Darwin)
-KOMPILE_INCLUDE_OPTS += $(MACOS_INCLUDE_OPTS)
-KOMPILE_LINK_OPTS    += $(MACOS_LINK_OPTS)
+KOMPILE_INCLUDE_OPTS += $(addprefix -ccopt , $(MACOS_INCLUDE_OPTS))
+KOMPILE_LINK_OPTS    += $(addprefix -ccopt , $(MACOS_LINK_OPTS))
 endif
 
-$(BUILD_DIR)/check/well-formedness-kompiled/interpreter: $(checker_files) $(protobuf_out) $(libff_out)
+$(BUILD_DIR)/check/well-formedness-kompiled/interpreter: $(checker_files) $(protobuf_out) $(libff_out) $(libsecp256k1_out) $(libcryptopp_out)
 	$(KOMPILE) --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE --md-selector "(k & ! node) | standalone" \
 	                                --syntax-module IELE-SYNTAX well-formedness.md --directory $(BUILD_DIR)/check --hook-namespaces KRYPTO --gen-glr-bison-parser \
 	                                --backend llvm -ccopt $(protobuf_out) $(KOMPILE_CPP_OPTS) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
@@ -225,32 +297,36 @@ $(BUILD_DIR)/check/well-formedness-kompiled/interpreter: $(checker_files) $(prot
 $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter: MD_SELECTOR="(k & ! node) | standalone"
 $(BUILD_DIR)/node/iele-testing-kompiled/interpreter: MD_SELECTOR="(k & ! standalone) | node"
 
-$(BUILD_DIR)/%/iele-testing-kompiled/interpreter: $(k_files) $(protobuf_out) $(libff_out)
+$(BUILD_DIR)/%/iele-testing-kompiled/interpreter: $(k_files) $(protobuf_out) $(libff_out) $(libsecp256k1_out) $(libcryptopp_out)
 	@echo "== kompile: $@"
 	$(KOMPILE) --debug --main-module IELE-TESTING --verbose --md-selector $(MD_SELECTOR) \
 					--syntax-module IELE-SYNTAX iele-testing.md --directory $(BUILD_DIR)/$* --hook-namespaces "KRYPTO BLOCKCHAIN" \
 	                --backend llvm -ccopt $(protobuf_out) $(KOMPILE_CPP_OPTS) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
 
 LLVM_KOMPILE_INCLUDE_OPTS := -I $(PLUGIN)/plugin-c/ -I $(PROTO) -I $(BUILD_DIR)/plugin-node -I vm/c/ -I vm/c/iele/ -I $(LOCAL_INCLUDE)
-LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(LOCAL_LIB) -lff -lprotobuf -lgmp -lprocps -lcryptopp -lsecp256k1 -lssl -lcrypto
+LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(LOCAL_LIB) -lff -lprotobuf -lgmp $(LIB_PROCPS) -lcryptopp -lsecp256k1 -lssl -lcrypto
 ifeq ($(UNAME_S),Darwin)
 LLVM_KOMPILE_INCLUDE_OPTS += $(MACOS_INCLUDE_OPTS)
 LLVM_KOMPILE_LINK_OPTS    += $(MACOS_LINK_OPTS)
 endif
 
+build-kiele: $(IELE_RUNNER)
+
+build-check: $(IELE_CHECK)
+
 $(IELE_CHECK): $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
 	@mkdir -p $(IELE_BIN)
-	cp $< $@
+	$(INSTALL) $< $@
 
 build-interpreter: $(IELE_INTERPRETER)
 
 $(IELE_INTERPRETER): $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
 	@mkdir -p $(IELE_BIN)
-	cp $< $@
+	$(INSTALL) $< $@
 
 build-vm: $(IELE_VM)
 
-$(IELE_VM): $(BUILD_DIR)/node/iele-testing-kompiled/interpreter $(wildcard vm/c/*.cpp vm/c/*.h) $(protobuf_out)
+$(IELE_VM): $(BUILD_DIR)/node/iele-testing-kompiled/interpreter $(wildcard vm/c/*.cpp vm/c/*.h) $(protobuf_out) $(libsecp256k1_out) $(libcryptopp_out)
 	@mkdir -p $(IELE_BIN)
 	llvm-kompile $(BUILD_DIR)/node/iele-testing-kompiled/definition.kore $(BUILD_DIR)/node/iele-testing-kompiled/dt library vm/c/main.cpp vm/c/vm.cpp $(KOMPILE_CPP_FILES) $(protobuf_out) vm/c/iele/semantics.cpp $(LLVM_KOMPILE_INCLUDE_OPTS) $(LLVM_KOMPILE_LINK_OPTS) -o $(IELE_VM) -g
 
@@ -275,7 +351,7 @@ $(haskell_kompiled): $(k_files)
 # --------------
 
 $(IELE_ASSEMBLE):
-	cd iele-assemble && stack install --local-bin-path $(IELE_BIN)
+	cd $(IELE_DIR)/iele-assemble && stack install --local-bin-path $(IELE_BIN)
 
 # Coverage Processing
 # -------------------
@@ -285,6 +361,10 @@ coverage:
 
 # Install
 # -------
+
+ifeq ($(UNAME_S),Darwin)
+INSTALL=install
+endif
 
 KIELE_VERSION     ?= 0.2.0
 KIELE_RELEASE_TAG ?= v$(KIELE_VERSION)-$(shell git rev-parse --short HEAD)
@@ -297,50 +377,77 @@ install_bins :=      \
     iele-assemble    \
     iele-check       \
     iele-interpreter \
+    iele-test-client \
     iele-test-vm     \
     iele-vm          \
     kiele
 
-install_libs :=                                            \
-    standalone/iele-testing-kompiled/syntaxDefinition.kore \
-    standalone/iele-testing-kompiled/macros.kore           \
-    check/well-formedness-kompiled/sort_PGM.txt            \
-    check/well-formedness-kompiled/sort_SCHEDULE.txt       \
-    check/well-formedness-kompiled/parser_PGM              \
-    kore-json.py                                           \
+haskell_kompiled_libs :=  \
+    backend.txt           \
+    compiled.bin          \
+    configVars.sh         \
+    definition.kore       \
+    macros.kore           \
+    mainModule.txt        \
+    mainModule.txt        \
+    parser_PGM            \
+    syntaxDefinition.kore
+
+kompiled_libs :=             \
+    $(haskell_kompiled_libs) \
+    interpreter
+
+iele_interpreter_libs := $(patsubst %, standalone/iele-testing-kompiled/%, $(kompiled_libs))
+iele_haskell_libs     := $(patsubst %, haskell/iele-testing-kompiled/%,    $(haskell_kompiled_libs))
+iele_check_libs       := $(patsubst %, check/well-formedness-kompiled/%,   $(kompiled_libs))
+
+install_libs :=              \
+    $(iele_check_libs)       \
+    $(iele_interpreter_libs) \
+    $(iele_haskell_libs)     \
+    kore-json.py             \
     version
 
-$(IELE_BIN)/kiele: kiele
-	install -D $< $@
+$(IELE_RUNNER): $(IELE_DIR)/kiele
+	@mkdir -p $(dir $@)
+	$(INSTALL) $< $@
 
 $(IELE_LIB)/version:
 	@mkdir -p $(IELE_LIB)
 	echo "$(KIELE_RELEASE_TAG)" > $@
 
-$(IELE_LIB)/standalone/iele-testing-kompiled/%: $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
-	install -D $(dir $<)$* $@
+$(IELE_LIB)/kore-json.py: $(IELE_DIR)/kore-json.py
+	@mkdir -p $(dir $@)
+	$(INSTALL) $< $@
 
-$(IELE_LIB)/check/well-formedness-kompiled/%: $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
-	install -D $(dir $<)$* $@
+$(INSTALL_BIN)/iele-interpreter: $(patsubst %, $(INSTALL_LIB)/%, $(iele_interpreter_libs))
+$(INSTALL_BIN)/iele-check:       $(patsubst %, $(INSTALL_LIB)/%, $(iele_check_libs))
 
-$(IELE_LIB)/kore-json.py: kore-json.py
-	install -D $< $@
+$(INSTALL_BIN)/kiele: $(INSTALL_LIB)/kore-json.py
+$(INSTALL_BIN)/kiele: $(INSTALL_LIB)/version
 
 $(INSTALL_BIN)/%: $(IELE_BIN)/%
-	install -D $< $@
+	@mkdir -p $(dir $@)
+	$(INSTALL) $< $@
 
 $(INSTALL_LIB)/%: $(IELE_LIB)/%
-	install -D $< $@
+	@mkdir -p $(dir $@)
+	$(INSTALL) $< $@
 
-install: $(patsubst %, $(INSTALL_BIN)/%, $(install_bins)) $(patsubst %, $(INSTALL_LIB)/%, $(install_libs))
+install: $(patsubst %, $(INSTALL_BIN)/%, $(install_bins)) \
+         $(patsubst %, $(INSTALL_LIB)/%, $(install_libs))
 
 install-interpreter: $(INSTALL_BIN)/iele-interpreter
 
 install-vm: $(INSTALL_BIN)/iele-vm
 
+install-check: $(INSTALL_BIN)/iele-check
+
+install-kiele: $(INSTALL_BIN)/kiele
+
 uninstall:
-	rm $(patsubst %, $(INSTALL_BIN)/%, $(install_bins))
-	rm $(patsubst %, $(INSTALL_LIB)/%, $(install_libs))
+	rm -rf $(INSTALL_BIN)/kiele
+	rm -rf $(INSTALL_LIB)/kiele
 
 release.md:
 	echo "KIELE Release - $(KIELE_RELEASE_TAG)"  > $@
@@ -348,18 +455,19 @@ release.md:
 	cat INSTALL.md                              >> $@
 
 build_bins := $(install_bins)
+build_libs := $(install_libs)
 
-build_libs := $(install_libs)      \
-    check/well-formedness-kompiled \
-    haskell/iele-testing-kompiled
+$(IELE_LIB)/standalone/iele-testing-kompiled/%: $(IELE_INTERPRETER)
+	@mkdir -p $(dir $@)
+	$(INSTALL) $(BUILD_DIR)/standalone/iele-testing-kompiled/$* $@
 
-$(IELE_LIB)/haskell/iele-testing-kompiled: $(haskell_kompiled)
-	@mkdir -p $(IELE_LIB)/haskell
-	cp -r $(dir $<) $@
+$(IELE_LIB)/haskell/iele-testing-kompiled/%: $(haskell_kompiled)
+	@mkdir -p $(dir $@)
+	$(INSTALL) $(BUILD_DIR)/haskell/iele-testing-kompiled/$* $@
 
-$(IELE_LIB)/check/well-formedness-kompiled: $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
-	@mkdir -p $(IELE_LIB)/check
-	cp -r $(dir $<) $@
+$(IELE_LIB)/check/well-formedness-kompiled/%: $(IELE_CHECK)
+	@mkdir -p $(dir $@)
+	$(INSTALL) $(BUILD_DIR)/check/well-formedness-kompiled/$* $@
 
 build: $(patsubst %, $(IELE_BIN)/%, $(build_bins)) $(patsubst %, $(IELE_LIB)/%, $(build_libs))
 
@@ -370,7 +478,7 @@ $(BUILD_DIR)/plugin-ocaml/msg_types.ml: $(PROTO)/proto/msg.proto
 	mkdir -p $(BUILD_DIR)/plugin-ocaml
 	eval `opam config env` && ocaml-protoc $< -ml_out $(BUILD_DIR)/plugin-ocaml
 
-$(IELE_TEST_VM): $(wildcard vm/*.ml vm/*.mli) $(BUILD_DIR)/plugin-ocaml/msg_types.ml
+$(IELE_TEST_VM): $(wildcard vm/*.ml vm/*.mli) $(BUILD_DIR)/plugin-ocaml/msg_types.ml $(IELE_VM)
 	@mkdir -p $(IELE_BIN)
 	cp vm/*.ml vm/*.mli $(BUILD_DIR)/plugin-ocaml/*.ml $(BUILD_DIR)/plugin-ocaml/*.mli $(IELE_BIN)
 	cd $(IELE_BIN) && eval `opam config env` && ocamlfind $(OCAMLC) -g -o iele-test-vm msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml ieleClientUtils.ml ieleVmTest.ml -package dynlink -package zarith -package str -package uuidm -package unix -package rlp -package yojson -package hex -package cryptokit -package ocaml-protoc -linkpkg -linkall -thread -safe-string

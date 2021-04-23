@@ -12,12 +12,24 @@ export PATH="$INSTALL_BIN:$INSTALL_LIB:$PATH"
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-}:/usr/local/lib
 
 check_k_install() {
-    which kore-exec &> /dev/null \
+    type -p kore-exec &> /dev/null \
         || fatal "Must have K installed! See https://github.com/kframework/k/releases."
-    which kast &> /dev/null \
+    type -p kast &> /dev/null \
         || fatal "Must have K installed! See https://github.com/kframework/k/releases."
-    which krun &> /dev/null \
+    type -p krun &> /dev/null \
         || fatal "Must have K installed! See https://github.com/kframework/k/releases."
+}
+
+make_temp_trap() {
+    local tmpdesc tmpfile
+    tmpdesc="$1" ; shift
+    tmpfile="$(mktemp)"
+    if $debug; then
+        notif "$tmpdesc: $tmpfile"
+    else
+        trap "rm -rf $tmpfile" INT TERM EXIT
+    fi
+    echo "$tmpfile"
 }
 
 # Runners
@@ -31,24 +43,25 @@ run_assemble() {
 
 run_interpret() {
     local kast output status
-    kast="$(mktemp)"
-    output="$(mktemp)"
-    if $debug; then
-        notif "kast: $kast    output: $output"
-    else
-        trap "rm -rf $kast $output" INT TERM EXIT
-    fi
+    kast=$(make_temp_trap kast)
+    output=$(make_temp_trap output)
     status=0
-    kore-json.py "$run_file" "$schedule" "$mode" > "$kast"
+    kore-json.py "$run_file" "$cschedule" "$cmode" "$cenablecoverage" > "$kast"
     case "$backend" in
         standalone)
-            debugger=()
-            ! $debug || debugger+=(gdb --args)
-            "${debugger[@]}"  iele-interpreter "$kast" -1 "$output" "$@" || status="$?"
+            interpret_cmd=(iele-interpreter "$kast" "$depth" "$output" "$@")
+            if $debug; then
+                gdb --args "${interpret_cmd[@]}"
+            else
+                "${interpret_cmd[@]}" || status="$?"
+            fi
             ;;
         haskell)
             check_k_install
-            kore-exec "$backend_dir/$definition-kompiled/definition.kore" --pattern "$kast" --module "$module" --output "$output" "$@" || status="$?"
+            kore_cmd=(kore-exec "$backend_dir/$definition-kompiled/definition.kore" --pattern "$kast" --module "$module" --output "$output")
+            [[ "$depth" == "-1" ]] || kore_cmd+=(--depth "$depth")
+            kore_cmd+=("$@")
+            "${kore_cmd[@]}" || status="$?"
             ;;
         *)
             fatal "Unknown backend: $backend"
@@ -61,15 +74,21 @@ run_interpret() {
     fi
 }
 
-run_krun() {
+run_krun_internal() {
     check_k_install
-    krun --directory "$backend_dir"                        \
-        -cSCHEDULE="$schedule"      -pSCHEDULE='cat' \
-        "$run_file" "$@"
+    krun --directory "$backend_dir" -cSCHEDULE="$cschedule" -pSCHEDULE='cat' --depth "$depth" "$run_file" "$@"
+}
+
+run_krun() {
+    run_krun_internal -cMODE="$cmode" -pMODE='cat' -cENABLECOVERAGE="$cenablecoverage" -pENABLECOVERAGE='cat' "$@"
 }
 
 run_check() {
-    if run_krun --output none "$@"; then
+    local kore
+    kore=$(make_temp_trap kore)
+    kast --directory "$backend_dir" -s Contract --output kore "$run_file" > $kore
+    run_file="$kore"
+    if run_krun_internal --output none "$@"; then
         echo "Contract is well-formed."
 	exit 0
     else
@@ -79,7 +98,9 @@ run_check() {
 }
 
 run_vm() {
-    iele-vm "$kiele_port" "$kiele_host"
+    cmd=(exec iele-vm "$kiele_port" "$kiele_host")
+    [[ $enablecoverage == 'true' ]] && cmd+=(--coverage)
+    "${cmd[@]}"
 }
 
 # Main
@@ -110,7 +131,8 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
                  <assemble arg> is an argument to the assembler
                  <interpret arg> is an argument you want to pass to the interpreter
                  <K arg> is an argument you want to pass to K
-                 <KIELE arg> is one of (--no-unparse|--debug|--host|--port|--mode|--schedule|--module|--definition)
+                 <KIELE arg> is one of (--no-unparse|--debug|--host|--port|--mode|--coverage
+                                       |--schedule|--module|--definition|--depth)
     "
     exit 0
 fi
@@ -125,30 +147,43 @@ backend='standalone'
 [[ "$run_command" != 'check' ]] || backend='check'
 debug=false
 unparse=true
-mode='LblNORMAL{}()'
-schedule='LblDEFAULT{}()'
+mode='NORMAL'
+schedule='DEFAULT'
+enablecoverage='false'
 kiele_port='8545'
 kiele_host='127.0.0.1'
 module='IELE-TESTING'
 definition='iele-testing'
+depth=-1
 args=()
 while [[ $# -gt 0 ]]; do
     arg="$1"
     case $arg in
-        --backend)    backend="$2"              ; shift 2 ;;
-        --debug)      debug=true                ; shift   ;;
-        --no-unparse) unparse=false             ; shift   ;;
-        --mode)       mode='Lbl'$2'{}()'        ; shift 2 ;;
-        --module)     module="$2"               ; shift 2 ;;
-        --definition) definition="$2"           ; shift 2 ;;
-        --schedule)   schedule='Lbl'$2'{}()'    ; shift 2 ;;
-        -p|--port)    kiele_port="$2"           ; shift 2 ;;
-        -h|--host)    kiele_host="$2"           ; shift 2 ;;
-        *)            args+=("$1")              ; shift   ;;
+        --backend)    backend="$2"          ; shift 2 ;;
+        --debug)      debug=true            ; shift   ;;
+        --no-unparse) unparse=false         ; shift   ;;
+        --mode)       mode="$2"             ; shift 2 ;;
+        --module)     module="$2"           ; shift 2 ;;
+        --definition) definition="$2"       ; shift 2 ;;
+        --schedule)   schedule="$2"         ; shift 2 ;;
+        --depth)      depth=$2              ; shift 2 ;;
+        --coverage)   enablecoverage='true' ; shift   ;;
+        -p|--port)    kiele_port="$2"       ; shift 2 ;;
+        -h|--host)    kiele_host="$2"       ; shift 2 ;;
+        *)            args+=("$1")          ; shift   ;;
     esac
 done
-set -- "${args[@]}"
+if [[ "${#args[@]}" -gt 0 ]]; then
+  set -- "${args[@]}"
+fi
+
+! $debug || set -x
+
 backend_dir="${backend_dir:-$INSTALL_LIB/$backend}"
+
+cmode='Lbl'$mode'{}()'
+cschedule='Lbl'$schedule'{}()'
+cenablecoverage='\dv{SortBool{}}("'$enablecoverage'")'
 
 if [[ "$run_command" != 'vm' ]]; then
     run_file="$1" ; shift

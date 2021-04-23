@@ -152,9 +152,9 @@ module IELE-NODE
     rule #toList(I , L) => ListItem(I) #toList(L)
 
     syntax KItem ::= vmResult(return: List,gas: Int,refund: Int,status: Int,selfdestruct: List,logs: List,AccountsCell, touched: List)
-    syntax KItem ::= extractConfig(GeneratedTopCell) [function, symbol]
+    syntax KItem ::= extractConfig(KieleCell) [function, symbol]
  // ----------------------------------------------------------
-    rule extractConfig(<generatedTop>... <schedule> SCHED </schedule> <output> OUT </output> <gas> GAVAIL </gas> <refund> REFUND </refund> <k> STATUS:Int </k> <selfDestruct> SD </selfDestruct> <logData> LOGS </logData> <accounts> ACCTS </accounts> ... </generatedTop>) => vmResult(#toList(OUT),GAVAIL up/Int Sgasdivisor < SCHED >,REFUND,STATUS,Set2List(SD),LOGS,<accounts> ACCTS </accounts>, .List)
+    rule extractConfig(<kiele>... <schedule> SCHED </schedule> <output> OUT </output> <gas> GAVAIL </gas> <refund> REFUND </refund> <k> STATUS:Int </k> <selfDestruct> SD </selfDestruct> <logData> LOGS </logData> <accounts> ACCTS </accounts> ... </kiele>) => vmResult(#toList(OUT),GAVAIL up/Int Sgasdivisor < SCHED >,REFUND,STATUS,Set2List(SD),LOGS,<accounts> ACCTS </accounts>, .List)
 
 endmodule
 ```

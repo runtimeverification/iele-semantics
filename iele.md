@@ -27,134 +27,137 @@ We've broken up the configuration into two components; those parts of the state 
 In the comments next to each cell, we explain the purpose of the cell.
 
 ```k
-    configuration <k/>                                               // Current computation
-                  <exit-code exit=""> 1 </exit-code>                 // Exit code of interpreter process
-                  <mode> $MODE:Mode </mode>                          // Execution mode: VMTESTS or NORMAL
-                  <schedule> $SCHEDULE:Schedule </schedule>          // Gas Schedule: DEFAULT or ALBE
-                  <checkGas> true </checkGas>                        // Enables/disables gas check in test driver
+    configuration
+      <kiele>
+        <k/>                                               // Current computation
+        <exit-code exit=""> 1 </exit-code>                 // Exit code of interpreter process
+        <mode> $MODE:Mode </mode>                          // Execution mode: VMTESTS or NORMAL
+        <schedule> $SCHEDULE:Schedule </schedule>          // Gas Schedule: DEFAULT or ALBE
+        <checkGas> true </checkGas>                        // Enables/disables gas check in test driver
 
-                  <well-formedness/>
+        <well-formedness/>
 
-                  // IELE Specific
-                  // =============
+        // IELE Specific
+        // =============
 
-                  <iele>
+        <iele>
 
-                    // Mutable during a single transaction
-                    // -----------------------------------
+          // Mutable during a single transaction
+          // -----------------------------------
 
-                    <output>        .Ints </output>                  // Return registers of current call frame
-                    <callStack>     .List </callStack>               // Inter-contract call stack
-                    <interimStates> .List </interimStates>           // Checkpointed network state for rollback
-                    <substateStack> .List </substateStack>           // Checkpointed substate for rollback
+          <output>        .Ints </output>                  // Return registers of current call frame
+          <callStack>     .List </callStack>               // Inter-contract call stack
+          <interimStates> .List </interimStates>           // Checkpointed network state for rollback
+          <substateStack> .List </substateStack>           // Checkpointed substate for rollback
 
-                    // A single contract call frame
-                    // ----------------------------
-                    <callFrame>
-                      // The loaded state of a IELE program
-                      // ----------------------------------
-                      <program>
-                        <functions>
-                          <function multiplicity="*" type="Map">
-                            <funcId>       deposit:IeleName </funcId>         // The name of the function
-                            <nparams>      0       </nparams>        // The number of parameters of the function
-                            <instructions> (.Instructions .LabeledBlocks):Blocks </instructions> // The blocks of the function
-                            <jumpTable>    .Map    </jumpTable>      // Map from jump label to blocks, for branch instruction
-                            <nregs>        0       </nregs>          // Number of registers used by this function
-                          </function>
-                        </functions>
-                        <funcIds>     .Set </funcIds>                // Set of all names of functions in <functions> cell
-                        <funcLabels>  .Map </funcLabels>             // Map of integer function IDS to all function names in the <functions> cell
-                        <exported>    .Set </exported>               // Set of all names of functions defined with define public
-                        <programSize> 0    </programSize>            // Size in bytes of currently loaded contract
-                        <contractCode> .Contract </contractCode>     // Disassembled entire contract
-                      </program>
-                      <callDepth>    0          </callDepth>         // Inter-contract call stack depth
-                      <localCalls>   .List      </localCalls>        // Intra-contract call stack
+          // A single contract call frame
+          // ----------------------------
+          <callFrame>
+            // The loaded state of a IELE program
+            // ----------------------------------
+            <program>
+              <functions>
+                <function multiplicity="*" type="Map">
+                  <funcId>       deposit:IeleName </funcId>         // The name of the function
+                  <nparams>      0       </nparams>        // The number of parameters of the function
+                  <instructions> (.Instructions .LabeledBlocks):Blocks </instructions> // The blocks of the function
+                  <jumpTable>    .Map    </jumpTable>      // Map from jump label to blocks, for branch instruction
+                  <nregs>        0       </nregs>          // Number of registers used by this function
+                </function>
+              </functions>
+              <funcIds>     .Set </funcIds>                // Set of all names of functions in <functions> cell
+              <funcLabels>  .Map </funcLabels>             // Map of integer function IDS to all function names in the <functions> cell
+              <exported>    .Set </exported>               // Set of all names of functions defined with define public
+              <programSize> 0    </programSize>            // Size in bytes of currently loaded contract
+              <contractCode> .Contract </contractCode>     // Disassembled entire contract
+            </program>
+            <callDepth>    0          </callDepth>         // Inter-contract call stack depth
+            <localCalls>   .List      </localCalls>        // Intra-contract call stack
 
-                      // I_*
-                      <id>        0     </id>                         // Currently executing contract
-                      <caller>    0     </caller>                     // Contract that called current contract
-                      <callData>  .Ints </callData>                   // Copy of register arguments
-                      <callValue> 0     </callValue>                  // Value in funds passed to contract
+            // I_*
+            <id>        0     </id>                         // Currently executing contract
+            <caller>    0     </caller>                     // Contract that called current contract
+            <callData>  .Ints </callData>                   // Copy of register arguments
+            <callValue> 0     </callValue>                  // Value in funds passed to contract
 
-                      // \mu_*
-                      <regs>          .Array  </regs>                 // Current values of registers
-                      <localMem>      .Map    </localMem>             // Current values of local memory
-                      <peakMemory>    0       </peakMemory>           // Maximum memory used so far in call frame
-                      <currentMemory> 0       </currentMemory>        // Current memory used in call frame
-                      <fid>           deposit:IeleName </fid>                  // Name of currently executing function
-                      <gas>           0       </gas>                  // Current gas remaining
-                      <previousGas>   0       </previousGas>          // Gas remaining prior to last decrease
+            // \mu_*
+            <regs>          .Array  </regs>                 // Current values of registers
+            <localMem>      .Map    </localMem>             // Current values of local memory
+            <peakMemory>    0       </peakMemory>           // Maximum memory used so far in call frame
+            <currentMemory> 0       </currentMemory>        // Current memory used in call frame
+            <fid>           deposit:IeleName </fid>                  // Name of currently executing function
+            <gas>           0       </gas>                  // Current gas remaining
+            <previousGas>   0       </previousGas>          // Gas remaining prior to last decrease
 
-                      <static> false </static>                        // Whether the call frame came from a staticcall
-                    </callFrame>
+            <static> false </static>                        // Whether the call frame came from a staticcall
+          </callFrame>
 
-                    // A_* (execution substate)
-                    <substate>
-                      <selfDestruct> .Set  </selfDestruct>            // Set of contract ids that were destroyed by this transaction
-                      <logData>  .List </logData>                     // Log entries for this transaction
-                      <refund>       0     </refund>                  // Refund for this transaction
-                    </substate>
+          // A_* (execution substate)
+          <substate>
+            <selfDestruct> .Set  </selfDestruct>            // Set of contract ids that were destroyed by this transaction
+            <logData>  .List </logData>                     // Log entries for this transaction
+            <refund>       0     </refund>                  // Refund for this transaction
+          </substate>
 
-                    // Immutable during a single transaction
-                    // -------------------------------------
+          // Immutable during a single transaction
+          // -------------------------------------
 
-                    <gasPrice> 0 </gasPrice>                          // Price of gas for this transaction
-                    <origin>   0 </origin>                            // Sender of current transaction
+          <gasPrice> 0 </gasPrice>                          // Price of gas for this transaction
+          <origin>   0 </origin>                            // Sender of current transaction
 
-                    // I_H* (block information)
-                    <beneficiary>      0          </beneficiary>      // Miner of current block
-                    <difficulty>       0          </difficulty>       // Difficulty of current block
-                    <number>           0          </number>           // Number of current block
-                    <gasLimit>         0          </gasLimit>         // Gas limit of current block
-                    <gasUsed>          0          </gasUsed>          // Gas used by current block
-                    <timestamp>        0          </timestamp>        // Timestamp of current block
-                    <blockhash>         .List     </blockhash>        // List of previous block's hashes
+          // I_H* (block information)
+          <beneficiary>      0          </beneficiary>      // Miner of current block
+          <difficulty>       0          </difficulty>       // Difficulty of current block
+          <number>           0          </number>           // Number of current block
+          <gasLimit>         0          </gasLimit>         // Gas limit of current block
+          <gasUsed>          0          </gasUsed>          // Gas used by current block
+          <timestamp>        0          </timestamp>        // Timestamp of current block
+          <blockhash>         .List     </blockhash>        // List of previous block's hashes
 
-                  </iele>
+        </iele>
 
-                  // IELE Network Layer
-                  // ==================
+        // IELE Network Layer
+        // ==================
 
-                  <network>
+        <network>
 
-                    // Accounts Record
-                    // ---------------
+          // Accounts Record
+          // ---------------
 
-                    <activeAccounts> .Set </activeAccounts> // Set of keys in the accounts cell.
-                    <accounts>
-                      <account multiplicity="*" type="Map">
-                        <acctID>   0          </acctID>     // ID of account
-                        <balance>  0          </balance>    // Balance of funds in account
-                        <code>     #emptyCode </code>       // Disassembled contract of account
-                        <storage>  .Map       </storage>    // Permanent storage of account (for sload/sstore)
-                        <nonce>    0          </nonce>      // Nonce of account
-                      </account>
-                    </accounts>
+          <activeAccounts> .Set </activeAccounts> // Set of keys in the accounts cell.
+          <accounts>
+            <account multiplicity="*" type="Map">
+              <acctID>   0          </acctID>     // ID of account
+              <balance>  0          </balance>    // Balance of funds in account
+              <code>     #emptyCode </code>       // Disassembled contract of account
+              <storage>  .Map       </storage>    // Permanent storage of account (for sload/sstore)
+              <nonce>    0          </nonce>      // Nonce of account
+            </account>
+          </accounts>
 
-                    // Transactions Record
-                    // -------------------
+          // Transactions Record
+          // -------------------
 
-                    <txOrder>   .List </txOrder>            // Order of transactions in block
-                    <txPending> .List </txPending>          // Remaining transactions in block
+          <txOrder>   .List </txOrder>            // Order of transactions in block
+          <txPending> .List </txPending>          // Remaining transactions in block
 
-                    <messages>
-                      <message multiplicity="*" type="Map">
-                        <msgID>      0          </msgID>              // Unique ID of transaction
-                        <txNonce>    0          </txNonce>            // Nonce of transaction (not checked)
-                        <txGasPrice> 0          </txGasPrice>         // Gas price of transaction
-                        <txGasLimit> 0          </txGasLimit>         // Gas limit of transaction
-                        <sendto>     .Account   </sendto>             // Destination of transaction (.Account for account creation)
-                        <func>       deposit:IeleName    </func>               // Function to call by transaction
-                        <value>      0          </value>              // Value in funds to transfer by transaction
-                        <from>       0          </from>               // Sender of transaction
-                        <data>       .Bytes     </data>               // Arguments to function called by transaction
-                        <args>       .Ints      </args>
-                      </message>
-                    </messages>
+          <messages>
+            <message multiplicity="*" type="Map">
+              <msgID>      0          </msgID>              // Unique ID of transaction
+              <txNonce>    0          </txNonce>            // Nonce of transaction (not checked)
+              <txGasPrice> 0          </txGasPrice>         // Gas price of transaction
+              <txGasLimit> 0          </txGasLimit>         // Gas limit of transaction
+              <sendto>     .Account   </sendto>             // Destination of transaction (.Account for account creation)
+              <func>       deposit:IeleName    </func>               // Function to call by transaction
+              <value>      0          </value>              // Value in funds to transfer by transaction
+              <from>       0          </from>               // Sender of transaction
+              <data>       .Bytes     </data>               // Arguments to function called by transaction
+              <args>       .Ints      </args>
+            </message>
+          </messages>
 
-                  </network>
+        </network>
+      </kiele>
 
     syntax IELESimulation
     syntax Mode

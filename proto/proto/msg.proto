@@ -90,6 +90,12 @@ message Blockhash {
   bytes hash = 1;
 }
 
+message CodeCoverage {
+  bytes codehash = 1;
+  bytes bytecode = 2;
+  bytes coverage = 3;
+}
+
 message CallResult {
   bytes returnData = 1;
   // required for IELE VM
@@ -102,6 +108,7 @@ message CallResult {
   // touchedAccounts is specific Ethereum's EIP-161. VMs that do not follow these rules may ignore this field
   repeated bytes touchedAccounts = 8;
   repeated LogEntry logs = 9;
+  repeated CodeCoverage coverageData = 10;
 }
 
 message ModifiedAccount {

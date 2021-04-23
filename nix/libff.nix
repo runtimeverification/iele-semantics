@@ -1,8 +1,8 @@
-{ stdenv, cmake, pkgconfig, gmp, openssl, procps }:
+{ stdenv, cmake, pkgconfig, gmp, openssl, procps, src }:
 
 stdenv.mkDerivation {
   name = "libff";
-  src = ../plugin/deps/libff;
+  inherit src;
   nativeBuildInputs = [ cmake pkgconfig ];
   propagatedBuildInputs = [ gmp openssl procps ];
 }
