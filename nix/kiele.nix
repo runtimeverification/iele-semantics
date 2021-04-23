@@ -1,5 +1,5 @@
 { stdenv, lib, src, cleanSourceWith
-, autoconf, automake, protobuf
+, autoconf, automake, libtool, protobuf
 , cryptopp, libff, mpfr, secp256k1
 , jemalloc, libffi, ncurses
 , k, haskell-backend, llvm-backend, clang, python
@@ -34,7 +34,7 @@ let
       ignore = [ "kiele" ];
     };
     nativeBuildInputs = [
-      autoconf automake protobuf
+      autoconf automake libtool protobuf
       k haskell-backend llvm-backend clang
     ];
     buildInputs = [ cryptopp libff mpfr secp256k1 ];
