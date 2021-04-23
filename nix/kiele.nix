@@ -1,5 +1,5 @@
 { stdenv, lib, src, cleanSourceWith
-, autoconf, automake, libtool, protobuf
+, protobuf
 , cryptopp, libff, mpfr, secp256k1
 , jemalloc, libffi, ncurses
 , k, haskell-backend, llvm-backend, clang, python
@@ -33,15 +33,17 @@ let
       inherit src;
       ignore = [ "kiele" ];
     };
-    nativeBuildInputs = [
-      autoconf automake libtool protobuf
-      k haskell-backend llvm-backend clang
-    ];
+    nativeBuildInputs = [ protobuf k haskell-backend llvm-backend clang ];
     buildInputs = [ cryptopp libff mpfr secp256k1 ];
-    makeFlags = [
-      "libff_out=${libff}/lib/libff.a"
-      "INSTALL_PREFIX=${builtins.placeholder "out"}"
-    ];
+    makeFlags =
+      [
+        "libff_out=${libff}/lib/libff.a"
+        "INSTALL_PREFIX=${builtins.placeholder "out"}"
+      ]
+      ++ lib.optionals stdenv.isDarwin [
+        "libsecp256k1_out=${secp256k1}/lib/libsecp256k1.a"
+        "libcryptopp_out=${cryptopp}/lib/libcryptopp.a"
+      ];
     buildFlags = [ "build-${target}" ];
     installTargets = [ "install-${target}" ];
   });
