@@ -1,5 +1,5 @@
 { stdenv, lib, src, cleanSourceWith
-, autoconf, protobuf
+, autoconf, automake, protobuf
 , cryptopp, libff, mpfr, secp256k1
 , jemalloc, libffi, ncurses
 , k, haskell-backend, llvm-backend, clang, python
@@ -33,7 +33,10 @@ let
       inherit src;
       ignore = [ "kiele" ];
     };
-    nativeBuildInputs = [ autoconf protobuf k haskell-backend llvm-backend clang ];
+    nativeBuildInputs = [
+      autoconf automake protobuf
+      k haskell-backend llvm-backend clang
+    ];
     buildInputs = [ cryptopp libff mpfr secp256k1 ];
     makeFlags = [
       "libff_out=${libff}/lib/libff.a"
