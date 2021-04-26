@@ -73,6 +73,8 @@ distclean: clean
 # Dependencies
 # ------------
 
+ifndef SYSTEM_LIBFF
+
 ifeq ($(UNAME_S),Darwin)
 OPENSSL_ROOT     := $(shell brew --prefix openssl)
 MACOS_CMAKE_OPTS := -DOPENSSL_ROOT_DIR=$(OPENSSL_ROOT) -DWITH_PROCPS=off
@@ -89,6 +91,8 @@ $(libff_out): $(PLUGIN)/deps/libff/CMakeLists.txt
 	   && make -s -j4                                                                                   \
 	   && make install
 
+endif # ifndef SYSTEM_LIBFF
+
 protobuf_out := $(BUILD_DIR)/plugin-node/proto/msg.pb.cc
 
 protobuf: $(protobuf_out)
@@ -96,6 +100,8 @@ protobuf: $(protobuf_out)
 $(protobuf_out): $(PROTO)/proto/msg.proto
 	mkdir -p $(BUILD_DIR)/plugin-node
 	protoc --cpp_out=$(BUILD_DIR)/plugin-node -I $(PROTO) $<
+
+ifndef SYSTEM_LIBSECP256K1
 
 ifeq ($(UNAME_S),Darwin)
 libsecp256k1_out := $(LOCAL_LIB)/libsecp256k1.a
@@ -113,6 +119,10 @@ $(PLUGIN)/deps/secp256k1/Makefile: $(PLUGIN)/deps/secp256k1/autogen.sh
 	   && ./autogen.sh          \
 	   && ./configure prefix=$(BUILD_LOCAL) --enable-module-recovery
 
+endif # ifndef SYSTEM_LIBSECP256K1
+
+ifndef SYSTEM_LIBCRYPTOPP
+
 ifeq ($(UNAME_S),Darwin)
 libcryptopp_out := $(LOCAL_LIB)/libcryptopp.a
 endif
@@ -123,6 +133,8 @@ $(libcryptopp_out): $(PLUGIN)/deps/cryptopp/GNUmakefile
 	cd $(PLUGIN)/deps/cryptopp \
 	   && make libcryptopp.a   \
 	   && make install PREFIX=$(BUILD_LOCAL)
+
+endif # ifndef SYSTEM_LIBCRYPTOPP
 
 # Tests
 # -----

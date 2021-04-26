@@ -37,12 +37,10 @@ let
     buildInputs = [ cryptopp libff mpfr secp256k1 ];
     makeFlags =
       [
-        "libff_out=${lib.getLib libff}/lib/libff.a"
         "INSTALL_PREFIX=${builtins.placeholder "out"}"
-      ]
-      ++ lib.optionals stdenv.isDarwin [
-        "libsecp256k1_out=${lib.getLib secp256k1}/lib/libsecp256k1.so"
-        "libcryptopp_out=${lib.getLib cryptopp}/lib/libcryptopp.so"
+        "SYSTEM_LIBFF=true"
+        "SYSTEM_LIBSECP256K1=true"
+        "SYSTEM_LIBCRYPTOPP=true"
       ];
     buildFlags = [ "build-${target}" ];
     installTargets = [ "install-${target}" ];
