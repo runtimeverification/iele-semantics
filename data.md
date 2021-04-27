@@ -460,7 +460,7 @@ Decoding
  // --------------------------------------------
     rule #loadLen ( WS ) => 1                                  requires WS[0]  <Int 128 orBool  WS[0] >=Int 192
     rule #loadLen ( WS ) => WS[0] -Int 128                     requires WS[0] >=Int 128 andBool WS[0]  <Int 184
-    rule #loadLen ( WS ) => #asUnsigned(0, WS[0] -Int 183, WS) requires WS[0] >=Int 184 andBool WS[0]  <Int 192
+    rule #loadLen ( WS ) => #asUnsigned(1, WS[0] -Int 183, WS) requires WS[0] >=Int 184 andBool WS[0]  <Int 192
 
     syntax Int ::= #loadOffset ( Bytes ) [function]
  // -----------------------------------------------
