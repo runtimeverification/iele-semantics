@@ -35,10 +35,13 @@ let
     };
     nativeBuildInputs = [ protobuf k haskell-backend llvm-backend clang ];
     buildInputs = [ cryptopp libff mpfr secp256k1 ];
-    makeFlags = [
-      "libff_out=${libff}/lib/libff.a"
-      "INSTALL_PREFIX=${builtins.placeholder "out"}"
-    ];
+    makeFlags =
+      [
+        "INSTALL_PREFIX=${builtins.placeholder "out"}"
+        "SYSTEM_LIBFF=true"
+        "SYSTEM_LIBSECP256K1=true"
+        "SYSTEM_LIBCRYPTOPP=true"
+      ];
     buildFlags = [ "build-${target}" ];
     installTargets = [ "install-${target}" ];
   });

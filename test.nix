@@ -25,6 +25,7 @@ stdenv.mkDerivation {
     src = ttuegel.cleanGit { name = "iele-semantics"; src = ./.; };
     ignore = [ "*.nix" "/nix" ];
   };
+  NIX_ENFORCE_PURITY = false;
   preferLocalBuild = true;
   nativeBuildInputs = [ kiele ncurses python ];
   enableParallelBuilding = true;
