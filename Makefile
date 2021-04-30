@@ -60,7 +60,7 @@ SHELL=/bin/bash
 export PATH:=$(IELE_BIN):$(PATH)
 
 .PHONY: all clean distclean libff protobuf coverage secp256k1 cryptopp \
-        build build-interpreter build-vm build-check build-haskell build-node build-testnode \
+        build build-interpreter build-vm build-check build-haskell build-node build-testnode build-assembler \
 		install install-interpreter install-vm install-kiele install-check uninstall \
         split-tests split-vm-tests split-blockchain-tests test-node test-iele-coverage \
         test-evm test-vm test-blockchain test-wellformed test-illformed test-bad-packet test-interactive \
@@ -366,6 +366,8 @@ $(haskell_kompiled): $(k_files)
 
 # IELE Assembler
 # --------------
+
+build-assembler: $(IELE_ASSEMBLE)
 
 $(IELE_ASSEMBLE):
 	cd $(IELE_DIR)/iele-assemble && stack install --local-bin-path $(IELE_BIN)
