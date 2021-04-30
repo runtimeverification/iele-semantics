@@ -85,10 +85,10 @@ run_krun() {
 
 run_check() {
     if run_krun_internal --output none "$@"; then
-        echo "Contract is well-formed."
+        notif "Contract is well-formed."
         exit 0
     else
-        echo "Contract is ill-formed."
+        notif "Contract is ill-formed."
         exit 1
     fi
 }
