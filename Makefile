@@ -303,7 +303,8 @@ endif
 
 $(BUILD_DIR)/check/well-formedness-kompiled/interpreter: $(checker_files) $(protobuf_out) $(libff_out) $(libsecp256k1_out) $(libcryptopp_out)
 	$(KOMPILE) --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE --md-selector "(k & ! node) | standalone" \
-	                                --syntax-module IELE-SYNTAX well-formedness.md --directory $(BUILD_DIR)/check --hook-namespaces KRYPTO --gen-glr-bison-parser --bison-stack-max-depth 10000000 \
+	                                --syntax-module IELE-SYNTAX well-formedness.md --directory $(BUILD_DIR)/check --hook-namespaces KRYPTO \
+	                                --gen-glr-bison-parser --bison-stack-max-depth 10000000 \
 	                                --backend llvm -ccopt $(protobuf_out) $(KOMPILE_CPP_OPTS) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
 
 $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter: MD_SELECTOR="(k & ! node) | standalone"
