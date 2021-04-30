@@ -9,20 +9,6 @@ CPATH=/usr/local/include
 export CPATH
 endif
 
-ifeq ($(BYTE),yes)
-EXT=cmo
-LIBEXT=cma
-DLLEXT=cma
-OCAMLC=c
-LIBFLAG=-a
-else
-EXT=cmx
-LIBEXT=cmxa
-DLLEXT=cmxs
-OCAMLC=opt -O3
-LIBFLAG=-shared
-endif
-
 ifeq ($(COVERAGE),k)
 KOMPILE_FLAGS=--coverage
 else ifeq ($(COVERAGE),ocaml)
