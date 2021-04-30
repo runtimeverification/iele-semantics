@@ -21,13 +21,13 @@ module IELE-SYNTAX
 
   syntax IeleNameToken ::= r"(?<![A-Za-z0-9\\_\\.\\-\\$])[a-zA-Z\\.\\_\\$][0-9a-zA-Z\\.\\_\\-\\$]*" [token, notInRules, prec(3)]
 
-  syntax Keyword ::= "load" | "store" | "sload"  | "sstore" | "iszero" | "not"  | "add"  | "mul"  | "sub" | "div"
-                   | "exp"  | "mod"   | "addmod" | "mulmod" | "expmod" | "byte" | "sext" | "twos" | "and" | "or"
-                   | "xor"  | "shift" | "lt"     | "le"     | "gt"     | "ge"   | "eq"   | "ne"   | "cmp" | "sha3"
+  syntax Keyword ::= "load" [token] | "store" [token] | "sload"  [token] | "sstore" [token] | "iszero" [token] | "not"  [token] | "add"  [token] | "mul"  [token] | "sub" [token] | "div"  [token]
+                   | "exp"  [token] | "mod"   [token] | "addmod" [token] | "mulmod" [token] | "expmod" [token] | "byte" [token] | "sext" [token] | "twos" [token] | "and" [token] | "or"   [token]
+                   | "xor"  [token] | "shift" [token] | "lt"     [token] | "le"     [token] | "gt"     [token] | "ge"   [token] | "eq"   [token] | "ne"   [token] | "cmp" [token] | "sha3" [token]
   
-  syntax Keyword ::= "br"   | "call"   | "staticcall" | "at" | "send"  | "gaslimit" | "ret"      | "void"   | "revert"
-                   | "log"  | "create" | "copycreate" | "selfdestruct" | "contract" | "external" | "define" | "public"
-                   | "log2" | "bswap"  | "calladdress"
+  syntax Keyword ::= "br"   [token] | "call"   [token] | "staticcall"  [token] | "at" [token] | "send"  [token] | "gaslimit" [token] | "ret"      [token] | "void"   [token] | "revert" [token]
+                   | "log"  [token] | "create" [token] | "copycreate"  [token] | "selfdestruct"         [token] | "contract" [token] | "external" [token] | "define" [token] | "public" [token]
+                   | "log2" [token] | "bswap"  [token] | "calladdress" [token]
   syntax IeleNameToken ::= Keyword [token]
 
   syntax NumericIeleName ::= r"[0-9]+" [token]

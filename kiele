@@ -84,11 +84,13 @@ run_krun() {
 }
 
 run_check() {
-    local kore
-    kore=$(make_temp_trap kore)
-    kast --directory "$backend_dir" -s Contract --output kore "$run_file" > $kore
-    run_file="$kore"
-    run_krun_internal --parser cat --output none "$@"
+    if run_krun_internal --output none "$@"; then
+        notif "Contract is well-formed."
+        exit 0
+    else
+        notif "Contract is ill-formed."
+        exit 1
+    fi
 }
 
 run_vm() {
@@ -142,7 +144,7 @@ backend='standalone'
 debug=false
 unparse=true
 mode='NORMAL'
-schedule='DEFAULT'
+schedule='DANSE'
 enablecoverage='false'
 kiele_port='8545'
 kiele_host='127.0.0.1'
