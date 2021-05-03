@@ -29,7 +29,7 @@
                     {
                         "nonce": "0x00",
                         "function": "sha3(bytes)",
-                        "gasLimit": "0x1000000",
+                        "gasLimit": "0x01000000",
                         "value": "0x00",
                         "to": "0x1000000000000000000000000000000000000000",
                         "arguments": ["0x00"],
