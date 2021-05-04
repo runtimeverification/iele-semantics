@@ -71,3 +71,5 @@ tests/iele/danse/unit/staticcall.iele.json
 tests/iele/danse/ERC20/transferFrom_Exploratory-MultipleTransfersSucceed.iele.json
 tests/iele/danse/unit/exceptions.iele.json
 tests/iele/danse/ill-formed/illFormed2.iele.json
+tests/iele/danse/sha3/sha3.iele.json
+tests/iele/danse/sha3/sha3-benchmark.iele.json

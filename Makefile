@@ -30,6 +30,10 @@ BISECT=-package bisect_ppx
 PREDICATES=-predicates coverage
 endif
 
+ifneq ($(RELEASE),)
+KOMPILE_FLAGS+=-O3
+endif
+
 IELE_DIR       := $(abspath .)
 BUILD_DIR      := $(abspath .build)
 KORE_SUBMODULE := $(BUILD_DIR)/kore
@@ -314,7 +318,7 @@ $(BUILD_DIR)/%/iele-testing-kompiled/interpreter: $(k_files) $(protobuf_out) $(l
 	@echo "== kompile: $@"
 	$(KOMPILE) --debug --main-module IELE-TESTING --verbose --md-selector $(MD_SELECTOR) \
 					--syntax-module IELE-SYNTAX iele-testing.md --directory $(BUILD_DIR)/$* --hook-namespaces "KRYPTO BLOCKCHAIN" \
-	                --backend llvm -ccopt $(protobuf_out) $(KOMPILE_CPP_OPTS) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
+	                --backend llvm -ccopt $(protobuf_out) $(KOMPILE_CPP_OPTS) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 $(KOMPILE_FLAGS)
 
 LLVM_KOMPILE_INCLUDE_OPTS := -I $(PLUGIN)/plugin-c/ -I $(PROTO) -I $(BUILD_DIR)/plugin-node -I vm/c/ -I vm/c/iele/ -I $(LOCAL_INCLUDE)
 LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(LOCAL_LIB) -lff -lprotobuf -lgmp $(LIB_PROCPS) -lcryptopp -lsecp256k1 -lssl -lcrypto
