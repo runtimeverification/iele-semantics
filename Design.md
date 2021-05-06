@@ -4,7 +4,7 @@ The design of IELE was based on our experience with formally defining [dozens of
 
 * [KEVM](https://github.com/kframework/evm-semantics), our semantics of the [Ethereum Virtual Machine](https://github.com/ethereum/yellowpaper) (EVM); and
 
-* KLLVM, our semantics of [LLVM](http://llvm.org); the latest version of the LLVM semantics will be made public when complete and published, but an earlier version [is available](https://github.com/kframework/llvm-semantics).
+* KLLVM, our semantics of [LLVM](https://llvm.org/); the latest version of the LLVM semantics will be made public when complete and published, but an earlier version [is available](https://github.com/kframework/llvm-semantics).
 
 Unlike the EVM, which is a stack-based machine, IELE is a register-based machine, like LLVM. IELE also directly supports functions, like LLVM. It has an unbounded number of registers and also supports unbounded integers. There are some tricky but manageable aspects with respect to gas calculation, a critical part of the design.
 
@@ -20,7 +20,7 @@ Here are the forces that drove the design of IELE:
 
 3. To make it easier to write secure smart contracts.  This includes writing requirements specifications that smart contracts must obey as well as making it easier to develop automated techniques that mathematically verify / prove smart contracts correct with respect to to such specifications.  For example, pushing a possibly computed number on the stack and then jumping to it regarded as an address makes verification hard, and thus security weaker, with current smart contract paradigms.  IELE has named labels, like LLVM, and jump statements can only jump to those labels.  Also, avoiding the use of a bounded stack and not having to worry about stack or arithmetic overflow makes specification and verification of smart contracts significantly easier.
 
-Like [KEVM](https://github.com/kframework/evm-semantics), the formal semantics of EVM that we previously defined, validated and evaluated using the [K framework](http://kframework.org), the design of IELE was also done in a semantics-based style, using K. Together with a fast (LLVM-based) execution backend for K that is still under development, it is expected that the interpreter obtained automatically from the semantics of IELE will be sufficiently efficient to serve as a reference implementation of IELE.
+Like [KEVM](https://github.com/kframework/evm-semantics), the formal semantics of EVM that we previously defined, validated and evaluated using the [K framework](https://kframework.org), the design of IELE was also done in a semantics-based style, using K. Together with a fast (LLVM-based) execution backend for K that is still under development, it is expected that the interpreter obtained automatically from the semantics of IELE will be sufficiently efficient to serve as a reference implementation of IELE.
 
 
 # Design Changes Relative to EVM
