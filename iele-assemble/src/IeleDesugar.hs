@@ -43,12 +43,16 @@ expandImmediates inst =
       ((loads,_),inst') = mapAccumLOf ieleOpArg processArg ([],0) inst
   in reverse loads++[inst']
 
+expandImmediates' :: InstructionMapped (IeleOpG con fun lbl LValue (Either Integer LValue))
+                  -> [InstructionMapped (IeleOpG con fun lbl LValue LValue)]
+expandImmediates' inst = traverse expandImmediates inst
+
 desugarFundef :: Map GlobalName Integer
               -> FunctionDefinitionD IeleName Word16 IeleName LValue Operand
               -> FunctionDefinitionD IeleName Word16 IeleName LValue LValue
 desugarFundef globals fundef =
-  fundef & functionInsts %~ concatMap expandImmediates
-                          . (traverse . ieleOpArg %~ lookupGlobal globals)
+  fundef & functionInsts %~ concatMap expandImmediates'
+                          . (traverse . instructionOp . ieleOpArg %~ lookupGlobal globals)
 
 {- | Assigns numbers to the given set, avoiding the already-used numbers -}
 assignNumbers :: (Ord a) => IntSet -> [a] -> Map a Int
@@ -80,7 +84,7 @@ numberBlocks :: FunctionDefinitionD conId funId IeleName reg reg
 numberBlocks funDef =
   let rename = fromIntegral . applyIeleNameMap (numberIeleNames (funDef ^.. blocks . traverse . label))
   in funDef & blocks . traverse . label %~ rename
-            & functionInsts . traverse . ieleOpJumpDest %~ rename
+            & functionInsts . traverse . instructionOp . ieleOpJumpDest %~ rename
 
 assignLocals :: [IeleName] -> [IeleName] -> Map String Int
 assignLocals args bodyRefs =
@@ -92,7 +96,7 @@ assignLocals args bodyRefs =
 numberLocals :: FunctionDefinitionD conId funId blkId LValue LValue
              -> FunctionDefinitionD conId funId blkId Int Int
 numberLocals funDef =
-  let funLocalRegs f = (functionInsts . traverse . ieleOpRegs') f
+  let funLocalRegs f = (functionInsts . traverse . instructionOp . ieleOpRegs') f
       funParams f = (parameters . traverse) f
       assignment = assignLocals (funDef ^.. funParams . _LValueLocalName . _LocalName)
                                 (funDef ^.. funLocalRegs . _LValueLocalName . _LocalName)
@@ -111,7 +115,7 @@ numberFunctions :: [FunctionDefinitionP]
                 -> ([String],(Map IeleName Word16),[FunctionDefinitionD IeleName Word16 IeleName LValue Operand])
 numberFunctions fundefs =
   let declaredFuns = fundefs ^.. traverse . name . _GlobalName
-      calledFuns = fundefs ^.. traverse . functionInsts . traverse . ieleOpFunId . _GlobalName
+      calledFuns = fundefs ^.. traverse . functionInsts . traverse . instructionOp . ieleOpFunId . _GlobalName
       functionNames = setNub (IeleNameText "init":declaredFuns++calledFuns)
       nextId = length functionNames
       functionMapping = Map.fromList (zip functionNames [fromIntegral 0..])
@@ -119,7 +123,7 @@ numberFunctions fundefs =
   in ([n | IeleNameText n <- tail functionNames],
       functionMapping,
       fundefs & traverse . name %~ renameFunction
-              & traverse . functionInsts . traverse . ieleOpFunId %~ renameFunction)
+              & traverse . functionInsts . traverse . instructionOp . ieleOpFunId %~ renameFunction)
 
 numberContracts :: [IeleName]
                 -> [String]
@@ -129,7 +133,7 @@ numberContracts declaredContracts functionNames fundefs =
   let nextId = length functionNames + 1
       contractMapping = Map.fromList (zip declaredContracts [fromIntegral nextId..])
       renameContract c = contractMapping Map.! c
-  in fundefs & traverse . functionInsts . traverse . ieleOpContract %~ renameContract
+  in fundefs & traverse . functionInsts . traverse . instructionOp . ieleOpContract %~ renameContract
 
 processContract :: ContractP -> (IeleName, ContractD IeleName)
 processContract (ContractP name _ definitions) =
@@ -146,11 +150,11 @@ processContract (ContractP name _ definitions) =
 flattenFundef :: FunctionDefinitionD Word16 Word16 Word16 Int Int -> [IeleOp]
 flattenFundef (FunctionDefinition isPublic name args entry blocks) =
   VoidOp ((if isPublic then EXTCALLDEST else CALLDEST) name (argsLength args)) []
-  :entry++concatMap flattenBlock blocks
+  :(map opcode entry)++concatMap flattenBlock blocks
 
-flattenBlock :: LabeledBlock Word16 IeleOp  -> [IeleOp]
+flattenBlock :: LabeledBlock Word16 (InstructionMapped IeleOp)  -> [IeleOp]
 flattenBlock (LabeledBlock lbl insts) =
-  VoidOp (JUMPDEST lbl) []:insts
+  VoidOp (JUMPDEST lbl) []:(map opcode insts)
 
 neededBits :: Integral a => a -> Int
 neededBits max = ceiling (logBase 2 (fromIntegral max+1))

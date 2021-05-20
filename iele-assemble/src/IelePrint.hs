@@ -80,8 +80,8 @@ prettyContractD (cname, ContractD functionNames externalContracts functionDefini
     (pure . prettyName . LValueLocalName . LocalName . IeleNameNumber)
     op
 
-  prettyOp :: IeleOp -> Doc
-  prettyOp op = prettyIeleInst (formatOp op)
+  prettyOp :: InstructionMapped IeleOp -> Doc
+  prettyOp (InstructionMapped _ op) = prettyIeleInst (formatOp op)
 
 prettyDef :: TopLevelDefinition -> Doc
 prettyDef (TopLevelDefinitionFunction funDef) = prettyFunDef
@@ -108,8 +108,8 @@ prettyBlock (LabeledBlock name insts) =
   prettyName name <> char ':' $+$
   nest 2 (vcat insts)
 
-prettyInst :: Instruction -> Doc
-prettyInst i = prettyIeleInst (over ieleOpArg prettyOperand i)
+prettyInst :: InstructionP -> Doc
+prettyInst (InstructionMapped _ i) = prettyIeleInst (over ieleOpArg prettyOperand i)
 
 prettyOperand (RegOperand (LValueLocalName l)) = prettyName l
 prettyOperand (GlobalOperand g) = prettyName g
