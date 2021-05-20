@@ -77,6 +77,7 @@
           depends = [
             (hsPkgs."base" or (errorHandler.buildDepError "base"))
             (hsPkgs."iele-assemble" or (errorHandler.buildDepError "iele-assemble"))
+            (hsPkgs."lens" or (errorHandler.buildDepError "lens"))
             (hsPkgs."parsec" or (errorHandler.buildDepError "parsec"))
             (hsPkgs."tasty" or (errorHandler.buildDepError "tasty"))
             (hsPkgs."tasty-hunit" or (errorHandler.buildDepError "tasty-hunit"))
