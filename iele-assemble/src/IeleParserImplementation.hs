@@ -10,6 +10,7 @@ module IeleParserImplementation
     , comma
     , contract
     , createInst
+    , emptyParserState
     , equal
     , functionDefinition
     , functionParameters
@@ -55,6 +56,7 @@ module IeleParserImplementation
     , topLevelDefinition
     , whitespace
     , withResult
+    , Parser
     ) where
 import Prelude hiding (LT,EQ,GT)
 import Numeric(readHex)
@@ -64,10 +66,10 @@ import Data.Map.Strict(Map)
 
 import Control.Applicative ((<|>), (<*), many)
 import Control.Monad (void)
-import Text.Parsec (try, (<?>), skipMany, satisfy)
+import Text.Parsec (try, (<?>), skipMany, satisfy, Parsec, SourcePos, sourceLine, sourceColumn, getPosition, getState, putState)
+import Text.Parsec.Pos (newPos)
 import Text.Parsec.Char (char, digit, hexDigit, letter, oneOf, noneOf, string)
 import Text.Parsec.Combinator (eof, many1, choice, notFollowedBy, sepBy, sepBy1)
-import Text.Parsec.String (Parser)
 
 import Data.Word
 import Data.Data
@@ -76,8 +78,16 @@ import Data.Char
 import IeleTypes hiding (instructions)
 import IeleInstructions
 
+type Parser = Parsec String SourcePos
+
+emptyParserState :: SourcePos
+emptyParserState = newPos "" 0 0
+
 whitespace :: Parser ()
-whitespace = void (many (spaceChar <|> lineComment))
+whitespace = do
+  p <- getPosition
+  putState p -- Store where this whitespace starts (for instruction parsing)
+  void (many (spaceChar <|> lineComment))
  where
   spaceChar = void (oneOf " \n\t")
   lineComment = try (string "//") *> skipMany (satisfy (/='\n'))
@@ -521,15 +531,21 @@ copycreateInst =
    build status addr from args val =
      CallOp (COPYCREATE (argsLength args)) [status,addr] (val:from:args)
 
-instruction :: Parser Instruction
-instruction = try callInsts
-     <|> try createInst
-     <|> try copycreateInst
-     <|> ieleOp1
-     <|> ieleVoidOp
-     <?> "instruction"
+instruction :: Parser InstructionP
+instruction = do
+  pos1 <- getPosition
+  inst <- try callInsts
+      <|> try createInst
+      <|> try copycreateInst
+      <|> ieleOp1
+      <|> ieleVoidOp
+      <?> "instruction"
+  pos2 <- getState -- Beginning of whitespace after the instruction
+                   -- (getPosition returns end of whitespace before next instruction)
+  let sourceMap = SourceMap (SourceLocation (sourceLine pos1) (sourceColumn pos1)) (SourceLocation (sourceLine pos2) (sourceColumn pos2))
+  return $ InstructionMapped sourceMap inst
 
-instructions :: Parser [Instruction]
+instructions :: Parser [InstructionP]
 instructions = many instruction
 
 blockLabel :: Parser IeleName
