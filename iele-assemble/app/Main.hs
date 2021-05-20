@@ -13,13 +13,13 @@ module Main where
 
 import qualified Data.ByteString as B
 import Data.Char
-import Text.Parsec (parse)
-import Text.Parsec.String (Parser)
+import Data.List (intercalate)
+import Text.Parsec (runParser)
 import System.Environment
 import System.Exit
 import System.IO
 
-import IeleParser (ieleParser)
+import IeleParser (ieleParser, emptyParserState)
 import IeleAssembler (assemble)
 import IeleTypes
 import IelePrint
@@ -101,7 +101,7 @@ main = do
   case args of
     ["--parse",file] -> do
       contents <- readFileArg file
-      case parse ieleParser file contents of
+      case runParser ieleParser emptyParserState file contents of
         Left err  -> do
           hPrint stderr err
           exitWith (ExitFailure 1)
@@ -109,15 +109,29 @@ main = do
           putStr (show (prettyContractsP cs))
     ["--desugar",file] -> do
       contents <- readFileArg file
-      case parse ieleParser file contents of
+      case runParser ieleParser emptyParserState file contents of
         Left err  -> do
           hPrint stderr err
           exitWith (ExitFailure 1)
         Right cs  -> do
           putStr (show (prettyContractsD (map processContract cs)))
+    ["--sourceMap",file] -> do
+      contents <- readFileArg file
+      case runParser ieleParser emptyParserState file contents of
+        Left err  -> do
+          hPrint stderr err
+          exitWith (ExitFailure 1)
+        Right cs  -> do
+          let contracts = map processContract cs
+          let contractFuncs = (\c -> functionDefinitions c)
+          let funcInstructions = (\f -> (functionDefinitionEntry f)++(concatMap labeledBlockInstructions $ functionDefinitionBlocks f))
+          let allContractInstructions c = concatMap funcInstructions $ contractFuncs c
+          let contractSourceMap c = intercalate ";" $ map (show . info) (allContractInstructions c)
+          let namedSourceMaps = (\(IeleNameText name,c) -> concat [name,",",contractSourceMap c])
+          putStr $ intercalate "\n" $ map namedSourceMaps contracts
     [file] -> do
       contents <- readFileArg file
-      case parse ieleParser file contents of
+      case runParser ieleParser emptyParserState file contents of
         Left err  -> do
           hPrint stderr err
           exitWith (ExitFailure 1)
