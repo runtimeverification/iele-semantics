@@ -1,7 +1,0 @@
-contract selfdestruct_test {
-  define public @kill(%receiver) {
-    selfdestruct %receiver
-  }
-
-  define @init() {}
-}
