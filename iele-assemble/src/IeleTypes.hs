@@ -80,7 +80,10 @@ data InstructionMapped op = InstructionMapped
   { info :: SourceMap
   , opcode :: op
   }
-  deriving (Show, Eq, Data)
+  deriving (Show, Data)
+
+instance Eq op => Eq (InstructionMapped op) where
+  InstructionMapped _ a == InstructionMapped _ b = a == b
 
 instance Functor InstructionMapped where
   fmap f (InstructionMapped info a) = InstructionMapped info (f a)
