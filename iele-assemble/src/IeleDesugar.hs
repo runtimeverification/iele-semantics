@@ -2,6 +2,7 @@
 module IeleDesugar where
 import Data.IntSet(IntSet)
 import qualified Data.IntSet as IntSet
+import Data.List (intercalate)
 import qualified Data.Set as Set
 import Data.Map.Strict(Map,(!))
 import qualified Data.Map.Strict as Map
@@ -182,3 +183,11 @@ compileContracts (c:cs) = go Map.empty c cs
                          (assemble (compileContract childContracts c))
                          childContracts)
              c' cs
+
+namedSourceMaps :: [ContractP] -> String
+namedSourceMaps cs =
+  let funcInstructions f = (functionDefinitionEntry f)++(concatMap labeledBlockInstructions $ functionDefinitionBlocks f) in
+  let allContractInstructions c = concatMap funcInstructions $ functionDefinitions c in
+  let contractSourceMap c = intercalate ";" $ map (show . info) (allContractInstructions c) in
+  let namedSourceMaps (IeleNameText name,c) = concat [name,",",contractSourceMap c] in
+  intercalate "\n" $ map (namedSourceMaps . processContract) cs
