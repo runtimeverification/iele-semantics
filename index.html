@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+<meta charset="utf-8" />
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+/>
+<meta
+  name="description"
+  content="Design and implement your programming language and software analysis tools with mathematical rigor."
+/>
+<meta name="keywords" content="runtime, verification, rv, k" />
+<meta name="author" content="IELE Semantics | Runtime Verification Inc" />
+<meta name="robots" content="index, follow" />
+
+<!--favicon icon-->
+<link rel="icon" type="image/png" href="./assets/img/favicon.ico" />
+
+<title>IELE Semantics | Runtime Verification Inc</title>
+
+<!-- <base href="/k/" /> -->
+
+<!--web fonts-->
+<link
+  href="https://fonts.googleapis.com/css?family=Nunito:300,400,600,700,800"
+  rel="stylesheet"
+/>
+<link
+  href="https://fonts.googleapis.com/css?family=Lora:400i"
+  rel="stylesheet"
+/>
+
+<link
+  href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css"
+  rel="stylesheet"
+/>
+
+<link href="./assets/css/index.css" rel="stylesheet" />
+
+<!--[if (gt IE 9) |!(IE)]><!-->
+<!--<link rel="stylesheet" href="/assets/vendor/custom-nav/css/effects/fade-menu.css"/>-->
+<!-- <link rel="stylesheet" href="./assets/k/vl-nav/css/effects/slide-menu.css" /> -->
+<!--<![endif]-->
+
+  </head>
+
+  <body>
+<header
+  class="navbar navbar-expand navbar-dark flex-column flex-md-row bd-navbar"
+>
+  <a class="logo-link" href="./index.html"> IELE Semantics </a>
+  <ul class="navbar-nav ml-md-auto">
+    <li class="nav-item">
+      <a
+        class="nav-link pl-2 pr-1 mx-1 py-3 my-n2"
+        href="https://github.com/runtimeverification/iele-semantics"
+        target="_blank"
+        rel="noopener"
+        aria-label="GitHub"
+      >
+        <i class="fab fa-github"></i>
+      </a>
+    </li>
+  </ul>
+  <!--
+  <a
+    class="btn btn-rv-blue d-none d-lg-inline-block mb-3 mb-md-0 ml-md-3"
+    href="./downloads"
+    >Download</a
+  >
+  -->
+</header>
+
+
+    <div class="container-fluid">
+      <div class="row flex-xl-nowrap">
+<div class="col-12 col-md-3 col-xl-2 bd-sidebar mb-3">
+  <form
+    role="search"
+    class="bd-search d-flex align-items-center justify-content-between"
+  >
+    <input
+      type="search"
+      class="form-control"
+      placeholder="Search..."
+      aria-label="Search for..."
+      autocomplete="false"
+      id="search-box"
+    />
+    <button
+      class="btn bd-search-docs-toggle d-md-none p-0 ml-3 collapsed"
+      type="button"
+      aria-label="Toggle docs navigation"
+      style="font-size: 1.4rem"
+    >
+      <i class="fas fa-bars"></i>
+    </button>
+  </form>
+  <nav class="collapse bd-links" aria-label="Main navigation">
+    <div class="bd-toc-item">
+      <a class="bd-toc-link" href="./">Homepage</a>
+      <a class="bd-toc-link" href="./INSTALL">Install</a>
+      <a class="bd-toc-link" href="./Design">Design</a>
+    </div>
+  </nav>
+</div>
+
+        <main
+          class="col-12 col-md-9 col-xl-8 py-md-3 pl-md-5 bd-content"
+          role="main"
+        >
+          <div class="markdown-preview"><html><head></head><body><h1 id="iele%3A-semantics-of-new-blockchain-vm-in-k">IELE: Semantics of New Blockchain VM in K</h1>
+<p>In this repository we provide a model of IELE in K.</p>
+<h3 id="structure">Structure</h3>
+<ul>
+<li>The file <a href="iele-syntax/">iele-syntax.md</a> contains the syntax definition of IELE, along with comments that guide the reader through the structure of the language and links to more detailed descriptions of various features.
+This file is a good starting point for getting familiar with the language.</li>
+<li>The file <a href="data/">data.md</a> explains the basic data of IELE (including words and some datastructures over them).
+This data is defined functionally.</li>
+<li><a href="iele/">iele.md</a> is the file containing the semantics of IELE.
+This file contains the <strong>configuration</strong> (a map of the state), and a simple imperative execution machine which IELE lives on top of.
+It deals with the semantics of opcodes and parsing/unparsing/assembling/disassembling.</li>
+<li><a href="iele-gas/">iele-gas.md</a> describes gas price computations. <a href="iele-gas-summary/">iele-gas-summary.md</a> summarizes them in a format readable by those who don&apos;t know K.</li>
+<li><a href="iele-binary/">iele-binary.md</a> defines the mnemonic for each opcode, and the disassembler.</li>
+<li><a href="iele-node/">iele-node.md</a> defines the protobuf communication protocol used to plug the IELE VM into anonther client to make a full node.</li>
+<li><a href="iele-testing/">iele-testing.md</a> loads test-files from the <a href="https://github.com/ethereum/tests" target="_blank" rel="noopener">Ethereum Test Set</a> and executes them, checking that the output is correct.
+If the output is correct, the entire configuration is cleared.
+If any check fails, the configuration retains the failed check at the top of the <code>&lt;k&gt;</code> cell.
+<a href="iele-testing/">iele-testing.md</a> is also capable of executing tests of arbitrary IELE transactions (subject to the fact that this first release of IELE is still built on top of an ethereum-like network layer).
+The test format is based off of, but slightly different from, the ethereum BlockchainTest json test format.</li>
+</ul>
+<h2 id="using-the-definition">Using the Definition</h2>
+<h3 id="installing%2Fbuilding">Installing/Building</h3>
+<p>See <a href="INSTALL/">INSTALL.md</a>.</p>
+<h3 id="help%2Fversion">Help/Version</h3>
+<p>Calling <code>kiele help</code> and <code>kiele version</code> will output the user guide and the KIELE version, respectively.</p>
+<h3 id="assembler">Assembler</h3>
+<p>The assembler takes textual IELE and produces IELE bytecode.
+For example, on the following file <code>iele-examples/factorial.iele</code>:</p>
+<pre class="language-iele"><code><span class="token keyword">contract</span> Factorial <span class="token punctuation">{</span>
+
+  <span class="token keyword">define</span> <span class="token keyword">public</span> <span class="token variable">@factorial</span><span class="token punctuation">(</span><span class="token operator">%</span>n<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token variable">%lt</span> <span class="token operator">=</span> <span class="token keyword">cmp</span> <span class="token keyword">lt</span> <span class="token operator">%</span>n<span class="token punctuation">,</span> <span class="token number">0</span>
+    <span class="token keyword">br</span> <span class="token variable">%lt</span><span class="token punctuation">,</span> throw
+
+    <span class="token variable">%result</span> <span class="token operator">=</span> <span class="token number">1</span>
+
+  <span class="token label">condition:</span>
+    <span class="token variable">%cond</span> <span class="token operator">=</span> <span class="token keyword">cmp</span> <span class="token keyword">le</span> <span class="token operator">%</span>n<span class="token punctuation">,</span> <span class="token number">0</span>
+    <span class="token keyword">br</span> <span class="token variable">%cond</span><span class="token punctuation">,</span> after_loop
+
+  <span class="token label">loop_body:</span>
+    <span class="token variable">%result</span> <span class="token operator">=</span> <span class="token keyword">mul</span> <span class="token variable">%result</span><span class="token punctuation">,</span> <span class="token operator">%</span>n
+    <span class="token operator">%</span>n      <span class="token operator">=</span> <span class="token keyword">sub</span> <span class="token operator">%</span>n<span class="token punctuation">,</span> <span class="token number">1</span>
+    <span class="token keyword">br</span> condition
+
+  <span class="token label">after_loop:</span>
+    <span class="token keyword">ret</span> <span class="token variable">%result</span>
+
+  <span class="token label">throw:</span>
+    <span class="token keyword">call</span> <span class="token variable">@iele.invalid</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
+  <span class="token punctuation">}</span>
+
+  <span class="token keyword">define</span> <span class="token variable">@init</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span><span class="token punctuation">}</span>
+<span class="token punctuation">}</span>
+</code></pre>
+<p>You can run:</p>
+<pre class="language-text"><code>kiele assemble iele-examples/factorial.iele
+</code></pre>
+<p>To produce output:</p>
+<pre class="language-text"><code>0000004C6303690009666163746F7269616C6800010001618001100042650003026101036600006180011200446500020466000102001B610101030040640000660002F6000103660003FE6700000000
+</code></pre>
+<p><strong>NOTE</strong>: Right now, if you use the NixOS package, you must call <code>iele-assemble</code> instead of <code>kiele assemble</code>.</p>
+<h3 id="kiele-node">KIELE Node</h3>
+<p>You can run a KIELE node, specifying the port to run on and use the KIELE test harness to run some transactions through it.
+To start the KIELE node, call (in one terminal):</p>
+<pre class="language-text"><code>kiele vm --port 9001
+</code></pre>
+<p>Then in a separate terminal, send a transaction through:</p>
+<pre class="language-text"><code>iele-test-vm tests/iele/danse/factorial/factorial_positive.iele.json 9001
+</code></pre>
+<p>You&apos;ll see the launched node record to the terminal a list of messages it sends and receives.</p>
+<p><strong>NOTE</strong>: The <code>iele-test-vm</code> executable is only available in a from-source build of KIELE.
+You can still launch and use the KIELE VM node without this executable.</p>
+<h3 id="interpreter">Interpreter</h3>
+<p>Tests in the Ethereum Test Suite format can be run directly by the IELE interpreter.</p>
+<p>For example, from this repository, you can run:</p>
+<pre class="language-text"><code>make assemble-iele-test -j4
+</code></pre>
+<p>To prepare the Ethereum test-suite.
+Then you can run an individual test, and see the post-state with:</p>
+<pre class="language-text"><code>kiele interpret tests/iele/danse/factorial/factorial_positive.iele.json.test-assembled
+</code></pre>
+<p>You may also run the interpreter with the Haskell backend instead (though it is significantly slower):</p>
+<pre class="language-text"><code>kiele interpret --backend haskell tests/iele/danse/factorial/factorial_positive.iele.json.test-assembled
+</code></pre>
+<p><strong>NOTE</strong>: Printing the post-state will not work unless you are using a from-source build of KIELE.
+Instead, you should inspect the exit code of <code>kiele interpret</code> to see if the test passed or failed, by adding option <code>--no-unparse</code> to skip printing the post-state.</p>
+<h3 id="well-formedness-checker">Well-Formedness Checker</h3>
+<p>The KIELE well-formedness checker will do some type-checking on the input IELE program, using exit code to indicate success/failure.
+For example, we can type-check the ERC20 contract example <code>iele-examples/erc20.iele</code>:</p>
+<pre class="language-text"><code>kiele check --schedule DANSE iele-examples/erc20.iele
+</code></pre>
+<p><strong>NOTE</strong>: The KIELE well-formedness checker requires that (i) you are using a local build of KIELE, and (ii) you have installed K as well.</p>
+<h2 id="contacting-us">Contacting Us</h2>
+<p>To reach us, you can either use our chat, or open issues against this repository:</p>
+<ul>
+<li><a href="https://app.element.io/#/room/!LtQJkJbwuhxaMuWVOa:matrix.org" target="_blank" rel="noopener">#IELE Element Channel</a> for chat.</li>
+<li><a href="https://github.com/runtimeverification/iele-semantics" target="_blank" rel="noopener">runtimeverification/iele-semantics</a> for issues/pull-requests.</li>
+</ul>
+</body></html></div>
+        </main>
+      </div>
+    </div>
+<!-- The footer is now controlled by the k-web-theme git submodule -->
+<footer id="rvsite-footer" class="app-footer text-md-left text-center">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-4 mb-md-0 mb-4">
+        <a href="https://runtimeverification.com/" target="_blank">
+          <picture>
+            <source
+              srcset="
+                https://runtimeverification.com/assets/img/rv-logo-dark.png
+              "
+              media="(prefers-color-scheme: dark)"
+            />
+            <img
+              class="logo-dark"
+              src="https://runtimeverification.com/assets/img/rv-logo.png"
+              alt="Runtime Verification logo"
+              style="height: 32px"
+            /> </picture
+        ></a>
+        <p class="mt-2 text-md-left copyright">
+          <a href="https://goo.gl/maps/NYzr2iKpXMgEmQ2F6" target="_blank"
+            >102 E Main St #500, Urbana, IL 61801</a
+          >
+        </p>
+      </div>
+      <div class="col-md-4 text-md-center mb-md-0 mb-4"></div>
+      <div class="col-md-4 mb-md-0 mb-4 text-md-right">
+        <p class="copyright">2021 © all rights reserved</p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Typist/1.2/typist.min.js"></script>
+    <script src="./assets/js/index.js"></script>
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-QL0D8HRYFW"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+      gtag("config", "G-QL0D8HRYFW");
+    </script>
+  </body>
+</html>
