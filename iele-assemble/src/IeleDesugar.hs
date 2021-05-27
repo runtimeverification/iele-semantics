@@ -186,8 +186,8 @@ compileContracts (c:cs) = go Map.empty c cs
 
 namedSourceMaps :: [ContractP] -> String
 namedSourceMaps cs =
-  let funcInstructions f = (functionDefinitionEntry f)++(concatMap labeledBlockInstructions $ functionDefinitionBlocks f) in
-  let allContractInstructions c = concatMap funcInstructions $ functionDefinitions c in
-  let contractSourceMap c = intercalate ";" $ map (show . info) (allContractInstructions c) in
-  let namedSourceMaps (IeleNameText name,c) = concat [name,",",contractSourceMap c] in
-  intercalate "\n" $ map (namedSourceMaps . processContract) cs
+  let funcInstructions f = (functionDefinitionEntry f)++(concatMap labeledBlockInstructions $ functionDefinitionBlocks f)
+      allContractInstructions c = concatMap funcInstructions $ functionDefinitions c
+      contractSourceMap c = intercalate ";" $ map (show . info) (allContractInstructions c)
+      namedSourceMaps (IeleNameText name,c) = concat [name,",",contractSourceMap c]
+   in intercalate "\n" $ map (namedSourceMaps . processContract) cs
