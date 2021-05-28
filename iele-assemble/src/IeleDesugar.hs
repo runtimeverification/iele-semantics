@@ -7,9 +7,11 @@ import qualified Data.Set as Set
 import Data.Map.Strict(Map,(!))
 import qualified Data.Map.Strict as Map
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as C
 
 import Data.Bifunctor
 
+import Data.Char
 import Data.Word
 import Data.Data
 
@@ -20,6 +22,9 @@ import IeleInstructions
 import IeleAssembler
 import IeleTypes
 import IelePrint(prettyInst,prettyName)
+
+import Codec.Binary.Base16(b16Enc)
+import Crypto.Hash.Keccak(keccak256)
 
 type IeleNameNum = Int
 
@@ -184,10 +189,17 @@ compileContracts (c:cs) = go Map.empty c cs
                          childContracts)
              c' cs
 
-namedSourceMaps :: [ContractP] -> String
-namedSourceMaps cs =
+namedSourceMap :: ContractP -> String
+namedSourceMap c =
   let funcInstructions f = (functionDefinitionEntry f)++(concatMap labeledBlockInstructions $ functionDefinitionBlocks f)
       allContractInstructions c = concatMap funcInstructions $ functionDefinitions c
       contractSourceMap c = intercalate ";" $ map (show . info) (allContractInstructions c)
-      namedSourceMaps (IeleNameText name,c) = concat [name,",",contractSourceMap c]
-   in intercalate "\n" $ map (namedSourceMaps . processContract) cs
+      namedSourceMaps (IeleNameText name,c) = concat [show name,"\n",show $ contractSourceMap c]
+   in namedSourceMaps . processContract $ c
+
+namedHashedSourceMaps :: [ContractP] -> String
+namedHashedSourceMaps cs =
+  let contractsList = map (flip take cs) [1 .. length cs]
+      hash cs = C.map toLower $ b16Enc . keccak256 . assemble . compileContracts $ cs
+      hashedSourceMap cs = concat [show $ C.concat [C.pack "0x", hash cs],"\n",namedSourceMap $ last cs]
+   in intercalate "\n" $ map hashedSourceMap contractsList

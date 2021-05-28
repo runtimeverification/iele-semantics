@@ -121,7 +121,7 @@ main = do
           hPrint stderr err
           exitWith (ExitFailure 1)
         Right cs  -> do
-          putStr $ namedSourceMaps cs
+          putStr $ namedHashedSourceMaps cs
     [file] -> do
       contents <- readFileArg file
       case runParser ieleParser emptyParserState file contents of

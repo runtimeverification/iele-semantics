@@ -42,6 +42,7 @@ library
   build-depends: pretty
   build-depends: sandi
   build-depends: template-haskell
+  build-depends: keccak
 
 executable iele-assemble
   default-language:    Haskell2010
@@ -53,6 +54,7 @@ executable iele-assemble
   build-depends: parsec >=3.1 && <3.2
   build-depends: bytestring
   build-depends: sandi
+  build-depends: keccak
 
 test-suite iele-assemble-test
   type:                exitcode-stdio-1.0
