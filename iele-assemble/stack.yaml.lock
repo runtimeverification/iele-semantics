@@ -11,6 +11,13 @@ packages:
       sha256: 5ca7ce4bc22ab9d4427bb149b5e283ab9db43375df14f7131fdfd48775f36350
   original:
     hackage: sandi-0.5
+- completed:
+    hackage: keccak-0.2.0@sha256:9200f86e8f6ed329e85bae8c704ad796c4b006ef83da396fa6b9c9b8037de33a,2418
+    pantry-tree:
+      size: 573
+      sha256: 484821eaf28e33f3576ad2e48bacde61deac9d129a24d48ce7026f1c103622d2
+  original:
+    hackage: keccak-0.2.0
 snapshots:
 - completed:
     size: 532414

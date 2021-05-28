@@ -42,6 +42,7 @@ packages:
 # (e.g., acme-missiles-0.3)
 extra-deps:
   - sandi-0.5
+  - keccak-0.2.0
 
 # Override default flag values for local packages and extra-deps
 flags: {}
