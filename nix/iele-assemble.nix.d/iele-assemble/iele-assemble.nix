@@ -44,6 +44,7 @@
           (hsPkgs."pretty" or (errorHandler.buildDepError "pretty"))
           (hsPkgs."sandi" or (errorHandler.buildDepError "sandi"))
           (hsPkgs."template-haskell" or (errorHandler.buildDepError "template-haskell"))
+          (hsPkgs."keccak" or (errorHandler.buildDepError "keccak"))
           ];
         buildable = true;
         modules = [
@@ -66,6 +67,7 @@
             (hsPkgs."parsec" or (errorHandler.buildDepError "parsec"))
             (hsPkgs."bytestring" or (errorHandler.buildDepError "bytestring"))
             (hsPkgs."sandi" or (errorHandler.buildDepError "sandi"))
+            (hsPkgs."keccak" or (errorHandler.buildDepError "keccak"))
             ];
           buildable = true;
           hsSourceDirs = [ "app" ];

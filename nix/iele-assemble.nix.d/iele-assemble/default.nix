@@ -3,6 +3,7 @@
     {
       packages = {
         "sandi" = (((hackage.sandi)."0.5").revisions).default;
+        "keccak" = (((hackage.keccak)."0.2.0").revisions).default;
         iele-assemble = ./iele-assemble.nix;
         };
       };
