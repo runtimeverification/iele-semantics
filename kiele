@@ -133,9 +133,11 @@ run_upload_report() {
 }
 
 run_coverage() {
+    local coverage
 
-    # Collecting coverage from Midnight goes here
-    coverage="midnightmock.json"
+    coverage=$(mktemp)
+    curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc": "2.0", "id": 1, "method": "firefly_getCoverage", "params": []}' "$kiele_host":"$kiele_port" \
+    | jq '.result' > "$coverage"
 
     sourceMap() {
       jq --null-input '
@@ -225,7 +227,7 @@ unparse=true
 mode='NORMAL'
 schedule='DANSE'
 enablecoverage='false'
-kiele_port='8545'
+kiele_port='8342'
 kiele_host='127.0.0.1'
 module='IELE-TESTING'
 definition='iele-testing'
