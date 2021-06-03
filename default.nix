@@ -3,11 +3,17 @@ let
   pinned = import sources."nixpkgs" {};
 in
 
-{ pkgs ? pinned }:
+{ pkgs ? pinned
+, release ? null
+}:
+
+let release_ = release; in
 
 let
   inherit (pkgs) lib;
   ttuegel = import sources."nix-lib" { inherit pkgs; };
+
+  release = if release_ == null then pkgs.stdenv.isLinux else false;
 
   kframework =
     let
@@ -15,7 +21,7 @@ let
       url = "https://github.com/kframework/k/releases/download/${tag}/release.nix";
       args = import (builtins.fetchurl { inherit url; });
       src = pkgs.fetchgit args;
-    in import src {};
+    in import src { inherit release; };
   inherit (kframework) k haskell-backend llvm-backend clang;
   llvmPackages = pkgs.llvmPackages_10;
 in
