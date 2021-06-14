@@ -62,11 +62,11 @@ class CoverageMap:
     """
     Solidity files source code
     """
-    sources: List[Source]
+    ieleSources: List[Source]
     """
     Solidity coverage data
     """
-    coverage: Coverages  # Dict[int, Dict[int, CoveredState]]
+    ieleCoverage: Coverages  # Dict[int, Dict[int, CoveredState]]
 
 
 @dataclass
@@ -112,9 +112,9 @@ def make_coverage_map(source_name: str, content: str, file_id: int, source_map: 
     states = get_states(coverage)
     coverage_ = calculate_coverage(states)
     coverage_map: CoverageMap = CoverageMap(
-        sources=[Source(
+        ieleSources=[Source(
             fileId=file_id, filename=source_name, sourceLines=content.splitlines())],
-        coverage=[(file_id, list(zip(lines, states)))]
+        ieleCoverage=[(file_id, list(zip(lines, states)))]
     )
     return (coverage_map, coverage_)
 
