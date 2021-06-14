@@ -63,7 +63,7 @@ export PATH:=$(IELE_BIN):$(PATH)
         build build-interpreter build-vm build-check build-haskell build-node build-testnode build-assembler \
 		install install-interpreter install-vm install-kiele install-check uninstall \
         split-tests split-vm-tests split-blockchain-tests test-node test-iele-coverage \
-        test-evm test-vm test-blockchain test-wellformed test-illformed test-bad-packet test-interactive \
+        test-evm test-vm test-blockchain test-wellformed test-illformed test-bad-packet test-interactive test-sourcemap \
         test-iele test-iele-haskell test-iele-failing test-iele-slow test-iele-node assemble-iele-test test
 .SECONDARY:
 
@@ -153,7 +153,7 @@ TEST_PORT     = 10000
 TEST_ARGS     = --no-unparse
 TEST_DIR      = $(IELE_DIR)/tests
 
-test: split-tests test-vm test-iele test-iele-haskell test-iele-coverage test-wellformed test-illformed test-interactive test-node
+test: split-tests test-vm test-iele test-iele-haskell test-iele-coverage test-wellformed test-illformed test-interactive test-node test-sourcemap
 
 split-tests: split-vm-tests split-blockchain-tests
 
@@ -206,6 +206,17 @@ well_formed_contracts=$(filter-out $(wildcard $(TEST_DIR)/iele/*/ill-formed/*.ie
 ill_formed_contracts=$(wildcard $(TEST_DIR)/iele/*/ill-formed/*.iele)
 well_formedness_targets=$(well_formed_contracts:=.test-wellformed)
 ill_formedness_targets=$(ill_formed_contracts:=.test-illformed)
+
+sourcemap_tests=$(wildcard $(TEST_DIR)/sourcemaps/*.sourcemap)
+sourcemap_targets=$(sourcemap_tests:=.test-sourcemap)
+
+test-sourcemap: $(sourcemap_targets)
+
+%.test-sourcemap: %.out
+	$(CHECK) $< $*
+
+%.sourcemap.out: $(IELE_ASSEMBLE)
+	$(IELE_ASSEMBLE) --sourceMap iele-examples/$(shell basename $*).iele > $@
 
 test-evm: test-vm test-blockchain
 test-vm: $(passing_vm_targets)

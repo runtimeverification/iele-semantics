@@ -136,6 +136,6 @@ main = do
           writeFile "test2.iele" (show (prettyContract c'))
            -}
           B.putStr . b16Enc . assemble . compileContracts $ cs
-    _ -> putStrLn "Usage: iele-assemble [--parse | --desugar] FILE"
+    _ -> putStrLn "Usage: iele-assemble [--parse | --desugar | --sourceMap] FILE"
 
 --parse anyChar "" "a"
