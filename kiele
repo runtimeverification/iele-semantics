@@ -99,6 +99,12 @@ run_vm() {
     "${cmd[@]}"
 }
 
+run_generate_report() {
+    report_template="./static-report.html"
+    reports_json=${1:-"./reports.json"}
+    echo $(kiele-generate-report.py $report_template $reports_json)
+}
+
 # Main
 # ----
 
@@ -111,14 +117,16 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
                $0 krun         [--backend (standalone|haskell|node|check)] <KIELE arg>* <pgm> <K arg>*
                $0 check                                                    <KIELE arg>* <pgm> <K arg>*
                $0 vm                                                       <KIELE arg>*
+               $0 generate-report
 
                $0 [help|--help|version|--version]
 
-           $0 assemble  : Translate IELE assembly <pgm to IELE bytecode
-           $0 interpret : Run given input JSON or IELE <pgm>
-           $0 krun      : Run given input <pgm> using 'krun'
-           $0 check     : Run the IELE well-formedness checker on <pgm>
-           $0 vm        : Run the KIELE VM server.
+           $0 assemble         : Translate IELE assembly <pgm to IELE bytecode
+           $0 interpret        : Run given input JSON or IELE <pgm>
+           $0 krun             : Run given input <pgm> using 'krun'
+           $0 check            : Run the IELE well-formedness checker on <pgm>
+           $0 vm               : Run the KIELE VM server.
+           $0 generate-report  : Generate the static HTML report
 
            $0 help    : Display this help message.
            $0 version : Display the versions of KIELE in use.
@@ -181,16 +189,17 @@ cmode='Lbl'$mode'{}()'
 cschedule='Lbl'$schedule'{}()'
 cenablecoverage='\dv{SortBool{}}("'$enablecoverage'")'
 
-if [[ "$run_command" != 'vm' ]]; then
+if [[ "$run_command" != 'vm' && "$run_command" != "generate-report" ]]; then
     run_file="$1" ; shift
     [[ -f "$run_file" ]] || [[ "$run_file" == '-' ]] || fatal "File does not exist: $run_file"
 fi
 
 case "$run_command" in
-    assemble)  run_assemble  "$@" ;;
-    interpret) run_interpret "$@" ;;
-    krun)      run_krun      "$@" ;;
-    check)     run_check     "$@" ;;
-    vm)        run_vm        "$@" ;;
+    assemble)          run_assemble  "$@" ;;
+    interpret)         run_interpret "$@" ;;
+    krun)              run_krun      "$@" ;;
+    check)             run_check     "$@" ;;
+    vm)                run_vm        "$@" ;;
+    generate-report)   run_generate_report "$@";;
     *) $0 help ; fatal "Unknown command: $run_command" ;;
 esac

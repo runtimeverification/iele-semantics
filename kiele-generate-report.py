@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from dataclasses import dataclass, asdict
 import json
 from typing import Dict, List, Optional, Tuple
@@ -6,6 +8,8 @@ import uuid
 import os
 from dacite.core import from_dict
 from shutil import copyfile, rmtree
+from urllib.parse import quote
+import sys
 
 
 # All class below are translated from the Haskell code at
@@ -88,13 +92,17 @@ class CoverageSummary:
     Id of source file the contract was defined in
     """
     mainContract: Optional[int]
+    """
+    Type of the report: iele|evm
+    """
+    type: str
 
 
 def make_coverage_summaries(artifacts: List[ContractArtifact]) -> List[CoverageSummary]:
     summaries: List[CoverageSummary] = []
     for artifact in artifacts:
         summaries.append(CoverageSummary(bytecodeHash=artifact.contractName, account=None, contractName=artifact.contractName,
-                                         sourceName=artifact.sourceName, coverage=artifact.coverage, mainContract=artifact.fileId))
+                                         sourceName=artifact.sourceName, coverage=artifact.coverage, mainContract=artifact.fileId, type="iele"))
     return summaries
 
 
@@ -149,12 +157,12 @@ def convert_iele_reports_to_contract_artifacts(iele_reports: IeleReports) -> Lis
     return artifacts
 
 
-def generate_static_report(report_template_path: str):
+def generate_static_report(report_template_path: str, reports_json_path: str):
     report_id = str(uuid.uuid4())
     os.makedirs("./reports", exist_ok=True)
 
     # TODO: Maybe allow the this path to be passed as argument?
-    f = open("./reports.json", "r")
+    f = open(reports_json_path, "r")
     j = json.loads(f.read())
     f.close()
 
@@ -171,21 +179,22 @@ def generate_static_report(report_template_path: str):
     # Write the summary file
     summaries = make_coverage_summaries(artifacts)
     f = open(os.path.join(report_base_path, "./summary.json"), "w")
-    f.write(json.dumps(summaries))
+    f.write(json.dumps(list(map(lambda summary: asdict(summary), summaries))))
     f.close()
 
     # Write coverage information files
     for artifact in artifacts:
         hash = artifact.contractName
+        source_name = artifact.sourceName
         coverage_map = artifact.coverageMap
-        f = open(os.path.join(report_base_path, hash + "-iele.json"), "w")
-        f.write(json.dumps(coverage_map))
+        f = open(os.path.join(report_base_path, quote(source_name + "-" + hash + "-iele.json", safe="")), "w")
+        f.write(json.dumps(asdict(coverage_map)))
         f.close()
 
     # Copy original
     original_path = os.path.join(report_base_path, "./original")
     os.makedirs(original_path)
-    copyfile("./reports.json",
+    copyfile(reports_json_path,
              os.path.join(original_path, "./reports.json"))
 
     # Inject the js code into the HTML report template file.
@@ -204,3 +213,7 @@ def generate_static_report(report_template_path: str):
         rmtree("./reports")
 
     return report_id + ".html"
+
+report_template_path = sys.argv[1]
+reports_json_path = sys.argv[2]
+generate_static_report(report_template_path, reports_json_path)
