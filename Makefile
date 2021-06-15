@@ -422,6 +422,8 @@ install_libs :=              \
     $(iele_interpreter_libs) \
     $(iele_haskell_libs)     \
     kore-json.py             \
+	kiele-generate-report.py \
+	static-report.html       \
     version
 
 $(IELE_RUNNER): $(IELE_DIR)/kiele
@@ -436,10 +438,20 @@ $(IELE_LIB)/kore-json.py: $(IELE_DIR)/kore-json.py
 	@mkdir -p $(dir $@)
 	$(INSTALL) $< $@
 
+$(IELE_LIB)/kiele-generate-report.py: $(IELE_DIR)/kiele-generate-report.py
+	@mkdir -p $(dir $@)
+	$(INSTALL) $< $@
+
+$(IELE_LIB)/static-report.html: $(IELE_DIR)/static-report.html
+	@mkdir -p $(dir $@)
+	$(INSTALL) $< $@
+
 $(INSTALL_BIN)/iele-interpreter: $(patsubst %, $(INSTALL_LIB)/%, $(iele_interpreter_libs))
 $(INSTALL_BIN)/iele-check:       $(patsubst %, $(INSTALL_LIB)/%, $(iele_check_libs))
 
 $(INSTALL_BIN)/kiele: $(INSTALL_LIB)/kore-json.py
+$(INSTALL_BIN)/kiele: $(INSTALL_LIB)/kiele-generate-report.py
+$(INSTALL_BIN)/kiele: $(INSTALL_LIB)/static-report.html
 $(INSTALL_BIN)/kiele: $(INSTALL_LIB)/version
 
 $(INSTALL_BIN)/%: $(IELE_BIN)/%

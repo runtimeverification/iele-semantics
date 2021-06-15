@@ -10,10 +10,22 @@ from dacite.core import from_dict
 from shutil import copyfile, rmtree
 from urllib.parse import quote
 import sys
+from datetime import datetime
 
 
 # All class below are translated from the Haskell code at
 # the PR: https://github.com/runtimeverification/firefly-web/pull/306/
+
+@dataclass
+class Report:
+    status: str
+    tag: Optional[str]
+    hasFireflyLog: bool
+    created: str
+    reportId: str
+    token: str
+    coverage: str
+    commit: Optional[str]
 
 
 @dataclass
@@ -92,17 +104,13 @@ class CoverageSummary:
     Id of source file the contract was defined in
     """
     mainContract: Optional[int]
-    """
-    Type of the report: iele|evm
-    """
-    type: str
 
 
 def make_coverage_summaries(artifacts: List[ContractArtifact]) -> List[CoverageSummary]:
     summaries: List[CoverageSummary] = []
     for artifact in artifacts:
         summaries.append(CoverageSummary(bytecodeHash=artifact.contractName, account=None, contractName=artifact.contractName,
-                                         sourceName=artifact.sourceName, coverage=artifact.coverage, mainContract=artifact.fileId, type="iele"))
+                                         sourceName=artifact.sourceName, coverage=artifact.coverage, mainContract=artifact.fileId))
     return summaries
 
 
@@ -157,7 +165,13 @@ def convert_iele_reports_to_contract_artifacts(iele_reports: IeleReports) -> Lis
     return artifacts
 
 
-def generate_static_report(report_template_path: str, reports_json_path: str):
+def write_json_file(file_path: str, json: str):
+    f = open(file_path, "w")
+    f.write(json)
+    f.close()
+
+
+def generate_static_report(report_template_path: str, reports_json_path: str, output_report_path: str = ""):
     report_id = str(uuid.uuid4())
     os.makedirs("./reports", exist_ok=True)
 
@@ -187,9 +201,8 @@ def generate_static_report(report_template_path: str, reports_json_path: str):
         hash = artifact.contractName
         source_name = artifact.sourceName
         coverage_map = artifact.coverageMap
-        f = open(os.path.join(report_base_path, quote(source_name + "-" + hash + "-iele.json", safe="")), "w")
-        f.write(json.dumps(asdict(coverage_map)))
-        f.close()
+        write_json_file(os.path.join(report_base_path, quote(
+            source_name + "-" + hash + "-iele.json", safe="")), json.dumps(asdict(coverage_map)))
 
     # Copy original
     original_path = os.path.join(report_base_path, "./original")
@@ -197,13 +210,39 @@ def generate_static_report(report_template_path: str, reports_json_path: str):
     copyfile(reports_json_path,
              os.path.join(original_path, "./reports.json"))
 
+   # Create ${report_id}.json file
+    firefly_log_exists = os.path.exists("./firefly.log")
+    if firefly_log_exists:
+        copyfile("./firefly.log", os.path.join(original_path, "./firefly.log"))
+    report: Report = Report(status="success", tag=None, hasFireflyLog=firefly_log_exists, created=datetime.today(
+    ).strftime('%Y-%m-%dT%H:%M:%SZ'), reportId=report_id, token="(generated)", coverage="ParseSuccess", commit=None)
+    write_json_file(os.path.join(report_base_path, report_id +
+                                 ".json"), json.dumps(asdict(report)))
+
+    # Create JavaScript code
+    js_code = "window.FIREFLY_REPORT_FILES = {}"
+    onlyfiles = [f for f in os.listdir(report_base_path) if os.path.isfile(os.path.join(report_base_path, f))] + [os.path.join(
+        "original", f) for f in os.listdir(os.path.join(report_base_path, "./original")) if not f.endswith(".zip")]
+    for f in onlyfiles:
+        file = open(os.path.join(report_base_path, f), "r")
+        content = file.read()
+        file.close()
+        if not f.endswith(".json"):
+            content = json.dumps(content)
+        js_code += "\nwindow.FIREFLY_REPORT_FILES[\"" + \
+            report_id + "/" + f + "\"] = " + content + "\n"
+
     # Inject the js code into the HTML report template file.
     f = open(report_template_path, "r")
     template = f.read()
     f.close()
     report_html = template.replace(
-        "<body>", "<script>" + "TODO: js code here" + "</script>\n<body>")
-    f = open(report_id + ".html", "w")
+        "<body>", "<script>" + js_code + "</script>\n<body>")
+
+    if output_report_path.strip() == "":
+        output_report_path = report_id + ".html"
+
+    f = open(output_report_path, "w")
     f.write(report_html)
     f.close()
 
@@ -214,6 +253,7 @@ def generate_static_report(report_template_path: str, reports_json_path: str):
 
     return report_id + ".html"
 
+
 report_template_path = sys.argv[1]
 reports_json_path = sys.argv[2]
-generate_static_report(report_template_path, reports_json_path)
+generate_static_report(report_template_path, reports_json_path, "")

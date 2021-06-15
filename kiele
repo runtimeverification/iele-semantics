@@ -100,7 +100,12 @@ run_vm() {
 }
 
 run_generate_report() {
-    report_template="./static-report.html"
+    if [[ -f $(dirname $(which kiele))/static-report.html ]]; then
+        report_template=$(dirname $(which kiele))/static-report.html
+    else
+        report_template=$INSTALL_LIB/static-report.html
+    fi
+
     reports_json=${1:-"./reports.json"}
     echo $(kiele-generate-report.py $report_template $reports_json)
 }
