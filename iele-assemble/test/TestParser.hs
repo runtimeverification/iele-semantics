@@ -11,8 +11,7 @@ import IeleInstructions
 
 import Control.Applicative (many)
 import Data.Either (isLeft)
-import Text.Parsec (parse, eof)
-import Text.Parsec.String (Parser)
+import Text.Parsec (runParser, parse, eof)
 
 main :: IO ()
 main =
@@ -347,7 +346,7 @@ instructionTests =
 
 otherTests :: [TestTree]
 otherTests =
-  let dummy = LiOp LOADPOS "%0" 0 in
+  let dummy = wrappedIeleInst (LiOp LOADPOS "%0" 0) in
   [ testCase
       "empty LabelledBlock"
       (parseSuccess
@@ -469,11 +468,11 @@ parseSuccess expected parser input =
   assertEqual
     "Expecting parse success!"
     (Right expected)
-    (parse (parser <* eof) "" input)
+    (runParser (parser <* eof) emptyParserState "" input)
 
 parseFailure :: (Show a, Eq a) => Parser a -> String -> Assertion
 parseFailure parser input =
-  assertBool "Expecting parse failure!" (isLeft (parse (parser <* eof) "" input))
+  assertBool "Expecting parse failure!" (isLeft (runParser (parser <* eof) emptyParserState "" input))
 
 ------------------------------------
 -- IeleOp test utilities
@@ -500,7 +499,7 @@ testTernaryOperation name op =
     (Op op "%a" [RegOperand "%ab1",ImmOperand (IntToken 15),GlobalOperand "@12"])
     ("%a=" ++ name ++ " %ab1,15, @12")
 
-testInstruction :: String -> Instruction -> String -> TestTree
+testInstruction :: String -> InstructionP -> String -> TestTree
 testInstruction name expected input =
     testGroup
       name
@@ -516,7 +515,10 @@ testInstruction name expected input =
       ]
 
 testIeleInst :: String -> IeleOpP -> String -> TestTree
-testIeleInst name expected input = testInstruction name expected input
+testIeleInst name expected input = testInstruction name (wrappedIeleInst expected) input
+
+wrappedIeleInst :: Instruction -> InstructionMapped Instruction
+wrappedIeleInst op = InstructionMapped (SourceMap (SourceLocation 0 0) (SourceLocation 0 0)) op
 
 ------------------------------------
 -- Token test utilities
