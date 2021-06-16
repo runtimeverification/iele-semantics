@@ -5,7 +5,7 @@ module IeleTypes
     , FunctionDefinition
       ( FunctionDefinition,
         functionDefinitionPublic, functionDefinitionName,
-        functionDefinitionParameters , functionDefinitionBlocks)
+        functionDefinitionParameters, functionDefinitionEntry, functionDefinitionBlocks)
     , name
     , parameters
     , blocks
@@ -23,6 +23,11 @@ module IeleTypes
 
     -- type synonyms for parser's instantiations of IeleInstruction's types
     , Instruction
+    , InstructionP
+    , InstructionMapped (InstructionMapped, info, opcode)
+    , instructionOp
+    , SourceLocation (SourceLocation)
+    , SourceMap (SourceMap)
     , IeleOpP
     , IeleOpcode0P
 
@@ -57,6 +62,43 @@ type IeleOpP = IeleOpG IeleName GlobalName IeleName LValue Operand
 type IeleOpcode0P = IeleOpcode0G GlobalName IeleName
 
 type Instruction = IeleOpP
+
+data SourceLocation = SourceLocation Int Int
+  deriving (Eq, Data)
+
+instance Show SourceLocation where
+  show (SourceLocation x y) = show x ++ ":" ++ show y
+
+data SourceMap = SourceMap SourceLocation SourceLocation
+  deriving (Eq, Data)
+
+instance Show SourceMap where
+  show (SourceMap start end) = show start ++ ":" ++ show end
+
+type InstructionP = InstructionMapped Instruction
+data InstructionMapped op = InstructionMapped
+  { info :: SourceMap
+  , opcode :: op
+  }
+  deriving (Show, Data)
+
+instance Eq op => Eq (InstructionMapped op) where
+  InstructionMapped _ a == InstructionMapped _ b = a == b
+
+instance Functor InstructionMapped where
+  fmap f (InstructionMapped info a) = InstructionMapped info (f a)
+
+instance Foldable InstructionMapped where
+  foldMap f (InstructionMapped info a) = f a
+
+instance Traversable InstructionMapped where
+  traverse f (InstructionMapped info a) = InstructionMapped info <$> f a
+
+instructionOp :: Lens
+         (InstructionMapped op)
+         (InstructionMapped op')
+         op op'
+instructionOp f (InstructionMapped info o) = InstructionMapped info <$> f o
 
 data IeleName = IeleNameNumber Int | IeleNameText String
   deriving (Show, Eq, Ord, Data)
@@ -112,7 +154,7 @@ instance IsString Operand where
     | [(imm,"")] <- reads str = ImmOperand (IntToken imm)
   fromString str = error $ "not an operand: "++str
 
-type LabeledBlockP = LabeledBlock IeleName Instruction
+type LabeledBlockP = LabeledBlock IeleName InstructionP
 data LabeledBlock lblId instruction = LabeledBlock
   { labeledBlockLabel :: lblId
   , labeledBlockInstructions :: [instruction]
@@ -130,7 +172,7 @@ instructions :: Lens
   [inst']
 instructions f (LabeledBlock label insts) = LabeledBlock label <$> f insts
 
-type FunctionDefinitionP = FunctionDefinition GlobalName IeleName LValue Instruction
+type FunctionDefinitionP = FunctionDefinition GlobalName IeleName LValue InstructionP
 data FunctionDefinition funId blockId arg instruction = FunctionDefinition
   { functionDefinitionPublic :: Bool
   , functionDefinitionName :: funId
@@ -174,7 +216,7 @@ data ContractP = ContractP
   deriving (Show, Eq, Data)
 
 type FunctionDefinitionD contract funId blkId lval op =
-  FunctionDefinition funId blkId lval (IeleOpG contract funId blkId lval op)
+  FunctionDefinition funId blkId lval (InstructionMapped (IeleOpG contract funId blkId lval op))
 
 data ContractD contractId = ContractD
   { functionNames :: [String]

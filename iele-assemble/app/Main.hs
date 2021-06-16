@@ -13,13 +13,12 @@ module Main where
 
 import qualified Data.ByteString as B
 import Data.Char
-import Text.Parsec (parse)
-import Text.Parsec.String (Parser)
+import Text.Parsec (runParser)
 import System.Environment
 import System.Exit
 import System.IO
 
-import IeleParser (ieleParser)
+import IeleParser (ieleParser, emptyParserState)
 import IeleAssembler (assemble)
 import IeleTypes
 import IelePrint
@@ -101,7 +100,7 @@ main = do
   case args of
     ["--parse",file] -> do
       contents <- readFileArg file
-      case parse ieleParser file contents of
+      case runParser ieleParser emptyParserState file contents of
         Left err  -> do
           hPrint stderr err
           exitWith (ExitFailure 1)
@@ -109,15 +108,23 @@ main = do
           putStr (show (prettyContractsP cs))
     ["--desugar",file] -> do
       contents <- readFileArg file
-      case parse ieleParser file contents of
+      case runParser ieleParser emptyParserState file contents of
         Left err  -> do
           hPrint stderr err
           exitWith (ExitFailure 1)
         Right cs  -> do
           putStr (show (prettyContractsD (map processContract cs)))
+    ["--sourceMap",file] -> do
+      contents <- readFileArg file
+      case runParser ieleParser emptyParserState file contents of
+        Left err  -> do
+          hPrint stderr err
+          exitWith (ExitFailure 1)
+        Right cs  -> do
+          putStr $ namedSourceMaps cs
     [file] -> do
       contents <- readFileArg file
-      case parse ieleParser file contents of
+      case runParser ieleParser emptyParserState file contents of
         Left err  -> do
           hPrint stderr err
           exitWith (ExitFailure 1)
@@ -129,6 +136,6 @@ main = do
           writeFile "test2.iele" (show (prettyContract c'))
            -}
           B.putStr . b16Enc . assemble . compileContracts $ cs
-    _ -> putStrLn "Usage: iele-assemble [--parse | --desugar] FILE"
+    _ -> putStrLn "Usage: iele-assemble [--parse | --desugar | --sourceMap] FILE"
 
 --parse anyChar "" "a"
