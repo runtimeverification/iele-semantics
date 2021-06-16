@@ -106,8 +106,10 @@ run_generate_report() {
         report_template=$INSTALL_LIB/static-report.html
     fi
 
-    reports_json=${1:-"./reports.json"}
-    echo $(kiele-generate-report.py $report_template $reports_json)
+    report_json=${1:-"./report.json"}
+    output_path=${2:-""}
+    echo "Generating report"
+    echo $(kiele-generate-report.py $report_template $report_json $output_path) generated
 }
 
 # Main
@@ -122,7 +124,7 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
                $0 krun         [--backend (standalone|haskell|node|check)] <KIELE arg>* <pgm> <K arg>*
                $0 check                                                    <KIELE arg>* <pgm> <K arg>*
                $0 vm                                                       <KIELE arg>*
-               $0 generate-report
+               $0 generate-report                                          <Report json path> <Report output path>
 
                $0 [help|--help|version|--version]
 
@@ -142,6 +144,8 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
                  <K arg> is an argument you want to pass to K
                  <KIELE arg> is one of (--no-unparse|--debug|--host|--port|--mode|--coverage
                                        |--schedule|--module|--definition|--depth)
+                <Report json path> is the path to the report json file
+                <Report output path> is the output HTML report file path (default: \$uuid.html)
     "
     exit 0
 fi

@@ -26,6 +26,7 @@ class Report:
     token: str
     coverage: str
     commit: Optional[str]
+    type: str
 
 
 @dataclass
@@ -215,7 +216,7 @@ def generate_static_report(report_template_path: str, reports_json_path: str, ou
     if firefly_log_exists:
         copyfile("./firefly.log", os.path.join(original_path, "./firefly.log"))
     report: Report = Report(status="success", tag=None, hasFireflyLog=firefly_log_exists, created=datetime.today(
-    ).strftime('%Y-%m-%dT%H:%M:%SZ'), reportId=report_id, token="(generated)", coverage="ParseSuccess", commit=None)
+    ).strftime('%Y-%m-%dT%H:%M:%SZ'), reportId=report_id, token="(generated)", coverage="ParseSuccess", commit=None, type="iele")
     write_json_file(os.path.join(report_base_path, report_id +
                                  ".json"), json.dumps(asdict(report)))
 
@@ -251,9 +252,11 @@ def generate_static_report(report_template_path: str, reports_json_path: str, ou
     if len(os.listdir("./reports")) == 0:
         rmtree("./reports")
 
-    return report_id + ".html"
-
+    return output_report_path
 
 report_template_path = sys.argv[1]
 reports_json_path = sys.argv[2]
-generate_static_report(report_template_path, reports_json_path, "")
+output_report_path = ""
+if len(sys.argv) > 3:
+    output_report_path = sys.argv[3]
+print(generate_static_report(report_template_path, reports_json_path, output_report_path))

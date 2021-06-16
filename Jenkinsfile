@@ -37,6 +37,7 @@ pipeline {
             stage('Ill Formed Check')      { steps { sh 'make test-illformed -j4'           } }
             stage('Interactive')           { steps { sh 'make test-interactive'             } }
             stage('Node')                  { steps { sh 'make test-node -j4 TEST_PORT=9001' } }
+            stage('Report Generation')     { steps { sh 'make test-generate-report'         } }
           }
         }
       }
