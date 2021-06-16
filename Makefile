@@ -440,8 +440,8 @@ install_libs :=              \
     $(iele_interpreter_libs) \
     $(iele_haskell_libs)     \
     kore-json.py             \
-	kiele-generate-report.py \
-	static-report.html       \
+    kiele-generate-report.py \
+    static-report.html       \
     version
 
 $(IELE_RUNNER): $(IELE_DIR)/kiele
