@@ -1,3 +1,3 @@
-module IeleParser (ieleParser, ieleParser1) where
+module IeleParser (ieleParser, ieleParser1, emptyParserState) where
 
 import IeleParserImplementation
