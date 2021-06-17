@@ -840,8 +840,8 @@ Expression calculations are simple and don't require anything but the arguments 
     rule <k> #exec REG = sext  WIDTH , W => #load REG signextend(chop(WIDTH), W) ... </k> requires W >=Int 0
     rule <k> #exec REG = sext  WIDTH , W => #exception USER_ERROR                ... </k> requires W <Int 0
     rule <k> #exec REG = twos  WIDTH , W => #load REG twos(chop(WIDTH), W)       ... </k>
-    rule <k> #exec REG = bswap WIDTH , W => #load REG bswap(chop(WIDTH), W)      ... </k> requires W >=Int 0
-    rule <k> #exec REG = bswap WIDTH , W => #exception USER_ERROR                ... </k> requires W <Int 0
+    rule <k> #exec REG = bswap WIDTH , W => #load REG bswap(chop(WIDTH), W)      ... </k> requires WIDTH >=Int 0
+    rule <k> #exec REG = bswap WIDTH , W => #exception USER_ERROR                ... </k> requires WIDTH <Int 0
 
     rule <k> #exec REG = log2 W => #load REG log2Int(W)  ... </k> requires W >Int 0
     rule <k> #exec REG = log2 W => #exception USER_ERROR ... </k> requires W <=Int 0
