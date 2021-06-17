@@ -137,7 +137,7 @@ run_coverage() {
 
     coverage=$(mktemp)
     curl -s -X POST -H "Content-Type: application/json" --data '{"jsonrpc": "2.0", "id": 1, "method": "firefly_getCoverage", "params": []}' "$kiele_host":"$kiele_port" \
-    | jq '.result' > "$coverage"
+    | jq '.result' > "$coverage" || true
 
     sourceMap() {
       jq --null-input '
@@ -173,7 +173,7 @@ run_coverage() {
 }
 
 run_upload() {
-    local FIREFLY_ENDPOINT reportfile
+    local FIREFLY_ENDPOINT
 
     FIREFLY_ENDPOINT=https://pr-306.sandbox.fireflyblockchain.com
 
