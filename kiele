@@ -99,6 +99,24 @@ run_vm() {
     "${cmd[@]}"
 }
 
+run_generate_report() {
+    if [[ -f $(dirname $(which kiele))/static-report.html ]]; then
+        report_template=$(dirname $(which kiele))/static-report.html
+    else
+        report_template=$INSTALL_LIB/static-report.html
+    fi
+    output_path=""
+    while [[ $# -gt 0 ]]; do
+        arg="$1"
+        case $arg in
+            -o|--output) output_path="$2" ; shift 2 ;;
+            *) shift ;;
+        esac
+    done 
+    echo "Generating report"
+    echo $(kiele-generate-report.py $report_template $run_file $output_path) generated
+}
+
 # Main
 # ----
 
@@ -111,14 +129,16 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
                $0 krun         [--backend (standalone|haskell|node|check)] <KIELE arg>* <pgm> <K arg>*
                $0 check                                                    <KIELE arg>* <pgm> <K arg>*
                $0 vm                                                       <KIELE arg>*
+               $0 generate-report                                          <Report json path> [-o|--output <Report output path>]
 
                $0 [help|--help|version|--version]
 
-           $0 assemble  : Translate IELE assembly <pgm to IELE bytecode
-           $0 interpret : Run given input JSON or IELE <pgm>
-           $0 krun      : Run given input <pgm> using 'krun'
-           $0 check     : Run the IELE well-formedness checker on <pgm>
-           $0 vm        : Run the KIELE VM server.
+           $0 assemble         : Translate IELE assembly <pgm to IELE bytecode
+           $0 interpret        : Run given input JSON or IELE <pgm>
+           $0 krun             : Run given input <pgm> using 'krun'
+           $0 check            : Run the IELE well-formedness checker on <pgm>
+           $0 vm               : Run the KIELE VM server.
+           $0 generate-report  : Generate the static HTML report
 
            $0 help    : Display this help message.
            $0 version : Display the versions of KIELE in use.
@@ -129,6 +149,8 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
                  <K arg> is an argument you want to pass to K
                  <KIELE arg> is one of (--no-unparse|--debug|--host|--port|--mode|--coverage
                                        |--schedule|--module|--definition|--depth)
+                <Report json path> is the path to the report json file
+                <Report output path> is the output HTML report file path (default: \$uuid.html)
     "
     exit 0
 fi
@@ -187,10 +209,11 @@ if [[ "$run_command" != 'vm' ]]; then
 fi
 
 case "$run_command" in
-    assemble)  run_assemble  "$@" ;;
-    interpret) run_interpret "$@" ;;
-    krun)      run_krun      "$@" ;;
-    check)     run_check     "$@" ;;
-    vm)        run_vm        "$@" ;;
+    assemble)          run_assemble  "$@" ;;
+    interpret)         run_interpret "$@" ;;
+    krun)              run_krun      "$@" ;;
+    check)             run_check     "$@" ;;
+    vm)                run_vm        "$@" ;;
+    generate-report)   run_generate_report "$@";;
     *) $0 help ; fatal "Unknown command: $run_command" ;;
 esac

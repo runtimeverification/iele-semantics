@@ -38,6 +38,7 @@ pipeline {
             stage('Interactive')           { steps { sh 'make test-interactive'             } }
             stage('Node')                  { steps { sh 'make test-node -j4 TEST_PORT=9001' } }
             stage('Sourcemappings')        { steps { sh 'make test-sourcemap'               } }
+            stage('Report Generation')     { steps { sh 'make test-generate-report'         } }
           }
         }
       }

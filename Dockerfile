@@ -26,6 +26,7 @@ RUN    apt update         \
         pkg-config        \
         protobuf-compiler \
         python3           \
+        python3-pip       \
         zlib1g-dev
 
 RUN curl -sSL https://get.haskellstack.org/ | sh
@@ -34,6 +35,8 @@ RUN curl -sL https://deb.nodesource.com/setup_10.x | bash -
 RUN    apt-get update               \
     && apt-get upgrade --yes        \
     && apt-get install --yes nodejs
+
+RUN pip3 install dataclasses dacite
 
 ARG USER_ID=1000
 ARG GROUP_ID=1000
