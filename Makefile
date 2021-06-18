@@ -255,7 +255,7 @@ test-node:
 report_tests := $(wildcard $(TEST_DIR)/reports/*/report.json)
 test-generate-report: $(report_tests:.json=.html)
 $(TEST_DIR)/reports/%/report.html: $(TEST_DIR)/reports/%/report.json
-	cd $(dir $@) && kiele generate-report report.json report.html
+	cd $(dir $@) && kiele generate-report report.json -o report.html
 
 $(TEST_DIR)/VMTests/%:  TEST_MODE     = VMTESTS
 %.iele.test-wellformed: TEST_SCHEDULE = DANSE
