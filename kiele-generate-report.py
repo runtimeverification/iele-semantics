@@ -7,7 +7,7 @@ from textwrap import wrap
 import uuid
 import os
 from dacite.core import from_dict
-from shutil import copyfile, rmtree
+from shutil import copyfile, rmtree, make_archive
 from urllib.parse import quote
 import sys
 from datetime import datetime
@@ -172,7 +172,7 @@ def write_json_file(file_path: str, json: str):
     f.close()
 
 
-def generate_static_report(report_template_path: str, reports_json_path: str, output_report_path: str = ""):
+def generate_static_report(report_template_path: str, reports_json_path: str, output_report_path: str = "", create_report_archive: bool = False):
     report_id = str(uuid.uuid4())
     os.makedirs("./reports", exist_ok=True)
 
@@ -220,33 +220,39 @@ def generate_static_report(report_template_path: str, reports_json_path: str, ou
     write_json_file(os.path.join(report_base_path, report_id +
                                  ".json"), json.dumps(asdict(report)))
 
-    # Create JavaScript code
-    js_code = "window.FIREFLY_REPORT_FILES = {}"
-    onlyfiles = [f for f in os.listdir(report_base_path) if os.path.isfile(os.path.join(report_base_path, f))] + [os.path.join(
-        "original", f) for f in os.listdir(os.path.join(report_base_path, "./original")) if not f.endswith(".zip")]
-    for f in onlyfiles:
-        file = open(os.path.join(report_base_path, f), "r")
-        content = file.read()
-        file.close()
-        if not f.endswith(".json"):
-            content = json.dumps(content)
-        js_code += "\nwindow.FIREFLY_REPORT_FILES[\"" + \
-            report_id + "/" + f + "\"] = " + content + "\n"
+    if create_report_archive == False:
+        # Create JavaScript code
+        js_code = "window.FIREFLY_REPORT_FILES = {}"
+        onlyfiles = [f for f in os.listdir(report_base_path) if os.path.isfile(os.path.join(report_base_path, f))] + [os.path.join(
+            "original", f) for f in os.listdir(os.path.join(report_base_path, "./original")) if not f.endswith(".zip")]
+        for f in onlyfiles:
+            file = open(os.path.join(report_base_path, f), "r")
+            content = file.read()
+            file.close()
+            if not f.endswith(".json"):
+                content = json.dumps(content)
+            js_code += "\nwindow.FIREFLY_REPORT_FILES[\"" + \
+                report_id + "/" + f + "\"] = " + content + "\n"
 
-    # Inject the js code into the HTML report template file.
-    f = open(report_template_path, "r")
-    template = f.read()
-    f.close()
-    report_html = template.replace(
-        "<body>", "<script>" + js_code + "</script>\n<body>")
+        # Inject the js code into the HTML report template file.
+        f = open(report_template_path, "r")
+        template = f.read()
+        f.close()
+        report_html = template.replace(
+            "<body>", "<script>" + js_code + "</script>\n<body>")
 
-    if output_report_path.strip() == "":
-        output_report_path = report_id + ".html"
+        if output_report_path.strip() == "":
+            output_report_path = report_id + ".html"
 
-    f = open(output_report_path, "w")
-    f.write(report_html)
-    f.close()
-
+        f = open(output_report_path, "w")
+        f.write(report_html)
+        f.close()
+    else:
+        # make report.zip file
+        if os.path.exists("report.zip"):
+            os.remove("report.zip")
+        make_archive("report", "zip", report_base_path)
+        
     # Clean up the report directory
     rmtree(report_base_path)
     if len(os.listdir("./reports")) == 0:
@@ -259,4 +265,9 @@ reports_json_path = sys.argv[2]
 output_report_path = ""
 if len(sys.argv) > 3:
     output_report_path = sys.argv[3]
-print(generate_static_report(report_template_path, reports_json_path, output_report_path))
+create_report_archive = False
+if len(sys.argv) > 4:
+    create_report_archive = (sys.argv[4] == "true")
+output_report_path = generate_static_report(report_template_path, reports_json_path, output_report_path, create_report_archive)
+if not create_report_archive:
+    print(output_report_path + " generated")

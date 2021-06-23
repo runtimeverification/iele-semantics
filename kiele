@@ -7,6 +7,7 @@ fatal() { echo "[FATAL] $@" ; exit 1 ; }
 
 INSTALL_BIN="$(dirname $0)"
 INSTALL_LIB=${INSTALL_BIN}/../lib/kiele
+FIREFLY_ENDPOINT=${FIREFLY_ENDPOINT:-https://fireflyblockchain.com}
 
 export PATH="$INSTALL_BIN:$INSTALL_LIB:$PATH"
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-}:/usr/local/lib
@@ -19,6 +20,8 @@ check_k_install() {
     type -p krun &> /dev/null \
         || fatal "Must have K installed! See https://github.com/kframework/k/releases."
 }
+
+check_token() { [[ -v FIREFLY_TOKEN ]] || fatal "FIREFLY_TOKEN environment variable isn't set!" ; }
 
 make_temp_trap() {
     local tmpdesc tmpfile
@@ -114,7 +117,20 @@ run_generate_report() {
         esac
     done 
     echo "Generating report"
-    echo $(kiele-generate-report.py $report_template $run_file $output_path) generated
+    echo $(kiele-generate-report.py "$report_template" "$run_file" "$output_path" "$create_archive")
+}
+
+run_upload_report() {
+    check_token
+    echo "Uploading report"
+    kiele generate-report $run_file --create-archive # This will generate report.zip archive file
+    curl --request POST --fail                   \
+        --form access-token="$FIREFLY_TOKEN" \
+        --form 'status=pass'                 \
+        --form 'type=iele'                   \
+        --form 'file=@report.zip'            \
+        "$FIREFLY_ENDPOINT/report"
+    rm report.zip
 }
 
 # Main
@@ -129,7 +145,8 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
                $0 krun         [--backend (standalone|haskell|node|check)] <KIELE arg>* <pgm> <K arg>*
                $0 check                                                    <KIELE arg>* <pgm> <K arg>*
                $0 vm                                                       <KIELE arg>*
-               $0 generate-report                                          <Report json path> [-o|--output <Report output path>]
+               $0 generate-report [--create-archive]                       <Report json path> [-o|--output <Report output path>]
+               $0 upload                                                   <Report json path>
 
                $0 [help|--help|version|--version]
 
@@ -138,7 +155,8 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
            $0 krun             : Run given input <pgm> using 'krun'
            $0 check            : Run the IELE well-formedness checker on <pgm>
            $0 vm               : Run the KIELE VM server.
-           $0 generate-report  : Generate the static HTML report
+           $0 generate-report  : Generate the static HTML report.
+           $0 upload           : Upload the HTML report to the fireflyblockchain.com website.
 
            $0 help    : Display this help message.
            $0 version : Display the versions of KIELE in use.
@@ -174,21 +192,23 @@ module='IELE-TESTING'
 definition='iele-testing'
 depth=-1
 args=()
+create_archive='false'
 while [[ $# -gt 0 ]]; do
     arg="$1"
     case $arg in
-        --backend)    backend="$2"          ; shift 2 ;;
-        --debug)      debug=true            ; shift   ;;
-        --no-unparse) unparse=false         ; shift   ;;
-        --mode)       mode="$2"             ; shift 2 ;;
-        --module)     module="$2"           ; shift 2 ;;
-        --definition) definition="$2"       ; shift 2 ;;
-        --schedule)   schedule="$2"         ; shift 2 ;;
-        --depth)      depth=$2              ; shift 2 ;;
-        --coverage)   enablecoverage='true' ; shift   ;;
-        -p|--port)    kiele_port="$2"       ; shift 2 ;;
-        -h|--host)    kiele_host="$2"       ; shift 2 ;;
-        *)            args+=("$1")          ; shift   ;;
+        --backend)         backend="$2"          ; shift 2 ;;
+        --debug)           debug=true            ; shift   ;;
+        --no-unparse)      unparse=false         ; shift   ;;
+        --mode)            mode="$2"             ; shift 2 ;;
+        --module)          module="$2"           ; shift 2 ;;
+        --definition)      definition="$2"       ; shift 2 ;;
+        --schedule)        schedule="$2"         ; shift 2 ;;
+        --depth)           depth=$2              ; shift 2 ;;
+        --coverage)        enablecoverage='true' ; shift   ;;
+        --create-archive)  create_archive='true' ; shift   ;;
+        -p|--port)         kiele_port="$2"       ; shift 2 ;;
+        -h|--host)         kiele_host="$2"       ; shift 2 ;;
+        *)                 args+=("$1")          ; shift   ;;
     esac
 done
 if [[ "${#args[@]}" -gt 0 ]]; then
@@ -209,11 +229,12 @@ if [[ "$run_command" != 'vm' ]]; then
 fi
 
 case "$run_command" in
-    assemble)          run_assemble  "$@" ;;
-    interpret)         run_interpret "$@" ;;
-    krun)              run_krun      "$@" ;;
-    check)             run_check     "$@" ;;
-    vm)                run_vm        "$@" ;;
-    generate-report)   run_generate_report "$@";;
+    assemble)          run_assemble        "$@" ;;
+    interpret)         run_interpret       "$@" ;;
+    krun)              run_krun            "$@" ;;
+    check)             run_check           "$@" ;;
+    vm)                run_vm              "$@" ;;
+    generate-report)   run_generate_report "$@" ;;
+    upload)            run_upload_report   "$@" ;;
     *) $0 help ; fatal "Unknown command: $run_command" ;;
 esac
