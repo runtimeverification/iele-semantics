@@ -116,8 +116,7 @@ run_generate_report() {
             *) shift ;;
         esac
     done 
-    echo "Generating report"
-    echo $(kiele-generate-report.py "$report_template" "$run_file" "$output_path" "$create_archive")
+    kiele-generate-report.py "$report_template" "$run_file" "$output_path" "$create_archive"
 }
 
 run_upload_report() {

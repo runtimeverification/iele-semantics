@@ -221,7 +221,7 @@ def generate_static_report(report_template_path: str, reports_json_path: str, ou
         onlyfiles = [ f for f in os.listdir(report_base_path) 
                             if os.path.isfile(os.path.join(report_base_path, f))
                     ] + [ os.path.join("original", f) for f in os.listdir(os.path.join(report_base_path, "./original"))
-                                                    if not f.endswith(".zip") ]
+                                                        if not f.endswith(".zip") ]
         for f in onlyfiles:
             with open(os.path.join(report_base_path, f), "r") as file:
                 content = file.read()
@@ -262,6 +262,8 @@ if len(sys.argv) > 3:
 create_report_archive = False
 if len(sys.argv) > 4:
     create_report_archive = (sys.argv[4] == "true")
+if not create_report_archive:
+    print("Generating report")
 output_report_path = generate_static_report(report_template_path, reports_json_path, output_report_path, create_report_archive)
 if not create_report_archive:
     print(output_report_path + " generated")
