@@ -167,19 +167,15 @@ def convert_iele_reports_to_contract_artifacts(iele_reports: IeleReports) -> Lis
 
 
 def write_json_file(file_path: str, json: str):
-    f = open(file_path, "w")
-    f.write(json)
-    f.close()
-
+    with open(file_path, "w") as f:
+        f.write(json)
 
 def generate_static_report(report_template_path: str, reports_json_path: str, output_report_path: str = "", create_report_archive: bool = False):
     report_id = str(uuid.uuid4())
     os.makedirs("./reports", exist_ok=True)
 
-    # TODO: Maybe allow the this path to be passed as argument?
-    f = open(reports_json_path, "r")
-    j = json.loads(f.read())
-    f.close()
+    with open(reports_json_path, "r") as f:
+        j = json.loads(f.read())
 
     iele_reports: IeleReports = {}
     for source_name in j:
@@ -193,9 +189,8 @@ def generate_static_report(report_template_path: str, reports_json_path: str, ou
 
     # Write the summary file
     summaries = make_coverage_summaries(artifacts)
-    f = open(os.path.join(report_base_path, "./summary.json"), "w")
-    f.write(json.dumps(list(map(lambda summary: asdict(summary), summaries))))
-    f.close()
+    with open(os.path.join(report_base_path, "./summary.json"), "w") as f:
+        f.write(json.dumps(list(map(lambda summary: asdict(summary), summaries))))
 
     # Write coverage information files
     for artifact in artifacts:
@@ -220,33 +215,32 @@ def generate_static_report(report_template_path: str, reports_json_path: str, ou
     write_json_file(os.path.join(report_base_path, report_id +
                                  ".json"), json.dumps(asdict(report)))
 
-    if create_report_archive == False:
+    if not create_report_archive:
         # Create JavaScript code
         js_code = "window.FIREFLY_REPORT_FILES = {}"
-        onlyfiles = [f for f in os.listdir(report_base_path) if os.path.isfile(os.path.join(report_base_path, f))] + [os.path.join(
-            "original", f) for f in os.listdir(os.path.join(report_base_path, "./original")) if not f.endswith(".zip")]
+        onlyfiles = [ f for f in os.listdir(report_base_path) 
+                            if os.path.isfile(os.path.join(report_base_path, f))
+                    ] + [ os.path.join("original", f) for f in os.listdir(os.path.join(report_base_path, "./original"))
+                                                    if not f.endswith(".zip") ]
         for f in onlyfiles:
-            file = open(os.path.join(report_base_path, f), "r")
-            content = file.read()
-            file.close()
+            with open(os.path.join(report_base_path, f), "r") as file:
+                content = file.read()
             if not f.endswith(".json"):
                 content = json.dumps(content)
             js_code += "\nwindow.FIREFLY_REPORT_FILES[\"" + \
                 report_id + "/" + f + "\"] = " + content + "\n"
 
         # Inject the js code into the HTML report template file.
-        f = open(report_template_path, "r")
-        template = f.read()
-        f.close()
+        with open(report_template_path, "r") as f:
+            template = f.read()
         report_html = template.replace(
             "<body>", "<script>" + js_code + "</script>\n<body>")
 
         if output_report_path.strip() == "":
             output_report_path = report_id + ".html"
 
-        f = open(output_report_path, "w")
-        f.write(report_html)
-        f.close()
+        with open(output_report_path, "w") as f:
+            f.write(report_html)
     else:
         # make report.zip file
         if os.path.exists("report.zip"):
