@@ -206,16 +206,17 @@ def generate_static_report(report_template_path: str, reports_json_path: str, ou
     copyfile(reports_json_path,
              os.path.join(original_path, "./reports.json"))
 
-   # Create ${report_id}.json file
     firefly_log_exists = os.path.exists("./firefly.log")
     if firefly_log_exists:
         copyfile("./firefly.log", os.path.join(original_path, "./firefly.log"))
-    report: Report = Report(status="success", tag=None, hasFireflyLog=firefly_log_exists, created=datetime.today(
-    ).strftime('%Y-%m-%dT%H:%M:%SZ'), reportId=report_id, token="(generated)", coverage="ParseSuccess", commit=None, type="iele")
-    write_json_file(os.path.join(report_base_path, report_id +
-                                 ".json"), json.dumps(asdict(report)))
 
     if not create_report_archive:
+        # Create ${report_id}.json file
+        report: Report = Report(status="success", tag=None, hasFireflyLog=firefly_log_exists, created=datetime.today(
+        ).strftime('%Y-%m-%dT%H:%M:%SZ'), reportId=report_id, token="(generated)", coverage="ParseSuccess", commit=None, type="iele")
+        write_json_file(os.path.join(report_base_path, report_id +
+                                    ".json"), json.dumps(asdict(report)))
+
         # Create JavaScript code
         js_code = "window.FIREFLY_REPORT_FILES = {}"
         onlyfiles = [ f for f in os.listdir(report_base_path) 
