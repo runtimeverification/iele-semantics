@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+<meta charset="utf-8" />
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+/>
+<meta
+  name="description"
+  content="Design and implement your programming language and software analysis tools with mathematical rigor."
+/>
+<meta name="keywords" content="runtime, verification, rv, k" />
+<meta name="author" content="IELE Semantics | Runtime Verification Inc" />
+<meta name="robots" content="index, follow" />
+
+<!--favicon icon-->
+<link rel="icon" type="image/png" href="../assets/img/favicon.ico" />
+
+<title>IELE Semantics | Runtime Verification Inc</title>
+
+<!-- <base href="/k/" /> -->
+
+<!--web fonts-->
+<link
+  href="https://fonts.googleapis.com/css?family=Nunito:300,400,600,700,800"
+  rel="stylesheet"
+/>
+<link
+  href="https://fonts.googleapis.com/css?family=Lora:400i"
+  rel="stylesheet"
+/>
+
+<link
+  href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css"
+  rel="stylesheet"
+/>
+
+<link href="../assets/css/index.css" rel="stylesheet" />
+
+<!--[if (gt IE 9) |!(IE)]><!-->
+<!--<link rel="stylesheet" href="/assets/vendor/custom-nav/css/effects/fade-menu.css"/>-->
+<!-- <link rel="stylesheet" href="../assets/k/vl-nav/css/effects/slide-menu.css" /> -->
+<!--<![endif]-->
+
+  </head>
+
+  <body>
+<header
+  class="navbar navbar-expand navbar-dark flex-column flex-md-row bd-navbar"
+>
+  <a class="logo-link" href="../index.html"> IELE Semantics </a>
+  <ul class="navbar-nav ml-md-auto">
+    <li class="nav-item">
+      <a
+        class="nav-link pl-2 pr-1 mx-1 py-3 my-n2"
+        href="https://github.com/runtimeverification/iele-semantics"
+        target="_blank"
+        rel="noopener"
+        aria-label="GitHub"
+      >
+        <i class="fab fa-github"></i>
+      </a>
+    </li>
+  </ul>
+  <!--
+  <a
+    class="btn btn-rv-blue d-none d-lg-inline-block mb-3 mb-md-0 ml-md-3"
+    href="../downloads"
+    >Download</a
+  >
+  -->
+</header>
+
+
+    <div class="container-fluid">
+      <div class="row flex-xl-nowrap">
+<div class="col-12 col-md-3 col-xl-2 bd-sidebar mb-3">
+  <form
+    role="search"
+    class="bd-search d-flex align-items-center justify-content-between"
+  >
+    <input
+      type="search"
+      class="form-control"
+      placeholder="Search..."
+      aria-label="Search for..."
+      autocomplete="false"
+      id="search-box"
+    />
+    <button
+      class="btn bd-search-docs-toggle d-md-none p-0 ml-3 collapsed"
+      type="button"
+      aria-label="Toggle docs navigation"
+      style="font-size: 1.4rem"
+    >
+      <i class="fas fa-bars"></i>
+    </button>
+  </form>
+  <nav class="collapse bd-links" aria-label="Main navigation">
+    <div class="bd-toc-item">
+      <a class="bd-toc-link" href="../">Homepage</a>
+      <a class="bd-toc-link" href="../INSTALL">Install</a>
+      <a class="bd-toc-link" href="../Design">Design</a>
+    </div>
+  </nav>
+</div>
+
+        <main
+          class="col-12 col-md-9 col-xl-8 py-md-3 pl-md-5 bd-content"
+          role="main"
+        >
+          <div class="markdown-preview"><html><head></head><body><h1 id="iele-textual-syntax">IELE Textual Syntax</h1>
+<p>Here we define the textual syntax of IELE assembly code. The syntax represented here has some syntactic sugar which is removed by the assembler. However, a fragment of this textual encoding is used by the semantics to express the rules of the language itself. The <a href="https://github.com/runtimeverification/iele-semantics/tree/master/iele-examples">iele-examples</a> directory contains various sample IELE contracts, such as:</p>
+<ul>
+<li>a <a href="https://github.com/runtimeverification/iele-semantics/tree/master/iele-examples/simpleOpenAuction.iele">simple open auction contract</a>;</li>
+<li>an <a href="https://github.com/runtimeverification/iele-semantics/tree/master/iele-examples/erc20.iele">ERC20 token</a>;  and</li>
+<li>a <a href="https://github.com/runtimeverification/iele-semantics/tree/master/iele-examples/forwardingWallet.iele">forwarding wallet contract</a>.</li>
+</ul>
+<p>The best way to understand the meaning of the IELE syntactic constructs is to read their actual formal semantics in <a href="../iele/">iele.md</a>.</p>
+<h2 id="names-and-literals">Names and Literals</h2>
+<h3 id="iele-names">IELE Names</h3>
+<p>IELE uses alphanumeric names for identifying registers, labels, functions, and contracts. IELE &quot;keywords&quot; are also valid identifiers.</p>
+<pre class="language-k"><code><span class="token keyword">module</span> IELE<span class="token operator">-</span>SYNTAX
+  <span class="token keyword">imports</span> IELE<span class="token operator">-</span>COMMON
+
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> r<span class="token string">&quot;(?&lt;![A-Za-z0-9\\_\\.\\-\\$])[a-zA-Z\\.\\_\\$][0-9a-zA-Z\\.\\_\\-\\$]*&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">,</span> <span class="token class-name">notInRules</span><span class="token punctuation">,</span> prec<span class="token punctuation">(</span><span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+
+  <span class="token keyword">syntax</span> Keyword <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;load&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;store&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;sload&quot;</span>  <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;sstore&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;iszero&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;not&quot;</span>  <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;add&quot;</span>  <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;mul&quot;</span>  <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;sub&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;div&quot;</span>  <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+                   <span class="token operator">|</span> <span class="token string">&quot;exp&quot;</span>  <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;mod&quot;</span>   <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;addmod&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;mulmod&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;expmod&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;byte&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;sext&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;twos&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;and&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;or&quot;</span>   <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+                   <span class="token operator">|</span> <span class="token string">&quot;xor&quot;</span>  <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;shift&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;lt&quot;</span>     <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;le&quot;</span>     <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;gt&quot;</span>     <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;ge&quot;</span>   <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;eq&quot;</span>   <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;ne&quot;</span>   <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;cmp&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;sha3&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  
+  <span class="token keyword">syntax</span> Keyword <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;br&quot;</span>   <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;call&quot;</span>   <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;staticcall&quot;</span>  <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;at&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;send&quot;</span>  <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;gaslimit&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;ret&quot;</span>      <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;void&quot;</span>   <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;revert&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+                   <span class="token operator">|</span> <span class="token string">&quot;log&quot;</span>  <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;create&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;copycreate&quot;</span>  <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;selfdestruct&quot;</span>         <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;contract&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;external&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;define&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;public&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+                   <span class="token operator">|</span> <span class="token string">&quot;log2&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;bswap&quot;</span>  <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span> <span class="token operator">|</span> <span class="token string">&quot;calladdress&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> Keyword <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+
+  <span class="token keyword">syntax</span> NumericIeleName <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> r<span class="token string">&quot;[0-9]+&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+
+  <span class="token keyword">syntax</span> StringIeleName <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> r<span class="token string">&quot;\\\&quot;(([^\\\&quot;\\\\])|(\\\\[0-9a-fA-F]{2}))*\\\&quot;&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+<span class="token keyword">endmodule</span>
+</code></pre>
+<p>Local register names are desugared to integers when assembling an IELE program</p>
+<pre class="language-k"><code><span class="token keyword">module</span> IELE<span class="token operator">-</span>COMMON
+  <span class="token keyword">imports</span> DOMAINS<span class="token operator">-</span>SYNTAX
+  <span class="token keyword">imports</span> INT<span class="token operator">-</span>SYNTAX
+
+  <span class="token keyword">syntax</span> KResult
+
+  <span class="token keyword">syntax</span> NumericIeleName <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token keyword">Int</span>
+  <span class="token keyword">syntax</span> StringIeleName <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> IeleName <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> NumericIeleName
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> IeleName <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> IeleNameToken
+  <span class="token keyword">syntax</span> IeleName <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> StringIeleName <span class="token punctuation">[</span><span class="token class-name">klabel</span><span class="token punctuation">(</span>StringIeleName<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token class-name">avoid</span><span class="token punctuation">,</span> <span class="token class-name">symbol</span><span class="token punctuation">,</span> function<span class="token punctuation">]</span>
+</code></pre>
+<h3 id="identifiers">Identifiers</h3>
+<p>IELE has two categories of identifiers: local and global names.</p>
+<ul>
+<li>Local names have function-wide scope, are used for naming registers, and begin with <code>%</code>.</li>
+<li>Global names have contract-wide scope, are used for naming globals and functions, and begin with <code>@</code>.</li>
+</ul>
+<pre class="language-k"><code>  <span class="token keyword">syntax</span> GlobalName <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;@&quot;</span> IeleName
+
+  <span class="token keyword">syntax</span> LocalName <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;%&quot;</span> IeleName
+
+  <span class="token keyword">syntax</span> LocalNames <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> List<span class="token punctuation">{</span>LocalName<span class="token punctuation">,</span> <span class="token string">&quot;,&quot;</span><span class="token punctuation">}</span> <span class="token punctuation">[</span><span class="token class-name">klabel</span><span class="token punctuation">(</span>localNameList<span class="token punctuation">)</span><span class="token punctuation">]</span>
+</code></pre>
+<h3 id="constants">Constants</h3>
+<ul>
+<li>IELE constants include unbounded signed integer literals and globals.</li>
+<li>IELE globals serve as names with contract-wide scope that hold a constant value (cannot be modified).</li>
+</ul>
+<pre class="language-k"><code>  <span class="token keyword">syntax</span> Constant <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> IntConstant <span class="token operator">|</span> GlobalName
+  <span class="token keyword">syntax</span> IntConstant <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token keyword">Int</span> <span class="token operator">|</span> <span class="token keyword">Bool</span> <span class="token operator">|</span> HexConstant
+  <span class="token keyword">syntax</span> HexConstant <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> r<span class="token string">&quot;0x[0-9a-fA-F]+&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+</code></pre>
+<h2 id="instructions">Instructions</h2>
+<h3 id="operands">Operands</h3>
+<p>IELE instruction operands are used at the left- and right-hand side of IELE instructions.</p>
+<ul>
+<li>One or more <code>LValues</code> can be used at the left-hand side of various IELE instructions</li>
+<li>Zero or more <code>Operands</code> can be used at the right-hand side of various IELE instructions and as actual argument lists in function calls.</li>
+<li>Constants can only be used as right-hand side operands, while registers can be used as both left- and right-hand side operands.</li>
+<li>Each right-hand side operand will be heated to an unbounded signed integer value during execution.</li>
+</ul>
+<pre class="language-k"><code>  <span class="token keyword">syntax</span> LValue <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LocalName
+  
+  <span class="token keyword">syntax</span> LValues <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> NeList<span class="token punctuation">{</span>LValue<span class="token punctuation">,</span> <span class="token string">&quot;,&quot;</span><span class="token punctuation">}</span> <span class="token punctuation">[</span><span class="token class-name">klabel</span><span class="token punctuation">(</span>lvalueList<span class="token punctuation">)</span><span class="token punctuation">]</span>
+
+  <span class="token keyword">syntax</span> Operand <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token operator">|</span> Constant
+
+  <span class="token keyword">syntax</span> Operands <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> List<span class="token punctuation">{</span>Operand<span class="token punctuation">,</span> <span class="token string">&quot;,&quot;</span><span class="token punctuation">}</span> <span class="token punctuation">[</span><span class="token class-name">klabel</span><span class="token punctuation">(</span>operandList<span class="token punctuation">)</span><span class="token punctuation">]</span>
+
+  <span class="token keyword">syntax</span> NonEmptyOperands <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> NeList<span class="token punctuation">{</span>Operand<span class="token punctuation">,</span> <span class="token string">&quot;,&quot;</span><span class="token punctuation">}</span> <span class="token punctuation">[</span><span class="token class-name">klabel</span><span class="token punctuation">(</span>operandList<span class="token punctuation">)</span><span class="token punctuation">]</span>
+
+  <span class="token keyword">syntax</span> Ints <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> List<span class="token punctuation">{</span><span class="token keyword">Int</span><span class="token punctuation">,</span> <span class="token string">&quot;,&quot;</span><span class="token punctuation">}</span> <span class="token punctuation">[</span><span class="token class-name">klabel</span><span class="token punctuation">(</span>operandList<span class="token punctuation">)</span><span class="token punctuation">]</span>
+
+  <span class="token keyword">syntax</span> Operands <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> Ints
+
+  <span class="token keyword">syntax</span> Operands <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> NonEmptyOperands
+
+  <span class="token keyword">syntax</span> Ints <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> NonEmptyInts
+
+  <span class="token keyword">syntax</span> NonEmptyOperands <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> NonEmptyInts
+
+  <span class="token keyword">syntax</span> NonEmptyInts <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> NeList<span class="token punctuation">{</span><span class="token keyword">Int</span><span class="token punctuation">,</span> <span class="token string">&quot;,&quot;</span><span class="token punctuation">}</span> <span class="token punctuation">[</span><span class="token class-name">klabel</span><span class="token punctuation">(</span>operandList<span class="token punctuation">)</span><span class="token punctuation">]</span>
+</code></pre>
+<h3 id="assignment">Assignment</h3>
+<p>Simple copy assignment that loads a value into a register.</p>
+<pre class="language-k"><code>  <span class="token keyword">syntax</span> AssignInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> Operand
+</code></pre>
+<h3 id="local-memory">Local Memory</h3>
+<p>Instructions that provide access to the local execution memory. For more details see <a href="../Design/#local-execution-memory">here</a>.</p>
+<pre class="language-k"><code>  <span class="token keyword">syntax</span> LoadInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;load&quot;</span> <span class="token comment">/* cell */</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">strict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> LoadInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;load&quot;</span> <span class="token comment">/* cell */</span> Operand <span class="token string">&quot;,&quot;</span> <span class="token comment">/* offset in bytes */</span> Operand <span class="token string">&quot;,&quot;</span> <span class="token comment">/* width in bytes */</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span><span class="token number">3</span><span class="token punctuation">,</span><span class="token number">4</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> StoreInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;store&quot;</span> <span class="token comment">/* value */</span> Operand <span class="token string">&quot;,&quot;</span> <span class="token comment">/* cell */</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span><span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> StoreInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;store&quot;</span> <span class="token comment">/* value */</span> Operand <span class="token string">&quot;,&quot;</span> <span class="token comment">/* cell */</span> Operand <span class="token string">&quot;,&quot;</span> <span class="token comment">/* offset in bytes */</span> Operand <span class="token string">&quot;,&quot;</span> <span class="token comment">/* width in bytes */</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span><span class="token number">2</span><span class="token punctuation">,</span><span class="token number">3</span><span class="token punctuation">,</span><span class="token number">4</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+</code></pre>
+<h3 id="account-storage">Account Storage</h3>
+<p>Instructions that provide access to the account storage. For more details see <a href="../Design/#account-storage">here</a>.</p>
+<pre class="language-k"><code>  <span class="token keyword">syntax</span> SLoadInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;sload&quot;</span> <span class="token comment">/* index */</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">strict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> SStoreInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;sstore&quot;</span> <span class="token comment">/* value */</span> Operand <span class="token string">&quot;,&quot;</span> <span class="token comment">/* index */</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span><span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+</code></pre>
+<h3 id="expressions">Expressions</h3>
+<p>Various expressions over unbounded signed integers. For more details see <a href="../Design/#arbitrary-precision-words">here</a>.</p>
+<pre class="language-k"><code>  <span class="token keyword">syntax</span> IsZeroInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;iszero&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">strict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> NotInst    <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;not&quot;</span>    Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">strict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+
+  <span class="token keyword">syntax</span> AddInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;add&quot;</span> Operand <span class="token string">&quot;,&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span><span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> MulInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;mul&quot;</span> Operand <span class="token string">&quot;,&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span><span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> SubInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;sub&quot;</span> Operand <span class="token string">&quot;,&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span><span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> DivInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;div&quot;</span> Operand <span class="token string">&quot;,&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span><span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> ExpInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;exp&quot;</span> Operand <span class="token string">&quot;,&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span><span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> ModInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;mod&quot;</span> Operand <span class="token string">&quot;,&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span><span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+
+  <span class="token keyword">syntax</span> AddModInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;addmod&quot;</span> Operand <span class="token string">&quot;,&quot;</span> Operand <span class="token string">&quot;,&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span><span class="token number">3</span><span class="token punctuation">,</span><span class="token number">4</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> MulModInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;mulmod&quot;</span> Operand <span class="token string">&quot;,&quot;</span> Operand <span class="token string">&quot;,&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span><span class="token number">3</span><span class="token punctuation">,</span><span class="token number">4</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> ExpModInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;expmod&quot;</span> Operand <span class="token string">&quot;,&quot;</span> Operand <span class="token string">&quot;,&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span><span class="token number">3</span><span class="token punctuation">,</span><span class="token number">4</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+
+  <span class="token keyword">syntax</span> LogInst   <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;log2&quot;</span>                                    Operand             <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">strict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> ByteInst  <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;byte&quot;</span>  <span class="token comment">/* byte index, 0 being the LSB */</span> Operand <span class="token string">&quot;,&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span><span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> SExtInst  <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;sext&quot;</span>  <span class="token comment">/* width in bytes */</span>              Operand <span class="token string">&quot;,&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span><span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> TwosInst  <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;twos&quot;</span>  <span class="token comment">/* width in bytes */</span>              Operand <span class="token string">&quot;,&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span><span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> BswapInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;bswap&quot;</span> <span class="token comment">/* width in bytes */</span>              Operand <span class="token string">&quot;,&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span><span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+
+  <span class="token keyword">syntax</span> AndInst   <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;and&quot;</span>   Operand <span class="token string">&quot;,&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span><span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> OrInst    <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;or&quot;</span>    Operand <span class="token string">&quot;,&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span><span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> XorInst   <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;xor&quot;</span>   Operand <span class="token string">&quot;,&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span><span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> ShiftInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;shift&quot;</span> Operand <span class="token string">&quot;,&quot;</span> <span class="token comment">/* shift amount */</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span><span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+
+  <span class="token keyword">syntax</span> Predicate <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;lt&quot;</span> <span class="token operator">|</span> <span class="token string">&quot;le&quot;</span> <span class="token operator">|</span> <span class="token string">&quot;gt&quot;</span> <span class="token operator">|</span> <span class="token string">&quot;ge&quot;</span> <span class="token operator">|</span> <span class="token string">&quot;eq&quot;</span> <span class="token operator">|</span> <span class="token string">&quot;ne&quot;</span>
+  <span class="token keyword">syntax</span> CmpInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;cmp&quot;</span> Predicate Operand <span class="token string">&quot;,&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">3</span><span class="token punctuation">,</span><span class="token number">4</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+
+  <span class="token keyword">syntax</span> SHA3Inst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;sha3&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">strict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+</code></pre>
+<h3 id="static-jumps">Static Jumps</h3>
+<p>Instructions for conditional and unconditional jumps within the function&apos;s body. For more details see <a href="../Design/#static-jumps">here</a>.</p>
+<pre class="language-k"><code>  <span class="token keyword">syntax</span> JumpInst     <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;br&quot;</span> IeleName
+  <span class="token keyword">syntax</span> CondJumpInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;br&quot;</span> Operand <span class="token string">&quot;,&quot;</span> IeleName <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">strict</span><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+</code></pre>
+<h3 id="function-calls-and-returns">Function Calls and Returns</h3>
+<p>Instructions for local functions calls to other functions of the same contract, as well as contract function calls to public functions of contracts deployed in other accounts. For more details see <a href="../Design/#function-callreturn">here</a>.</p>
+<pre class="language-k"><code>  <span class="token keyword">syntax</span> LocalCallInst   <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;call&quot;</span> Operand <span class="token string">&quot;(&quot;</span> Operands <span class="token string">&quot;)&quot;</span>
+                           <span class="token operator">|</span> LValues <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;call&quot;</span> Operand <span class="token string">&quot;(&quot;</span> Operands <span class="token string">&quot;)&quot;</span> <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">strict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span><span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> AccountCallInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValues <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;call&quot;</span> Operand <span class="token string">&quot;at&quot;</span> Operand <span class="token string">&quot;(&quot;</span> Operands <span class="token string">&quot;)&quot;</span> <span class="token string">&quot;send&quot;</span> Operand <span class="token string">&quot;,&quot;</span> <span class="token string">&quot;gaslimit&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span><span class="token number">3</span><span class="token punctuation">,</span><span class="token number">4</span><span class="token punctuation">,</span><span class="token number">5</span><span class="token punctuation">,</span><span class="token number">6</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> AccountCallInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValues <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;staticcall&quot;</span> Operand <span class="token string">&quot;at&quot;</span> Operand <span class="token string">&quot;(&quot;</span> Operands <span class="token string">&quot;)&quot;</span> <span class="token string">&quot;gaslimit&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span><span class="token number">3</span><span class="token punctuation">,</span><span class="token number">4</span><span class="token punctuation">,</span><span class="token number">5</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+
+  <span class="token keyword">syntax</span> CallAddressInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;calladdress&quot;</span> GlobalName <span class="token string">&quot;at&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">strict</span><span class="token punctuation">(</span><span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+
+  <span class="token keyword">syntax</span> ReturnInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;ret&quot;</span> NonEmptyOperands <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">strict</span><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+                      <span class="token operator">|</span> <span class="token string">&quot;ret&quot;</span> <span class="token string">&quot;void&quot;</span>
+  <span class="token keyword">syntax</span> RevertInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;revert&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">strict</span><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+</code></pre>
+<h3 id="logging">Logging</h3>
+<p>Instructions to append information to the substate log. These variations append the entire content of a local execution memory cell to the log along with zero to four log topics.</p>
+<pre class="language-k"><code>  <span class="token keyword">syntax</span> LogInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;log&quot;</span> <span class="token comment">/* cell */</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">strict</span><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+                   <span class="token operator">|</span> <span class="token string">&quot;log&quot;</span> <span class="token comment">/* cell */</span> Operand <span class="token string">&quot;,&quot;</span> NonEmptyOperands <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span><span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+</code></pre>
+<h3 id="account-creation-and-deletion">Account Creation and Deletion</h3>
+<p>Instructions to create and/or delete a new account with a contract deployed with it. For more details see <a href="../Design/#contract-creation">here</a>.</p>
+<pre class="language-k"><code>  <span class="token keyword">syntax</span> CreateInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token comment">/* exit status */</span> LValue <span class="token string">&quot;,&quot;</span> <span class="token comment">/* new account address */</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;create&quot;</span>     <span class="token comment">/* contract name */</span>    IeleName <span class="token string">&quot;(&quot;</span> Operands <span class="token string">&quot;)&quot;</span> <span class="token string">&quot;send&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">4</span><span class="token punctuation">,</span><span class="token number">5</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> CreateInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token comment">/* exit status */</span> LValue <span class="token string">&quot;,&quot;</span> <span class="token comment">/* new account address */</span> LValue <span class="token string">&quot;=&quot;</span> <span class="token string">&quot;copycreate&quot;</span> <span class="token comment">/* contract address */</span> Operand  <span class="token string">&quot;(&quot;</span> Operands <span class="token string">&quot;)&quot;</span> <span class="token string">&quot;send&quot;</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">seqstrict</span><span class="token punctuation">(</span><span class="token number">3</span><span class="token punctuation">,</span><span class="token number">4</span><span class="token punctuation">,</span><span class="token number">5</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+
+  <span class="token keyword">syntax</span> SelfdestructInst <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;selfdestruct&quot;</span> <span class="token comment">/* account to send balance */</span> Operand <span class="token punctuation">[</span>hybrid<span class="token punctuation">,</span> <span class="token class-name">strict</span><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+</code></pre>
+<h3 id="local-and-network-state-accessors">Local and Network State Accessors</h3>
+<p>These accessors are implemented as builtins that can be called using the same syntax as in a local call, e.g. <code>%pc = call @iele.pc()</code> or <code>%balance = call @iele.balance(%bank.account)</code>. The names of the builtins follow the IELE convention for intrinsics: Their name is a valid global name that starts with the prefix <code>iele.</code>. This means that no user-defined global name can start with the prefix <code>iele.</code>.</p>
+<pre class="language-k"><code>  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;iele.invalid&quot;</span>     <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token comment">// local state queries</span>
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;iele.gas&quot;</span>         <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;iele.gasprice&quot;</span>    <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;iele.gaslimit&quot;</span>    <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;iele.beneficiary&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;iele.timestamp&quot;</span>   <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;iele.number&quot;</span>      <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;iele.difficulty&quot;</span>  <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;iele.address&quot;</span>     <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;iele.origin&quot;</span>      <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;iele.caller&quot;</span>      <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;iele.callvalue&quot;</span>   <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;iele.msize&quot;</span>       <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;iele.codesize&quot;</span>    <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;iele.blockhash&quot;</span>   <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token comment">// account queries</span>
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;iele.balance&quot;</span>     <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;iele.extcodesize&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+</code></pre>
+<h3 id="precompiled-contracts">Precompiled Contracts</h3>
+<p>Precompiled contracts are also available as IELE builtins but they should be called using the syntax for an account call targeting the account with address <code>1</code> (e.g. <code>%res  = call @iele.sha256 at 1 ( %len, %data ) send %val, gaslimit %gas</code>).</p>
+<pre class="language-k"><code>  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;iele.ecrec&quot;</span>     <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;iele.sha256&quot;</span>    <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;iele.rip160&quot;</span>    <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;iele.id&quot;</span>        <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;iele.ecadd&quot;</span>     <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;iele.ecmul&quot;</span>     <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;iele.ecpairing&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+</code></pre>
+<h4 id="instruction-lists">Instruction Lists</h4>
+<pre class="language-k"><code>  <span class="token keyword">syntax</span> Instruction <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span>
+    AssignInst
+  <span class="token operator">|</span> LoadInst
+  <span class="token operator">|</span> StoreInst
+  <span class="token operator">|</span> SLoadInst
+  <span class="token operator">|</span> SStoreInst
+  <span class="token operator">|</span> IsZeroInst
+  <span class="token operator">|</span> NotInst
+  <span class="token operator">|</span> AddInst
+  <span class="token operator">|</span> MulInst
+  <span class="token operator">|</span> SubInst
+  <span class="token operator">|</span> DivInst
+  <span class="token operator">|</span> ExpInst
+  <span class="token operator">|</span> ModInst
+  <span class="token operator">|</span> AddModInst
+  <span class="token operator">|</span> MulModInst
+  <span class="token operator">|</span> ExpModInst
+  <span class="token operator">|</span> ByteInst
+  <span class="token operator">|</span> SExtInst
+  <span class="token operator">|</span> TwosInst
+  <span class="token operator">|</span> BswapInst
+  <span class="token operator">|</span> AndInst
+  <span class="token operator">|</span> OrInst
+  <span class="token operator">|</span> XorInst
+  <span class="token operator">|</span> ShiftInst
+  <span class="token operator">|</span> CmpInst
+  <span class="token operator">|</span> SHA3Inst
+  <span class="token operator">|</span> JumpInst
+  <span class="token operator">|</span> CondJumpInst
+  <span class="token operator">|</span> LocalCallInst
+  <span class="token operator">|</span> AccountCallInst
+  <span class="token operator">|</span> CallAddressInst
+  <span class="token operator">|</span> ReturnInst
+  <span class="token operator">|</span> RevertInst
+  <span class="token operator">|</span> LogInst
+  <span class="token operator">|</span> CreateInst
+  <span class="token operator">|</span> SelfdestructInst
+
+  <span class="token keyword">syntax</span> Instructions <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> List<span class="token punctuation">{</span>Instruction<span class="token punctuation">,</span> <span class="token string">&quot;&quot;</span><span class="token punctuation">}</span> <span class="token punctuation">[</span><span class="token class-name">klabel</span><span class="token punctuation">(</span>instructionList<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token class-name">format</span><span class="token punctuation">(</span><span class="token operator">%</span><span class="token number">1</span><span class="token operator">%</span><span class="token number">2</span><span class="token operator">%</span>n<span class="token operator">%</span><span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+</code></pre>
+<h2 id="iele-program-structure">IELE Program Structure</h2>
+<h3 id="contracts">Contracts</h3>
+<p>A contract is a compilation unit of code to be deployed with an account in the blockchain.</p>
+<ul>
+<li>A IELE program consists of a list of one or more contracts.</li>
+<li>The last contract in the list is the main contract.</li>
+<li>Each contract has a name and consists of a list of top-level definitions.</li>
+<li>Top-level definitions include external contract declarations, global definitions, and function definitions.</li>
+</ul>
+<p>For more details see below and <a href="../Design/#program-structure">here</a>.</p>
+<pre class="language-k"><code>  <span class="token keyword">syntax</span> TopLevelDefinition <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span>
+    FunctionDefinition
+  <span class="token operator">|</span> GlobalDefinition
+  <span class="token operator">|</span> ContractDeclaration
+
+  <span class="token keyword">syntax</span> TopLevelDefinitions <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> List<span class="token punctuation">{</span>TopLevelDefinition<span class="token punctuation">,</span> <span class="token string">&quot;&quot;</span><span class="token punctuation">}</span> <span class="token punctuation">[</span><span class="token class-name">klabel</span><span class="token punctuation">(</span>topLevelDefinitionList<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token class-name">format</span><span class="token punctuation">(</span><span class="token operator">%</span><span class="token number">1</span><span class="token operator">%</span><span class="token number">2</span><span class="token operator">%</span>n<span class="token operator">%</span><span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+
+  <span class="token keyword">syntax</span> ContractDefinition <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;contract&quot;</span> IeleName <span class="token string">&quot;{&quot;</span> TopLevelDefinitions <span class="token string">&quot;}&quot;</span> <span class="token punctuation">[</span><span class="token class-name">format</span><span class="token punctuation">(</span><span class="token operator">%</span><span class="token number">1</span> <span class="token operator">%</span><span class="token number">2</span> <span class="token operator">%</span><span class="token number">3</span><span class="token operator">%</span>n<span class="token operator">%</span>i<span class="token operator">%</span><span class="token number">4</span><span class="token operator">%</span>d<span class="token operator">%</span>n<span class="token operator">%</span><span class="token number">5</span><span class="token punctuation">)</span><span class="token punctuation">]</span>
+
+  <span class="token keyword">syntax</span> Contract <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> List<span class="token punctuation">{</span>ContractDefinition<span class="token punctuation">,</span> <span class="token string">&quot;&quot;</span><span class="token punctuation">}</span> <span class="token punctuation">[</span><span class="token class-name">klabel</span><span class="token punctuation">(</span>contractDefinitionList<span class="token punctuation">)</span><span class="token punctuation">]</span>
+</code></pre>
+<h3 id="contract-declarations">Contract declarations</h3>
+<p>A contract can only create accounts with deployed contracts that have been externaly declared within its top-level. A corresponding contract definition for each external contract declaration should precede this contract definition. This design decision ensures that a contract can only create new accounts with deployed contracts for which the code is available to it.</p>
+<pre class="language-k"><code>  <span class="token keyword">syntax</span> ContractDeclaration <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;external&quot;</span> <span class="token string">&quot;contract&quot;</span> IeleName
+</code></pre>
+<h3 id="global-registers">Global Registers</h3>
+<p>Definition of globals and their constant values. Globals are accessible from within any function of the contract and their value cannot be modified.</p>
+<pre class="language-k"><code>  <span class="token keyword">syntax</span> GlobalDefinition <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> GlobalName <span class="token string">&quot;=&quot;</span> IntConstant  <span class="token punctuation">[</span><span class="token class-name">klabel</span><span class="token punctuation">(</span>globalDefinition<span class="token punctuation">)</span><span class="token punctuation">]</span>
+</code></pre>
+<h3 id="functions">Functions</h3>
+<p>Function definitions consist of a function signature (function name and names of formal arguments) and a function body (a list of blocks containing the code of the function). Functions can be defined as <code>public</code> meaning that they can be called from a contract deployed with another account. Non-<code>public</code> functions can only be called locally within the contract.</p>
+<pre class="language-k"><code>  <span class="token keyword">syntax</span> FunctionSignature <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> GlobalName <span class="token string">&quot;(&quot;</span> FunctionParameters <span class="token string">&quot;)&quot;</span>
+
+  <span class="token keyword">syntax</span> FunctionParameters <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> LocalNames
+
+  <span class="token keyword">syntax</span> FunctionDefinition <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> 
+    <span class="token string">&quot;define&quot;</span> FunctionSignature <span class="token string">&quot;{&quot;</span> Blocks <span class="token string">&quot;}&quot;</span>             <span class="token punctuation">[</span><span class="token class-name">format</span><span class="token punctuation">(</span><span class="token operator">%</span><span class="token number">1</span> <span class="token operator">%</span><span class="token number">2</span> <span class="token operator">%</span><span class="token number">3</span><span class="token operator">%</span>i<span class="token operator">%</span>n<span class="token operator">%</span><span class="token number">4</span><span class="token operator">%</span>d<span class="token operator">%</span>n<span class="token operator">%</span><span class="token number">5</span><span class="token operator">%</span>n<span class="token punctuation">)</span><span class="token punctuation">]</span>
+  <span class="token operator">|</span> <span class="token string">&quot;define&quot;</span> <span class="token string">&quot;public&quot;</span> FunctionSignature <span class="token string">&quot;{&quot;</span> Blocks <span class="token string">&quot;}&quot;</span> <span class="token punctuation">[</span><span class="token class-name">format</span><span class="token punctuation">(</span><span class="token operator">%</span><span class="token number">1</span> <span class="token operator">%</span><span class="token number">2</span> <span class="token operator">%</span><span class="token number">3</span> <span class="token operator">%</span><span class="token number">4</span><span class="token operator">%</span>i<span class="token operator">%</span>n<span class="token operator">%</span><span class="token number">5</span><span class="token operator">%</span>d<span class="token operator">%</span>n<span class="token operator">%</span><span class="token number">6</span><span class="token operator">%</span>n<span class="token punctuation">)</span><span class="token punctuation">]</span>
+</code></pre>
+<h3 id="blocks">Blocks</h3>
+<p>The body of a function is a list of blocks, where each block is a list of IELE instructions. Each block except the first one has to be preceded by a label, making the first instruction of the block a valid target of a local jump. The first block can also be optionally labeled.</p>
+<pre class="language-k"><code>  <span class="token keyword">syntax</span> LabeledBlock <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> IeleName <span class="token string">&quot;:&quot;</span> Instructions
+
+  <span class="token keyword">syntax</span> LabeledBlocks <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> List<span class="token punctuation">{</span>LabeledBlock<span class="token punctuation">,</span> <span class="token string">&quot;&quot;</span><span class="token punctuation">}</span> <span class="token punctuation">[</span><span class="token class-name">klabel</span><span class="token punctuation">(</span>labeledBlockList<span class="token punctuation">)</span><span class="token punctuation">]</span>
+
+  <span class="token keyword">syntax</span> UnlabeledBlock <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> Instructions
+
+  <span class="token keyword">syntax</span> Blocks <span class="token punctuation">[</span>flatPredicate<span class="token punctuation">]</span>
+  <span class="token keyword">syntax</span> Blocks <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> UnlabeledBlock LabeledBlocks <span class="token punctuation">[</span><span class="token class-name">avoid</span><span class="token punctuation">]</span> <span class="token operator">|</span> LabeledBlocks
+</code></pre>
+<h3 id="reserved-iele-function-names">Reserved IELE Function Names</h3>
+<ul>
+<li>An account to which code has never been deployed contains an implicit contract with one public function named <code>@deposit</code> which takes no arguments, returns no values, and does nothing. This function exists to allow such accounts to receive payments.</li>
+<li>A special private function named <code>@init</code> should be defined for every contract and will be called when an account is created with this contract.</li>
+</ul>
+<pre class="language-k"><code>  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;deposit&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+
+  <span class="token keyword">syntax</span> IeleNameToken <span class="token punctuation">:</span><span class="token punctuation">:</span><span class="token operator">=</span> <span class="token string">&quot;init&quot;</span> <span class="token punctuation">[</span><span class="token class-name">token</span><span class="token punctuation">]</span>
+</code></pre>
+<h4 id="macros">Macros</h4>
+<p>Finally, following are macros for desugaring empty <code>LValues</code> and <code>Operands</code> lists in calls and returns.</p>
+<pre class="language-k"><code>  <span class="token keyword">rule</span> call NAME <span class="token punctuation">(</span> ARGS <span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">.</span>LValues <span class="token operator">=</span> call NAME <span class="token punctuation">(</span> ARGS <span class="token punctuation">)</span> <span class="token punctuation">[</span>alias<span class="token punctuation">]</span>
+  <span class="token keyword">rule</span> ret void <span class="token operator">=&gt;</span> ret <span class="token punctuation">.</span>NonEmptyOperands <span class="token punctuation">[</span>alias<span class="token punctuation">]</span>
+<span class="token keyword">endmodule</span>
+</code></pre>
+</body></html></div>
+        </main>
+      </div>
+    </div>
+<!-- The footer is now controlled by the k-web-theme git submodule -->
+<footer id="rvsite-footer" class="app-footer text-md-left text-center">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-4 mb-md-0 mb-4">
+        <a href="https://runtimeverification.com/" target="_blank">
+          <picture>
+            <source
+              srcset="
+                https://runtimeverification.com/assets/img/rv-logo-dark.png
+              "
+              media="(prefers-color-scheme: dark)"
+            />
+            <img
+              class="logo-dark"
+              src="https://runtimeverification.com/assets/img/rv-logo.png"
+              alt="Runtime Verification logo"
+              style="height: 32px"
+            /> </picture
+        ></a>
+        <p class="mt-2 text-md-left copyright">
+          <a href="https://goo.gl/maps/NYzr2iKpXMgEmQ2F6" target="_blank"
+            >102 E Main St #500, Urbana, IL 61801</a
+          >
+        </p>
+      </div>
+      <div class="col-md-4 text-md-center mb-md-0 mb-4"></div>
+      <div class="col-md-4 mb-md-0 mb-4 text-md-right">
+        <p class="copyright">2021 © all rights reserved</p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Typist/1.2/typist.min.js"></script>
+    <script src="../assets/js/index.js"></script>
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-QL0D8HRYFW"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+      gtag("config", "G-QL0D8HRYFW");
+    </script>
+  </body>
+</html>
