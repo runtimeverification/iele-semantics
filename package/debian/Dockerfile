@@ -33,6 +33,8 @@ RUN    apt-get update         \
 
 RUN curl -sSL https://get.haskellstack.org/ | sh
 
+RUN pip3 install dataclasses dacite
+
 ARG USER_ID=1000
 ARG GROUP_ID=1000
 RUN    groupadd -g $GROUP_ID user                                                \

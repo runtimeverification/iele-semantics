@@ -62,7 +62,7 @@ export PATH:=$(IELE_BIN):$(PATH)
 .PHONY: all clean distclean libff protobuf coverage secp256k1 cryptopp \
         build build-interpreter build-vm build-check build-haskell build-node build-testnode build-assembler \
 		install install-interpreter install-vm install-kiele install-check uninstall \
-        split-tests split-vm-tests split-blockchain-tests test-node test-iele-coverage \
+        split-tests split-vm-tests split-blockchain-tests test-node test-iele-coverage test-generate-report \
         test-evm test-vm test-blockchain test-wellformed test-illformed test-bad-packet test-interactive test-sourcemap \
         test-iele test-iele-haskell test-iele-failing test-iele-slow test-iele-node assemble-iele-test test
 .SECONDARY:
@@ -153,7 +153,7 @@ TEST_PORT     = 10000
 TEST_ARGS     = --no-unparse
 TEST_DIR      = $(IELE_DIR)/tests
 
-test: split-tests test-vm test-iele test-iele-haskell test-iele-coverage test-wellformed test-illformed test-interactive test-node test-sourcemap
+test: split-tests test-vm test-iele test-iele-haskell test-iele-coverage test-wellformed test-illformed test-interactive test-node test-sourcemap test-generate-report
 
 split-tests: split-vm-tests split-blockchain-tests
 
@@ -251,6 +251,11 @@ test-interactive: iele-examples/erc20.iele $(TEST_DIR)/iele/danse/factorial/fact
 test-node: TEST_PORT=9001
 test-node:
 	$(TEST_DIR)/node-test.sh $(MAKEFLAGS) --port $(TEST_PORT)
+
+report_tests := $(wildcard $(TEST_DIR)/reports/*/report.json)
+test-generate-report: $(report_tests:.json=.html)
+$(TEST_DIR)/reports/%/report.html: $(TEST_DIR)/reports/%/report.json
+	cd $(dir $@) && kiele generate-report report.json -o report.html
 
 $(TEST_DIR)/VMTests/%:  TEST_MODE     = VMTESTS
 %.iele.test-wellformed: TEST_SCHEDULE = DANSE
@@ -435,6 +440,8 @@ install_libs :=              \
     $(iele_interpreter_libs) \
     $(iele_haskell_libs)     \
     kore-json.py             \
+    kiele-generate-report.py \
+    static-report.html       \
     version
 
 $(IELE_RUNNER): $(IELE_DIR)/kiele
@@ -449,10 +456,20 @@ $(IELE_LIB)/kore-json.py: $(IELE_DIR)/kore-json.py
 	@mkdir -p $(dir $@)
 	$(INSTALL) $< $@
 
+$(IELE_LIB)/kiele-generate-report.py: $(IELE_DIR)/kiele-generate-report.py
+	@mkdir -p $(dir $@)
+	$(INSTALL) $< $@
+
+$(IELE_LIB)/static-report.html: $(IELE_DIR)/static-report.html
+	@mkdir -p $(dir $@)
+	$(INSTALL) $< $@
+
 $(INSTALL_BIN)/iele-interpreter: $(patsubst %, $(INSTALL_LIB)/%, $(iele_interpreter_libs))
 $(INSTALL_BIN)/iele-check:       $(patsubst %, $(INSTALL_LIB)/%, $(iele_check_libs))
 
 $(INSTALL_BIN)/kiele: $(INSTALL_LIB)/kore-json.py
+$(INSTALL_BIN)/kiele: $(INSTALL_LIB)/kiele-generate-report.py
+$(INSTALL_BIN)/kiele: $(INSTALL_LIB)/static-report.html
 $(INSTALL_BIN)/kiele: $(INSTALL_LIB)/version
 
 $(INSTALL_BIN)/%: $(IELE_BIN)/%

@@ -158,8 +158,8 @@ sudo apt-get install --yes autoconf build-essential cmake curl flex gcc   \
 ### MacOS
 
 ```sh
-brew tap homebrew/homebrew-cask homebrew-cask-versions
-brew cask install java8
+brew tap adoptopenjdk/openjdk
+brew install --cask adoptopenjdk8
 brew install maven opam pkg-config gmp mpfr automake libtool protobuf cmake openssl
 ```
 

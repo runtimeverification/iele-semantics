@@ -8,3 +8,4 @@
 /.kprove*
 /.krun*
 result*
+.mypy_cache
