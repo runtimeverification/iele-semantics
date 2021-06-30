@@ -1022,6 +1022,9 @@ When execution of the callee reaches a `ret` instruction, control returns to the
 
     rule <k> #exec revert VALUE => #revert VALUE ... </k>
          <output> _ => .Ints </output>
+      requires VALUE <Int 0 orBool VALUE >Int 9
+    rule <k> #exec revert VALUE => #exception USER_ERROR ...</k>
+      requires VALUE >=Int 0 andBool VALUE <=Int 9
 ```
 
 ### Log Operations
