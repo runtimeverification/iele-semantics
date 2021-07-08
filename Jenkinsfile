@@ -175,10 +175,7 @@ pipeline {
           }
           stages {
             stage('Build Image') {
-              agent {
-                label 'docker'
-                reuseNode true
-              }
+              agent { reuseNode true }
               steps {
                 unstash 'bionic-kiele'
                 unstash 'focal-kiele'
