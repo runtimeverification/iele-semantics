@@ -18,8 +18,8 @@ pipeline {
     stage('Build and Test') {
       agent {
         dockerfile {
-          label 'docker'
           additionalBuildArgs '--build-arg K_COMMIT=${K_VERSION} --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g)'
+          reuseNode true
         }
       }
       stages {
@@ -53,8 +53,8 @@ pipeline {
           }
           agent {
             dockerfile {
-              reuseNode true
               additionalBuildArgs '--build-arg K_COMMIT=${K_VERSION} --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g)'
+              reuseNode true
             }
           }
           steps {
@@ -175,7 +175,10 @@ pipeline {
           }
           stages {
             stage('Build Image') {
-              agent { label 'docker' }
+              agent {
+                label 'docker'
+                reuseNode true
+              }
               steps {
                 unstash 'bionic-kiele'
                 unstash 'focal-kiele'
@@ -247,8 +250,8 @@ pipeline {
       }
       agent {
         dockerfile {
-          label 'docker'
           additionalBuildArgs '--build-arg K_COMMIT=${K_VERSION} --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g)'
+          reuseNode true
         }
       }
       post { failure { slackSend color: '#cb2431' , channel: '#iele-internal' , message: "Deploy Phase Failed: ${env.BUILD_URL}" } }
