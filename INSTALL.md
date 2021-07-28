@@ -177,9 +177,8 @@ These commands build and install KIELE:
 git clone https://github.com/runtimeverification/iele-semantics.git
 cd iele-semantics
 git submodule update --init --recursive
-sudo bash -c 'OPAMROOT=/usr/lib/kframework/opamroot k-configure-opam'
-sudo bash -c 'OPAMROOT=/usr/lib/kframework/opamroot opam install --yes ocaml-protoc rlp yojson zarith hex uuidm cryptokit'
-export OPAMROOT=/usr/lib/kframework/opamroot
+k-configure-opam
+opam install --yes ocaml-protoc rlp yojson zarith hex uuidm cryptokit
 eval $(opam config env)
 make build -j4
 
