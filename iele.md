@@ -1409,6 +1409,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
          <account>
            <acctID> ACCTTO </acctID>
            <nonce> NONCE => NONCE +Int 1 </nonce>
+           <code> _ => CODE </code>
            ...
          </account>
 
@@ -1445,11 +1446,6 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
          <mode> EXECMODE </mode>
          <gas> GAVAIL </gas>
          <output> _ => ACCT , .Ints </output>
-         <account>
-           <acctID> ACCT </acctID>
-           <code> _ => CODE </code>
-           ...
-         </account>
 
     rule <k> #exception STATUS ~> #finishCodeDeposit _ _ REG _ NEW:Bool => #popCallStack ~> #popWorldState ~> #popSubstate ~> #if NEW #then STATUS #else #registerDelta(REG, 1) ~> #load REG STATUS #fi ... </k>
 ```
