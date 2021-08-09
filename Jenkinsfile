@@ -2,7 +2,7 @@ pipeline {
   agent { label 'docker' }
   environment {
     KIELE_VERSION     = '0.1.0'
-    GITHUB_TOKEN      = credentials('rv-jenkins')
+    GITHUB_TOKEN      = credentials('rv-jenkins-access-token')
     SHORT_REV         = """${sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()}"""
     LONG_REV          = """${sh(returnStdout: true, script: 'git rev-parse HEAD').trim()}"""
     KIELE_RELEASE_TAG = "v${env.KIELE_VERSION}-${env.SHORT_REV}"
@@ -258,7 +258,7 @@ pipeline {
             unstash 'bin-kiele'
             unstash 'bionic-kiele'
             unstash 'focal-kiele'
-            sshagent(['2b3d8d6b-0855-4b59-864a-6b3ddf9c9d1a']) {
+            sshagent(['rv-jenkins-github']) {
               sh '''
                 git clone 'ssh://github.com/runtimeverification/iele-semantics.git' kiele-release
                 cd kiele-release
@@ -293,7 +293,7 @@ pipeline {
         stage('GitHub Pages') {
           steps {
             dir('gh-pages') {
-              sshagent(['2b3d8d6b-0855-4b59-864a-6b3ddf9c9d1a']) {
+              sshagent(['rv-jenkins-github']) {
                 sh '''
                   git clone 'ssh://github.com/runtimeverification/iele-semantics.git' --depth 1 --no-single-branch --branch master --branch gh-pages
                   cd iele-semantics
