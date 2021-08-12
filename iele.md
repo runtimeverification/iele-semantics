@@ -1409,6 +1409,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
          <account>
            <acctID> ACCTTO </acctID>
            <nonce> NONCE => NONCE +Int 1 </nonce>
+           <code> _ => CODE </code>
            ...
          </account>
 
@@ -1417,27 +1418,27 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
     rule #subcontract ( (contract NAME ! _ _ { _ } #as CONTRACT) _, NAME ) => CONTRACT .Contract
     rule #subcontract ( CONTRACT CONTRACTS, NAME ) => CONTRACT #subcontract(CONTRACTS, NAME) [owise]
 
-    syntax KItem ::= "#codeDeposit" Int Int Contract LValue LValue Bool
-                   | "#mkCodeDeposit" Int Int Contract LValue LValue Bool
-                   | "#finishCodeDeposit" Int Contract LValue LValue Bool
+    syntax KItem ::= "#codeDeposit" Int Int LValue LValue Bool
+                   | "#mkCodeDeposit" Int Int LValue LValue Bool
+                   | "#finishCodeDeposit" Int LValue LValue Bool
  // ----------------------------------------------------------------
-    rule <k> #exception STATUS ~> #codeDeposit _ _ _ REG _ NEW:Bool => #popCallStack ~> #popWorldState ~> #popSubstate ~> #if NEW #then STATUS #else #registerDelta(REG, 1) ~> #load REG STATUS #fi ... </k> <output> _ => .Ints </output>
-    rule <k> #revert OUT ~> #codeDeposit _ _ _ REG _ NEW:Bool => #popCallStack ~> #popWorldState ~> #popSubstate ~> #if NEW #then #refund GAVAIL ~> OUT #else #registerDelta(REG, intSize(OUT)) ~> #refund GAVAIL ~> #load REG OUT #fi ... </k>
+    rule <k> #exception STATUS ~> #codeDeposit _ _ REG _ NEW:Bool => #popCallStack ~> #popWorldState ~> #popSubstate ~> #if NEW #then STATUS #else #registerDelta(REG, 1) ~> #load REG STATUS #fi ... </k> <output> _ => .Ints </output>
+    rule <k> #revert OUT ~> #codeDeposit _ _ REG _ NEW:Bool => #popCallStack ~> #popWorldState ~> #popSubstate ~> #if NEW #then #refund GAVAIL ~> OUT #else #registerDelta(REG, intSize(OUT)) ~> #refund GAVAIL ~> #load REG OUT #fi ... </k>
          <gas> GAVAIL </gas>
 
     rule <mode> EXECMODE </mode>
-         <k> #end ~> #codeDeposit ACCT LEN CODE STATUS ACCTOUT NEW => #mkCodeDeposit ACCT LEN CODE STATUS ACCTOUT NEW ... </k>
+         <k> #end ~> #codeDeposit ACCT LEN STATUS ACCTOUT NEW => #mkCodeDeposit ACCT LEN STATUS ACCTOUT NEW ... </k>
 
-    rule <k> #mkCodeDeposit ACCT LEN CODE STATUS ACCTOUT NEW:Bool
+    rule <k> #mkCodeDeposit ACCT LEN STATUS ACCTOUT NEW:Bool
           => #if EXECMODE ==K VMTESTS orBool notBool NEW #then . #else Gcodedeposit < SCHED > *Int LEN ~> #deductGas #fi
-          ~> #finishCodeDeposit ACCT CODE STATUS ACCTOUT NEW
+          ~> #finishCodeDeposit ACCT STATUS ACCTOUT NEW
          ...
          </k>
          <mode> EXECMODE </mode>
          <schedule> SCHED </schedule>
          <output> .Ints </output>
 
-    rule <k> #finishCodeDeposit ACCT CODE STATUS ACCTOUT NEW:Bool
+    rule <k> #finishCodeDeposit ACCT STATUS ACCTOUT NEW:Bool
           => #popCallStack ~> #if EXECMODE ==K VMTESTS #then #popWorldState #else #dropWorldState #fi ~> #dropSubstate
           ~> #if NEW #then #refund GAVAIL ~> 0 #else #registerDelta(STATUS, 1) ~> #registerDelta(ACCTOUT, 3) ~> #refund GAVAIL ~> #load STATUS 0 ~> #load ACCTOUT ACCT #fi
          ...
@@ -1445,13 +1446,8 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
          <mode> EXECMODE </mode>
          <gas> GAVAIL </gas>
          <output> _ => ACCT , .Ints </output>
-         <account>
-           <acctID> ACCT </acctID>
-           <code> _ => CODE </code>
-           ...
-         </account>
 
-    rule <k> #exception STATUS ~> #finishCodeDeposit _ _ REG _ NEW:Bool => #popCallStack ~> #popWorldState ~> #popSubstate ~> #if NEW #then STATUS #else #registerDelta(REG, 1) ~> #load REG STATUS #fi ... </k>
+    rule <k> #exception STATUS ~> #finishCodeDeposit _ REG _ NEW:Bool => #popCallStack ~> #popWorldState ~> #popSubstate ~> #if NEW #then STATUS #else #registerDelta(REG, 1) ~> #load REG STATUS #fi ... </k>
 ```
 
 -   `create` will attempt to `#create` the named contract using the initialization code and cleans up the result with `#codeDeposit`.
@@ -1461,7 +1457,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
     rule <k> #exec STATUS , ACCTOUT = create NAME ( ARGS ) send VALUE
           => #checkCreate ACCT VALUE
           ~> #create ACCT #newAddr(ACCT, NONCE) #if Gstaticcalldepth << SCHED >> #then GAVAIL #else #allBut64th(GAVAIL) #fi VALUE #subcontract(CODE, NAME) ARGS
-          ~> #codeDeposit #newAddr(ACCT, NONCE) #contractSize(CODE, NAME) #subcontract(CODE, NAME) STATUS ACCTOUT false
+          ~> #codeDeposit #newAddr(ACCT, NONCE) #contractSize(CODE, NAME) STATUS ACCTOUT false
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -1477,7 +1473,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
     rule <k> #exec STATUS , ACCTOUT = copycreate ACCTCODE ( ARGS ) send VALUE
           => #checkCreate ACCT VALUE
           ~> #create ACCT #newAddr(ACCT, NONCE) #if Gstaticcalldepth << SCHED >> #then GAVAIL #else #allBut64th(GAVAIL) #fi VALUE CODE ARGS
-          ~> #codeDeposit #newAddr(ACCT, NONCE) #contractSize(CODE, #mainContract(CODE)) CODE STATUS ACCTOUT false
+          ~> #codeDeposit #newAddr(ACCT, NONCE) #contractSize(CODE, #mainContract(CODE)) STATUS ACCTOUT false
          ...
          </k>
          <schedule> SCHED </schedule>
@@ -1505,7 +1501,7 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
     rule <k> #exec STATUS , ACCTOUT = copycreate ACCT ( ARGS ) send VALUE
           => #checkCreate ACCT VALUE
           ~> #create ACCT #newAddr(ACCT, NONCE) #if Gstaticcalldepth << SCHED >> #then GAVAIL #else #allBut64th(GAVAIL) #fi VALUE CODE ARGS
-          ~> #codeDeposit #newAddr(ACCT, NONCE) #contractSize(CODE, #mainContract(CODE)) CODE STATUS ACCTOUT false
+          ~> #codeDeposit #newAddr(ACCT, NONCE) #contractSize(CODE, #mainContract(CODE)) STATUS ACCTOUT false
          ...
          </k>
          <schedule> SCHED </schedule>
