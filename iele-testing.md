@@ -123,7 +123,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
           => #fun(CONTRACT =>
              #checkContract CONTRACT
           ~> #create ACCTFROM #newAddr(ACCTFROM, NONCE) ((GLIMIT -Int G0(SCHED, CODE, ARGS))*Int Sgasdivisor < SCHED >) VALUE CONTRACT ARGS
-          ~> #codeDeposit #newAddr(ACCTFROM, NONCE) lengthBytes(CODE) CONTRACT %0 %1 true ~> #adjustGas ~> #finalizeTx(false) ~> startTx)(#if #isValidContract(CODE) #then #dasmContract(CODE, Main) #else #illFormed #fi)
+          ~> #codeDeposit #newAddr(ACCTFROM, NONCE) lengthBytes(CODE) %0 %1 true ~> #adjustGas ~> #finalizeTx(false) ~> startTx)(#if #isValidContract(CODE) #then #dasmContract(CODE, Main) #else #illFormed #fi)
          ...
          </k>
          <schedule> SCHED </schedule>
