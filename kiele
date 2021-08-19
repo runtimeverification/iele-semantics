@@ -132,6 +132,42 @@ run_upload_report() {
     rm report.zip
 }
 
+run_coverage() {
+
+    # Collecting coverage from Midnight goes here
+
+    sourceMap() {
+      jq --null-input '
+        reduce range(0;$input|length;3) as $i
+        ( {}; . +
+          ($input |
+            { (.[$i]): {
+                name: .[$i+1],
+                sourceMap: .[$i+2]
+              }
+            }
+          )
+        )
+      ' --slurpfile input <( iele-assemble --sourceMap $1 )
+    }
+    sourceContents() { jq --raw-input --slurp . "$1" ; }
+    sourceFileInfo() {
+      jq --null-input '
+        { ($sourcename):
+            { contents: $contents,
+              contracts: $sourceMap
+            }
+        }
+      ' --argfile sourceMap  <(sourceMap      "$1") \
+        --argfile contents   <(sourceContents "$1") \
+        --arg     sourcename "$1"
+    }
+
+    while [[ $# -gt 0 ]] ; do
+      sourceFileInfo "$1" ; shift
+    done | jq --slurp 'reduce .[] as $obj ({}; . + $obj)'
+}
+
 # Main
 # ----
 
@@ -146,6 +182,7 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
                $0 vm                                                       <KIELE arg>*
                $0 generate-report [--create-archive]                       <Report json path> [-o|--output <Report output path>]
                $0 upload                                                   <Report json path>
+               $0 coverage        <IELE sourcefile>*
 
                $0 [help|--help|version|--version]
 
@@ -156,6 +193,7 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
            $0 vm               : Run the KIELE VM server.
            $0 generate-report  : Generate the static HTML report.
            $0 upload           : Upload the HTML report to the fireflyblockchain.com website.
+           $0 coverage         : Generate coverage report from Midnight and IELE source files
 
            $0 help    : Display this help message.
            $0 version : Display the versions of KIELE in use.
@@ -222,7 +260,7 @@ cmode='Lbl'$mode'{}()'
 cschedule='Lbl'$schedule'{}()'
 cenablecoverage='\dv{SortBool{}}("'$enablecoverage'")'
 
-if [[ "$run_command" != 'vm' ]]; then
+if [[ "$run_command" != 'vm' && "$run_command" != 'coverage' ]]; then
     run_file="$1" ; shift
     [[ -f "$run_file" ]] || [[ "$run_file" == '-' ]] || fatal "File does not exist: $run_file"
 fi
@@ -235,5 +273,6 @@ case "$run_command" in
     vm)                run_vm              "$@" ;;
     generate-report)   run_generate_report "$@" ;;
     upload)            run_upload_report   "$@" ;;
+    coverage)          run_coverage        "$@" ;;
     *) $0 help ; fatal "Unknown command: $run_command" ;;
 esac
