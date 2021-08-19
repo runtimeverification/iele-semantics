@@ -135,6 +135,7 @@ run_upload_report() {
 run_coverage() {
 
     # Collecting coverage from Midnight goes here
+    coverage="midnightmock.json"
 
     sourceMap() {
       jq --null-input '
@@ -147,8 +148,9 @@ run_coverage() {
               }
             }
           )
-        )
-      ' --slurpfile input <( iele-assemble --sourceMap $1 )
+        ) | with_entries(.key as $key | if ($coverage | has($key)) then .value *= ($coverage | .[$key]) else .key = "_deleteme" end) | del(._deleteme)
+      ' --slurpfile input <( iele-assemble --sourceMap $1 ) \
+        --argfile coverage "$coverage"
     }
     sourceContents() { jq --raw-input --slurp . "$1" ; }
     sourceFileInfo() {
@@ -165,7 +167,7 @@ run_coverage() {
 
     while [[ $# -gt 0 ]] ; do
       sourceFileInfo "$1" ; shift
-    done | jq --slurp 'reduce .[] as $obj ({}; . + $obj)'
+    done | jq --slurp 'reduce .[] as $obj ({}; . + $obj)' > "$outfile"
 }
 
 # Main
@@ -182,7 +184,7 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
                $0 vm                                                       <KIELE arg>*
                $0 generate-report [--create-archive]                       <Report json path> [-o|--output <Report output path>]
                $0 upload                                                   <Report json path>
-               $0 coverage        <IELE sourcefile>*
+               $0 coverage        [--output <output file>]                 <IELE sourcefile>*
 
                $0 [help|--help|version|--version]
 
@@ -228,6 +230,7 @@ kiele_host='127.0.0.1'
 module='IELE-TESTING'
 definition='iele-testing'
 depth=-1
+outfile='/dev/stdout'
 args=()
 create_archive='false'
 while [[ $# -gt 0 ]]; do
@@ -245,6 +248,7 @@ while [[ $# -gt 0 ]]; do
         --create-archive)  create_archive='true' ; shift   ;;
         -p|--port)         kiele_port="$2"       ; shift 2 ;;
         -h|--host)         kiele_host="$2"       ; shift 2 ;;
+        -o|--output)       outfile="$2"          ; shift 2 ;;
         *)                 args+=("$1")          ; shift   ;;
     esac
 done
