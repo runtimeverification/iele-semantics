@@ -172,6 +172,23 @@ run_coverage() {
     done | jq --slurp 'reduce .[] as $obj ({}; . + $obj)' > "$outfile"
 }
 
+run_upload() {
+    local FIREFLY_ENDPOINT reportfile
+
+    FIREFLY_ENDPOINT=https://pr-306.sandbox.fireflyblockchain.com
+
+    if [[ ! -v FIREFLY_TOKEN ]] ; then
+        echo ERROR: FIREFLY_TOKEN variable not set. check "$FIREFLY_ENDPOINT" for more info
+        exit 1
+    fi
+
+    curl --request POST --fail                \
+         --form access-token="$FIREFLY_TOKEN" \
+         --form 'status=pass'                 \
+         --form "file=@$run_file"             \
+         "$FIREFLY_ENDPOINT/report"
+}
+
 # Main
 # ----
 
