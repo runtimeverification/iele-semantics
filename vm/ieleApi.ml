@@ -74,6 +74,10 @@ let get_account_field address blocknumber field convert default =
 let eth_getCode address blocknumber = 
   `String (get_account_field address blocknumber "code" to_string "0x")
 
+let eth_getBlockhash offset =
+  let hash = IeleClientUtils.InMemoryWorldState.get_blockhash (int_of_string offset) in
+  `String (to_hex_unsigned hash)
+
 let eth_getBlockByNumber blocknumber =
   let block = get_block blocknumber in
   `Assoc [("timestamp", `String block.timestamp)]
