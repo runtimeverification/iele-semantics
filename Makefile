@@ -424,7 +424,7 @@ haskell_kompiled_libs :=  \
     definition.kore       \
     macros.kore           \
     mainModule.txt        \
-    mainModule.txt        \
+    mainSyntaxModule.txt  \
     syntaxDefinition.kore
 
 kompiled_libs :=             \
