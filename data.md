@@ -17,8 +17,11 @@ module IELE-DATA
     imports BYTES
     imports IELE-CONSTANTS
     imports IELE-COMMON
+    imports BOOL
     imports COLLECTIONS
+    imports INT
     imports JSON
+    imports K-EQUAL
 
     syntax KResult ::= Int
 ```
