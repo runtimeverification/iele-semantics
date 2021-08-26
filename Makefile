@@ -28,12 +28,11 @@ INSTALL_PREFIX := /usr/local
 INSTALL_BIN    ?= $(DESTDIR)$(INSTALL_PREFIX)/bin
 INSTALL_LIB    ?= $(DESTDIR)$(INSTALL_PREFIX)/lib/kiele
 
-IELE_DIR       := $(abspath .)
-BUILD_DIR      := $(abspath .build)
-KORE_SUBMODULE := $(BUILD_DIR)/kore
-BUILD_LOCAL    := $(BUILD_DIR)/local
-LOCAL_LIB      := $(BUILD_LOCAL)/lib
-LOCAL_INCLUDE  := $(BUILD_LOCAL)/include
+IELE_DIR      := .
+BUILD_DIR     := .build
+BUILD_LOCAL   := $(BUILD_DIR)/local
+LOCAL_LIB     := $(BUILD_LOCAL)/lib
+LOCAL_INCLUDE := $(BUILD_LOCAL)/include
 
 KIELE_VERSION     ?= 0.2.0
 KIELE_RELEASE_TAG ?= v$(KIELE_VERSION)-$(shell git rev-parse --short HEAD)
@@ -41,8 +40,8 @@ KIELE_RELEASE_TAG ?= v$(KIELE_VERSION)-$(shell git rev-parse --short HEAD)
 PLUGIN=$(IELE_DIR)/plugin
 PROTO=$(IELE_DIR)/proto
 
-IELE_BIN         := $(BUILD_DIR)/bin
-IELE_LIB         := $(BUILD_DIR)/lib/kiele
+IELE_BIN         := $(BUILD_LOCAL)$(INSTALL_BIN)
+IELE_LIB         := $(BUILD_LOCAL)$(INSTALL_LIB)
 IELE_RUNNER      := $(IELE_BIN)/kiele
 IELE_ASSEMBLE    := $(IELE_BIN)/iele-assemble
 IELE_INTERPRETER := $(IELE_BIN)/iele-interpreter
