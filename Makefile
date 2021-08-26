@@ -5,6 +5,7 @@ UNAME_S := $(shell uname -s)
 INSTALL := install -D
 
 ifeq ($(UNAME_S),Darwin)
+INSTALL=install
 CPATH=/usr/local/include
 export CPATH
 endif
@@ -23,16 +24,9 @@ OCAMLC=opt -O3
 LIBFLAG=-shared
 endif
 
-ifeq ($(COVERAGE),k)
-KOMPILE_FLAGS=--coverage
-else ifeq ($(COVERAGE),ocaml)
-BISECT=-package bisect_ppx
-PREDICATES=-predicates coverage
-endif
-
-ifneq ($(RELEASE),)
-KOMPILE_FLAGS+=-O3
-endif
+INSTALL_PREFIX := /usr/local
+INSTALL_BIN    ?= $(DESTDIR)$(INSTALL_PREFIX)/bin
+INSTALL_LIB    ?= $(DESTDIR)$(INSTALL_PREFIX)/lib/kiele
 
 IELE_DIR       := $(abspath .)
 BUILD_DIR      := $(abspath .build)
@@ -40,6 +34,9 @@ KORE_SUBMODULE := $(BUILD_DIR)/kore
 BUILD_LOCAL    := $(BUILD_DIR)/local
 LOCAL_LIB      := $(BUILD_LOCAL)/lib
 LOCAL_INCLUDE  := $(BUILD_LOCAL)/include
+
+KIELE_VERSION     ?= 0.2.0
+KIELE_RELEASE_TAG ?= v$(KIELE_VERSION)-$(shell git rev-parse --short HEAD)
 
 PLUGIN=$(IELE_DIR)/plugin
 PROTO=$(IELE_DIR)/proto
@@ -299,6 +296,16 @@ checker_files:=$(addprefix $(IELE_DIR)/,iele-syntax.md well-formedness.md data.m
 # LLVM Builds
 # -----------
 
+ifeq ($(COVERAGE),k)
+KOMPILE_FLAGS=--coverage
+else ifeq ($(COVERAGE),ocaml)
+PREDICATES=-predicates coverage
+endif
+
+ifneq ($(RELEASE),)
+KOMPILE_FLAGS+=-O3
+endif
+
 LIB_PROCPS=-lprocps
 
 ifeq ($(UNAME_S),Darwin)
@@ -396,17 +403,6 @@ coverage:
 
 # Install
 # -------
-
-ifeq ($(UNAME_S),Darwin)
-INSTALL=install
-endif
-
-KIELE_VERSION     ?= 0.2.0
-KIELE_RELEASE_TAG ?= v$(KIELE_VERSION)-$(shell git rev-parse --short HEAD)
-
-INSTALL_PREFIX := /usr/local
-INSTALL_BIN    ?= $(DESTDIR)$(INSTALL_PREFIX)/bin
-INSTALL_LIB    ?= $(DESTDIR)$(INSTALL_PREFIX)/lib/kiele
 
 install_bins :=      \
     iele-assemble    \
