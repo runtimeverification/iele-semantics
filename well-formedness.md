@@ -137,7 +137,7 @@ Top Level Definitions
  // --------------------------------------------------------
     rule #sizeNames(I:Int) => I
     rule #sizeNames(.LocalNames) => 0
-    rule #sizeNames(N , NAMES) => 1 +Int #sizeNames(NAMES)
+    rule #sizeNames(_ , NAMES) => 1 +Int #sizeNames(NAMES)
 
     syntax KItem ::= checkArgs(FunctionParameters)
                    | checkNameArgs(LocalNames)
@@ -268,12 +268,12 @@ Checking these instructions requires checking the types of local function calls 
          <well-formedness-schedule> SCHED </well-formedness-schedule>
       requires ints(#sizeRegs(ARGS)) ==K ARGTYPES andBool checkInit(NAME, SCHED)
 
-    rule <k> check ~> RETS = call % NAME ( ARGS ) => checkLVals(RETS) ~> checkOperands(ARGS) ... </k>
+    rule <k> check ~> RETS = call % _NAME ( ARGS ) => checkLVals(RETS) ~> checkOperands(ARGS) ... </k>
 
-    rule check ~> STATUS, RETS = call NAME at OP1 ( ARGS ) send OP2 , gaslimit OP3 => checkLVals(STATUS, RETS) ~> checkOperands(OP1 , OP2 , OP3 , ARGS)
-    rule check ~> STATUS, RETS = staticcall NAME at OP1 ( ARGS ) gaslimit OP2 => checkLVals(STATUS, RETS) ~> checkOperands(OP1 , OP2 , ARGS)
+    rule check ~> STATUS, RETS = call _NAME at OP1 ( ARGS ) send OP2 , gaslimit OP3 => checkLVals(STATUS, RETS) ~> checkOperands(OP1 , OP2 , OP3 , ARGS)
+    rule check ~> STATUS, RETS = staticcall _NAME at OP1 ( ARGS ) gaslimit OP2 => checkLVals(STATUS, RETS) ~> checkOperands(OP1 , OP2 , ARGS)
 
-    rule check ~> RET = calladdress NAME at OP => checkLVal(RET) ~> checkOperand(OP)
+    rule check ~> RET = calladdress _NAME at OP => checkLVal(RET) ~> checkOperand(OP)
 
     rule <k> check ~> ret OPS => checkOperands(OPS) ... </k>
          <functionName> NAME </functionName>
@@ -369,9 +369,9 @@ Checking Operands
     rule checkOperands(OP , OPS) => checkOperand(OP) ~> checkOperands(OPS)
     rule checkOperands(.Operands) => .
 
-    rule checkOperand(% NAME) => .
+    rule checkOperand(% _NAME) => .
     rule checkOperand(_:IntConstant) => .
-    rule checkOperand(@ NAME) => .
+    rule checkOperand(@ _NAME) => .
 ```
 
 Checking LValues
