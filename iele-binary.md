@@ -336,13 +336,13 @@ After interpreting the strings representing programs as a `Bytes`, it should be 
 
     syntax NonEmptyOperands ::= "%o" "(" Int "," Int "," Int "," Int "," Int ")" [function]
  // -------------------------------------------------------------------------------
-    rule %o(REGS, WIDTH, MASK, IDX, 0) => .NonEmptyOperands
-    rule %o(REGS, WIDTH, MASK, IDX, COUNT) => %(REGS, WIDTH, MASK, IDX) , %o(REGS, WIDTH, MASK, IDX +Int 1, COUNT -Int 1) [owise]
+    rule %o(_REGS, _WIDTH, _MASK, _IDX, 0)     => .NonEmptyOperands
+    rule %o( REGS,  WIDTH,  MASK,  IDX, COUNT) => %(REGS, WIDTH, MASK, IDX) , %o(REGS, WIDTH, MASK, IDX +Int 1, COUNT -Int 1) [owise]
 
     syntax LValues ::= "%l" "(" Int "," Int "," Int "," Int "," Int ")" [function]
  // ------------------------------------------------------------------------------
-    rule %l(REGS, WIDTH, MASK, IDX, 0) => .LValues
-    rule %l(REGS, WIDTH, MASK, IDX, COUNT) => %(REGS, WIDTH, MASK, IDX) , %l(REGS, WIDTH, MASK, IDX +Int 1, COUNT -Int 1) [owise]
+    rule %l(_REGS, _WIDTH, _MASK, _IDX, 0)     => .LValues
+    rule %l( REGS,  WIDTH,  MASK,  IDX, COUNT) => %(REGS, WIDTH, MASK, IDX) , %l(REGS, WIDTH, MASK, IDX +Int 1, COUNT -Int 1) [owise]
 
     syntax Int ::= #opWidth ( OpCode , Int ) [function]
  // ---------------------------------------------------
@@ -365,7 +365,7 @@ After interpreting the strings representing programs as a `Bytes`, it should be 
     rule #opCodeWidth( _:CopyCreateOp )     => 3
     rule #opCodeWidth ( LOADPOS(N, _) )     => 1 +Int N
     rule #opCodeWidth ( LOADNEG(N, _) )     => 1 +Int N
-    rule #opCodeWidth( OP )                 => 1 [owise]
+    rule #opCodeWidth( _OP )                => 1 [owise]
 
     syntax Int ::= #numArgs ( OpCode ) [function]
  // ---------------------------------------------
@@ -469,8 +469,8 @@ After interpreting the strings representing programs as a `Bytes`, it should be 
 
     syntax OpCode ::= #dasmLoad ( Int , Int , Int , Int , Int , Bytes ) [function]
  // ------------------------------------------------------------------------------
-    rule #dasmLoad(97, LEN, POS, I, N, BS) => LOADPOS(LEN +Int POS, #asUnsigned(I +Int POS, LEN , BS))
-    rule #dasmLoad(98, LEN, POS, I, N, BS) => LOADNEG(LEN +Int POS, #asUnsigned(I +Int POS, LEN , BS))
+    rule #dasmLoad(97, LEN, POS, I, _N, BS) => LOADPOS(LEN +Int POS, #asUnsigned(I +Int POS, LEN , BS))
+    rule #dasmLoad(98, LEN, POS, I, _N, BS) => LOADNEG(LEN +Int POS, #asUnsigned(I +Int POS, LEN , BS))
 
 endmodule
 ```

@@ -87,7 +87,7 @@ as follows:
     rule #memory [ REG = or    W0 , W1 ] => #registerDelta(REG, maxInt(intSize(W0), intSize(W1)))
     rule #memory [ REG = xor   W0 , W1 ] => #registerDelta(REG, maxInt(intSize(W0), intSize(W1)))
     rule <k> #memory [ REG = shift W0 , W1 ] => #registerDelta(REG, maxInt(1, intSize(W0) +Int bitsInWords(W1, SCHED))) ... </k> <schedule> SCHED </schedule>
-    rule #memory [ REG = log2  W       ] => #registerDelta(REG, 2)
+    rule #memory [ REG = log2  _W      ] => #registerDelta(REG, 2)
 ```
 
 #### Comparison operators
@@ -129,7 +129,7 @@ of the modulo operand (W2).
 
 ```k
     rule #memory [ REG = addmod _  , _  , W2 ] => #registerDelta(REG, intSize(W2))
-    rule #memory [ REG = mulmod W0 , W1 , W2 ] => #registerDelta(REG, intSize(W2))
+    rule #memory [ REG = mulmod _  , _  , W2 ] => #registerDelta(REG, intSize(W2))
     rule #memory [ REG = expmod _  , _  , W2 ] => #registerDelta(REG, intSize(W2))
 ```
 
@@ -148,10 +148,10 @@ Result size of SHA3 is 256 bits, i.e., 4 words.
     the result size is WIDTH bytes, i.e., WIDTH / 8 words.
 
 ```k
-    rule #memory [ REG = byte  INDEX , _ ] => #registerDelta(REG, bytesInWords(1))
-    rule #memory [ REG = sext  WIDTH , _ ] => #registerDelta(REG, bytesInWords(chop(WIDTH)))
-    rule #memory [ REG = twos  WIDTH , _ ] => #registerDelta(REG, bytesInWords(chop(WIDTH)))
-    rule #memory [ REG = bswap WIDTH , _ ] => #registerDelta(REG, bytesInWords(chop(WIDTH)))
+    rule #memory [ REG = byte  _INDEX , _ ] => #registerDelta(REG, bytesInWords(1))
+    rule #memory [ REG = sext   WIDTH , _ ] => #registerDelta(REG, bytesInWords(chop(WIDTH)))
+    rule #memory [ REG = twos   WIDTH , _ ] => #registerDelta(REG, bytesInWords(chop(WIDTH)))
+    rule #memory [ REG = bswap  WIDTH , _ ] => #registerDelta(REG, bytesInWords(chop(WIDTH)))
 ```
 
 #### Local state operations
@@ -207,7 +207,7 @@ For the former, each register used by the function call consumes one word by def
 to the function, which consume as much as the size of their arguments.
 
 ```k
-    rule <k> #memory [ REGS = call @ NAME ( ARGS ) ] => #memoryDelta(REGISTERS -Int #sizeRegs(ARGS) +Int intSizes(ARGS) +Int Gcallmemory < SCHED >) ... </k>
+    rule <k> #memory [ _REGS = call @ NAME ( ARGS ) ] => #memoryDelta(REGISTERS -Int #sizeRegs(ARGS) +Int intSizes(ARGS) +Int Gcallmemory < SCHED >) ... </k>
          <schedule> SCHED </schedule>
          <funcId> NAME </funcId>
          <nregs> REGISTERS </nregs>
@@ -228,7 +228,7 @@ There is also some memory change associated with assigning `ARGS` to the
 caller's registers, but that is handled in `iele.md`.
 
 ```k
-    rule <k> #memory [ ret ARGS ] => #memoryDelta(0 -Int intSizes(REGS, NREGS, SCHED) -Int Gcallmemory < SCHED >) ... </k>
+    rule <k> #memory [ ret _ARGS ] => #memoryDelta(0 -Int intSizes(REGS, NREGS, SCHED) -Int Gcallmemory < SCHED >) ... </k>
          <schedule> SCHED </schedule>
          <fid> NAME </fid>
          <regs> REGS </regs>
@@ -250,9 +250,9 @@ caller's registers, but that is handled in `iele.md`.
   the memory cell at INDEX needs to be resized to store VALUE
 
 ```k
-    rule #memory [ REG = load INDEX1 , INDEX2 , WIDTH ] => #registerDelta(REG, bytesInWords(chop(WIDTH)))
-    rule #memory [ store _ ,  INDEX1 , INDEX2 , WIDTH ] => #memoryExpand(INDEX1, bytesInWords(chop(INDEX2) +Int chop(WIDTH))) requires chop(WIDTH) >Int 0
-    rule #memory [ store _ ,  INDEX1 , INDEX2 , WIDTH ] => .K requires chop(WIDTH) ==Int 0
+    rule #memory [ REG = load _INDEX1 , _INDEX2 , WIDTH ] => #registerDelta(REG, bytesInWords(chop(WIDTH)))
+    rule #memory [ store _ ,   INDEX1 ,  INDEX2 , WIDTH ] => #memoryExpand(INDEX1, bytesInWords(chop(INDEX2) +Int chop(WIDTH))) requires chop(WIDTH) >Int 0
+    rule #memory [ store _ ,  _INDEX1 , _INDEX2 , WIDTH ] => .K requires chop(WIDTH) ==Int 0
 
     rule <k> #memory [ REG = load INDEX ] => #registerDelta(REG, bytesInWords(lengthBytes(LM))) ... </k>
          <localMem>... INDEX |-> LM ...</localMem>
@@ -449,7 +449,7 @@ The bitwise expressions have a constant cost plus a linear factor in the number 
 `iszero` has a constant cost, whereas `cmp` has a constant cost and a linear factor in the smaller of the two sizes.
 
 ```k
-    rule #compute [ _ = iszero W,      SCHED ] => Giszero < SCHED >
+    rule #compute [ _ = iszero _W,      SCHED ] => Giszero < SCHED >
     rule #compute [ _ = cmp _ W0 , W1, SCHED ] => Gcmp < SCHED > +Int minInt(intSize(W0), intSize(W1)) *Int Gcmpword < SCHED >
 ```
 
@@ -547,18 +547,17 @@ Each of these operations pays a constant cost to look up information about an ac
 The cost to load a value into a register is simply the cost to copy its value.
 
 ```k
-    rule <k> #compute [ DEST = % SRC:Int, SCHED ] => Gmove < SCHED > *Int intSize(getInt(REGS [ SRC ])) ... </k>
+    rule <k> #compute [ _DEST = % SRC:Int, SCHED ] => Gmove < SCHED > *Int intSize(getInt(REGS [ SRC ])) ... </k>
          <regs> REGS </regs>
       requires notBool Gnewmove << SCHED >>
 
-    rule <k> #compute [ DEST = % SRC:Int, SCHED ] => Gmove < SCHED > ... </k>
-         <regs> REGS </regs>
+    rule <k> #compute [ _DEST = % _SRC:Int, SCHED ] => Gmove < SCHED > ... </k>
       requires Gnewmove << SCHED >>
 
-    rule <k> #compute [ DEST = SRC:Int, SCHED ] => Gmove < SCHED > *Int intSize(SRC) ... </k>
+    rule <k> #compute [ _DEST = SRC:Int, SCHED ] => Gmove < SCHED > *Int intSize(SRC) ... </k>
       requires notBool Gnewmove << SCHED >>
 
-    rule <k> #compute [ DEST = SRC:Int, SCHED ] => Gmove < SCHED > ... </k>
+    rule <k> #compute [ _DEST = _SRC:Int, SCHED ] => Gmove < SCHED > ... </k>
       requires Gnewmove << SCHED >>
 ```
 
@@ -582,7 +581,7 @@ constant cost to perform the jump and store the return address.
          <funcId> NAME </funcId>
          <nregs> REGISTERS </nregs>
       requires notBool Gnewmove << SCHED >>
-    rule <k> #compute [ _ = call @ NAME ( ARGS ), SCHED ] => Gcallreg < SCHED > *Int REGISTERS +Int Glocalcall < SCHED > ... </k>
+    rule <k> #compute [ _ = call @ NAME ( _ARGS ), SCHED ] => Gcallreg < SCHED > *Int REGISTERS +Int Glocalcall < SCHED > ... </k>
          <funcId> NAME </funcId>
          <nregs> REGISTERS </nregs>
       requires Gnewmove << SCHED >>
@@ -607,7 +606,7 @@ The cost to return is folded into the cost of the call instruction.
 
     rule <k> #compute [ ret _::NonEmptyInts, SCHED ] => 0 ... </k>
       requires Gnewmove << SCHED >>
-    rule #compute [ revert _, SCHED ] => 0
+    rule #compute [ revert _, _SCHED ] => 0
 ```
 
 The cost to call another contract is very similar to the cost in EVM:
@@ -637,10 +636,10 @@ The cost of logging is similar to the cost in EVM: a constant ccost plus a cost 
     rule <k> #compute [ log IDX , _:Int , _:Int , _:Int, SCHED ]         => (Glog < SCHED > +Int (Glogdata < SCHED > *Int bytesInWords(lengthBytes(LM))) +Int (3 *Int Glogtopic < SCHED >)) ... </k> <localMem>... IDX |-> LM ...</localMem>
     rule <k> #compute [ log IDX , _:Int , _:Int , _:Int,  _:Int, SCHED ] => (Glog < SCHED > +Int (Glogdata < SCHED > *Int bytesInWords(lengthBytes(LM))) +Int (4 *Int Glogtopic < SCHED >)) ... </k> <localMem>... IDX |-> LM ...</localMem>
 
-    rule <k> #compute [ log IDX, SCHED ] ... </k>
+    rule <k> #compute [ log IDX, _SCHED ] ... </k>
          <localMem> LM (.Map => IDX |-> .Bytes) </localMem>
       requires notBool IDX in_keys(LM)
-    rule <k> #compute [ log IDX, _, SCHED ] ... </k>
+    rule <k> #compute [ log IDX, _, _SCHED ] ... </k>
          <localMem> LM (.Map => IDX |-> .Bytes) </localMem>
       requires notBool IDX in_keys(LM)
 ```
@@ -657,10 +656,10 @@ The cost of logging is similar to the cost in EVM: a constant ccost plus a cost 
          <localMem> LM </localMem>
       requires notBool INDEX in_keys(LM)
 
-    rule #compute [ _ = load INDEX , OFFSET , WIDTH, SCHED ] => Gload < SCHED > +Int bytesInWords(WIDTH) *Int Gloadword < SCHED >
+    rule #compute [ _ = load _INDEX , _OFFSET , WIDTH, SCHED ] => Gload < SCHED > +Int bytesInWords(WIDTH) *Int Gloadword < SCHED >
 
-    rule #compute [ store VALUE , INDEX, SCHED ] => Gstorecell < SCHED > +Int intSize(VALUE) *Int Gstoreword < SCHED >
-    rule #compute [ store VALUE , INDEX , OFFSET , WIDTH, SCHED ] => Gstore < SCHED > +Int bytesInWords(WIDTH) *Int Gstoreword < SCHED >
+    rule #compute [ store  VALUE , _INDEX,                   SCHED ] => Gstorecell < SCHED > +Int intSize(VALUE) *Int Gstoreword < SCHED >
+    rule #compute [ store _VALUE , _INDEX , _OFFSET , WIDTH, SCHED ] => Gstore < SCHED > +Int bytesInWords(WIDTH) *Int Gstoreword < SCHED >
 ```
 
 ### Storage
@@ -688,7 +687,7 @@ The cost of logging is similar to the cost in EVM: a constant ccost plus a cost 
            ...
          </account>
 
-    rule <k> (.K => #lookupStorage(ACCT, INDEX)) ~> #compute [ sstore VALUE , INDEX, _ ] ... </k>
+    rule <k> (.K => #lookupStorage(ACCT, INDEX)) ~> #compute [ sstore _VALUE , INDEX, _ ] ... </k>
          <id> ACCT </id>
          <account>
            <acctID> ACCT </acctID>
@@ -728,7 +727,7 @@ Each of the precompiled contracts pays a fixed cost per word of data passed to t
     rule <k> #compute [ ECREC, SCHED ]  => Gecrec < SCHED > ... </k>
     rule <k> #compute [ SHA256, SCHED ] => Gsha256 < SCHED > +Int Gsha256word < SCHED > *Int bytesInWords(maxInt(LEN, intSize(DATA))) ... </k> <callData> LEN , DATA , .Ints </callData>
     rule <k> #compute [ RIP160, SCHED ] => Grip160 < SCHED > +Int Grip160word < SCHED > *Int bytesInWords(maxInt(LEN, intSize(DATA))) ... </k> <callData> LEN , DATA , .Ints </callData>
-    rule <k> #compute [ ID, SCHED ]     => 0 ... </k>
+    rule <k> #compute [ ID, _SCHED ]    => 0 ... </k>
 
     rule #compute [ ECADD, SCHED ] => Gecadd < SCHED >
     rule #compute [ ECMUL, SCHED ] => Gecmul < SCHED >
@@ -762,12 +761,12 @@ Note: These are all functions as the operator `#compute` has already loaded all 
 
     rule Cextra(SCHED, ISEMPTY, VALUE, RETS, ARGS) => Gcall < SCHED > +Int Cnew(SCHED, ISEMPTY, VALUE) +Int Cxfer(SCHED, VALUE) +Int Gcallreg < SCHED > *Int (RETS +Int ARGS)
 
-    rule Cxfer(SCHED, 0) => 0
-    rule Cxfer(SCHED, N) => Gcallvalue < SCHED > requires N =/=K 0
+    rule Cxfer(_SCHED, 0) => 0
+    rule Cxfer( SCHED, N) => Gcallvalue < SCHED > requires N =/=K 0
 
-    rule Cnew(SCHED, ISEMPTY:Bool, VALUE) => Gnewaccount < SCHED >
+    rule Cnew( SCHED, ISEMPTY:Bool, VALUE) => Gnewaccount < SCHED >
       requires         ISEMPTY andBool VALUE =/=Int 0
-    rule Cnew(SCHED, ISEMPTY:Bool, VALUE) => 0
+    rule Cnew(_SCHED, ISEMPTY:Bool, VALUE) => 0
       requires notBool ISEMPTY orBool  VALUE  ==Int 0
 
     rule Ccallarg(SCHED, ARGS) => intSizes(ARGS)
@@ -781,7 +780,7 @@ Note: These are all functions as the operator `#compute` has already loaded all 
       requires ISEMPTY andBool (        Gselfdestructnewaccount << SCHED >>) andBool BAL =/=Int 0
     rule Cselfdestruct(SCHED, ISEMPTY:Bool, BAL) => Gselfdestruct < SCHED >
       requires ISEMPTY andBool (notBool Gselfdestructnewaccount << SCHED >>  orBool  BAL  ==Int 0)
-    rule Cselfdestruct(SCHED, ISEMPTY:Bool, BAL) => Gselfdestruct < SCHED >
+    rule Cselfdestruct(SCHED, ISEMPTY:Bool, _BAL) => Gselfdestruct < SCHED >
       requires notBool ISEMPTY
 
     syntax KResult ::= Bool
@@ -820,9 +819,9 @@ Note: These are all functions as the operator `#compute` has already loaded all 
 
     rule G0(SCHED, BS, ISCREATE::Bool) => G0(SCHED, lengthBytes(BS), BS, ISCREATE) requires lengthBytes(BS) =/=Int 0
 
-    rule G0(SCHED, 0, BS, ISCREATE) => G0(SCHED, .Bytes, ISCREATE)
-    rule G0(SCHED, N, BS, ISCREATE) => Gtxdatazero    < SCHED > +Int G0(SCHED, N -Int 1, BS, ISCREATE) requires N =/=Int 0 andBool BS[N -Int 1] ==Int 0
-    rule G0(SCHED, N, BS, ISCREATE) => Gtxdatanonzero < SCHED > +Int G0(SCHED, N -Int 1, BS, ISCREATE) requires N =/=Int 0 andBool BS[N -Int 1] =/=Int 0
+    rule G0(SCHED, 0, _BS, ISCREATE) => G0(SCHED, .Bytes, ISCREATE)
+    rule G0(SCHED, N,  BS, ISCREATE) => Gtxdatazero    < SCHED > +Int G0(SCHED, N -Int 1, BS, ISCREATE) requires N =/=Int 0 andBool BS[N -Int 1] ==Int 0
+    rule G0(SCHED, N,  BS, ISCREATE) => Gtxdatanonzero < SCHED > +Int G0(SCHED, N -Int 1, BS, ISCREATE) requires N =/=Int 0 andBool BS[N -Int 1] =/=Int 0
 
     syntax Int ::= "G*" "(" Int "," Int "," Int ")" [function]
  // ----------------------------------------------------------
@@ -855,13 +854,13 @@ Note: These are all functions as the operator `#compute` has already loaded all 
         Gdiv < SCHED >
       requires L1 >=Int L2
     
-    rule Cdiv(SCHED, L1, L2) =>
+    rule Cdiv(SCHED, L1, _L2) =>
         Gdivword < SCHED > *Int L1 +Int
         Gdiv < SCHED >
       requires notBool Gnewarith << SCHED >>
       [owise]
 
-    rule Cdiv(SCHED, L1, L2) =>
+    rule Cdiv(SCHED, _L1, _L2) =>
         Gdiv < SCHED >
       requires Gnewarith << SCHED >>
       [owise]
