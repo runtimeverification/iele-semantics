@@ -28,11 +28,8 @@ INSTALL_PREFIX := /usr/local
 INSTALL_BIN    ?= $(DESTDIR)$(INSTALL_PREFIX)/bin
 INSTALL_LIB    ?= $(DESTDIR)$(INSTALL_PREFIX)/lib/kiele
 
-IELE_DIR      := .
-BUILD_DIR     := .build
-BUILD_LOCAL   := $(BUILD_DIR)/local
-LOCAL_LIB     := $(BUILD_LOCAL)/lib
-LOCAL_INCLUDE := $(BUILD_LOCAL)/include
+IELE_DIR  := .
+BUILD_DIR := .build
 
 KIELE_VERSION     ?= 0.2.0
 KIELE_RELEASE_TAG ?= v$(KIELE_VERSION)-$(shell git rev-parse --short HEAD)
