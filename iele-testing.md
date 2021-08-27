@@ -293,9 +293,9 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
 
     rule run TESTID : { KEY : (VAL:JSON) , NEXT , REST } => run TESTID : { NEXT , KEY : VAL , REST } requires KEY in #execKeys
 
-    rule run TESTID : { "exec" : (EXEC:JSON) } => load "exec" : EXEC ~> start ~> flush
-    rule run TESTID : { "lastblockhash" : (HASH:String) } => startTx
-    rule run TESTID : { .JSONs } => startTx
+    rule run _TESTID : { "exec" : (EXEC:JSON) } => load "exec" : EXEC ~> start ~> flush
+    rule run _TESTID : { "lastblockhash" : (HASH:String) } => startTx
+    rule run _TESTID : { .JSONs } => startTx
 ```
 
 -   `#postKeys` are a subset of `#checkKeys` which correspond to post-state account checks.
@@ -355,11 +355,11 @@ State Manipulation
 ```{.k .standalone}
     syntax IELECommand ::= "load" JSON
  // ----------------------------------
-    rule load DATA : { .JSONs } => .
+    rule load _DATA : { .JSONs } => .
     rule load DATA : { KEY : VALUE:JSON , REST } => load DATA : { KEY : VALUE } ~> load DATA : { REST }
       requires REST =/=K .JSONs andBool notBool DATA in (SetItem("transactions") SetItem("transactionsSorted"))
 
-    rule load DATA : [ .JSONs ] => .
+    rule load _DATA : [ .JSONs ] => .
     rule load DATA : [ { TEST } , REST ] => load DATA : { TEST } ~> load DATA : [ REST ]
 ```
 
@@ -370,10 +370,10 @@ Here we perform pre-proccesing on account data which allows "pretty" specificati
 
     rule load "account" : { (ACCT:Int) : { KEY : VALUE:JSON , REST } } => load "account" : { ACCT : { KEY : VALUE } } ~> load "account" : { ACCT : { REST } } requires REST =/=K .JSONs
 
-    rule load "account" : { (ACCT:Int) : { "balance" : ((VAL:String)         => #parseWord(VAL)) } }
-    rule load "account" : { (ACCT:Int) : { "nonce"   : ((VAL:String)         => #parseWord(VAL)) } }
-    rule load "account" : { (ACCT:Int) : { "code"    : ((CODE:String)        => #parseByteStack(CODE)) } }
-    rule load "account" : { (ACCT:Int) : { "storage" : ({ STORAGE:JSONs } => #parseMap({ STORAGE })) } }
+    rule load "account" : { (_ACCT:Int) : { "balance" : ((VAL:String)         => #parseWord(VAL)) } }
+    rule load "account" : { (_ACCT:Int) : { "nonce"   : ((VAL:String)         => #parseWord(VAL)) } }
+    rule load "account" : { (_ACCT:Int) : { "code"    : ((CODE:String)        => #parseByteStack(CODE)) } }
+    rule load "account" : { (_ACCT:Int) : { "storage" : ({ STORAGE:JSONs } => #parseMap({ STORAGE })) } }
 
 ```
 
@@ -417,11 +417,11 @@ Here we load the environmental information.
     rule load "env" : { KEY : ((VAL:String) => #parseHexWord(VAL)) }
       requires KEY in (SetItem("currentCoinbase") SetItem("previousHash"))
  // ----------------------------------------------------------------------
-    rule <k> load "env" : { "currentCoinbase"   : (CB:Int)     } => . ... </k> <beneficiary>     _ => CB     </beneficiary>
+    rule <k> load "env" : { "currentCoinbase"   : (CB:Int)     } => . ... </k> <beneficiary>  _ => CB     </beneficiary>
     rule <k> load "env" : { "currentDifficulty" : (DIFF:Int)   } => . ... </k> <difficulty>   _ => DIFF   </difficulty>
     rule <k> load "env" : { "currentGasLimit"   : (GLIMIT:Int) } => . ... </k> <gasLimit>     _ => GLIMIT </gasLimit>
     rule <k> load "env" : { "currentNumber"     : (NUM:Int)    } => . ... </k> <number>       _ => NUM    </number>
-    rule <k> load "env" : { "previousHash"      : (HASH:Int)   } => . ... </k>
+    rule <k> load "env" : { "previousHash"      : (_HASH:Int)  } => . ... </k>
     rule <k> load "env" : { "currentTimestamp"  : (TS:Int)     } => . ... </k> <timestamp>    _ => TS     </timestamp>
 
     rule load "exec" : { KEY : ((VAL:String) => #parseWord(VAL)) }
@@ -444,7 +444,6 @@ Here we load the environmental information.
     rule <k> load "exec" : { "data" : [DATA:Int, LEN:Int] } => . ... </k> <callData> _ => LEN , DATA , .Ints </callData>
     rule <k> load "exec" : { "code" : (CODE:Bytes) } => . ... </k>
          (<program>  _ </program> => #loadCode(#dasmContract(CODE, Main)))
-         <schedule> SCHED </schedule>
 ```
 
 The `"network"` key allows setting the fee schedule inside the test.
@@ -466,16 +465,16 @@ Since IELE is a new language with no hard forks yet, we only support the latest 
 The `"blockHeader"` key loads the block information.
 
 ```{.k .standalone}
-    rule load "blockHeader" : { "nonce" : (HN:String) } => .
-    rule load "blockHeader" : { "receiptTrie" : (HE:String) } => .
+    rule load "blockHeader" : { "nonce" : (_HN:String) } => .
+    rule load "blockHeader" : { "receiptTrie" : (_HE:String) } => .
     rule load "blockHeader" : { "hash" : _ } => .
-    rule load "blockHeader" : { "uncleHash" : (HO:String) } => .
-    rule load "blockHeader" : { "mixHash" : (HM:String) } => .
-    rule load "blockHeader" : { "parentHash" : (HP:String) } => .
-    rule load "blockHeader" : { "extraData" : (HX:String) } => .
-    rule load "blockHeader" : { "stateRoot" : (HR:String) } => .
-    rule load "blockHeader" : { "transactionsTrie" : (HT:String) } => .
-    rule load "blockHeader" : { "bloom" : (HB:String) } => .
+    rule load "blockHeader" : { "uncleHash" : (_HO:String) } => .
+    rule load "blockHeader" : { "mixHash" : (_HM:String) } => .
+    rule load "blockHeader" : { "parentHash" : (_HP:String) } => .
+    rule load "blockHeader" : { "extraData" : (_HX:String) } => .
+    rule load "blockHeader" : { "stateRoot" : (_HR:String) } => .
+    rule load "blockHeader" : { "transactionsTrie" : (_HT:String) } => .
+    rule load "blockHeader" : { "bloom" : (_HB:String) } => .
 
     rule <k> load "blockHeader" : { "gasLimit" : (HL:String) } => . ...</k>
          <gasLimit> _ => #parseHexWord(HL) </gasLimit>
@@ -495,7 +494,7 @@ The `"blockHeader"` key loads the block information.
     rule <k> load "blockHeader" : { "gasUsed" : (HG:String) } => . ...</k>
          <gasUsed> _ => #parseHexWord(HG) </gasUsed>
 
-    rule <k> load "blockhashes" : [ VAL:String , VALS ] => . ...</k>
+    rule <k> load "blockhashes" : [ VAL:String , _VALS ] => . ...</k>
          <blockhash>... .List => ListItem(#parseHexWord(VAL)) </blockhash>
 ```
 
@@ -549,11 +548,11 @@ The `"transactions"` key loads the transactions.
     rule check TESTID : { "post" : POST } => check "account" : POST ~> failure TESTID
     rule check "account" : { ACCTID: { KEY : VALUE:JSON , REST } } => check "account" : { ACCTID : { KEY : VALUE } } ~> check "account" : { ACCTID : { REST } } requires REST =/=K .JSONs
  // -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    rule check "account" : { ((ACCTID:String) => #parseAddr(ACCTID)) : ACCT }
-    rule check "account" : { (ACCT:Int) : { "balance" : ((VAL:String)         => #parseWord(VAL)) } }
-    rule check "account" : { (ACCT:Int) : { "nonce"   : ((VAL:String)         => #parseWord(VAL)) } }
-    rule check "account" : { (ACCT:Int) : { "code"    : ((CODE:String)        => #parseByteStack(CODE)) } }
-    rule check "account" : { (ACCT:Int) : { "storage" : ({ STORAGE:JSONs } => #parseMap({ STORAGE })) } }
+    rule check "account" : { ((ACCTID:String) => #parseAddr(ACCTID)) : _ACCT }
+    rule check "account" : { (_ACCT:Int) : { "balance" : ((VAL:String)         => #parseWord(VAL)) } }
+    rule check "account" : { (_ACCT:Int) : { "nonce"   : ((VAL:String)         => #parseWord(VAL)) } }
+    rule check "account" : { (_ACCT:Int) : { "code"    : ((CODE:String)        => #parseByteStack(CODE)) } }
+    rule check "account" : { (_ACCT:Int) : { "storage" : ({ STORAGE:JSONs } => #parseMap({ STORAGE })) } }
 
 
     rule <k> check "account" : { ACCT : { "balance" : (BAL:Int) } } => . ... </k>
@@ -596,7 +595,7 @@ The `"transactions"` key loads the transactions.
 Here we check the other post-conditions associated with an EVM test.
 
 ```{.k .standalone}
-    rule check TESTID : { "results" : [ _ , A , REST => A , REST ] }
+    rule check _      : { "results" : [ _ , A , REST => A , REST ] }
     rule check TESTID : { "results" : [ A , .JSONs ] } => check TESTID : A
 
     rule check TESTID : { "out" : OUT } => check "out" : OUT ~> failure TESTID
@@ -633,19 +632,19 @@ Here we check the other post-conditions associated with an EVM test.
     rule check TESTID : { "gas" : GLEFT } => check "gas" : GLEFT ~> failure TESTID
  // ------------------------------------------------------------------------------
     rule check "gas" : ((GLEFT:String) => #parseWord(GLEFT))
-    rule <k> check "gas" : GLEFT => . ... </k> <checkGas> false </checkGas>
-    rule <k> check "gas" : GLEFT => . ... </k> <checkGas> true  </checkGas> <gas> GLEFT </gas>
+    rule <k> check "gas" : _GLEFT => . ... </k> <checkGas> false </checkGas>
+    rule <k> check "gas" :  GLEFT => . ... </k> <checkGas> true  </checkGas> <gas> GLEFT </gas>
 
     rule check TESTID : { "callcreates" : CCREATES } => check "callcreates" : CCREATES ~> failure TESTID
  // ----------------------------------------------------------------------------------------------------
     rule check "callcreates" : { JS:JSONs } => check "callcreatesSorted" : { #sortJSONList(JS) }
-    rule check "callcreatesSorted" : { ("data" : (DATA:String)) , ("destination" : (ACCTTO:String)) , ("gasLimit" : (GLIMIT:String)) , ("value" : (VAL:String)) , .JSONs }
+    rule check "callcreatesSorted" : { ("data" : (_DATA:String)) , ("destination" : (_ACCTTO:String)) , ("gasLimit" : (_GLIMIT:String)) , ("value" : (_VAL:String)) , .JSONs }
       => .
 
     rule check TESTID : { "genesisBlockHeader" : BLOCKHEADER } => check "genesisBlockHeader" : BLOCKHEADER ~> failure TESTID
  // ------------------------------------------------------------------------------------------------------------------------
     rule check "genesisBlockHeader" : { KEY : VALUE:JSON , REST } => check "genesisBlockHeader" : { KEY : VALUE } ~> check "genesisBlockHeader" : { REST } requires REST =/=K .JSONs
-    rule check "genesisBlockHeader" : { KEY : VALUE } => .K requires KEY =/=String "hash"
+    rule check "genesisBlockHeader" : { KEY : _VALUE } => .K requires KEY =/=String "hash"
 
     rule check "genesisBlockHeader" : { "hash": (HASH:String => #parseHexWord(HASH)) }
     rule <k> check "genesisBlockHeader" : { "hash": HASH } => . ... </k>

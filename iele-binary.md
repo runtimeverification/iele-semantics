@@ -132,8 +132,8 @@ After interpreting the strings representing programs as a `Bytes`, it should be 
                                         definitions: TopLevelDefinitions, funcnum: Int , size: Int , bytecodestring: String )    [function]
  // ---------------------------------------------------------------------------------------------------------------------------------------
     rule #dasmContract( BS, NAME ) => #dasmContract( 0, lengthBytes(BS), BS, NAME )
-    rule #dasmContract( _, 0, BS, NAME ) => #emptyCode
-    rule #dasmContract( I, N, BS, NAME ) => #dasmContract(I +Int 6, #asUnsigned(I, 4, BS) -Int 2, BS, BS[I +Int 5], 0 |-> init, NAME, .TopLevelDefinitions, 1, #asUnsigned(I, 4, BS) +Int 4, Bytes2String(BS[I .. N]))
+    rule #dasmContract( _, 0, _BS, _NAME ) => #emptyCode
+    rule #dasmContract( I, N,  BS,  NAME ) => #dasmContract(I +Int 6, #asUnsigned(I, 4, BS) -Int 2, BS, BS[I +Int 5], 0 |-> init, NAME, .TopLevelDefinitions, 1, #asUnsigned(I, 4, BS) +Int 4, Bytes2String(BS[I .. N]))
       requires N >=Int 5 andBool BS[I +Int 4] ==Int 99
 
     rule #dasmContract( I, N, BS, NBITS, FUNCS, NAME, DEFS, M, SIZE, BYTES )
@@ -144,15 +144,15 @@ After interpreting the strings representing programs as a `Bytes`, it should be 
       => #dasmContract( I +Int 3, #asUnsigned(I +Int 1, 2, BS), BS, NAME +.+IeleName M) ++Contract #dasmContract(I +Int (3 +Int #asUnsigned(I +Int 1, 2, BS)), N -Int (3 +Int #asUnsigned(I +Int 1, 2, BS)), BS, NBITS, FUNCS, NAME, external contract NAME +.+IeleName M DEFS, M +Int 1, SIZE, BYTES)
       requires N >=Int 3 andBool BS[I] ==Int 106
 
-    rule #dasmContract( I, N, BS, NBITS, FUNCS, NAME, DEFS, M, SIZE, BYTES ) => contract NAME ! SIZE BYTES { DEFS ++TopLevelDefinitions #dasmFunctions(I, N, BS, NBITS, FUNCS, NAME) } .Contract [owise]
+    rule #dasmContract( I, N, BS, NBITS, FUNCS, NAME, DEFS, _M, SIZE, BYTES ) => contract NAME ! SIZE BYTES { DEFS ++TopLevelDefinitions #dasmFunctions(I, N, BS, NBITS, FUNCS, NAME) } .Contract [owise]
 
     syntax Bool ::= #isValidContract   (Bytes)                                               [function]
                   | #isValidContract   (start: Int, width: Int, bytecode: Bytes)             [function, klabel(isValidContractAux)]
                   | #isValidStringTable(start: Int, width: Int, bytecode: Bytes, nbits: Int) [function]
  // ---------------------------------------------------------------------------------------------------
     rule #isValidContract(CODE) => #isValidContract(0, lengthBytes(CODE), CODE)
-    rule #isValidContract(_, 0, BS) => true
-    rule #isValidContract(I, N, BS) => N -Int 4 >=Int #asUnsigned(I, 4, BS) andBool #isValidStringTable(I +Int 6, #asUnsigned(I, 4, BS) -Int 2, BS, BS[I +Int 5])
+    rule #isValidContract(_, 0, _BS) => true
+    rule #isValidContract(I, N, BS)  => N -Int 4 >=Int #asUnsigned(I, 4, BS) andBool #isValidStringTable(I +Int 6, #asUnsigned(I, 4, BS) -Int 2, BS, BS[I +Int 5])
       requires N >=Int 6 andBool BS[I +Int 4] ==Int 99
     rule #isValidContract(_, _, _) => false [owise]
 
@@ -195,12 +195,12 @@ After interpreting the strings representing programs as a `Bytes`, it should be 
  // -------------------------------------------------------------------------------------------------------------------
     rule #isValidFunctions(I, N, BS, NBITS) => #isValidFunction(I +Int 5, N -Int 5, BS, NBITS)
       requires N >=Int 5 andBool (BS[I] ==Int 103 orBool BS[I] ==Int 104)
-    rule #isValidFunctions(_, 0, BS, _) => true
+    rule #isValidFunctions(_, 0, _, _) => true
     rule #isValidFunctions(_, _, _, _) => false [owise]
 
     rule #isValidFunction(I, N, BS, NBITS) => #isValidFunctions(I, N, BS, NBITS)
       requires N >=Int 1 andBool (BS[I] ==Int 103 orBool BS[I] ==Int 104)
-    rule #isValidFunction(_, 0, BS, _) => true
+    rule #isValidFunction(_, 0, _BS, _) => true
     rule #isValidFunction(I, N, BS, NBITS) => #isValidLoad(I +Int 1, N -Int 1, BS) andBool #isValidInstruction(#dasmOpCode(I, N, BS), I, N, BS, NBITS)
       requires N >=Int 1 andBool (BS[I] ==Int 97 orBool BS[I] ==Int 98)
     rule #isValidFunction(I, N, BS, NBITS) => #isValidInstruction(#dasmOpCode(I, N, BS), I, N, BS, NBITS) [owise]
@@ -215,8 +215,8 @@ After interpreting the strings representing programs as a `Bytes`, it should be 
     rule #dasmFunction(true, NAME, CNAME, SIG, I, N, BS, NBITS, FUNCS, INSTRS, .K) => define public @ NAME ( SIG ) { #toBlocks(INSTRS) } #dasmFunctions(I, N, BS, NBITS, FUNCS, CNAME)
       requires N >=Int 1 andBool (BS[I] ==Int 103 orBool BS[I] ==Int 104)
 
-    rule #dasmFunction(false, NAME, CNAME, SIG, I, 0, BS, NBITS, FUNCS, INSTRS, .K) => define @ NAME ( SIG ) { #toBlocks(INSTRS) } .TopLevelDefinitions
-    rule #dasmFunction(true, NAME, CNAME, SIG, I, 0, BS, NBITS, FUNCS, INSTRS, .K) => define public @ NAME ( SIG ) { #toBlocks(INSTRS) } .TopLevelDefinitions
+    rule #dasmFunction(false, NAME, _CNAME, SIG, _I, 0, _BS, _NBITS, _FUNCS, INSTRS, .K) => define        @ NAME ( SIG ) { #toBlocks(INSTRS) } .TopLevelDefinitions
+    rule #dasmFunction(true,  NAME, _CNAME, SIG,  I, 0,  BS,  NBITS,  FUNCS, INSTRS, .K) => define public @ NAME ( SIG ) { #toBlocks(INSTRS) } .TopLevelDefinitions
 
     rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, I, N, BS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, I, N, BS, NBITS, FUNCS, INSTRS, #dasmOpCode(I, N, BS)) [owise]
 
