@@ -70,7 +70,7 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
     syntax Bool ::= #isSorted ( JSONs ) [function]
  // -------------------------------------------------
     rule #isSorted( .JSONs ) => true
-    rule #isSorted( KEY : _:JSON )   => true
+    rule #isSorted( _KEY : _:JSON ) => true
     rule #isSorted( (KEY : _) , (KEY' : VAL) , REST ) => KEY <=String KEY' andThenBool #isSorted((KEY' : VAL) , REST)
 ```
 
@@ -106,14 +106,8 @@ To do so, we'll extend sort `JSON` with some IELE specific syntax, and provide a
     rule <k> startTx => loadTx(TS) ... </k>
          <txPending> ListItem(TXID:Int) ... </txPending>
          <message>
-           <msgID>      TXID </msgID>
-           <txNonce>    TN   </txNonce>
-           <txGasPrice> TP   </txGasPrice>
-           <txGasLimit> TG   </txGasLimit>
-           <sendto>     TT   </sendto>
-           <value>      TV   </value>
-           <from>       TS   </from>
-           <data>       DATA </data>
+           <msgID> TXID </msgID>
+           <from>  TS   </from>
            ...
          </message>
 
@@ -280,8 +274,8 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
 
     rule run TESTID : { KEY : (VAL:JSON) , REST } => load KEY : VAL ~> run TESTID : { REST } requires KEY in #loadKeys
 
-    rule run TESTID : { "blocks" : [ { KEY : VAL:JSON , REST1 => REST1 }, .JSONs ] , ( REST2 => KEY : VAL , REST2 ) }
-    rule run TESTID : { "blocks" : [ { .JSONs }, .JSONs ] , REST } => run TESTID : { REST }
+    rule run _TESTID : { "blocks" : [ { KEY : VAL:JSON , REST1 => REST1 }, .JSONs ] , ( REST2 => KEY : VAL , REST2 ) }
+    rule run  TESTID : { "blocks" : [ { .JSONs }, .JSONs ] , REST } => run TESTID : { REST }
 ```
 
 -   `#execKeys` are all the JSON nodes which should be considered for execution (between loading and checking).
@@ -294,7 +288,7 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
     rule run TESTID : { KEY : (VAL:JSON) , NEXT , REST } => run TESTID : { NEXT , KEY : VAL , REST } requires KEY in #execKeys
 
     rule run _TESTID : { "exec" : (EXEC:JSON) } => load "exec" : EXEC ~> start ~> flush
-    rule run _TESTID : { "lastblockhash" : (HASH:String) } => startTx
+    rule run _TESTID : { "lastblockhash" : (_HASH:String) } => startTx
     rule run _TESTID : { .JSONs } => startTx
 ```
 
