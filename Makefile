@@ -37,11 +37,11 @@ LOCAL_INCLUDE := $(BUILD_LOCAL)/include
 KIELE_VERSION     ?= 0.2.0
 KIELE_RELEASE_TAG ?= v$(KIELE_VERSION)-$(shell git rev-parse --short HEAD)
 
-PLUGIN=$(IELE_DIR)/plugin
-PROTO=$(IELE_DIR)/proto
+PLUGIN=$(abspath $(IELE_DIR))/plugin
+PROTO=$(abspath $(IELE_DIR))/proto
 
-IELE_BIN         := $(BUILD_LOCAL)$(INSTALL_BIN)
-IELE_LIB         := $(BUILD_LOCAL)$(INSTALL_LIB)
+IELE_BIN         := $(BUILD_DIR)$(INSTALL_BIN)
+IELE_LIB         := $(BUILD_DIR)$(INSTALL_LIB)
 IELE_RUNNER      := $(IELE_BIN)/kiele
 IELE_ASSEMBLE    := $(IELE_BIN)/iele-assemble
 IELE_INTERPRETER := $(IELE_BIN)/iele-interpreter
@@ -80,31 +80,31 @@ OPENSSL_ROOT     := $(shell brew --prefix openssl)
 MACOS_CMAKE_OPTS := -DOPENSSL_ROOT_DIR=$(OPENSSL_ROOT) -DWITH_PROCPS=off
 endif
 
-libff_out := $(LOCAL_LIB)/libff.a
+libff_out := $(IELE_LIB)/libff/libff.a
 
 libff: $(libff_out)
 
 $(libff_out): $(PLUGIN)/deps/libff/CMakeLists.txt
 	@mkdir -p $(PLUGIN)/deps/libff/build
-	cd $(PLUGIN)/deps/libff/build                                                                       \
-	   && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(BUILD_LOCAL) $(MACOS_CMAKE_OPTS) \
-	   && make -s -j4                                                                                   \
-	   && make install
+	cd $(PLUGIN)/deps/libff/build                                                                             \
+	   && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(INSTALL_LIB)/libff $(MACOS_CMAKE_OPTS) \
+	   && make -s -j4                                                                                         \
+	   && make install DESTDIR=../../../../$(BUILD_DIR)
 
 endif # ifndef SYSTEM_LIBFF
 
-protobuf_out := $(BUILD_DIR)/plugin-node/proto/msg.pb.cc
+protobuf_out := $(IELE_LIB)/plugin-node/proto/msg.pb.cc
 
 protobuf: $(protobuf_out)
 
 $(protobuf_out): $(PROTO)/proto/msg.proto
-	mkdir -p $(BUILD_DIR)/plugin-node
-	protoc --cpp_out=$(BUILD_DIR)/plugin-node -I $(PROTO) $<
+	mkdir -p $(dir $@)
+	protoc --cpp_out=$(IELE_LIB)/plugin-node -I $(PROTO) $<
 
 ifndef SYSTEM_LIBSECP256K1
 
 ifeq ($(UNAME_S),Darwin)
-libsecp256k1_out := $(LOCAL_LIB)/libsecp256k1.a
+libsecp256k1_out := $(IELE_LIB)/libsecp256k1/libsecp256k1.a
 endif
 
 secp256k1: $(libsecp256k1_out)
@@ -112,19 +112,19 @@ secp256k1: $(libsecp256k1_out)
 $(libsecp256k1_out): $(PLUGIN)/deps/secp256k1/Makefile
 	cd $(PLUGIN)/deps/secp256k1 \
 	   && make                  \
-	   && make install
+	   && make install DESTDIR=../../../$(BUILD_DIR)
 
 $(PLUGIN)/deps/secp256k1/Makefile: $(PLUGIN)/deps/secp256k1/autogen.sh
 	cd $(PLUGIN)/deps/secp256k1 \
 	   && ./autogen.sh          \
-	   && ./configure prefix=$(BUILD_LOCAL) --enable-module-recovery
+	   && ./configure prefix=$(INSTALL_LIB)/libsecp256k1 --enable-module-recovery
 
 endif # ifndef SYSTEM_LIBSECP256K1
 
 ifndef SYSTEM_LIBCRYPTOPP
 
 ifeq ($(UNAME_S),Darwin)
-libcryptopp_out := $(LOCAL_LIB)/libcryptopp.a
+libcryptopp_out := $(IELE_LIB)/libcryptopp: libcryptopp.a
 endif
 
 cryptopp: $(libcryptopp_out)
@@ -132,7 +132,7 @@ cryptopp: $(libcryptopp_out)
 $(libcryptopp_out): $(PLUGIN)/deps/cryptopp/GNUmakefile
 	cd $(PLUGIN)/deps/cryptopp \
 	   && make libcryptopp.a   \
-	   && make install PREFIX=$(BUILD_LOCAL)
+	   && make install PREFIX=$(INSTALL_LIB)/libcryptopp DEST_DIR=../../../$(BUILD_DIR)
 
 endif # ifndef SYSTEM_LIBCRYPTOPP
 
@@ -318,8 +318,8 @@ build-testnode : $(IELE_TEST_VM) $(IELE_TEST_CLIENT)
 
 KOMPILE=kompile
 
-KOMPILE_INCLUDE_OPTS := $(addprefix -ccopt , -I $(PLUGIN)/plugin-c -I $(PROTO) -I $(BUILD_DIR)/plugin-node -I $(LOCAL_INCLUDE)) -I $(IELE_DIR)
-KOMPILE_LINK_OPTS    := $(addprefix -ccopt , -L /usr/local/lib -L $(LOCAL_LIB) -lprotobuf -lff -lcryptopp -lsecp256k1 $(LIB_PROCPS) -lssl -lcrypto)
+KOMPILE_INCLUDE_OPTS := $(addprefix -ccopt , -I $(PLUGIN)/plugin-c -I $(PROTO) -I $(abspath $(IELE_LIB))/plugin-node -I $(abspath $(IELE_LIB))/libff/include) -I $(IELE_DIR)
+KOMPILE_LINK_OPTS    := $(addprefix -ccopt , -L /usr/local/lib -L $(abspath $(IELE_LIB))/libff/lib -lprotobuf -lff -lcryptopp -lsecp256k1 $(LIB_PROCPS) -lssl -lcrypto)
 KOMPILE_CPP_FILES    := $(PLUGIN)/plugin-c/k.cpp $(PLUGIN)/plugin-c/crypto.cpp $(PROTO)/blockchain.cpp $(PROTO)/world.cpp $(PLUGIN)/plugin-c/blake2.cpp $(PLUGIN)/plugin-c/plugin_util.cpp
 KOMPILE_CPP_OPTS     := $(addprefix -ccopt , $(KOMPILE_CPP_FILES))
 ifeq ($(UNAME_S),Darwin)
@@ -331,7 +331,7 @@ $(BUILD_DIR)/check/well-formedness-kompiled/interpreter: $(checker_files) $(prot
 	$(KOMPILE) --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE --md-selector "(k & ! node) | standalone" \
 	                                --syntax-module IELE-SYNTAX well-formedness.md --directory $(BUILD_DIR)/check --hook-namespaces KRYPTO \
 	                                --gen-glr-bison-parser --bison-stack-max-depth 10000000 \
-	                                --backend llvm -ccopt $(protobuf_out) $(KOMPILE_CPP_OPTS) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
+	                                --backend llvm -ccopt $(abspath $(protobuf_out)) $(KOMPILE_CPP_OPTS) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
 
 $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter: MD_SELECTOR="(k & ! node) | standalone"
 $(BUILD_DIR)/node/iele-testing-kompiled/interpreter: MD_SELECTOR="(k & ! standalone) | node"
@@ -342,8 +342,8 @@ $(BUILD_DIR)/%/iele-testing-kompiled/interpreter: $(k_files) $(protobuf_out) $(l
 					--syntax-module IELE-SYNTAX iele-testing.md --directory $(BUILD_DIR)/$* --hook-namespaces "KRYPTO BLOCKCHAIN" \
 	                --backend llvm -ccopt $(protobuf_out) $(KOMPILE_CPP_OPTS) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 $(KOMPILE_FLAGS)
 
-LLVM_KOMPILE_INCLUDE_OPTS := -I $(PLUGIN)/plugin-c/ -I $(PROTO) -I $(BUILD_DIR)/plugin-node -I vm/c/ -I vm/c/iele/ -I $(LOCAL_INCLUDE)
-LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(LOCAL_LIB) -lff -lprotobuf -lgmp $(LIB_PROCPS) -lcryptopp -lsecp256k1 -lssl -lcrypto
+LLVM_KOMPILE_INCLUDE_OPTS := -I $(PLUGIN)/plugin-c/ -I $(PROTO) -I $(abspath $(BUILD_DIR))/plugin-node -I vm/c/ -I vm/c/iele/ -I$ $(abspath $(LOCAL_INCLUDE))
+LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(abspath $(LOCAL_LIB)) -lff -lprotobuf -lgmp $(LIB_PROCPS) -lcryptopp -lsecp256k1 -lssl -lcrypto
 ifeq ($(UNAME_S),Darwin)
 LLVM_KOMPILE_INCLUDE_OPTS += $(MACOS_INCLUDE_OPTS)
 LLVM_KOMPILE_LINK_OPTS    += $(MACOS_LINK_OPTS)
