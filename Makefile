@@ -100,6 +100,7 @@ protobuf: $(protobuf_out)
 $(protobuf_out): $(PROTO)/proto/msg.proto
 	mkdir -p $(dir $@)
 	protoc --cpp_out=$(IELE_LIB)/plugin-node -I $(PROTO) $<
+	cp $(PROTO)/world.h $(IELE_LIB)/plugin-node
 
 ifndef SYSTEM_LIBSECP256K1
 
@@ -318,7 +319,7 @@ build-testnode : $(IELE_TEST_VM) $(IELE_TEST_CLIENT)
 
 KOMPILE=kompile
 
-KOMPILE_INCLUDE_OPTS := $(addprefix -ccopt , -I $(PLUGIN)/plugin-c -I $(PROTO) -I $(abspath $(IELE_LIB))/plugin-node -I $(abspath $(IELE_LIB))/libff/include) -I $(IELE_DIR)
+KOMPILE_INCLUDE_OPTS := $(addprefix -ccopt , -I $(PLUGIN)/plugin-c -I $(abspath $(IELE_LIB))/plugin-node -I $(abspath $(IELE_LIB))/plugin-node -I $(abspath $(IELE_LIB))/libff/include) -I $(IELE_DIR)
 KOMPILE_LINK_OPTS    := $(addprefix -ccopt , -L /usr/local/lib -L $(abspath $(IELE_LIB))/libff/lib -lprotobuf -lff -lcryptopp -lsecp256k1 $(LIB_PROCPS) -lssl -lcrypto)
 KOMPILE_CPP_FILES    := $(PLUGIN)/plugin-c/k.cpp $(PLUGIN)/plugin-c/crypto.cpp $(PROTO)/blockchain.cpp $(PROTO)/world.cpp $(PLUGIN)/plugin-c/blake2.cpp $(PLUGIN)/plugin-c/plugin_util.cpp
 KOMPILE_CPP_OPTS     := $(addprefix -ccopt , $(KOMPILE_CPP_FILES))
@@ -340,10 +341,10 @@ $(BUILD_DIR)/%/iele-testing-kompiled/interpreter: $(k_files) $(protobuf_out) $(l
 	@echo "== kompile: $@"
 	$(KOMPILE) --debug --main-module IELE-TESTING --verbose --md-selector $(MD_SELECTOR) \
 					--syntax-module IELE-SYNTAX iele-testing.md --directory $(BUILD_DIR)/$* --hook-namespaces "KRYPTO BLOCKCHAIN" \
-	                --backend llvm -ccopt $(protobuf_out) $(KOMPILE_CPP_OPTS) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 $(KOMPILE_FLAGS)
+	                --backend llvm -ccopt $(abspath $(protobuf_out)) $(KOMPILE_CPP_OPTS) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 $(KOMPILE_FLAGS)
 
-LLVM_KOMPILE_INCLUDE_OPTS := -I $(PLUGIN)/plugin-c/ -I $(PROTO) -I $(abspath $(BUILD_DIR))/plugin-node -I vm/c/ -I vm/c/iele/ -I$ $(abspath $(LOCAL_INCLUDE))
-LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(abspath $(LOCAL_LIB)) -lff -lprotobuf -lgmp $(LIB_PROCPS) -lcryptopp -lsecp256k1 -lssl -lcrypto
+LLVM_KOMPILE_INCLUDE_OPTS := -I $(PLUGIN)/plugin-c/ -I $(abspath $(IELE_LIB))/plugin-node -I vm/c/ -I vm/c/iele/ -I $(abspath $(IELE_LIB))/libff/include
+LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(abspath $(IELE_LIB))/libff/lib -lff -lprotobuf -lgmp $(LIB_PROCPS) -lcryptopp -lsecp256k1 -lssl -lcrypto
 ifeq ($(UNAME_S),Darwin)
 LLVM_KOMPILE_INCLUDE_OPTS += $(MACOS_INCLUDE_OPTS)
 LLVM_KOMPILE_LINK_OPTS    += $(MACOS_LINK_OPTS)
@@ -367,7 +368,8 @@ build-vm: $(IELE_VM)
 
 $(IELE_VM): $(BUILD_DIR)/node/iele-testing-kompiled/interpreter $(wildcard vm/c/*.cpp vm/c/*.h) $(protobuf_out) $(libsecp256k1_out) $(libcryptopp_out)
 	@mkdir -p $(IELE_BIN)
-	llvm-kompile $(BUILD_DIR)/node/iele-testing-kompiled/definition.kore $(BUILD_DIR)/node/iele-testing-kompiled/dt library vm/c/main.cpp vm/c/vm.cpp $(KOMPILE_CPP_FILES) $(protobuf_out) vm/c/iele/semantics.cpp $(LLVM_KOMPILE_INCLUDE_OPTS) $(LLVM_KOMPILE_LINK_OPTS) -o $(IELE_VM) -g
+	llvm-kompile $(BUILD_DIR)/node/iele-testing-kompiled/definition.kore $(BUILD_DIR)/node/iele-testing-kompiled/dt \
+	    library vm/c/main.cpp vm/c/vm.cpp $(KOMPILE_CPP_FILES) $(abspath $(protobuf_out)) vm/c/iele/semantics.cpp $(LLVM_KOMPILE_INCLUDE_OPTS) $(LLVM_KOMPILE_LINK_OPTS) -o $(IELE_VM) -g
 
 # Haskell Build
 # -------------
