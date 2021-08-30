@@ -6,7 +6,7 @@ notif() { echo "== $@" >&2 ; }
 fatal() { echo "[FATAL] $@" ; exit 1 ; }
 
 INSTALL_BIN="$(cd $(dirname $0) && pwd)"
-INSTALL_LIB="$(dirname ${INSTALL_BIN})/lib/kevm"
+INSTALL_LIB="$(dirname ${INSTALL_BIN})/lib/kiele"
 FIREFLY_ENDPOINT=${FIREFLY_ENDPOINT:-https://fireflyblockchain.com}
 
 export PATH="$INSTALL_BIN:$INSTALL_LIB:$PATH"
