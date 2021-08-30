@@ -50,7 +50,7 @@ IELE_TEST_CLIENT := $(IELE_BIN)/iele-test-client
 # We set SHELL here for Mac: https://stackoverflow.com/a/25506676
 SHELL=/bin/bash
 
-export PATH:=$(IELE_BIN):$(PATH)
+export PATH:=$(CURDIR)/$(IELE_BIN):$(PATH)
 
 .PHONY: all clean distclean libff protobuf coverage secp256k1 cryptopp \
         build build-interpreter build-vm build-check build-haskell build-node build-testnode build-assembler \
