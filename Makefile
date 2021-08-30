@@ -390,7 +390,10 @@ $(haskell_kompiled): $(k_files)
 
 build-assembler: $(IELE_ASSEMBLE)
 
-$(IELE_ASSEMBLE):
+$(IELE_ASSEMBLE): iele-assemble/$(BUILD_DIR)$(INSTALL_BIN)/iele-assemble
+	$(INSTALL) $< $@
+
+iele-assemble/$(BUILD_DIR)$(INSTALL_BIN)/iele-assemble:
 	cd $(IELE_DIR)/iele-assemble && stack install --local-bin-path $(IELE_BIN)
 
 # Coverage Processing
