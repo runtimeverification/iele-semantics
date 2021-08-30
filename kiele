@@ -78,8 +78,14 @@ run_interpret() {
 }
 
 run_krun_internal() {
+    local krun_command
     check_k_install
-    krun --directory "$backend_dir" -cSCHEDULE="$cschedule" -pSCHEDULE="${parser}" --depth "$depth" "$run_file" "$@"
+
+    krun_command=(krun --directory "${backend_dir}")
+    krun_command+=(-cSCHEDULE="${cschedule}" -pSCHEDULE="${parser}")
+    [[ "${depth}" == '-1' ]] || krun_command+=(--depth "${depth}")
+
+    "${krun_command[@]}" "${run_file}" "$@"
 }
 
 run_krun() {
@@ -192,7 +198,7 @@ definition='iele-testing'
 depth=-1
 args=()
 create_archive='false'
-parser='printf %s'
+parser='cat'
 while [[ $# -gt 0 ]]; do
     arg="$1"
     case $arg in
