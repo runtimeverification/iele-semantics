@@ -42,7 +42,7 @@ IELE_LIB         := $(BUILD_DIR)$(INSTALL_LIB)
 IELE_RUNNER      := $(IELE_BIN)/kiele
 IELE_ASSEMBLE    := $(IELE_LIB)/iele-assemble
 IELE_INTERPRETER := $(IELE_LIB)/standalone/iele-testing-kompiled/iele-interpreter
-IELE_CHECK       := $(IELE_LIB)/check/well-formedness-kompiled/iele-check
+IELE_CHECK       := $(IELE_LIB)/check/well-formedness-kompiled/interpreter
 IELE_VM          := $(IELE_LIB)/node/iele-testing-kompiled/iele-vm
 IELE_TEST_VM     := $(IELE_LIB)/iele-test-vm
 IELE_TEST_CLIENT := $(IELE_LIB)/iele-test-client
@@ -400,16 +400,19 @@ coverage:
 # Install
 # -------
 
-build:                     \
-       $(IELE_ASSEMBLE)    \
-       $(IELE_CHECK)       \
-       $(IELE_INTERPRETER) \
-       $(IELE_NODE)        \
-       $(IELE_RUNNER)      \
-       $(IELE_TEST_CLIENT) \
-       $(IELE_TEST_VM)     \
-       $(IELE_VM)          \
-       $(IELE_LIB)/version
+build:                                      \
+       $(IELE_ASSEMBLE)                     \
+       $(IELE_CHECK)                        \
+       $(IELE_INTERPRETER)                  \
+       $(IELE_NODE)                         \
+       $(IELE_RUNNER)                       \
+       $(IELE_TEST_CLIENT)                  \
+       $(IELE_TEST_VM)                      \
+       $(IELE_VM)                           \
+       $(IELE_LIB)/version                  \
+       $(IELE_LIB)/kore-json.py             \
+       $(IELE_LIB)/kiele-generate-report.py \
+       $(haskell_kompiled)
 
 all_bin_sources := $(shell find $(IELE_BIN) -type f        \
                            | sed 's|^$(IELE_BIN)/||')
@@ -452,6 +455,10 @@ $(IELE_LIB)/version:
 	echo "$(KIELE_RELEASE_TAG)" > $@
 
 $(IELE_RUNNER): kiele
+	@mkdir -p $(dir $@)
+	$(INSTALL) $< $@
+
+$(IELE_LIB)/%.py: %.py
 	@mkdir -p $(dir $@)
 	$(INSTALL) $< $@
 
