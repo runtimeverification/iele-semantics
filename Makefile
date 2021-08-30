@@ -40,12 +40,14 @@ PROTO=$(abspath $(IELE_DIR))/proto
 IELE_BIN         := $(BUILD_DIR)$(INSTALL_BIN)
 IELE_LIB         := $(BUILD_DIR)$(INSTALL_LIB)
 IELE_RUNNER      := $(IELE_BIN)/kiele
-IELE_ASSEMBLE    := $(IELE_BIN)/iele-assemble
-IELE_INTERPRETER := $(IELE_BIN)/iele-interpreter
-IELE_CHECK       := $(IELE_BIN)/iele-check
-IELE_VM          := $(IELE_BIN)/iele-vm
-IELE_TEST_VM     := $(IELE_BIN)/iele-test-vm
-IELE_TEST_CLIENT := $(IELE_BIN)/iele-test-client
+IELE_ASSEMBLE    := $(IELE_LIB)/iele-assemble
+IELE_INTERPRETER := $(IELE_LIB)/standalone/iele-testing-kompiled/iele-interpreter
+IELE_CHECK       := $(IELE_LIB)/check/well-formedness-kompiled/iele-check
+IELE_VM          := $(IELE_LIB)/node/iele-testing-kompiled/iele-vm
+IELE_TEST_VM     := $(IELE_LIB)/iele-test-vm
+IELE_TEST_CLIENT := $(IELE_LIB)/iele-test-client
+
+KIELE = kiele
 
 # We set SHELL here for Mac: https://stackoverflow.com/a/25506676
 SHELL=/bin/bash
@@ -137,7 +139,6 @@ endif # ifndef SYSTEM_LIBCRYPTOPP
 # Tests
 # -----
 
-TEST          = kiele
 CHECK         = git --no-pager diff --no-index --ignore-all-space -R
 TEST_ASSEMBLE = $(IELE_DIR)/assemble-iele-test
 TEST_BACKEND  = standalone
@@ -210,7 +211,7 @@ test-sourcemap: $(sourcemap_targets)
 	$(CHECK) $< $*
 
 %.sourcemap.out: $(IELE_ASSEMBLE)
-	$(IELE_ASSEMBLE) --sourceMap iele-examples/$(shell basename $*).iele > $@
+	 --sourceMap iele-examples/$(shell basename $*).iele > $@
 
 test-evm: test-vm test-blockchain
 test-vm: $(passing_vm_targets)
@@ -256,10 +257,10 @@ $(TEST_DIR)/VMTests/%:  TEST_MODE     = VMTESTS
 %.iele.test-illformed:  TEST_SCHEDULE = DANSE
 
 %.json.test: %.json.test-assembled
-	$(TEST) interpret --backend $(TEST_BACKEND) --mode $(TEST_MODE) --schedule $(TEST_SCHEDULE) $(TEST_ARGS) $<
+	$(KIELE) interpret --backend $(TEST_BACKEND) --mode $(TEST_MODE) --schedule $(TEST_SCHEDULE) $(TEST_ARGS) $<
 
 %.json.test-coverage: %.json.test-assembled
-	$(TEST) interpret --backend $(TEST_BACKEND) --mode $(TEST_MODE) --schedule $(TEST_SCHEDULE) --coverage $< | grep -A 30 "<kiele-coverage>" > $*.json.coverage-out
+	$(KIELE) interpret --backend $(TEST_BACKEND) --mode $(TEST_MODE) --schedule $(TEST_SCHEDULE) --coverage $< | grep -A 30 "<kiele-coverage>" > $*.json.coverage-out
 	$(CHECK) $*.json.coverage-out $*.json.coverage-expected
 	rm -rf $*.json.coverage-out
 
@@ -267,10 +268,10 @@ $(TEST_DIR)/VMTests/%:  TEST_MODE     = VMTESTS
 	$(TEST_ASSEMBLE) $< > $@
 
 %.iele.test-wellformed: %.iele
-	$(TEST) check --schedule $(TEST_SCHEDULE) $<
+	$(KIELE) check --schedule $(TEST_SCHEDULE) $<
 
 %.iele.test-illformed: %.iele
-	! $(TEST) check --schedule $(TEST_SCHEDULE) $<
+	! $(KIELE) check --schedule $(TEST_SCHEDULE) $<
 
 %.nodetest: %
 	iele-test-vm $< $(TEST_PORT)
@@ -311,10 +312,8 @@ MACOS_LINK_OPTS    := -L $(OPENSSL_ROOT)/lib
 LIB_PROCPS=
 endif
 
-build-node: $(IELE_VM)
-build-testnode : $(IELE_TEST_VM) $(IELE_TEST_CLIENT)
-
-KOMPILE=kompile
+build-node: $(IELE_VM) $(IELE_RUNNER)
+build-testnode : $(IELE_TEST_VM) $(IELE_TEST_CLIENT) $(IELE_RUNNER)
 
 KOMPILE_INCLUDE_OPTS := $(addprefix -ccopt , -I $(PLUGIN)/plugin-c -I $(abspath $(IELE_LIB))/plugin-node -I $(abspath $(IELE_LIB))/plugin-node -I $(abspath $(IELE_LIB))/libff/include) -I $(IELE_DIR)
 KOMPILE_LINK_OPTS    := $(addprefix -ccopt , -L /usr/local/lib -L $(abspath $(IELE_LIB))/libff/lib -lprotobuf -lff -lcryptopp -lsecp256k1 $(LIB_PROCPS) -lssl -lcrypto)
@@ -325,20 +324,23 @@ KOMPILE_INCLUDE_OPTS += $(addprefix -ccopt , $(MACOS_INCLUDE_OPTS))
 KOMPILE_LINK_OPTS    += $(addprefix -ccopt , $(MACOS_LINK_OPTS))
 endif
 
-$(BUILD_DIR)/check/well-formedness-kompiled/interpreter: $(checker_files) $(protobuf_out) $(libff_out) $(libsecp256k1_out) $(libcryptopp_out)
-	$(KOMPILE) --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE --md-selector "(k & ! node) | standalone" \
-	                                --syntax-module IELE-SYNTAX well-formedness.md --directory $(BUILD_DIR)/check --hook-namespaces KRYPTO \
-	                                --gen-glr-bison-parser --bison-stack-max-depth 10000000 \
-	                                --backend llvm -ccopt $(abspath $(protobuf_out)) $(KOMPILE_CPP_OPTS) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS)
+$(IELE_CHECK): $(checker_files) $(protobuf_out) $(libff_out) $(libsecp256k1_out) $(libcryptopp_out)
+	@mkdir -p $(dir $@)
+	kompile --debug --main-module IELE-WELL-FORMEDNESS-STANDALONE --md-selector "(k & ! node) | standalone"                                                                       \
+	    --syntax-module IELE-SYNTAX well-formedness.md --directory $(abspath $(IELE_LIB)/check) --hook-namespaces KRYPTO                                                          \
+	    --gen-glr-bison-parser --bison-stack-max-depth 10000000                                                                                                                   \
+	    --backend llvm -ccopt $(abspath $(protobuf_out)) $(KOMPILE_CPP_OPTS) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 -ccopt -O2 $(KOMPILE_FLAGS) \
+	    -ccopt -o -ccopt $(abspath $@)
 
-$(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter: MD_SELECTOR="(k & ! node) | standalone"
-$(BUILD_DIR)/node/iele-testing-kompiled/interpreter: MD_SELECTOR="(k & ! standalone) | node"
+$(IELE_LIB)/standalone/iele-testing-kompiled/interpreter: MD_SELECTOR="(k & ! node) | standalone"
+$(IELE_LIB)/node/iele-testing-kompiled/interpreter:       MD_SELECTOR="(k & ! standalone) | node"
 
-$(BUILD_DIR)/%/iele-testing-kompiled/interpreter: $(k_files) $(protobuf_out) $(libff_out) $(libsecp256k1_out) $(libcryptopp_out)
-	@echo "== kompile: $@"
-	$(KOMPILE) --debug --main-module IELE-TESTING --verbose --md-selector $(MD_SELECTOR) \
-					--syntax-module IELE-SYNTAX iele-testing.md --directory $(BUILD_DIR)/$* --hook-namespaces "KRYPTO BLOCKCHAIN" \
-	                --backend llvm -ccopt $(abspath $(protobuf_out)) $(KOMPILE_CPP_OPTS) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 $(KOMPILE_FLAGS)
+$(IELE_LIB)/%/iele-testing-kompiled/interpreter: $(k_files) $(protobuf_out) $(libff_out) $(libsecp256k1_out) $(libcryptopp_out)
+	@mkdir -p $(dir $@)
+	kompile --debug --main-module IELE-TESTING --verbose --md-selector $(MD_SELECTOR)                                                                                  \
+	    --syntax-module IELE-SYNTAX iele-testing.md --directory $(abspath $(IELE_LIB)/$*) --hook-namespaces "KRYPTO BLOCKCHAIN"                                        \
+	    --backend llvm -ccopt $(abspath $(protobuf_out)) $(KOMPILE_CPP_OPTS) $(KOMPILE_INCLUDE_OPTS) $(KOMPILE_LINK_OPTS) -ccopt -g -ccopt -std=c++14 $(KOMPILE_FLAGS) \
+	    -ccopt -o -ccopt $(abspath $@)
 
 LLVM_KOMPILE_INCLUDE_OPTS := -I $(PLUGIN)/plugin-c/ -I $(abspath $(IELE_LIB))/plugin-node -I vm/c/ -I vm/c/iele/ -I $(abspath $(IELE_LIB))/libff/include
 LLVM_KOMPILE_LINK_OPTS    := -L /usr/local/lib -L $(abspath $(IELE_LIB))/libff/lib -lff -lprotobuf -lgmp $(LIB_PROCPS) -lcryptopp -lsecp256k1 -lssl -lcrypto
@@ -349,52 +351,45 @@ endif
 
 build-kiele: $(IELE_RUNNER)
 
-build-check: $(IELE_CHECK)
+build-check: $(IELE_CHECK) $(IELE_RUNNER)
 
-$(IELE_CHECK): $(BUILD_DIR)/check/well-formedness-kompiled/interpreter
-	@mkdir -p $(IELE_BIN)
+build-interpreter: $(IELE_INTERPRETER) $(IELE_RUNNER)
+
+$(IELE_INTERPRETER): $(IELE_LIB)/standalone/iele-testing-kompiled/interpreter
 	$(INSTALL) $< $@
 
-build-interpreter: $(IELE_INTERPRETER)
+build-vm: $(IELE_VM) $(IELE_RUNNER)
 
-$(IELE_INTERPRETER): $(BUILD_DIR)/standalone/iele-testing-kompiled/interpreter
-	@mkdir -p $(IELE_BIN)
-	$(INSTALL) $< $@
-
-build-vm: $(IELE_VM)
-
-$(IELE_VM): $(BUILD_DIR)/node/iele-testing-kompiled/interpreter $(wildcard vm/c/*.cpp vm/c/*.h) $(protobuf_out) $(libsecp256k1_out) $(libcryptopp_out)
-	@mkdir -p $(IELE_BIN)
-	llvm-kompile $(BUILD_DIR)/node/iele-testing-kompiled/definition.kore $(BUILD_DIR)/node/iele-testing-kompiled/dt \
-	    library vm/c/main.cpp vm/c/vm.cpp $(KOMPILE_CPP_FILES) $(abspath $(protobuf_out)) vm/c/iele/semantics.cpp $(LLVM_KOMPILE_INCLUDE_OPTS) $(LLVM_KOMPILE_LINK_OPTS) -o $(IELE_VM) -g
+$(IELE_VM): $(IELE_LIB)/node/iele-testing-kompiled/interpreter $(wildcard vm/c/*.cpp vm/c/*.h) $(protobuf_out) $(libsecp256k1_out) $(libcryptopp_out)
+	@mkdir -p $(dir $@)
+	llvm-kompile $(IELE_LIB)/node/iele-testing-kompiled/definition.kore $(IELE_LIB)/node/iele-testing-kompiled/dt                                                        \
+	    library vm/c/main.cpp vm/c/vm.cpp $(KOMPILE_CPP_FILES) $(abspath $(protobuf_out)) vm/c/iele/semantics.cpp $(LLVM_KOMPILE_INCLUDE_OPTS) $(LLVM_KOMPILE_LINK_OPTS) \
+	    -o $(IELE_VM) -g
 
 # Haskell Build
 # -------------
 
-haskell_dir            := $(BUILD_DIR)/haskell
+haskell_dir            := $(IELE_LIB)/haskell
 haskell_main_module    := IELE-TESTING
 haskell_syntax_module  := IELE-SYNTAX
 haskell_main_file      := iele-testing.md
 haskell_main_filename  := $(basename $(notdir $(haskell_main_file)))
 haskell_kompiled       := $(haskell_dir)/$(haskell_main_filename)-kompiled/definition.kore
 
-build-haskell: $(haskell_kompiled)
+build-haskell: $(haskell_kompiled) $(IELE_RUNNER)
 
 $(haskell_kompiled): MD_SELECTOR="(k & ! node) | standalone"
 
 $(haskell_kompiled): $(k_files)
-	$(KOMPILE) --directory $(haskell_dir) --backend haskell --main-module $(haskell_main_module) --syntax-module $(haskell_syntax_module) --md-selector $(MD_SELECTOR) --hook-namespaces "KRYPTO JSON" $(haskell_main_file)
+	kompile --directory $(haskell_dir) --backend haskell --main-module $(haskell_main_module) --syntax-module $(haskell_syntax_module) --md-selector $(MD_SELECTOR) --hook-namespaces "KRYPTO JSON" $(haskell_main_file)
 
 # IELE Assembler
 # --------------
 
-build-assembler: $(IELE_ASSEMBLE)
+build-assembler: $(IELE_ASSEMBLE) $(IELE_RUNNER)
 
-$(IELE_ASSEMBLE): iele-assemble/$(BUILD_DIR)$(INSTALL_BIN)/iele-assemble
-	$(INSTALL) $< $@
-
-iele-assemble/$(BUILD_DIR)$(INSTALL_BIN)/iele-assemble:
-	cd $(IELE_DIR)/iele-assemble && stack install --local-bin-path $(IELE_BIN)
+$(IELE_ASSEMBLE):
+	cd iele-assemble && stack install --local-bin-path $(abspath $(IELE_LIB))
 
 # Coverage Processing
 # -------------------
@@ -405,114 +400,60 @@ coverage:
 # Install
 # -------
 
-install_bins :=      \
-    iele-assemble    \
-    iele-check       \
-    iele-interpreter \
-    iele-test-client \
-    iele-test-vm     \
-    iele-vm          \
-    kiele
+build:                     \
+       $(IELE_ASSEMBLE)    \
+       $(IELE_CHECK)       \
+       $(IELE_INTERPRETER) \
+       $(IELE_NODE)        \
+       $(IELE_RUNNER)      \
+       $(IELE_TEST_CLIENT) \
+       $(IELE_TEST_VM)     \
+       $(IELE_VM)          \
+       $(IELE_LIB)/version
 
-haskell_kompiled_libs :=  \
-    backend.txt           \
-    compiled.bin          \
-    configVars.sh         \
-    definition.kore       \
-    macros.kore           \
-    mainModule.txt        \
-    mainSyntaxModule.txt  \
-    syntaxDefinition.kore
+all_bin_sources := $(shell find $(IELE_BIN) -type f        \
+                           | sed 's|^$(IELE_BIN)/||')
+all_lib_sources := $(shell find $(IELE_LIB) -type f                                        \
+                            -not -path "$(IELE_LIB)/*.cmi"                                 \
+                            -not -path "$(IELE_LIB)/*.cmx"                                 \
+                            -not -path "$(IELE_LIB)/*.ml"                                  \
+                            -not -path "$(IELE_LIB)/*.mli"                                 \
+                            -not -path "$(IELE_LIB)/*.o"                                   \
+                            -not -path "$(IELE_LIB)/iele-test-client"                      \
+                            -not -path "$(IELE_LIB)/iele-test-vm"                          \
+                            -not -path "$(IELE_LIB)/plugin-node/*"                         \
+                            -not -path "$(IELE_LIB)/check/well-formedness-kompiled/dt/*"   \
+                            -not -path "$(IELE_LIB)/node/iele-testing-kompiled/dt/*"       \
+                            -not -path "$(IELE_LIB)/standalone/iele-testing-kompiled/dt/*" \
+                            | sed 's|^$(IELE_LIB)/||')
 
-kompiled_libs :=             \
-    $(haskell_kompiled_libs) \
-    interpreter
-
-iele_interpreter_libs := $(patsubst %, standalone/iele-testing-kompiled/%, $(kompiled_libs))
-iele_haskell_libs     := $(patsubst %, haskell/iele-testing-kompiled/%,    $(haskell_kompiled_libs))
-iele_check_libs       := $(patsubst %, check/well-formedness-kompiled/%,   $(kompiled_libs) parser_PGM)
-
-install_libs :=              \
-    $(iele_check_libs)       \
-    $(iele_interpreter_libs) \
-    $(iele_haskell_libs)     \
-    kore-json.py             \
-    kiele-generate-report.py \
-    static-report.html       \
-    version
-
-$(IELE_RUNNER): $(IELE_DIR)/kiele
+$(DESTDIR)$(INSTALL_BIN)/%: $(IELE_BIN)/%
 	@mkdir -p $(dir $@)
 	$(INSTALL) $< $@
 
-$(IELE_LIB)/version:
-	@mkdir -p $(IELE_LIB)
-	echo "$(KIELE_RELEASE_TAG)" > $@
-
-$(IELE_LIB)/kore-json.py: $(IELE_DIR)/kore-json.py
+$(DESTDIR)$(INSTALL_LIB)/%: $(IELE_LIB)/%
 	@mkdir -p $(dir $@)
 	$(INSTALL) $< $@
 
-$(IELE_LIB)/kiele-generate-report.py: $(IELE_DIR)/kiele-generate-report.py
-	@mkdir -p $(dir $@)
-	$(INSTALL) $< $@
-
-$(IELE_LIB)/static-report.html: $(IELE_DIR)/static-report.html
-	@mkdir -p $(dir $@)
-	$(INSTALL) $< $@
-
-$(INSTALL_BIN)/iele-interpreter: $(patsubst %, $(INSTALL_LIB)/%, $(iele_interpreter_libs))
-$(INSTALL_BIN)/iele-check:       $(patsubst %, $(INSTALL_LIB)/%, $(iele_check_libs))
-
-$(INSTALL_BIN)/kiele: $(INSTALL_LIB)/kore-json.py
-$(INSTALL_BIN)/kiele: $(INSTALL_LIB)/kiele-generate-report.py
-$(INSTALL_BIN)/kiele: $(INSTALL_LIB)/static-report.html
-$(INSTALL_BIN)/kiele: $(INSTALL_LIB)/version
-
-$(INSTALL_BIN)/%: $(IELE_BIN)/%
-	@mkdir -p $(dir $@)
-	$(INSTALL) $< $@
-
-$(INSTALL_LIB)/%: $(IELE_LIB)/%
-	@mkdir -p $(dir $@)
-	$(INSTALL) $< $@
-
-install: $(patsubst %, $(INSTALL_BIN)/%, $(install_bins)) \
-         $(patsubst %, $(INSTALL_LIB)/%, $(install_libs))
-
-install-interpreter: $(INSTALL_BIN)/iele-interpreter
-
-install-vm: $(INSTALL_BIN)/iele-vm
-
-install-check: $(INSTALL_BIN)/iele-check
-
-install-kiele: $(INSTALL_BIN)/kiele
+install: $(patsubst %, $(DESTDIR)$(INSTALL_BIN)/%, $(all_bin_sources)) \
+         $(patsubst %, $(DESTDIR)$(INSTALL_LIB)/%, $(all_lib_sources))
 
 uninstall:
-	rm -rf $(INSTALL_BIN)/kiele
-	rm -rf $(INSTALL_LIB)/kiele
+	rm -rf $(DESTDIR)$(INSTALL_BIN)/kiele
+	rm -rf $(DESTDIR)$(INSTALL_LIB)/kiele
 
 release.md:
 	echo "KIELE Release - $(KIELE_RELEASE_TAG)"  > $@
 	echo                                        >> $@
 	cat INSTALL.md                              >> $@
 
-build_bins := $(install_bins)
-build_libs := $(install_libs)
-
-$(IELE_LIB)/standalone/iele-testing-kompiled/%: $(IELE_INTERPRETER)
+$(IELE_LIB)/version:
 	@mkdir -p $(dir $@)
-	$(INSTALL) $(BUILD_DIR)/standalone/iele-testing-kompiled/$* $@
+	echo "$(KIELE_RELEASE_TAG)" > $@
 
-$(IELE_LIB)/haskell/iele-testing-kompiled/%: $(haskell_kompiled)
+$(IELE_RUNNER): kiele
 	@mkdir -p $(dir $@)
-	$(INSTALL) $(BUILD_DIR)/haskell/iele-testing-kompiled/$* $@
-
-$(IELE_LIB)/check/well-formedness-kompiled/%: $(IELE_CHECK)
-	@mkdir -p $(dir $@)
-	$(INSTALL) $(BUILD_DIR)/check/well-formedness-kompiled/$* $@
-
-build: $(patsubst %, $(IELE_BIN)/%, $(build_bins)) $(patsubst %, $(IELE_LIB)/%, $(build_libs))
+	$(INSTALL) $< $@
 
 # Ocaml Builds
 # ------------
@@ -522,11 +463,11 @@ $(BUILD_DIR)/plugin-ocaml/msg_types.ml: $(PROTO)/proto/msg.proto
 	eval `opam config env` && ocaml-protoc $< -ml_out $(BUILD_DIR)/plugin-ocaml
 
 $(IELE_TEST_VM): $(wildcard vm/*.ml vm/*.mli) $(BUILD_DIR)/plugin-ocaml/msg_types.ml $(IELE_VM)
-	@mkdir -p $(IELE_BIN)
-	cp vm/*.ml vm/*.mli $(BUILD_DIR)/plugin-ocaml/*.ml $(BUILD_DIR)/plugin-ocaml/*.mli $(IELE_BIN)
-	cd $(IELE_BIN) && eval `opam config env` && ocamlfind $(OCAMLC) -g -o iele-test-vm msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml ieleClientUtils.ml ieleVmTest.ml -package dynlink -package zarith -package str -package uuidm -package unix -package rlp -package yojson -package hex -package cryptokit -package ocaml-protoc -linkpkg -linkall -thread -safe-string
+	@mkdir -p $(IELE_LIB)
+	cp vm/*.ml vm/*.mli $(BUILD_DIR)/plugin-ocaml/*.ml $(BUILD_DIR)/plugin-ocaml/*.mli $(IELE_LIB)
+	cd $(IELE_LIB) && eval `opam config env` && ocamlfind $(OCAMLC) -g -o iele-test-vm msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml ieleClientUtils.ml ieleVmTest.ml -package dynlink -package zarith -package str -package uuidm -package unix -package rlp -package yojson -package hex -package cryptokit -package ocaml-protoc -linkpkg -linkall -thread -safe-string
 
 $(IELE_TEST_CLIENT): $(wildcard vm/*.ml vm/*.mli) $(BUILD_DIR)/plugin-ocaml/msg_types.ml
-	@mkdir -p $(IELE_BIN)
-	cp vm/*.ml vm/*.mli $(BUILD_DIR)/plugin-ocaml/*.ml $(BUILD_DIR)/plugin-ocaml/*.mli $(IELE_BIN)
-	cd $(IELE_BIN) && eval `opam config env` && ocamlfind $(OCAMLC) -g -o iele-test-client msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml ieleClientUtils.ml ieleApi.mli ieleApi.ml ieleApiClient.ml -package dynlink -package zarith -package str -package uuidm -package unix -package rlp -package yojson -package hex -package cryptokit -package ocaml-protoc -linkpkg -linkall -thread -safe-string $(PREDICATES)
+	@mkdir -p $(IELE_LIB)
+	cp vm/*.ml vm/*.mli $(BUILD_DIR)/plugin-ocaml/*.ml $(BUILD_DIR)/plugin-ocaml/*.mli $(IELE_LIB)
+	cd $(IELE_LIB) && eval `opam config env` && ocamlfind $(OCAMLC) -g -o iele-test-client msg_types.mli msg_types.ml msg_pb.mli msg_pb.ml ieleClientUtils.ml ieleApi.mli ieleApi.ml ieleApiClient.ml -package dynlink -package zarith -package str -package uuidm -package unix -package rlp -package yojson -package hex -package cryptokit -package ocaml-protoc -linkpkg -linkall -thread -safe-string $(PREDICATES)
