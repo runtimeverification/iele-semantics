@@ -9,7 +9,10 @@ INSTALL_BIN="$(cd $(dirname $0) && pwd)"
 INSTALL_LIB="$(dirname ${INSTALL_BIN})/lib/kiele"
 FIREFLY_ENDPOINT=${FIREFLY_ENDPOINT:-https://fireflyblockchain.com}
 
-export PATH="$INSTALL_BIN:$INSTALL_LIB:$PATH"
+export PATH="${INSTALL_BIN}:${INSTALL_LIB}:${PATH}"
+export PATH="${PATH}:${INSTALL_LIB}/standalone/iele-testing-kompiled"
+export PATH="${PATH}:${INSTALL_LIB}/check/well-formedness-kompiled"
+export PATH="${PATH}:${INSTALL_LIB}/node/iele-testing-kompiled"
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-}:/usr/local/lib
 
 check_k_install() {
