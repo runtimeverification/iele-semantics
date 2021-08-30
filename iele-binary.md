@@ -328,7 +328,7 @@ After interpreting the strings representing programs as a `Bytes`, it should be 
     rule #dasmInstruction ( REVERT(), R, W, M, _, _ ) => revert %(R, W, M, 0)
     rule #dasmInstruction ( RETURN(RETS), R, W, M, _, _ ) => ret %o(R, W, M, 0, RETS)
       requires RETS =/=Int 0
-    rule #dasmInstruction ( RETURN(0), R, _, _, _, _ ) => ret void
+    rule #dasmInstruction ( RETURN(0), _, _, _, _, _ ) => ret void
 
     syntax LValue ::= "%" "(" Int "," Int "," Int "," Int ")" [function]
  // --------------------------------------------------------------------
