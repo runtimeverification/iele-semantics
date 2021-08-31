@@ -25,8 +25,8 @@ LIBFLAG=-shared
 endif
 
 INSTALL_PREFIX := /usr/local
-INSTALL_BIN    ?= $(DESTDIR)$(INSTALL_PREFIX)/bin
-INSTALL_LIB    ?= $(DESTDIR)$(INSTALL_PREFIX)/lib/kiele
+INSTALL_BIN    ?= $(INSTALL_PREFIX)/bin
+INSTALL_LIB    ?= $(INSTALL_PREFIX)/lib/kiele
 
 IELE_DIR  := .
 BUILD_DIR := .build
