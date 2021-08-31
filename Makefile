@@ -274,7 +274,7 @@ $(TEST_DIR)/VMTests/%:  TEST_MODE     = VMTESTS
 	! $(KIELE) check --schedule $(TEST_SCHEDULE) $<
 
 %.nodetest: %
-	iele-test-vm $< $(TEST_PORT)
+	$(IELE_LIB)/iele-test-vm $< $(TEST_PORT)
 
 $(TEST_DIR)/%/make.timestamp: $(TEST_DIR)/ethereum-tests/%.json $(TEST_DIR)/evm-to-iele/evm-to-iele $(TEST_DIR)/evm-to-iele/evm-test-to-iele
 	@echo "==   split: $@"
