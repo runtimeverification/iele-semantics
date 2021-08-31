@@ -152,7 +152,10 @@ let mine_block () =
     let logs = List.map log_entry_to_json call_result.logs in
     let owner = tx |> member "to" |> to_string in
     let txcreate = owner = "" || owner = "0x" in
-    let receipt = `Assoc [("gasUsed", `String gasUsed); ("status", `String status); ("contractAddress", if txcreate && List.length output > 0 then `String (to_hex (List.hd output_bytes)) else `Null); ("output", `List output_json); ("blockNumber", `String blockNumber); ("logs", `List logs)] in
+    let fix_length addr_bytes =
+      if Bytes.length addr_bytes = 20 && Bytes.get addr_bytes 0 = '\000' then Bytes.cat (Bytes.of_string "\000") addr_bytes else addr_bytes
+    in 
+    let receipt = `Assoc [("gasUsed", `String gasUsed); ("status", `String status); ("contractAddress", if txcreate && List.length output > 0 then`String (to_hex (fix_length(List.hd output_bytes))) else `Null); ("output", `List output_json); ("blockNumber", `String blockNumber); ("logs", `List logs)] in
     IeleClientUtils.InMemoryWorldState.add_blockhash (Bytes.of_string (String.sub hash 0 32));
     receipts := StringMap.add hash_hex receipt !receipts
   end
