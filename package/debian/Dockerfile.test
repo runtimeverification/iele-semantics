@@ -12,7 +12,9 @@ RUN    apt-get update         \
             curl              \
             git               \
             make              \
+            pkg-config        \
             python            \
+            opam              \
             sudo
 
 ARG USER_ID=1000
@@ -22,6 +24,9 @@ RUN    groupadd -g $GROUP_ID user                                               
     && echo "user ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 USER user:user
+
+RUN    opam init --yes                                                       \
+    && opam install --yes zarith hex uuidm rlp yojson cryptokit ocaml-protoc
 
 ENV LANG=C.UTF-8
 ENV DEBIAN_FRONTEND=noninteractive
