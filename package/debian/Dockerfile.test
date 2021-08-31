@@ -9,13 +9,16 @@ RUN    ln --symbolic --no-dereference --force /usr/share/zoneinfo/$TZ /etc/local
 RUN    apt-get update         \
     && apt-get upgrade --yes  \
     && apt-get install --yes  \
+            autoconf          \
             curl              \
             git               \
+            libgmp-dev        \
             make              \
             pkg-config        \
             python            \
             opam              \
-            sudo
+            sudo              \
+            zlib1g-dev
 
 ARG USER_ID=1000
 ARG GROUP_ID=1000
