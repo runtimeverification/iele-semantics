@@ -16,6 +16,10 @@ pipeline {
       steps { script { currentBuild.displayName = "PR ${env.CHANGE_ID}: ${env.CHANGE_TITLE}" } }
     }
     stage('Build and Test') {
+          when {
+            branch 'master'
+            beforeAgent true
+          }
       agent {
         dockerfile {
           additionalBuildArgs '--build-arg K_COMMIT=${K_VERSION} --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g)'
