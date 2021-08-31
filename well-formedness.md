@@ -99,7 +99,6 @@ Contracts
     rule <k> .TopLevelDefinitions => BODIES ... </k>
          <functionBodies> BODIES </functionBodies>
          <types> ... init |-> _ -> .Types </types>
-    rule <k> .TopLevelDefinitions => . </k> [owise]
 ```
 
 Top Level Definitions
