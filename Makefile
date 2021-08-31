@@ -409,9 +409,10 @@ build:                                      \
        $(IELE_TEST_CLIENT)                  \
        $(IELE_TEST_VM)                      \
        $(IELE_VM)                           \
-       $(IELE_LIB)/version                  \
-       $(IELE_LIB)/kore-json.py             \
        $(IELE_LIB)/kiele-generate-report.py \
+       $(IELE_LIB)/kore-json.py             \
+       $(IELE_LIB)/static-report.html       \
+       $(IELE_LIB)/version                  \
        $(haskell_kompiled)
 
 all_bin_sources := $(shell find $(IELE_BIN) -type f        \
@@ -459,6 +460,10 @@ $(IELE_RUNNER): kiele
 	$(INSTALL) $< $@
 
 $(IELE_LIB)/%.py: %.py
+	@mkdir -p $(dir $@)
+	$(INSTALL) $< $@
+
+$(IELE_LIB)/static-report.html: static-report.html
 	@mkdir -p $(dir $@)
 	$(INSTALL) $< $@
 
