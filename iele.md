@@ -26,6 +26,8 @@ We've broken up the configuration into two components; those parts of the state 
 In the comments next to each cell, we explain the purpose of the cell.
 
 ```k
+    rule initKCell(INIT) => <k> {INIT[#token("$PGM","KConfigVar")]}:>K </k> [priority(25)]
+
     configuration
       <kiele>
         <well-formedness/>
