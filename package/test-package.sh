@@ -4,7 +4,7 @@ set -euxo pipefail
 
 TEST_PORT="$1" ; shift
 
-make split-tests
+make split-tests -j8
 make test-vm -j4
 make test-iele -j4
 
