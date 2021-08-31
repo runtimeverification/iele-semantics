@@ -424,7 +424,6 @@ all_lib_sources := $(shell find $(IELE_LIB) -type f                             
                             -not -path "$(IELE_LIB)/*.mli"                                 \
                             -not -path "$(IELE_LIB)/*.o"                                   \
                             -not -path "$(IELE_LIB)/iele-test-client"                      \
-                            -not -path "$(IELE_LIB)/iele-test-vm"                          \
                             -not -path "$(IELE_LIB)/plugin-node/*"                         \
                             -not -path "$(IELE_LIB)/check/well-formedness-kompiled/dt/*"   \
                             -not -path "$(IELE_LIB)/node/iele-testing-kompiled/dt/*"       \

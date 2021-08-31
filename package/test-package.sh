@@ -2,6 +2,8 @@
 
 set -euxo pipefail
 
+export PATH=$(dirname $(dirname $(which kiele)))/lib/kiele
+
 TEST_PORT="$1" ; shift
 
 make split-tests -j8
