@@ -230,7 +230,7 @@ test-iele-coverage: $(iele_coverage_tests)
 test-bad-packet:
 	netcat 127.0.0.1 $(TEST_PORT) -q 2 < $(TEST_DIR)/bad-packet
 	netcat 127.0.0.1 $(TEST_PORT) -q 2 < $(TEST_DIR)/bad-packet-2
-	iele-test-vm $(TEST_DIR)/iele/danse/sum/sum_zero.iele.json $(TEST_PORT)
+	$(IELE_TEST_VM) $(TEST_DIR)/iele/danse/sum/sum_zero.iele.json $(TEST_PORT)
 
 test-interactive: iele-examples/erc20.iele $(TEST_DIR)/iele/danse/factorial/factorial_positive.iele.json.test-assembled
 	kiele help
@@ -274,7 +274,7 @@ $(TEST_DIR)/VMTests/%:  TEST_MODE     = VMTESTS
 	! $(KIELE) check --schedule $(TEST_SCHEDULE) $<
 
 %.nodetest: %
-	$(IELE_LIB)/iele-test-vm $< $(TEST_PORT)
+	$(IELE_TEST_VM) $< $(TEST_PORT)
 
 $(TEST_DIR)/%/make.timestamp: $(TEST_DIR)/ethereum-tests/%.json $(TEST_DIR)/evm-to-iele/evm-to-iele $(TEST_DIR)/evm-to-iele/evm-test-to-iele
 	@echo "==   split: $@"
