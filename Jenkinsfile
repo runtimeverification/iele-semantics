@@ -103,6 +103,7 @@ pipeline {
                     sudo apt-get install --yes ./kiele_${KIELE_VERSION}_amd64_bionic.deb
                     git clone 'https://github.com/runtimeverification/iele-semantics'
                     cd iele-semantics
+                    git submodule update --init --recursive
                     git checkout ${LONG_REV}
                     ./package/test-package.sh 9001
                   '''
@@ -152,6 +153,7 @@ pipeline {
                     sudo apt-get install --yes ./kiele_${KIELE_VERSION}_amd64_focal.deb
                     git clone 'https://github.com/runtimeverification/iele-semantics'
                     cd iele-semantics
+                    git submodule update --init --recursive
                     git checkout ${LONG_REV}
                     ./package/test-package.sh 9001
                   '''
@@ -210,6 +212,7 @@ pipeline {
                     cd ~
                     git clone 'https://github.com/runtimeverification/iele-semantics'
                     cd iele-semantics
+                    git submodule update --init --recursive
                     git checkout ${LONG_REV}
                     ./package/test-package.sh 9001
                   '''
@@ -231,6 +234,7 @@ pipeline {
                     cd ~
                     git clone 'https://github.com/runtimeverification/iele-semantics'
                     cd iele-semantics
+                    git submodule update --init --recursive
                     git checkout ${LONG_REV}
                     ./package/test-package.sh 9001
                   '''
