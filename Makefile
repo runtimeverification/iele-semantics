@@ -24,7 +24,7 @@ OCAMLC=opt -O3
 LIBFLAG=-shared
 endif
 
-INSTALL_PREFIX := /usr/local
+INSTALL_PREFIX := /usr
 INSTALL_BIN    ?= $(INSTALL_PREFIX)/bin
 INSTALL_LIB    ?= $(INSTALL_PREFIX)/lib/kiele
 
