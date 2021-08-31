@@ -17,7 +17,6 @@ module IELE-CONFIGURATION
     imports IELE-DATA
     imports IELE-COMMON
     imports IELE-WELL-FORMEDNESS
-    imports DEFAULT-CONFIGURATION
 ```
 
 Configuration
@@ -29,13 +28,10 @@ In the comments next to each cell, we explain the purpose of the cell.
 ```k
     configuration
       <kiele>
-        <k/>                                               // Current computation
-        <exit-code exit=""> 1 </exit-code>                 // Exit code of interpreter process
+        <well-formedness/>
         <mode> $MODE:Mode </mode>                          // Execution mode: VMTESTS or NORMAL
         <schedule> $SCHEDULE:Schedule </schedule>          // Gas Schedule: DEFAULT or ALBE
         <checkGas> true </checkGas>                        // Enables/disables gas check in test driver
-
-        <well-formedness/>
 
         // IELE Specific
         // =============
@@ -386,7 +382,7 @@ When an instruction reaches the top of the K cell, we first heat its registers, 
 
 ```k
     syntax InternalOp ::= "#exec" Instruction
-                        | "#gas" "[" Instruction "]" 
+                        | "#gas" "[" Instruction "]"
  // ------------------------------------------------
     rule <k> OP:Instruction => #gas [ #addr?(OP) ] ~> #exec #addr?(OP) ... </k> requires isKResult(OP)
 ```
@@ -1365,12 +1361,12 @@ For each `call*` operation, we make a corresponding call to `#call` and a state-
       requires notBool (VALUE >Int BAL orBool VALUE <Int 0 orBool CD >=Int 1024)
 
     rule <k> #checkContract CONTRACT => CONTRACT ~> #finishTypeChecking ... </k>
-         (_:WellFormednessCell => 
-         <well-formedness>
+         (_:WellFormednessCheckerCell =>
+         <well-formedness-checker>
            <typeChecking> true </typeChecking>
            <well-formedness-schedule> SCHED </well-formedness-schedule>
            ...
-         </well-formedness>)
+         </well-formedness-checker>)
          <schedule> SCHED </schedule>
     rule <k> #finishTypeChecking => . ... </k>
          <typeChecking> _ => false </typeChecking>
@@ -1777,7 +1773,7 @@ module IELE-PROGRAM-LOADING
       requires NAME =/=K FUNC
     rule #callAddress(_::TopLevelDefinition REST, FUNC, IDX) => #callAddress(REST, FUNC, IDX) [owise]
     rule #callAddress(.TopLevelDefinitions, _, _) => 0
-    
+
     rule #contractBytes(CONTRACT) => #contractBytes(CONTRACT, #mainContract(CONTRACT))
       requires CONTRACT =/=K .Contract
     rule #contractBytes(.Contract) => ""

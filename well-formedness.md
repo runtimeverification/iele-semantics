@@ -23,13 +23,11 @@ module IELE-CONSTANTS
                       | "DANSE" [klabel(DANSE), symbol]
 endmodule
 
-
 module IELE-WELL-FORMEDNESS
     imports IELE-COMMON
     imports IELE-DATA
     imports IELE-CONSTANTS
     imports BOOL
-    imports DEFAULT-CONFIGURATION
     imports INT
     imports K-EQUAL
 ```
@@ -44,20 +42,24 @@ The semantic checker for IELE has its own configuration separate from the config
     syntax Schedule
 
     configuration <well-formedness>
-                    <typeChecking> false </typeChecking>
-                    <well-formedness-schedule> $SCHEDULE:Schedule </well-formedness-schedule>
-                    <contracts> .Set </contracts>
-                    <currentContract>
-                      <types> intrinsicTypes </types>
-                      <contractName> Main </contractName>
-                      <declaredContracts> .Set </declaredContracts>
-                      <functionBodies> .K </functionBodies>
-                      <currentFunction>
-                        <functionName> deposit:IeleName </functionName>
-                        <labels> .Set </labels>
-                        <currentInstructions> .K </currentInstructions>
-                      </currentFunction>
-                    </currentContract>
+                    <k> $PGM:Contract </k>
+                    <exit-code exit=""> 1 </exit-code>
+                    <well-formedness-checker>
+                      <typeChecking> false </typeChecking>
+                      <well-formedness-schedule> $SCHEDULE:Schedule </well-formedness-schedule>
+                      <contracts> .Set </contracts>
+                      <currentContract>
+                        <types> intrinsicTypes </types>
+                        <contractName> Main </contractName>
+                        <declaredContracts> .Set </declaredContracts>
+                        <functionBodies> .K </functionBodies>
+                        <currentFunction>
+                          <functionName> deposit:IeleName </functionName>
+                          <labels> .Set </labels>
+                          <currentInstructions> .K </currentInstructions>
+                        </currentFunction>
+                      </currentContract>
+                    </well-formedness-checker>
                   </well-formedness>
 ```
 
@@ -97,6 +99,7 @@ Contracts
     rule <k> .TopLevelDefinitions => BODIES ... </k>
          <functionBodies> BODIES </functionBodies>
          <types> ... init |-> _ -> .Types </types>
+    rule <k> .TopLevelDefinitions => . </k> [owise]
 ```
 
 Top Level Definitions
@@ -392,8 +395,6 @@ endmodule
 
 module IELE-WELL-FORMEDNESS-STANDALONE
     imports IELE-WELL-FORMEDNESS
-
-    configuration <k> $PGM:Contract </k> <well-formedness/> <exit-code exit=""> 1 </exit-code>
 
     rule <typeChecking> false => true </typeChecking>
     rule <k> . </k> <exit-code> 1 => 0 </exit-code>
