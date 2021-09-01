@@ -8,6 +8,7 @@ RUN    apt-get update        \
                 autoconf     \
                 libgmp-dev   \
                 pkg-config   \
+                opam         \
                 zlib1g-dev
 
 ARG DISTRO
