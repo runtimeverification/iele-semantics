@@ -28,7 +28,7 @@ RUN    groupadd -g $GROUP_ID user                                               
 
 USER user:user
 
-RUN    opam init --yes                                                       \
+RUN    opam init --yes --disable-sandboxing                                  \
     && opam install --yes zarith hex uuidm rlp yojson cryptokit ocaml-protoc
 
 ENV LANG=C.UTF-8
