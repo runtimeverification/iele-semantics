@@ -28,7 +28,7 @@ RUN    groupadd -g $GROUP_ID user                                               
 
 USER user:user
 
-RUN    opam init --yes --disable-sandboxing                                  \
+RUN    if [ "${BASE_IMAGE}" = "ubuntu:bionic" ]; then opam init --yes; else opam init --yes --disable-sandboxing; fi \
     && opam install --yes zarith hex uuidm rlp yojson cryptokit ocaml-protoc
 
 ENV LANG=C.UTF-8
