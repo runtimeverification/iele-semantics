@@ -71,6 +71,10 @@ pipeline {
           }
         }
         stage('Ubuntu Bionic') {
+          when {
+            branch 'master'
+            beforeAgent true
+          }
           stages {
             stage('Build Package') {
               agent {
@@ -90,10 +94,6 @@ pipeline {
               }
             }
             stage('Test Package') {
-          when {
-            branch 'master'
-            beforeAgent true
-          }
               agent {
                 dockerfile {
                   filename "kiele-${env.KIELE_VERSION}-src/package/debian/Dockerfile.test"
@@ -121,10 +121,6 @@ pipeline {
           }
         }
         stage('Ubuntu Focal') {
-          when {
-            branch 'master'
-            beforeAgent true
-          }
           post { failure { slackSend color: '#cb2431' , channel: '#iele-internal' , message: "Packaging Phase Failed: ${env.BUILD_URL}" } }
           stages {
             stage('Build Package') {
@@ -145,6 +141,10 @@ pipeline {
               }
             }
             stage('Test Package') {
+          when {
+            branch 'master'
+            beforeAgent true
+          }
               agent {
                 dockerfile {
                   filename "kiele-${env.KIELE_VERSION}-src/package/debian/Dockerfile.test"
@@ -188,24 +188,28 @@ pipeline {
             stage('Build Image') {
               agent { label 'docker' }
               steps {
-                unstash 'bionic-kiele'
+                //unstash 'bionic-kiele'
                 unstash 'focal-kiele'
                 sh '''
-                  mv kiele_${KIELE_VERSION}_amd64_bionic.deb kiele_amd64_bionic.deb
+                  #mv kiele_${KIELE_VERSION}_amd64_bionic.deb kiele_amd64_bionic.deb
                   mv kiele_${KIELE_VERSION}_amd64_focal.deb  kiele_amd64_focal.deb
                   docker login --username "${DOCKERHUB_TOKEN_USR}" --password "${DOCKERHUB_TOKEN_PSW}"
-                  docker image build . --file package/docker/Dockerfile --tag "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}" --build-arg K_COMMIT=${K_VERSION} --build-arg DISTRO='bionic'
+                  #docker image build . --file package/docker/Dockerfile --tag "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}" --build-arg K_COMMIT=${K_VERSION} --build-arg DISTRO='bionic'
                   docker image build . --file package/docker/Dockerfile --tag "${DOCKERHUB_REPO}:${FOCAL_COMMIT_TAG}"  --build-arg K_COMMIT=${K_VERSION} --build-arg DISTRO='focal'
-                  docker image push "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}"
+                  #docker image push "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}"
                   docker image push "${DOCKERHUB_REPO}:${FOCAL_COMMIT_TAG}"
-                  docker tag "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}" "${DOCKERHUB_REPO}:${BIONIC_BRANCH_TAG}"
+                  #docker tag "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}" "${DOCKERHUB_REPO}:${BIONIC_BRANCH_TAG}"
                   docker tag "${DOCKERHUB_REPO}:${FOCAL_COMMIT_TAG}"  "${DOCKERHUB_REPO}:${FOCAL_BRANCH_TAG}"
-                  docker push "${DOCKERHUB_REPO}:${BIONIC_BRANCH_TAG}"
+                  #docker push "${DOCKERHUB_REPO}:${BIONIC_BRANCH_TAG}"
                   docker push "${DOCKERHUB_REPO}:${FOCAL_BRANCH_TAG}"
                 '''
               }
             }
             stage('Test Bionic Image') {
+          when {
+            branch 'master'
+            beforeAgent true
+          }
               agent {
                 docker {
                   image "${DOCKERHUB_REPO}:${BIONIC_COMMIT_TAG}"
