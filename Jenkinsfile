@@ -90,10 +90,6 @@ pipeline {
               }
             }
             stage('Test Package') {
-          when {
-            branch 'master'
-            beforeAgent true
-          }
               agent {
                 dockerfile {
                   filename "kiele-${env.KIELE_VERSION}-src/package/debian/Dockerfile.test"
@@ -121,10 +117,10 @@ pipeline {
           }
         }
         stage('Ubuntu Focal') {
-          when {
-            branch 'master'
-            beforeAgent true
-          }
+          //when {
+          //  branch 'master'
+          //  beforeAgent true
+          //}
           post { failure { slackSend color: '#cb2431' , channel: '#iele-internal' , message: "Packaging Phase Failed: ${env.BUILD_URL}" } }
           stages {
             stage('Build Package') {
