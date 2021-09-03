@@ -117,7 +117,7 @@ module IELE-NODE
          <activeAccounts> ACCTS </activeAccounts>
 
     rule #trimAccounts(.List) => .
-    rule <k> #trimAccounts((ListItem(ACCT) => .List) ACCTS) ... </k>
+    rule <k> #trimAccounts((ListItem(ACCT) => .List) _ACCTS) ... </k>
          (<account>
            <acctID> ACCT </acctID>
            <balance> 0 </balance>
@@ -125,7 +125,7 @@ module IELE-NODE
            <nonce> 0 </nonce>
            ...
          </account> => .Bag)
-    rule <k> #trimAccounts((ListItem(ACCT) => .List) ACCTS) ... </k>
+    rule <k> #trimAccounts((ListItem(ACCT) => .List) _ACCTS) ... </k>
          <account>
            <acctID> ACCT </acctID>
            <balance> BAL </balance>

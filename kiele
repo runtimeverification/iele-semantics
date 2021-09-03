@@ -5,11 +5,14 @@ set -euo pipefail
 notif() { echo "== $@" >&2 ; }
 fatal() { echo "[FATAL] $@" ; exit 1 ; }
 
-INSTALL_BIN="$(dirname $0)"
-INSTALL_LIB=${INSTALL_BIN}/../lib/kiele
+INSTALL_BIN="$(cd $(dirname $0) && pwd)"
+INSTALL_LIB="$(dirname ${INSTALL_BIN})/lib/kiele"
 FIREFLY_ENDPOINT=${FIREFLY_ENDPOINT:-https://fireflyblockchain.com}
 
-export PATH="$INSTALL_BIN:$INSTALL_LIB:$PATH"
+export PATH="${INSTALL_BIN}:${INSTALL_LIB}:${PATH}"
+export PATH="${PATH}:${INSTALL_LIB}/standalone/iele-testing-kompiled"
+export PATH="${PATH}:${INSTALL_LIB}/check/well-formedness-kompiled"
+export PATH="${PATH}:${INSTALL_LIB}/node/iele-testing-kompiled"
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-}:/usr/local/lib
 
 check_k_install() {
@@ -78,12 +81,18 @@ run_interpret() {
 }
 
 run_krun_internal() {
+    local krun_command
     check_k_install
-    krun --directory "$backend_dir" -cSCHEDULE="$cschedule" -pSCHEDULE='cat' --depth "$depth" "$run_file" "$@"
+
+    krun_command=(krun --directory "${backend_dir}")
+    krun_command+=(-cSCHEDULE="${cschedule}" -pSCHEDULE="${parser}")
+    [[ "${depth}" == '-1' ]] || krun_command+=(--depth "${depth}")
+
+    "${krun_command[@]}" "${run_file}" "$@"
 }
 
 run_krun() {
-    run_krun_internal -cMODE="$cmode" -pMODE='cat' -cENABLECOVERAGE="$cenablecoverage" -pENABLECOVERAGE='cat' "$@"
+    run_krun_internal -cMODE="$cmode" -pMODE="${parser}" -cENABLECOVERAGE="$cenablecoverage" -pENABLECOVERAGE="${parser}" "$@"
 }
 
 run_check() {
@@ -192,6 +201,7 @@ definition='iele-testing'
 depth=-1
 args=()
 create_archive='false'
+parser='cat'
 while [[ $# -gt 0 ]]; do
     arg="$1"
     case $arg in
@@ -202,9 +212,10 @@ while [[ $# -gt 0 ]]; do
         --module)          module="$2"           ; shift 2 ;;
         --definition)      definition="$2"       ; shift 2 ;;
         --schedule)        schedule="$2"         ; shift 2 ;;
-        --depth)           depth=$2              ; shift 2 ;;
+        --depth)           depth="$2"            ; shift 2 ;;
         --coverage)        enablecoverage='true' ; shift   ;;
         --create-archive)  create_archive='true' ; shift   ;;
+        --parser)          parser="$2"           ; shift 2 ;;
         -p|--port)         kiele_port="$2"       ; shift 2 ;;
         -h|--host)         kiele_host="$2"       ; shift 2 ;;
         *)                 args+=("$1")          ; shift   ;;

@@ -132,8 +132,8 @@ After interpreting the strings representing programs as a `Bytes`, it should be 
                                         definitions: TopLevelDefinitions, funcnum: Int , size: Int , bytecodestring: String )    [function]
  // ---------------------------------------------------------------------------------------------------------------------------------------
     rule #dasmContract( BS, NAME ) => #dasmContract( 0, lengthBytes(BS), BS, NAME )
-    rule #dasmContract( _, 0, BS, NAME ) => #emptyCode
-    rule #dasmContract( I, N, BS, NAME ) => #dasmContract(I +Int 6, #asUnsigned(I, 4, BS) -Int 2, BS, BS[I +Int 5], 0 |-> init, NAME, .TopLevelDefinitions, 1, #asUnsigned(I, 4, BS) +Int 4, Bytes2String(BS[I .. N]))
+    rule #dasmContract( _, 0, _BS, _NAME ) => #emptyCode
+    rule #dasmContract( I, N,  BS,  NAME ) => #dasmContract(I +Int 6, #asUnsigned(I, 4, BS) -Int 2, BS, BS[I +Int 5], 0 |-> init, NAME, .TopLevelDefinitions, 1, #asUnsigned(I, 4, BS) +Int 4, Bytes2String(BS[I .. N]))
       requires N >=Int 5 andBool BS[I +Int 4] ==Int 99
 
     rule #dasmContract( I, N, BS, NBITS, FUNCS, NAME, DEFS, M, SIZE, BYTES )
@@ -144,15 +144,15 @@ After interpreting the strings representing programs as a `Bytes`, it should be 
       => #dasmContract( I +Int 3, #asUnsigned(I +Int 1, 2, BS), BS, NAME +.+IeleName M) ++Contract #dasmContract(I +Int (3 +Int #asUnsigned(I +Int 1, 2, BS)), N -Int (3 +Int #asUnsigned(I +Int 1, 2, BS)), BS, NBITS, FUNCS, NAME, external contract NAME +.+IeleName M DEFS, M +Int 1, SIZE, BYTES)
       requires N >=Int 3 andBool BS[I] ==Int 106
 
-    rule #dasmContract( I, N, BS, NBITS, FUNCS, NAME, DEFS, M, SIZE, BYTES ) => contract NAME ! SIZE BYTES { DEFS ++TopLevelDefinitions #dasmFunctions(I, N, BS, NBITS, FUNCS, NAME) } .Contract [owise]
+    rule #dasmContract( I, N, BS, NBITS, FUNCS, NAME, DEFS, _M, SIZE, BYTES ) => contract NAME ! SIZE BYTES { DEFS ++TopLevelDefinitions #dasmFunctions(I, N, BS, NBITS, FUNCS, NAME) } .Contract [owise]
 
     syntax Bool ::= #isValidContract   (Bytes)                                               [function]
                   | #isValidContract   (start: Int, width: Int, bytecode: Bytes)             [function, klabel(isValidContractAux)]
                   | #isValidStringTable(start: Int, width: Int, bytecode: Bytes, nbits: Int) [function]
  // ---------------------------------------------------------------------------------------------------
     rule #isValidContract(CODE) => #isValidContract(0, lengthBytes(CODE), CODE)
-    rule #isValidContract(_, 0, BS) => true
-    rule #isValidContract(I, N, BS) => N -Int 4 >=Int #asUnsigned(I, 4, BS) andBool #isValidStringTable(I +Int 6, #asUnsigned(I, 4, BS) -Int 2, BS, BS[I +Int 5])
+    rule #isValidContract(_, 0, _BS) => true
+    rule #isValidContract(I, N, BS)  => N -Int 4 >=Int #asUnsigned(I, 4, BS) andBool #isValidStringTable(I +Int 6, #asUnsigned(I, 4, BS) -Int 2, BS, BS[I +Int 5])
       requires N >=Int 6 andBool BS[I +Int 4] ==Int 99
     rule #isValidContract(_, _, _) => false [owise]
 
@@ -195,12 +195,12 @@ After interpreting the strings representing programs as a `Bytes`, it should be 
  // -------------------------------------------------------------------------------------------------------------------
     rule #isValidFunctions(I, N, BS, NBITS) => #isValidFunction(I +Int 5, N -Int 5, BS, NBITS)
       requires N >=Int 5 andBool (BS[I] ==Int 103 orBool BS[I] ==Int 104)
-    rule #isValidFunctions(_, 0, BS, _) => true
+    rule #isValidFunctions(_, 0, _, _) => true
     rule #isValidFunctions(_, _, _, _) => false [owise]
 
     rule #isValidFunction(I, N, BS, NBITS) => #isValidFunctions(I, N, BS, NBITS)
       requires N >=Int 1 andBool (BS[I] ==Int 103 orBool BS[I] ==Int 104)
-    rule #isValidFunction(_, 0, BS, _) => true
+    rule #isValidFunction(_, 0, _BS, _) => true
     rule #isValidFunction(I, N, BS, NBITS) => #isValidLoad(I +Int 1, N -Int 1, BS) andBool #isValidInstruction(#dasmOpCode(I, N, BS), I, N, BS, NBITS)
       requires N >=Int 1 andBool (BS[I] ==Int 97 orBool BS[I] ==Int 98)
     rule #isValidFunction(I, N, BS, NBITS) => #isValidInstruction(#dasmOpCode(I, N, BS), I, N, BS, NBITS) [owise]
@@ -215,8 +215,8 @@ After interpreting the strings representing programs as a `Bytes`, it should be 
     rule #dasmFunction(true, NAME, CNAME, SIG, I, N, BS, NBITS, FUNCS, INSTRS, .K) => define public @ NAME ( SIG ) { #toBlocks(INSTRS) } #dasmFunctions(I, N, BS, NBITS, FUNCS, CNAME)
       requires N >=Int 1 andBool (BS[I] ==Int 103 orBool BS[I] ==Int 104)
 
-    rule #dasmFunction(false, NAME, CNAME, SIG, I, 0, BS, NBITS, FUNCS, INSTRS, .K) => define @ NAME ( SIG ) { #toBlocks(INSTRS) } .TopLevelDefinitions
-    rule #dasmFunction(true, NAME, CNAME, SIG, I, 0, BS, NBITS, FUNCS, INSTRS, .K) => define public @ NAME ( SIG ) { #toBlocks(INSTRS) } .TopLevelDefinitions
+    rule #dasmFunction(false, NAME, _CNAME, SIG, _I, 0, _BS, _NBITS, _FUNCS, INSTRS, .K) => define        @ NAME ( SIG ) { #toBlocks(INSTRS) } .TopLevelDefinitions
+    rule #dasmFunction(true,  NAME, _CNAME, SIG, _I, 0, _BS, _NBITS, _FUNCS, INSTRS, .K) => define public @ NAME ( SIG ) { #toBlocks(INSTRS) } .TopLevelDefinitions
 
     rule #dasmFunction(PUBLIC, NAME, CNAME, SIG, I, N, BS, NBITS, FUNCS, INSTRS, .K) => #dasmFunction(PUBLIC, NAME, CNAME, SIG, I, N, BS, NBITS, FUNCS, INSTRS, #dasmOpCode(I, N, BS)) [owise]
 
@@ -242,14 +242,14 @@ After interpreting the strings representing programs as a `Bytes`, it should be 
     syntax Instruction ::= #dasmInstruction ( opcode: OpCode , start: Int , width: Int , bytecode: Bytes , nbits: Int , functions: Map , name: IeleName ) [function]
                          | #dasmInstruction ( opcode: OpCode , r: Int , w: Int , m: Int , functions: Map , name: IeleName )                               [function, klabel(#dasmInstructionAux)]
  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    rule #dasmInstruction ( LOADPOS(M, W), I, N, BS, NBITS, FUNCS, NAME ) => #dasmInstruction(LOADPOS(M, W), #asUnsigned(I, NBITS up/Int 8, BS),                            NBITS, (1 <<Int NBITS) -Int 1, FUNCS, NAME)
-    rule #dasmInstruction ( LOADNEG(M, W), I, N, BS, NBITS, FUNCS, NAME ) => #dasmInstruction(LOADNEG(M, W), #asUnsigned(I, NBITS up/Int 8, BS),                            NBITS, (1 <<Int NBITS) -Int 1, FUNCS, NAME)
-    rule #dasmInstruction ( OP,            I, N, BS, NBITS, FUNCS, NAME ) => #dasmInstruction(OP,            #asUnsigned(I, #opWidth(OP, NBITS) -Int #opCodeWidth(OP), BS), NBITS, (1 <<Int NBITS) -Int 1, FUNCS, NAME) [owise]
+    rule #dasmInstruction ( LOADPOS(M, W), I, _, BS, NBITS, FUNCS, NAME ) => #dasmInstruction(LOADPOS(M, W), #asUnsigned(I, NBITS up/Int 8, BS),                            NBITS, (1 <<Int NBITS) -Int 1, FUNCS, NAME)
+    rule #dasmInstruction ( LOADNEG(M, W), I, _, BS, NBITS, FUNCS, NAME ) => #dasmInstruction(LOADNEG(M, W), #asUnsigned(I, NBITS up/Int 8, BS),                            NBITS, (1 <<Int NBITS) -Int 1, FUNCS, NAME)
+    rule #dasmInstruction ( OP,            I, _, BS, NBITS, FUNCS, NAME ) => #dasmInstruction(OP,            #asUnsigned(I, #opWidth(OP, NBITS) -Int #opCodeWidth(OP), BS), NBITS, (1 <<Int NBITS) -Int 1, FUNCS, NAME) [owise]
 
     rule #dasmInstruction ( LOADPOS ( _, I ),  R, W, M, _, _ ) => %(R, W, M, 0) = I
     rule #dasmInstruction ( LOADNEG ( _, I ),  R, W, M, _, _ ) => %(R, W, M, 0) = (0 -Int I)
     rule #dasmInstruction ( BR ( LABEL ),      _, _, _, _, _ ) => br LABEL 
-    rule #dasmInstruction ( INVALID (),        R, W, M, _, _ ) => .LValues = call @iele.invalid ( .Operands )
+    rule #dasmInstruction ( INVALID (),        _, _, _, _, _ ) => .LValues = call @iele.invalid ( .Operands )
     rule #dasmInstruction ( BRLABEL ( LABEL ), _, _, _, _, _ ) => label ( LABEL )
 
     rule #dasmInstruction ( SELFDESTRUCT (), R, W, M, _, _ ) => selfdestruct %(R, W, M, 0)
@@ -315,11 +315,11 @@ After interpreting the strings representing programs as a `Bytes`, it should be 
     rule #dasmInstruction ( LOG4 (),    R, W, M, _, _ ) => log %(R, W, M, 0) , %(R, W, M, 1) , %(R, W, M, 2) , %(R, W, M, 3) , %(R, W, M, 4)
 
     rule #dasmInstruction ( STATICCALL (LABEL, ARGS, RETS), R, W, M, F, _ ) => %l(R, W, M, 0, RETS +Int 1) = staticcall @ getIeleName(F [ LABEL ]) at %(R, W, M, 2 +Int RETS) ( %o(R, W, M, 3 +Int RETS, ARGS) ) gaslimit %(R, W, M, 1 +Int RETS)
-    rule #dasmInstruction ( STATICCALLDYN (ARGS, RETS), R, W, M, F, _ ) => %l(R, W, M, 0, RETS +Int 1) = staticcall %(R, W, M, 1 +Int RETS) at %(R, W, M, 3 +Int RETS) ( %o(R, W, M, 4 +Int RETS, ARGS) ) gaslimit %(R, W, M, 2 +Int RETS)
+    rule #dasmInstruction ( STATICCALLDYN (ARGS, RETS), R, W, M, _, _ ) => %l(R, W, M, 0, RETS +Int 1) = staticcall %(R, W, M, 1 +Int RETS) at %(R, W, M, 3 +Int RETS) ( %o(R, W, M, 4 +Int RETS, ARGS) ) gaslimit %(R, W, M, 2 +Int RETS)
     rule #dasmInstruction ( CALL (LABEL, ARGS, RETS), R, W, M, F, _ ) => %l(R, W, M, 0, RETS +Int 1) = call @ getIeleName(F [ LABEL ]) at %(R, W, M, 2 +Int RETS) ( %o(R, W, M, 4 +Int RETS, ARGS) ) send %(R, W, M, 3 +Int RETS) , gaslimit %(R, W, M, 1 +Int RETS)
-    rule #dasmInstruction ( CALLDYN (ARGS, RETS), R, W, M, F, _ ) => %l(R, W, M, 0, RETS +Int 1) = call %(R, W, M, 1 +Int RETS) at %(R, W, M, 3 +Int RETS) ( %o(R, W, M, 5 +Int RETS, ARGS) ) send %(R, W, M, 4 +Int RETS) , gaslimit %(R, W, M, 2 +Int RETS)
+    rule #dasmInstruction ( CALLDYN (ARGS, RETS), R, W, M, _, _ ) => %l(R, W, M, 0, RETS +Int 1) = call %(R, W, M, 1 +Int RETS) at %(R, W, M, 3 +Int RETS) ( %o(R, W, M, 5 +Int RETS, ARGS) ) send %(R, W, M, 4 +Int RETS) , gaslimit %(R, W, M, 2 +Int RETS)
     rule #dasmInstruction ( LOCALCALL (LABEL, ARGS, RETS), R, W, M, F, _ ) => %l(R, W, M, 0, RETS) = call @ getIeleName(F [ LABEL ] orDefault LABEL) ( %o(R, W, M, RETS, ARGS) )
-    rule #dasmInstruction ( LOCALCALLDYN (ARGS, RETS), R, W, M, F, _ ) => %l(R, W, M, 0, RETS) = call %(R, W, M, RETS) ( %o(R, W, M, 1 +Int RETS, ARGS) )
+    rule #dasmInstruction ( LOCALCALLDYN (ARGS, RETS), R, W, M, _, _ ) => %l(R, W, M, 0, RETS) = call %(R, W, M, RETS) ( %o(R, W, M, 1 +Int RETS, ARGS) )
     rule #dasmInstruction ( CALLADDRESS (LABEL), R, W, M, F, _ ) => %(R, W, M, 0) = calladdress @ getIeleName(F [ LABEL ]) at %(R, W, M, 1)
 
     rule #dasmInstruction ( CREATE (LABEL, ARGS), R, W, M, _, NAME ) => %(R, W, M, 0) , %(R, W, M, 1) = create NAME +.+IeleName String2IeleName(Int2String(LABEL)) ( %o(R, W, M, 3, ARGS) ) send %(R, W, M, 2)
@@ -328,7 +328,7 @@ After interpreting the strings representing programs as a `Bytes`, it should be 
     rule #dasmInstruction ( REVERT(), R, W, M, _, _ ) => revert %(R, W, M, 0)
     rule #dasmInstruction ( RETURN(RETS), R, W, M, _, _ ) => ret %o(R, W, M, 0, RETS)
       requires RETS =/=Int 0
-    rule #dasmInstruction ( RETURN(0), R, W, M, _, _ ) => ret void
+    rule #dasmInstruction ( RETURN(0), _, _, _, _, _ ) => ret void
 
     syntax LValue ::= "%" "(" Int "," Int "," Int "," Int ")" [function]
  // --------------------------------------------------------------------
@@ -336,13 +336,13 @@ After interpreting the strings representing programs as a `Bytes`, it should be 
 
     syntax NonEmptyOperands ::= "%o" "(" Int "," Int "," Int "," Int "," Int ")" [function]
  // -------------------------------------------------------------------------------
-    rule %o(REGS, WIDTH, MASK, IDX, 0) => .NonEmptyOperands
-    rule %o(REGS, WIDTH, MASK, IDX, COUNT) => %(REGS, WIDTH, MASK, IDX) , %o(REGS, WIDTH, MASK, IDX +Int 1, COUNT -Int 1) [owise]
+    rule %o(_REGS, _WIDTH, _MASK, _IDX, 0)     => .NonEmptyOperands
+    rule %o( REGS,  WIDTH,  MASK,  IDX, COUNT) => %(REGS, WIDTH, MASK, IDX) , %o(REGS, WIDTH, MASK, IDX +Int 1, COUNT -Int 1) [owise]
 
     syntax LValues ::= "%l" "(" Int "," Int "," Int "," Int "," Int ")" [function]
  // ------------------------------------------------------------------------------
-    rule %l(REGS, WIDTH, MASK, IDX, 0) => .LValues
-    rule %l(REGS, WIDTH, MASK, IDX, COUNT) => %(REGS, WIDTH, MASK, IDX) , %l(REGS, WIDTH, MASK, IDX +Int 1, COUNT -Int 1) [owise]
+    rule %l(_REGS, _WIDTH, _MASK, _IDX, 0)     => .LValues
+    rule %l( REGS,  WIDTH,  MASK,  IDX, COUNT) => %(REGS, WIDTH, MASK, IDX) , %l(REGS, WIDTH, MASK, IDX +Int 1, COUNT -Int 1) [owise]
 
     syntax Int ::= #opWidth ( OpCode , Int ) [function]
  // ---------------------------------------------------
@@ -365,7 +365,7 @@ After interpreting the strings representing programs as a `Bytes`, it should be 
     rule #opCodeWidth( _:CopyCreateOp )     => 3
     rule #opCodeWidth ( LOADPOS(N, _) )     => 1 +Int N
     rule #opCodeWidth ( LOADNEG(N, _) )     => 1 +Int N
-    rule #opCodeWidth( OP )                 => 1 [owise]
+    rule #opCodeWidth( _OP )                => 1 [owise]
 
     syntax Int ::= #numArgs ( OpCode ) [function]
  // ---------------------------------------------
@@ -469,8 +469,8 @@ After interpreting the strings representing programs as a `Bytes`, it should be 
 
     syntax OpCode ::= #dasmLoad ( Int , Int , Int , Int , Int , Bytes ) [function]
  // ------------------------------------------------------------------------------
-    rule #dasmLoad(97, LEN, POS, I, N, BS) => LOADPOS(LEN +Int POS, #asUnsigned(I +Int POS, LEN , BS))
-    rule #dasmLoad(98, LEN, POS, I, N, BS) => LOADNEG(LEN +Int POS, #asUnsigned(I +Int POS, LEN , BS))
+    rule #dasmLoad(97, LEN, POS, I, _N, BS) => LOADPOS(LEN +Int POS, #asUnsigned(I +Int POS, LEN , BS))
+    rule #dasmLoad(98, LEN, POS, I, _N, BS) => LOADNEG(LEN +Int POS, #asUnsigned(I +Int POS, LEN , BS))
 
 endmodule
 ```

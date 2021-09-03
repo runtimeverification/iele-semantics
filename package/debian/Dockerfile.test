@@ -9,11 +9,16 @@ RUN    ln --symbolic --no-dereference --force /usr/share/zoneinfo/$TZ /etc/local
 RUN    apt-get update         \
     && apt-get upgrade --yes  \
     && apt-get install --yes  \
+            autoconf          \
             curl              \
             git               \
+            libgmp-dev        \
             make              \
+            pkg-config        \
             python            \
-            sudo
+            opam              \
+            sudo              \
+            zlib1g-dev
 
 ARG USER_ID=1000
 ARG GROUP_ID=1000
@@ -22,6 +27,9 @@ RUN    groupadd -g $GROUP_ID user                                               
     && echo "user ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 USER user:user
+
+RUN    if [ "${BASE_IMAGE}" = "ubuntu:bionic" ]; then opam init --yes; else opam init --yes --disable-sandboxing; fi \
+    && opam install --yes zarith hex uuidm rlp yojson cryptokit ocaml-protoc
 
 ENV LANG=C.UTF-8
 ENV DEBIAN_FRONTEND=noninteractive
