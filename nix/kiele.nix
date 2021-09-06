@@ -81,4 +81,5 @@ stdenv.mkDerivation {
     ln -s ${lib.getLib iele-check}/lib/kiele/check $out/lib/kiele
   '';
   passthru = { inherit iele-assemble iele-check iele-interpreter iele-vm; };
+  meta.description = "A cli tool for interactig with iele";
 }
