@@ -124,7 +124,7 @@ endif # ifndef SYSTEM_LIBSECP256K1
 ifndef SYSTEM_LIBCRYPTOPP
 
 ifeq ($(UNAME_S),Darwin)
-libcryptopp_out := $(IELE_LIB)/libcryptopp: libcryptopp.a
+libcryptopp_out := $(IELE_LIB)/libcryptopp
 endif
 
 cryptopp: $(libcryptopp_out)
@@ -430,6 +430,29 @@ all_lib_sources := $(shell find $(IELE_LIB) -type f                             
                             -not -path "$(IELE_LIB)/standalone/iele-testing-kompiled/dt/*" \
                             | sed 's|^$(IELE_LIB)/||')
 
+iele_interpreter_libs := $(shell find $(IELE_LIB)/standalone -type f                       \
+                            -not -path "$(IELE_LIB)/*.cmi"                                 \
+                            -not -path "$(IELE_LIB)/*.cmx"                                 \
+                            -not -path "$(IELE_LIB)/*.ml"                                  \
+                            -not -path "$(IELE_LIB)/*.mli"                                 \
+                            -not -path "$(IELE_LIB)/*.o"                                   \
+                            -not -path "$(IELE_LIB)/standalone/iele-testing-kompiled/dt/*" \
+                            | sed 's|^$(IELE_LIB)/||')
+
+iele_check_libs := $(shell find $(IELE_LIB)/check -type f                                  \
+                            -not -path "$(IELE_LIB)/*.cmi"                                 \
+                            -not -path "$(IELE_LIB)/*.cmx"                                 \
+                            -not -path "$(IELE_LIB)/*.ml"                                  \
+                            -not -path "$(IELE_LIB)/*.mli"                                 \
+                            -not -path "$(IELE_LIB)/*.o"                                   \
+                            -not -path "$(IELE_LIB)/check/well-formedness-kompiled/dt/*"   \
+                            | sed 's|^$(IELE_LIB)/||')
+
+kiele_files := kiele-generate-report.py \
+               kore-json.py             \
+               static-report.html       \
+               version
+
 $(DESTDIR)$(INSTALL_BIN)/%: $(IELE_BIN)/%
 	@mkdir -p $(dir $@)
 	$(INSTALL) $< $@
@@ -437,6 +460,15 @@ $(DESTDIR)$(INSTALL_BIN)/%: $(IELE_BIN)/%
 $(DESTDIR)$(INSTALL_LIB)/%: $(IELE_LIB)/%
 	@mkdir -p $(dir $@)
 	$(INSTALL) $< $@
+
+install-interpreter: $(patsubst %, $(DESTDIR)$(INSTALL_LIB)/%, $(iele_interpreter_libs))
+
+install-vm: $(patsubst $(IELE_LIB)/%, $(DESTDIR)$(INSTALL_LIB)/%, $(IELE_VM))
+
+install-check: $(patsubst %, $(DESTDIR)$(INSTALL_LIB)/%, $(iele_check_libs))
+
+install-kiele: $(patsubst $(IELE_BIN)/%, $(DESTDIR)$(INSTALL_BIN)/%, $(IELE_RUNNER))
+install-kiele: $(patsubst %, $(DESTDIR)$(INSTALL_LIB)/%, $(kiele_files))
 
 install: $(patsubst %, $(DESTDIR)$(INSTALL_BIN)/%, $(all_bin_sources)) \
          $(patsubst %, $(DESTDIR)$(INSTALL_LIB)/%, $(all_lib_sources))

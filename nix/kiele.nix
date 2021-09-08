@@ -31,7 +31,6 @@ let
     src = cleanSourceWith {
       name = "iele-semantics";
       inherit src;
-      ignore = [ "kiele" ];
     };
     nativeBuildInputs = [ protobuf k haskell-backend llvm-backend clang ];
     buildInputs = [ cryptopp libff mpfr secp256k1 ];
@@ -69,16 +68,14 @@ stdenv.mkDerivation {
 
     patchShebangs kore-json.py
   '';
-  buildPhase = "true";
+  buildFlags = [ "build-kiele" ];
   installTargets = [ "install-kiele" ];
   postInstall = ''
     ln -s ${lib.getBin iele-assemble}/bin/iele-assemble $out/bin
-    ln -s ${lib.getBin iele-check}/bin/iele-check $out/bin
-    ln -s ${lib.getBin iele-interpreter}/bin/iele-interpreter $out/bin
-    ln -s ${lib.getBin iele-vm}/bin/iele-vm $out/bin
 
     ln -s ${lib.getLib iele-interpreter}/lib/kiele/standalone $out/lib/kiele
     ln -s ${lib.getLib iele-check}/lib/kiele/check $out/lib/kiele
+    ln -s ${lib.getLib iele-vm}/lib/kiele/node $out/lib/kiele
   '';
   passthru = { inherit iele-assemble iele-check iele-interpreter iele-vm; };
 }
