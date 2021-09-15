@@ -34,6 +34,7 @@ class IeleContract:
     name: str
     sourceMap: str
     coverage: str
+    asm: Optional[str] # iele code
 
 
 """
@@ -44,7 +45,7 @@ IeleContracts = Dict[str, IeleContract]
 
 @dataclass
 class IeleReport:
-    contents: str
+    contents: str # Iele code if source file name ends with `.iele`. otherwise it's solidity code whose source file name should end with `.sol`
     contracts: IeleContracts
 
 
@@ -59,6 +60,7 @@ class Source:
     fileId: int
     filename: str
     sourceLines: List[str]
+    asmSourceLines: Optional[List[str]]
 
 
 @dataclass
@@ -115,14 +117,14 @@ def make_coverage_summaries(artifacts: List[ContractArtifact]) -> List[CoverageS
     return summaries
 
 
-def make_coverage_map(source_name: str, content: str, file_id: int, source_map: str, coverage: str) -> Tuple[CoverageMap, int]:
+def make_coverage_map(source_name: str, content: str, asm: Optional[str], file_id: int, source_map: str, coverage: str) -> Tuple[CoverageMap, int]:
     lines: List[int] = list(map(lambda s: int(
         s.split(":")[0]) - 1, source_map.split(";")))
     states = get_states(coverage)
     coverage_ = calculate_coverage(states)
     coverage_map: CoverageMap = CoverageMap(
         ieleSources=[Source(
-            fileId=file_id, filename=source_name, sourceLines=content.splitlines())],
+            fileId=file_id, filename=source_name, sourceLines=content.splitlines(), asmSourceLines=asm.splitlines() if asm != None else None)],
         ieleCoverage=[(file_id, list(zip(lines, states)))]
     )
     return (coverage_map, coverage_)
@@ -160,7 +162,7 @@ def convert_iele_reports_to_contract_artifacts(iele_reports: IeleReports) -> Lis
         for hash in contracts:
             contract = contracts[hash]
             (coverage_map, coverage) = make_coverage_map(source_name,
-                                                         contents, file_id, contract.sourceMap, contract.coverage)
+                                                         contents, contract.asm, file_id, contract.sourceMap, contract.coverage)
             artifacts.append(ContractArtifact(contractName=contract.name, sourceName=source_name,
                                               coverageMap=coverage_map, coverage=coverage, fileId=file_id))
     return artifacts
