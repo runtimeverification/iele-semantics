@@ -108,6 +108,11 @@ class CoverageSummary:
     """
     mainContract: Optional[int]
 
+def line_from_pos(offset: int, text: str) -> int:
+    """
+    Given a text and an offset into the text, get the line number
+    """
+    return len(text[0:offset+1].splitlines()) - 1
 
 def make_coverage_summaries(artifacts: List[ContractArtifact]) -> List[CoverageSummary]:
     summaries: List[CoverageSummary] = []
@@ -118,8 +123,7 @@ def make_coverage_summaries(artifacts: List[ContractArtifact]) -> List[CoverageS
 
 
 def make_coverage_map(source_name: str, content: str, asm: Optional[str], file_id: int, source_map: str, coverage: str) -> Tuple[CoverageMap, int]:
-    lines: List[int] = list(map(lambda s: int(
-        s.split(":")[0]) - 1, source_map.split(";")))
+    lines: List[int] = list(map(lambda s: int(s.split(":")[0]) - 1 if source_name.endswith(".iele") else line_from_pos(int(s.split(":")[0]), asm or "") - 1, source_map.split(";")))
     states = get_states(coverage)
     coverage_ = calculate_coverage(states)
     coverage_map: CoverageMap = CoverageMap(
