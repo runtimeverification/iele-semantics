@@ -123,7 +123,16 @@ def make_coverage_summaries(artifacts: List[ContractArtifact]) -> List[CoverageS
 
 
 def make_coverage_map(source_name: str, content: str, asm: Optional[str], file_id: int, source_map: str, coverage: str) -> Tuple[CoverageMap, int]:
-    lines: List[int] = list(map(lambda s: int(s.split(":")[0]) - 1 if source_name.endswith(".iele") else line_from_pos(int(s.split(":")[0]), asm or "") - 1, source_map.split(";")))
+    lines: List[int] = []
+    prev_line = -1
+    for source_map_entry_str in source_map.split(";"):
+        line_str = source_map_entry_str.split(":")[0]
+        if line_str.strip() == "":
+            lines.append(prev_line)
+        else:
+            prev_line = (int(line_str) - 1) if source_name.endswith(".iele") else (line_from_pos(int(line_str), asm or "") - 1)
+            lines.append(prev_line)
+
     states = get_states(coverage)
     coverage_ = calculate_coverage(states)
     coverage_map: CoverageMap = CoverageMap(

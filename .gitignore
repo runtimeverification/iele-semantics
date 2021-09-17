@@ -10,3 +10,4 @@
 /.krun*
 result*
 .mypy_cache
+.vscode
