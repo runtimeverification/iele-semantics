@@ -29,6 +29,15 @@ RUN    apt update         \
         python3-pip       \
         zlib1g-dev
 
+RUN    git clone 'https://github.com/z3prover/z3' --branch=z3-4.8.12 \
+    && cd z3                                                         \
+    && python scripts/mk_make.py                                     \
+    && cd build                                                      \
+    && make -j8                                                      \
+    && make install                                                  \
+    && cd ../..                                                      \
+    && rm -rf z3
+
 RUN curl -sSL https://get.haskellstack.org/ | sh
 
 RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
