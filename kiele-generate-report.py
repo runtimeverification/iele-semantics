@@ -68,21 +68,26 @@ class CoveredState:
     tag: str
     contents: Optional[List[int]]  # (covered, total)
 
-
+# fileId => line number => state
 Coverages = List[Tuple[int, List[Tuple[int, CoveredState]]]]
 
 
 @dataclass
 class CoverageMap:
-    """
-    Solidity files source code
-    """
     ieleSources: List[Source]
     """
-    Solidity coverage data
+    Solidity files source code (or Iele files source code)
     """
-    ieleCoverage: Coverages  # Dict[int, Dict[int, CoveredState]]
 
+    ieleCoverage: Coverages  # Dict[int, Dict[int, CoveredState]]
+    """
+    Solidity coverage data (or Iele coverage data)
+    """
+
+    ieleEntries: Optional[Coverages] # Dict[int, Dict[int, CoveredState]]
+    """
+    Iele entries data (or Nothing)
+    """
 
 @dataclass
 class ContractArtifact:
@@ -123,24 +128,40 @@ def make_coverage_summaries(artifacts: List[ContractArtifact]) -> List[CoverageS
 
 
 def make_coverage_map(source_name: str, content: str, asm: Optional[str], file_id: int, source_map: str, coverage: str) -> Tuple[CoverageMap, int]:
-    lines: List[int] = []
-    prev_line = -1
-    for source_map_entry_str in source_map.split(";"):
-        line_str = source_map_entry_str.split(":")[0]
-        if line_str.strip() == "":
-            lines.append(prev_line)
-        else:
-            prev_line = (int(line_str) - 1) if source_name.endswith(".iele") else (line_from_pos(int(line_str), asm or "") - 1)
-            lines.append(prev_line)
-
-    states = get_states(coverage)
-    coverage_ = calculate_coverage(states)
-    coverage_map: CoverageMap = CoverageMap(
-        ieleSources=[Source(
-            fileId=file_id, filename=source_name, sourceLines=content.splitlines(), asmSourceLines=asm.splitlines() if asm != None else None)],
-        ieleCoverage=[(file_id, list(zip(lines, states)))]
-    )
-    return (coverage_map, coverage_)
+    if source_name.endswith(".iele"):
+        lines: List[int] = list(map(lambda s: int(
+            s.split(":")[0]) - 1, source_map.split(";")))
+        states = get_states(coverage)
+        coverage_ = calculate_coverage(states)
+        coverage_map: CoverageMap = CoverageMap(
+            ieleSources=[Source(
+                fileId=file_id, filename=source_name, sourceLines=content.splitlines())],
+            ieleCoverage=[(file_id, list(zip(lines, states)))],
+            ieleEntries=None
+        )
+        return (coverage_map, coverage_)
+    else:
+        lines: List[int] = []
+        prev_line = -1
+        i = 0
+        entry_count = len(source_map.split(";"))
+        for source_map_entry_str in source_map.split(";"):
+            line_str = source_map_entry_str.split(":")[0]
+            if line_str.strip() == "":
+                lines.append(prev_line)
+            else:
+                prev_line = line_from_pos(int(line_str), asm or "") - 1
+                lines.append(prev_line)
+            i += 1
+        states = get_states(coverage)
+        coverage_ = calculate_coverage(states)
+        coverage_map: CoverageMap = CoverageMap(
+            ieleSources=[Source(
+                fileId=file_id, filename=source_name, sourceLines=content.splitlines(), asmSourceLines=asm.splitlines() if asm != None else None)],
+            ieleCoverage=[(file_id, list(zip(lines, states)))],
+            ieleEntries=[(file_id, list(zip(range(entry_count), states)))]
+        )
+        return (coverage_map, coverage_)
 
 
 def get_states(coverage: str) -> List[CoveredState]:
