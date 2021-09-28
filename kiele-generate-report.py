@@ -143,16 +143,14 @@ def make_coverage_map(source_name: str, content: str, asm: Optional[str], file_i
     else:
         lines: List[int] = []
         prev_line = -1
-        i = 0
         entry_count = len(source_map.split(";"))
         for source_map_entry_str in source_map.split(";"):
             line_str = source_map_entry_str.split(":")[0]
             if line_str.strip() == "":
                 lines.append(prev_line)
             else:
-                prev_line = line_from_pos(int(line_str), asm or "") - 1
+                prev_line = line_from_pos(int(line_str), content or "")
                 lines.append(prev_line)
-            i += 1
         states = get_states(coverage)
         coverage_ = calculate_coverage(states)
         coverage_map: CoverageMap = CoverageMap(
