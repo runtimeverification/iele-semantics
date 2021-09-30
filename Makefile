@@ -366,6 +366,8 @@ $(IELE_VM): $(IELE_LIB)/node/iele-testing-kompiled/interpreter $(wildcard vm/c/*
 	    library vm/c/main.cpp vm/c/vm.cpp $(KOMPILE_CPP_FILES) $(abspath $(protobuf_out)) vm/c/iele/semantics.cpp $(LLVM_KOMPILE_INCLUDE_OPTS) $(LLVM_KOMPILE_LINK_OPTS) \
 	    -o $(IELE_VM) -g
 
+build-test-client: $(IELE_TEST_VM) $(IELE_TEST_CLIENT)
+
 # Haskell Build
 # -------------
 
@@ -465,6 +467,9 @@ install-interpreter: $(patsubst %, $(DESTDIR)$(INSTALL_LIB)/%, $(iele_interprete
 install-vm: $(patsubst $(IELE_LIB)/%, $(DESTDIR)$(INSTALL_LIB)/%, $(IELE_VM))
 
 install-check: $(patsubst %, $(DESTDIR)$(INSTALL_LIB)/%, $(iele_check_libs))
+
+install-test-client: $(patsubst $(IELE_LIB)%, $(DESTDIR)$(INSTALL_LIB)/%, $(IELE_TEST_CLIENT)) \
+                     $(patsubst $(IELE_LIB)%, $(DESTDIR)$(INSTALL_LIB)/%, $(IELE_TEST_VM))
 
 install-kiele: $(patsubst $(IELE_BIN)/%, $(DESTDIR)$(INSTALL_BIN)/%, $(IELE_RUNNER))
 install-kiele: $(patsubst %, $(DESTDIR)$(INSTALL_LIB)/%, $(kiele_files))

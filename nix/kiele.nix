@@ -51,6 +51,8 @@ let
 
   iele-check = mkIELE "check" (x: x);
 
+  iele-test-client = mkIELE "test-client" (x: x);
+
   host-PATH = lib.makeBinPath [ k llvm-backend haskell-backend ];
 
 in
@@ -76,6 +78,8 @@ stdenv.mkDerivation {
     ln -s ${lib.getLib iele-interpreter}/lib/kiele/standalone $out/lib/kiele
     ln -s ${lib.getLib iele-check}/lib/kiele/check $out/lib/kiele
     ln -s ${lib.getLib iele-vm}/lib/kiele/node $out/lib/kiele
+    ln -s ${lib.getLib iele-test-client}/lib/kiele/iele-test-client $out/lib/kiele
+    ln -s ${lib.getLib iele-test-client}/lib/kiele/iele-test-vm $out/lib/kiele
   '';
-  passthru = { inherit iele-assemble iele-check iele-interpreter iele-vm; };
+  passthru = { inherit iele-assemble iele-check iele-interpreter iele-vm iele-test-client; };
 }
