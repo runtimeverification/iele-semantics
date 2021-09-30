@@ -34,7 +34,7 @@ class IeleContract:
     name: str
     sourceMap: str
     coverage: str
-    asm: Optional[str] # iele code
+    asm: Optional[str]  # iele code
 
 
 """
@@ -45,7 +45,7 @@ IeleContracts = Dict[str, IeleContract]
 
 @dataclass
 class IeleReport:
-    contents: str # Iele code if source file name ends with `.iele`. otherwise it's solidity code whose source file name should end with `.sol`
+    contents: str  # Iele code if source file name ends with `.iele`. otherwise it's solidity code whose source file name should end with `.sol`
     contracts: IeleContracts
 
 
@@ -68,8 +68,22 @@ class CoveredState:
     tag: str
     contents: Optional[List[int]]  # (covered, total)
 
+
 # fileId => line number => state
 Coverages = List[Tuple[int, List[Tuple[int, CoveredState]]]]
+
+
+@dataclass
+class IeleInstruction:
+    line: int
+    """
+    Solidity line
+    """
+
+    state: CoveredState
+    """
+    Coverage state
+    """
 
 
 @dataclass
@@ -84,10 +98,11 @@ class CoverageMap:
     Solidity coverage data (or Iele coverage data)
     """
 
-    ieleEntries: Optional[Coverages] # Dict[int, Dict[int, CoveredState]]
+    ieleInstructions: Optional[List[IeleInstruction]]
     """
-    Iele entries data (or Nothing)
+    Iele instructions data (or Nothing)
     """
+
 
 @dataclass
 class ContractArtifact:
@@ -113,11 +128,13 @@ class CoverageSummary:
     """
     mainContract: Optional[int]
 
+
 def line_from_pos(offset: int, text: str) -> int:
     """
     Given a text and an offset into the text, get the line number
     """
     return len(text[0:offset+1].splitlines()) - 1
+
 
 def make_coverage_summaries(artifacts: List[ContractArtifact]) -> List[CoverageSummary]:
     summaries: List[CoverageSummary] = []
@@ -128,22 +145,23 @@ def make_coverage_summaries(artifacts: List[ContractArtifact]) -> List[CoverageS
 
 
 def make_coverage_map(source_name: str, content: str, asm: Optional[str], file_id: int, source_map: str, coverage: str) -> Tuple[CoverageMap, int]:
+    lines: List[int]
+    coverage_map: CoverageMap
     if source_name.endswith(".iele"):
-        lines: List[int] = list(map(lambda s: int(
+        lines = list(map(lambda s: int(
             s.split(":")[0]) - 1, source_map.split(";")))
         states = get_states(coverage)
         coverage_ = calculate_coverage(states)
-        coverage_map: CoverageMap = CoverageMap(
+        coverage_map = CoverageMap(
             ieleSources=[Source(
-                fileId=file_id, filename=source_name, sourceLines=content.splitlines())],
+                fileId=file_id, filename=source_name, sourceLines=content.splitlines(), asmSourceLines=None)],
             ieleCoverage=[(file_id, list(zip(lines, states)))],
-            ieleEntries=None
+            ieleInstructions=None
         )
         return (coverage_map, coverage_)
     else:
-        lines: List[int] = []
+        lines = []
         prev_line = -1
-        entry_count = len(source_map.split(";"))
         for source_map_entry_str in source_map.split(";"):
             line_str = source_map_entry_str.split(":")[0]
             if line_str.strip() == "":
@@ -153,11 +171,19 @@ def make_coverage_map(source_name: str, content: str, asm: Optional[str], file_i
                 lines.append(prev_line)
         states = get_states(coverage)
         coverage_ = calculate_coverage(states)
-        coverage_map: CoverageMap = CoverageMap(
+
+        instructions: List[IeleInstruction] = []
+        i = 0
+        while i < len(lines):
+            instructions.append(IeleInstruction(
+                line=lines[i], state=states[i]))
+            i += 1
+
+        coverage_map = CoverageMap(
             ieleSources=[Source(
                 fileId=file_id, filename=source_name, sourceLines=content.splitlines(), asmSourceLines=asm.splitlines() if asm != None else None)],
             ieleCoverage=[(file_id, list(zip(lines, states)))],
-            ieleEntries=[(file_id, list(zip(range(entry_count), states)))]
+            ieleInstructions=instructions
         )
         return (coverage_map, coverage_)
 
@@ -204,6 +230,7 @@ def write_json_file(file_path: str, json: str):
     with open(file_path, "w") as f:
         f.write(json)
 
+
 def generate_static_report(report_template_path: str, reports_json_path: str, output_report_path: str = "", create_report_archive: bool = False):
     report_id = str(uuid.uuid4())
     os.makedirs("./reports", exist_ok=True)
@@ -249,14 +276,14 @@ def generate_static_report(report_template_path: str, reports_json_path: str, ou
         report: Report = Report(status="success", tag=None, hasFireflyLog=firefly_log_exists, created=datetime.today(
         ).strftime('%Y-%m-%dT%H:%M:%SZ'), reportId=report_id, token="(generated)", coverage="ParseSuccess", commit=None, type="iele")
         write_json_file(os.path.join(report_base_path, report_id +
-                                    ".json"), json.dumps(asdict(report)))
+                                     ".json"), json.dumps(asdict(report)))
 
         # Create JavaScript code
         js_code = "window.FIREFLY_REPORT_FILES = {}"
-        onlyfiles = [ f for f in os.listdir(report_base_path) 
-                            if os.path.isfile(os.path.join(report_base_path, f))
-                    ] + [ os.path.join("original", f) for f in os.listdir(os.path.join(report_base_path, "./original"))
-                                                        if not f.endswith(".zip") ]
+        onlyfiles = [f for f in os.listdir(report_base_path)
+                     if os.path.isfile(os.path.join(report_base_path, f))
+                     ] + [os.path.join("original", f) for f in os.listdir(os.path.join(report_base_path, "./original"))
+                          if not f.endswith(".zip")]
         for f in onlyfiles:
             with open(os.path.join(report_base_path, f), "r") as file:
                 content = file.read()
@@ -281,13 +308,14 @@ def generate_static_report(report_template_path: str, reports_json_path: str, ou
         if os.path.exists("report.zip"):
             os.remove("report.zip")
         make_archive("report", "zip", report_base_path)
-        
+
     # Clean up the report directory
     rmtree(report_base_path)
     if len(os.listdir("./reports")) == 0:
         rmtree("./reports")
 
     return output_report_path
+
 
 report_template_path = sys.argv[1]
 reports_json_path = sys.argv[2]
@@ -299,6 +327,7 @@ if len(sys.argv) > 4:
     create_report_archive = (sys.argv[4] == "true")
 if not create_report_archive:
     print("Generating report")
-output_report_path = generate_static_report(report_template_path, reports_json_path, output_report_path, create_report_archive)
+output_report_path = generate_static_report(
+    report_template_path, reports_json_path, output_report_path, create_report_archive)
 if not create_report_archive:
     print(output_report_path + " generated")
