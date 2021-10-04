@@ -1,4 +1,5 @@
 /.build
+/iele-assemble/.build
 /tests/VMTests
 /tests/BlockchainTests
 /tests/**/*.test-assembled

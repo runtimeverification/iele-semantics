@@ -59,7 +59,8 @@ pipeline {
           }
           steps {
             sh '''
-              make install INSTALL_PREFIX=$(pwd)/kiele-${KIELE_VERSION}-bin
+              make build -j8
+              make install DESTDIR=$(pwd)/kiele-${KIELE_VERSION}-bin
               tar czvf kiele-${KIELE_VERSION}-bin.tar.gz kiele-${KIELE_VERSION}-bin
             '''
             stash name: 'bin-kiele', includes: "kiele-${env.KIELE_VERSION}-bin.tar.gz"
@@ -102,6 +103,7 @@ pipeline {
                     sudo apt-get install --yes ./kiele_${KIELE_VERSION}_amd64_bionic.deb
                     git clone 'https://github.com/runtimeverification/iele-semantics'
                     cd iele-semantics
+                    git submodule update --init --recursive
                     git checkout ${LONG_REV}
                     ./package/test-package.sh 9001
                   '''
@@ -151,6 +153,7 @@ pipeline {
                     sudo apt-get install --yes ./kiele_${KIELE_VERSION}_amd64_focal.deb
                     git clone 'https://github.com/runtimeverification/iele-semantics'
                     cd iele-semantics
+                    git submodule update --init --recursive
                     git checkout ${LONG_REV}
                     ./package/test-package.sh 9001
                   '''
@@ -209,6 +212,7 @@ pipeline {
                     cd ~
                     git clone 'https://github.com/runtimeverification/iele-semantics'
                     cd iele-semantics
+                    git submodule update --init --recursive
                     git checkout ${LONG_REV}
                     ./package/test-package.sh 9001
                   '''
@@ -230,6 +234,7 @@ pipeline {
                     cd ~
                     git clone 'https://github.com/runtimeverification/iele-semantics'
                     cd iele-semantics
+                    git submodule update --init --recursive
                     git checkout ${LONG_REV}
                     ./package/test-package.sh 9001
                   '''
