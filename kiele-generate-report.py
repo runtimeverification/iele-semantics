@@ -32,9 +32,20 @@ class Report:
 @dataclass
 class IeleContract:
     name: str
-    sourceMap: str
+    """
+    Name of the contract
+    """
+
+    solmap: str
+    """
+    Source map generated from isolc 
+    """
+
+    ielemap: str
+    """
+    Source map generated from iele-assemble
+    """
     coverage: str
-    asm: Optional[str]  # iele code
 
 
 """
@@ -45,7 +56,15 @@ IeleContracts = Dict[str, IeleContract]
 
 @dataclass
 class IeleReport:
-    contents: str  # Iele code if source file name ends with `.iele`. otherwise it's solidity code whose source file name should end with `.sol`
+    solsrc: str
+    """
+    Solidity source code
+    """
+
+    ielesrc: str
+    """
+    Compiled Iele code
+    """
     contracts: IeleContracts
 
 
@@ -60,7 +79,13 @@ class Source:
     fileId: int
     filename: str
     sourceLines: List[str]
+    """
+    Usually the Solidity code lines
+    """
     asmSourceLines: Optional[List[str]]
+    """
+    Usually the Iele code lines
+    """
 
 
 @dataclass
@@ -77,12 +102,12 @@ Coverages = List[Tuple[int, List[Tuple[int, CoveredState]]]]
 class IeleInstruction:
     line: int
     """
-    Solidity line
+    Iele line
     """
 
-    state: CoveredState
+    solLine: int
     """
-    Coverage state
+    Mapped to Solidity line
     """
 
 
@@ -95,12 +120,12 @@ class CoverageMap:
 
     ieleCoverage: Coverages  # Dict[int, Dict[int, CoveredState]]
     """
-    Solidity coverage data (or Iele coverage data)
+    Solidity coverage data
     """
 
     ieleInstructions: Optional[List[IeleInstruction]]
     """
-    Iele instructions data (or Nothing)
+    Iele instructions data
     """
 
 
@@ -144,48 +169,37 @@ def make_coverage_summaries(artifacts: List[ContractArtifact]) -> List[CoverageS
     return summaries
 
 
-def make_coverage_map(source_name: str, content: str, asm: Optional[str], file_id: int, source_map: str, coverage: str) -> Tuple[CoverageMap, int]:
-    lines: List[int]
+def make_coverage_map(source_name: str, solsrc: str, ielesrc: str, file_id: int, sol_source_map: str, iele_source_map: str, coverage: str) -> Tuple[CoverageMap, int]:
     coverage_map: CoverageMap
-    if source_name.endswith(".iele"):
-        lines = list(map(lambda s: int(
-            s.split(":")[0]) - 1, source_map.split(";")))
-        states = get_states(coverage)
-        coverage_ = calculate_coverage(states)
-        coverage_map = CoverageMap(
-            ieleSources=[Source(
-                fileId=file_id, filename=source_name, sourceLines=content.splitlines(), asmSourceLines=None)],
-            ieleCoverage=[(file_id, list(zip(lines, states)))],
-            ieleInstructions=None
-        )
-        return (coverage_map, coverage_)
-    else:
-        lines = []
-        prev_line = -1
-        for source_map_entry_str in source_map.split(";"):
-            line_str = source_map_entry_str.split(":")[0]
-            if line_str.strip() == "":
-                lines.append(prev_line)
-            else:
-                prev_line = line_from_pos(int(line_str), content or "")
-                lines.append(prev_line)
-        states = get_states(coverage)
-        coverage_ = calculate_coverage(states)
+    lines: List[int] = []
+    prev_line = -1
+    instructions: List[IeleInstruction] = []
+    sol_source_map_entries = sol_source_map.split(";")
+    iele_source_map_entries = iele_source_map.split(";")
+    i = 0
+    while i < len(sol_source_map_entries):
+        sol_source_map_entry = sol_source_map_entries[i]
+        iele_source_map_entry = iele_source_map_entries[i]
+        sol_line_str = sol_source_map_entry.split(":")[0]
+        iele_line_str = iele_source_map_entry.split(":")[0]
+        if sol_line_str.strip() == "":
+            lines.append(prev_line)
+        else:
+            prev_line = line_from_pos(int(sol_line_str), solsrc or "")
+            lines.append(prev_line)
+        instructions.append(IeleInstruction(
+            line=int(iele_line_str) - 1, solLine=prev_line))
+        i += 1
+    states = get_states(coverage)
+    coverage_ = calculate_coverage(states)
 
-        instructions: List[IeleInstruction] = []
-        i = 0
-        while i < len(lines):
-            instructions.append(IeleInstruction(
-                line=lines[i], state=states[i]))
-            i += 1
-
-        coverage_map = CoverageMap(
-            ieleSources=[Source(
-                fileId=file_id, filename=source_name, sourceLines=content.splitlines(), asmSourceLines=asm.splitlines() if asm != None else None)],
-            ieleCoverage=[(file_id, list(zip(lines, states)))],
-            ieleInstructions=instructions
-        )
-        return (coverage_map, coverage_)
+    coverage_map = CoverageMap(
+        ieleSources=[Source(
+            fileId=file_id, filename=source_name, sourceLines=solsrc.splitlines(), asmSourceLines=ielesrc.splitlines())],
+        ieleCoverage=[(file_id, list(zip(lines, states)))],
+        ieleInstructions=instructions
+    )
+    return (coverage_map, coverage_)
 
 
 def get_states(coverage: str) -> List[CoveredState]:
@@ -215,12 +229,11 @@ def convert_iele_reports_to_contract_artifacts(iele_reports: IeleReports) -> Lis
     for source_name in iele_reports:
         file_id += 1
         iele_report = iele_reports[source_name]
-        contents = iele_report.contents
         contracts = iele_report.contracts
         for hash in contracts:
             contract = contracts[hash]
             (coverage_map, coverage) = make_coverage_map(source_name,
-                                                         contents, contract.asm, file_id, contract.sourceMap, contract.coverage)
+                                                         iele_report.solsrc, iele_report.ielesrc, file_id, contract.solmap, contract.ielemap, contract.coverage)
             artifacts.append(ContractArtifact(contractName=contract.name, sourceName=source_name,
                                               coverageMap=coverage_map, coverage=coverage, fileId=file_id))
     return artifacts
@@ -259,7 +272,7 @@ def generate_static_report(report_template_path: str, reports_json_path: str, ou
         source_name = artifact.sourceName
         coverage_map = artifact.coverageMap
         write_json_file(os.path.join(report_base_path, quote(
-            source_name + "-" + hash + "-iele.json", safe="")), json.dumps(asdict(coverage_map)))
+            source_name + "-" + hash + "-iele.json", safe=":")), json.dumps(asdict(coverage_map)))
 
     # Copy original
     original_path = os.path.join(report_base_path, "./original")
