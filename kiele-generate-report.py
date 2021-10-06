@@ -193,10 +193,21 @@ def make_coverage_map(source_name: str, solsrc: str, ielesrc: str, file_id: int,
     states = get_states(coverage)
     coverage_ = calculate_coverage(states)
 
+    map_: Dict[int, CoveredState] = {}
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        state = states[i]
+        if line in map_ and map_[line] != state:
+            map_[line] = CoveredState(tag="Weak", contents=[0, 0])
+        else:
+            map_[line] = state
+        i += 1
+
     coverage_map = CoverageMap(
         ieleSources=[Source(
             fileId=file_id, filename=source_name, sourceLines=solsrc.splitlines(), asmSourceLines=ielesrc.splitlines())],
-        ieleCoverage=[(file_id, list(zip(lines, states)))],
+        ieleCoverage=[(file_id, list(map_.items()))],
         ieleInstructions=instructions
     )
     return (coverage_map, coverage_)
