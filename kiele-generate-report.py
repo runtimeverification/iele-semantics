@@ -110,6 +110,11 @@ class IeleInstruction:
     Mapped to Solidity line
     """
 
+    state: CoveredState
+    """
+    Iele covered state
+    """
+
 
 @dataclass
 class CoverageMap:
@@ -170,6 +175,8 @@ def make_coverage_summaries(artifacts: List[ContractArtifact]) -> List[CoverageS
 
 
 def make_coverage_map(source_name: str, solsrc: str, ielesrc: str, file_id: int, sol_source_map: str, iele_source_map: str, coverage: str) -> Tuple[CoverageMap, int]:
+    states = get_states(coverage)
+    coverage_ = calculate_coverage(states)
     coverage_map: CoverageMap
     lines: List[int] = []
     prev_line = -1
@@ -188,10 +195,8 @@ def make_coverage_map(source_name: str, solsrc: str, ielesrc: str, file_id: int,
             prev_line = line_from_pos(int(sol_line_str), solsrc or "")
             lines.append(prev_line)
         instructions.append(IeleInstruction(
-            line=int(iele_line_str) - 1, solLine=prev_line))
+            line=int(iele_line_str) - 1, solLine=prev_line, state=states[i]))
         i += 1
-    states = get_states(coverage)
-    coverage_ = calculate_coverage(states)
 
     map_: Dict[int, CoveredState] = {}
     i = 0
