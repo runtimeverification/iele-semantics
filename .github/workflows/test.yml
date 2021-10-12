@@ -56,7 +56,7 @@ jobs:
         signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
 
     - name: Build
-      run: nix-build
+      run: nix-build --cores 1
 
     - name: Run unit tests
       run: nix-build iele-assemble -A project.iele-assemble.checks
