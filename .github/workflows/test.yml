@@ -24,6 +24,7 @@ jobs:
       uses: cachix/cachix-action@v8
       with:
         name: runtimeverification
+        extraPullNames: kore
         skipPush: true
 
     - name: Check materialization
@@ -53,10 +54,11 @@ jobs:
       uses: cachix/cachix-action@v8
       with:
         name: runtimeverification
+        extraPullNames: kore
         signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
 
     - name: Build
-      run: nix-build
+      run: nix-build --cores 1
 
     - name: Run unit tests
       run: nix-build iele-assemble -A project.iele-assemble.checks
