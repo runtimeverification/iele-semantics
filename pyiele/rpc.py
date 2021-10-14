@@ -35,9 +35,6 @@ def wallet_generateTransparentAccount(walletId):
 def firefly_getCoverage():
     return rpc_call("firefly_getCoverage")
 
-def firefly_getCoverage():
-    return rpc_call("firefly_getBytecodes")
-
 def eth_getTransactionReceipt(txHash):
     return rpc_call("eth_getTransactionReceipt", params=f""""{txHash}" """)
 

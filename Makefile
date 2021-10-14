@@ -410,6 +410,7 @@ build:                                      \
        $(IELE_TEST_VM)                      \
        $(IELE_VM)                           \
        $(IELE_LIB)/kiele-generate-report.py \
+       $(IELE_LIB)/kiele-coverage.py        \
        $(IELE_LIB)/kore-json.py             \
        $(IELE_LIB)/static-report.html       \
        $(IELE_LIB)/version                  \
@@ -448,6 +449,7 @@ iele_check_libs := $(shell find $(IELE_LIB)/check -type f                       
                             | sed 's|^$(IELE_LIB)/||')
 
 kiele_files := kiele-generate-report.py \
+               kiele-coverage.py        \
                kore-json.py             \
                static-report.html       \
                version
