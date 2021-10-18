@@ -2,7 +2,7 @@
 import argparse
 import json
 import sys
-import pyiele
+from pyiele import *
 from Crypto.Hash import keccak
 from subprocess import Popen, PIPE
 
@@ -62,7 +62,7 @@ def create_local_data(combinedjson):
 
 def retrieve_coverage(report, port):
   """ Retrieve coverage from RPC client and update the report JSON """
-  result = pyiele.get_result(pyiele.send_rpc(pyiele.firefly_getCoverage(),port))
+  result = send(firefly_getCoverage())
   if result == None:
     return
 
@@ -85,6 +85,7 @@ def make_parser():
 """ Parse command line arguments """
 parser = make_parser()
 args = parser.parse_args()
+config.port = args.port
 
 """ Start JSON report with locally available data """
 data = []
