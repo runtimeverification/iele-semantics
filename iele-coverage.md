@@ -232,8 +232,8 @@ Helper Functions
 
     syntax Blocks ::= FunctionDefinition "." "blocks" [function]
  // ------------------------------------------------------------
-    rule define        SIG { BLOCKS } . blocks => BLOCKS
-    rule define public SIG { BLOCKS } . blocks => BLOCKS
+    rule define        _SIG { BLOCKS } . blocks => BLOCKS
+    rule define public _SIG { BLOCKS } . blocks => BLOCKS
 
     syntax ContractDefinition ::= ContractDefinition ".withDefs" "(" TopLevelDefinitions ")" [function]
  // ---------------------------------------------------------------------------------------------------
@@ -243,11 +243,11 @@ Helper Functions
     syntax TopLevelDefinitions ::= ContractDefinition ".defs"       [function]
     syntax ContractDefinition  ::= ContractDefinition ".withNoDefs" [function]
  // --------------------------------------------------------------------------
-    rule contract NAME { DEFS }             .defs => DEFS
-    rule contract NAME ! SIZE CODE { DEFS } .defs => DEFS
+    rule contract _NAME               { DEFS } .defs => DEFS
+    rule contract _NAME ! _SIZE _CODE { DEFS } .defs => DEFS
 
-    rule contract NAME { DEFS }             .withNoDefs => contract NAME             { .TopLevelDefinitions }
-    rule contract NAME ! SIZE CODE { DEFS } .withNoDefs => contract NAME ! SIZE CODE { .TopLevelDefinitions }
+    rule contract NAME             { _DEFS } .withNoDefs => contract NAME             { .TopLevelDefinitions }
+    rule contract NAME ! SIZE CODE { _DEFS } .withNoDefs => contract NAME ! SIZE CODE { .TopLevelDefinitions }
 
     syntax Contract ::= #reverseContract( Contract           ) [function]
                       | #reverseContract( Contract, Contract ) [function, klabel(reverseContractAux)]
@@ -270,7 +270,7 @@ Helper Functions
 
     rule #sizeContract( .Contract ~> _, I ) => I
 
-    rule #sizeContract( ( CONTRACT:ContractDefinition CONTRACTS:Contract => CONTRACT ~> .Contract ) ~> _, _ )
+    rule #sizeContract( ( CONTRACT:ContractDefinition _CONTRACTS:Contract => CONTRACT ~> .Contract ) ~> _, _ )
     rule #sizeContract( ( CONTRACT:ContractDefinition => CONTRACT.defs ) ~> _, _ )
     rule #sizeContract( ( .TopLevelDefinitions => .K ) ~> _, _ )
     rule #sizeContract( ( DEF:TopLevelDefinition DEFS:TopLevelDefinitions => DEF ~> DEFS ) ~> _, _ )
@@ -279,7 +279,7 @@ Helper Functions
     rule #sizeContract( ( .Instructions .LabeledBlocks => .K ) ~> _, _ )
     rule #sizeContract( (               .LabeledBlocks => .K ) ~> _, _ )
     rule #sizeContract( ( .Instructions _ : UNLABELEDBLOCK:Instructions LABELEDBLOCKS:LabeledBlocks => UNLABELEDBLOCK LABELEDBLOCKS ) ~> _, _ )
-    rule #sizeContract( ( INSTR UNLABELEDBLOCK:Instructions LABELEDBLOCKS:LabeledBlocks => UNLABELEDBLOCK LABELEDBLOCKS ) ~> _, I => I +Int 1 )
+    rule #sizeContract( ( _INSTR UNLABELEDBLOCK:Instructions LABELEDBLOCKS:LabeledBlocks => UNLABELEDBLOCK LABELEDBLOCKS ) ~> _, I => I +Int 1 )
 
 endmodule
 ```

@@ -105,7 +105,7 @@ let abs_path rel =
 let assemble file =
   let file_dir = Filename.dirname Sys.argv.(1) in
   let abs_file_dir = abs_path file_dir in
-  let _in = Unix.open_process_in("iele-assemble " ^ (Filename.quote (abs_file_dir ^ "/" ^ file))) in
+  let _in = Unix.open_process_in("kiele assemble " ^ (Filename.quote (abs_file_dir ^ "/" ^ file))) in
   let result = input_line _in in
   match Unix.close_process_in _in with
   | Unix.WEXITED 0 -> of_hex result

@@ -17,8 +17,11 @@ module IELE-DATA
     imports BYTES
     imports IELE-CONSTANTS
     imports IELE-COMMON
+    imports BOOL
     imports COLLECTIONS
+    imports INT
     imports JSON
+    imports K-EQUAL
 
     syntax KResult ::= Int
 ```
@@ -85,14 +88,14 @@ Primitives provide the basic conversion from K's sorts `Int` and `Bool` to IELE'
                  | #sizeRegs ( Operands , Int ) [function, klabel(#sizeRegsAux)]
  // ----------------------------------------------------------------------------
     rule #sizeRegs(REGS) => #sizeRegs(REGS, 0)
-    rule #sizeRegs(REG , REGS, N) => #sizeRegs(REGS, N +Int 1)
+    rule #sizeRegs(_REG , REGS, N) => #sizeRegs(REGS, N +Int 1)
     rule #sizeRegs(.Operands, N) => N
 
     syntax Int ::= #sizeLVals ( LValues ) [function]
                  | #sizeLVals ( LValues , Int ) [function, klabel(#sizeLValuesAux)]
  // -------------------------------------------------------------------------------
     rule #sizeLVals(REGS) => #sizeLVals(REGS, 0)
-    rule #sizeLVals(REG , REGS, N) => #sizeLVals(REGS, N +Int 1)
+    rule #sizeLVals(_REG , REGS, N) => #sizeLVals(REGS, N +Int 1)
     rule #sizeLVals(.LValues, N) => N
 
     syntax String ::= IeleName2String ( IeleName ) [function]
@@ -147,7 +150,7 @@ You could alternatively calculate `I1 %Int I2`, then add one to the normal integ
                  | intSizes ( Array , Int , Int , Schedule ) [function, klabel(intSizesAux)]
  // -----------------------------------------------------------------------------
     rule intSizes(ARR::Array, I, SCHED) => intSizes(ARR, I, 0, SCHED)
-    rule intSizes(ARR::Array, I, I, _) => 0
+    rule intSizes(_ARR::Array, I, I, _) => 0
     rule intSizes(ARR, I, J, SCHED) => intSize(getInt(ARR [ J ])) +Int intSizes(ARR, I, J +Int 1, SCHED)
       requires SCHED =/=K ALBE [owise]
     rule intSizes(ARR, I, J, ALBE) => getInt(ARR [ J ]) +Int intSizes(ARR, I, J +Int 1, ALBE) [owise]
@@ -272,13 +275,13 @@ The local memory of execution is a byte-array (instead of a word-array).
  // --------------------------------------------------------------------------
     rule B::Bytes [ I .. J ] => padRightBytes(substrBytes(B, I, minInt(lengthBytes(B), I +Int J)), J, 0)
       requires I <Int lengthBytes(B)
-    rule B::Bytes [ I .. J ] => padRightBytes(.Bytes, J, 0) [owise]
+    rule _::Bytes [ _ .. J ] => padRightBytes(.Bytes, J, 0) [owise]
 
     syntax Bytes ::= Bytes "[" Int ":=" Bytes "]" [function, klabel(assignBytesRange)]
  // ----------------------------------------------------------------------------------
     rule B::Bytes [ I := B'::Bytes ] => replaceAtBytes(padRightBytes(B, I +Int lengthBytes(B'), 0), I, B')
       requires B' =/=K .Bytes
-    rule B::Bytes [ I := B'::Bytes ] => B
+    rule B::Bytes [ _ := B'::Bytes ] => B
       requires B' ==K .Bytes
 ```
 
@@ -472,14 +475,14 @@ Decoding
                   | #rlpDecode(String, LengthPrefix) [function, klabel(#rlpDecodeAux)]
  // ----------------------------------------------------------------------------------
     rule #rlpDecode(STR) => #rlpDecode(STR, #decodeLengthPrefix(STR, 0))
-    rule #rlpDecode(STR, #str(LEN, POS))  => substrString(STR, POS, POS +Int LEN)
-    rule #rlpDecode(STR, #list(LEN, POS)) => [#rlpDecodeList(STR, POS)]
+    rule #rlpDecode(STR, #str(LEN, POS))   => substrString(STR, POS, POS +Int LEN)
+    rule #rlpDecode(STR, #list(_LEN, POS)) => [#rlpDecodeList(STR, POS)]
 
     syntax JSONs ::= #rlpDecodeList(String, Int)               [function]
                       | #rlpDecodeList(String, Int, LengthPrefix) [function, klabel(#rlpDecodeListAux)]
  // ---------------------------------------------------------------------------------------------------
-    rule #rlpDecodeList(STR, POS) => #rlpDecodeList(STR, POS, #decodeLengthPrefix(STR, POS)) requires POS <Int lengthString(STR)
-    rule #rlpDecodeList(STR, POS) => .JSONs [owise]
+    rule #rlpDecodeList(STR,  POS)  => #rlpDecodeList(STR, POS, #decodeLengthPrefix(STR, POS)) requires POS <Int lengthString(STR)
+    rule #rlpDecodeList(_STR, _POS) => .JSONs [owise]
     rule #rlpDecodeList(STR, POS, _:LengthPrefixType(L, P)) => #rlpDecode(substrString(STR, POS, L +Int P)) , #rlpDecodeList(STR, L +Int P)
 
     syntax LengthPrefixType ::= "#str" | "#list"
@@ -491,11 +494,11 @@ Decoding
  // --------------------------------------------------------------------------------------------------------------------------------------------
     rule #decodeLengthPrefix(STR, START) => #decodeLengthPrefix(STR, START, ordChar(substrString(STR, START, START +Int 1)))
 
-    rule #decodeLengthPrefix(STR, START, B0) => #str(1, START)                                   requires B0 <Int 128
-    rule #decodeLengthPrefix(STR, START, B0) => #str(B0 -Int 128, START +Int 1)                  requires B0 >=Int 128 andBool B0 <Int (128 +Int 56)
-    rule #decodeLengthPrefix(STR, START, B0) => #decodeLengthPrefixLength(#str, STR, START, B0)  requires B0 >=Int (128 +Int 56) andBool B0 <Int 192
-    rule #decodeLengthPrefix(STR, START, B0) => #list(B0 -Int 192, START +Int 1)                 requires B0 >=Int 192 andBool B0 <Int 192 +Int 56
-    rule #decodeLengthPrefix(STR, START, B0) => #decodeLengthPrefixLength(#list, STR, START, B0) [owise]
+    rule #decodeLengthPrefix(_STR, START, B0) => #str(1, START)                                   requires B0 <Int 128
+    rule #decodeLengthPrefix(_STR, START, B0) => #str(B0 -Int 128, START +Int 1)                  requires B0 >=Int 128 andBool B0 <Int (128 +Int 56)
+    rule #decodeLengthPrefix( STR, START, B0) => #decodeLengthPrefixLength(#str, STR, START, B0)  requires B0 >=Int (128 +Int 56) andBool B0 <Int 192
+    rule #decodeLengthPrefix(_STR, START, B0) => #list(B0 -Int 192, START +Int 1)                 requires B0 >=Int 192 andBool B0 <Int 192 +Int 56
+    rule #decodeLengthPrefix( STR, START, B0) => #decodeLengthPrefixLength(#list, STR, START, B0) [owise]
 
     rule #decodeLengthPrefixLength(#str,  STR, START, B0) => #decodeLengthPrefixLength(#str,  START, B0 -Int 128 -Int 56 +Int 1, Bytes2Int(String2Bytes(substrString(STR, START +Int 1, START +Int 1 +Int (B0 -Int 128 -Int 56 +Int 1))), BE, Unsigned))
     rule #decodeLengthPrefixLength(#list, STR, START, B0) => #decodeLengthPrefixLength(#list, START, B0 -Int 192 -Int 56 +Int 1, Bytes2Int(String2Bytes(substrString(STR, START +Int 1, START +Int 1 +Int (B0 -Int 192 -Int 56 +Int 1))), BE, Unsigned))

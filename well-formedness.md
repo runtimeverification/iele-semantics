@@ -23,12 +23,13 @@ module IELE-CONSTANTS
                       | "DANSE" [klabel(DANSE), symbol]
 endmodule
 
-
 module IELE-WELL-FORMEDNESS
     imports IELE-COMMON
     imports IELE-DATA
     imports IELE-CONSTANTS
-    imports DEFAULT-CONFIGURATION
+    imports BOOL
+    imports INT
+    imports K-EQUAL
 ```
 
 Configuration
@@ -41,20 +42,24 @@ The semantic checker for IELE has its own configuration separate from the config
     syntax Schedule
 
     configuration <well-formedness>
-                    <typeChecking> false </typeChecking>
-                    <well-formedness-schedule> $SCHEDULE:Schedule </well-formedness-schedule>
-                    <contracts> .Set </contracts>
-                    <currentContract>
-                      <types> intrinsicTypes </types>
-                      <contractName> Main </contractName>
-                      <declaredContracts> .Set </declaredContracts>
-                      <functionBodies> .K </functionBodies>
-                      <currentFunction>
-                        <functionName> deposit:IeleName </functionName>
-                        <labels> .Set </labels>
-                        <currentInstructions> .K </currentInstructions>
-                      </currentFunction>
-                    </currentContract>
+                    <k> $PGM:Contract </k>
+                    <exit-code exit=""> 1 </exit-code>
+                    <well-formedness-checker>
+                      <typeChecking> false </typeChecking>
+                      <well-formedness-schedule> $SCHEDULE:Schedule </well-formedness-schedule>
+                      <contracts> .Set </contracts>
+                      <currentContract>
+                        <types> intrinsicTypes </types>
+                        <contractName> Main </contractName>
+                        <declaredContracts> .Set </declaredContracts>
+                        <functionBodies> .K </functionBodies>
+                        <currentFunction>
+                          <functionName> deposit:IeleName </functionName>
+                          <labels> .Set </labels>
+                          <currentInstructions> .K </currentInstructions>
+                        </currentFunction>
+                      </currentContract>
+                    </well-formedness-checker>
                   </well-formedness>
 ```
 
@@ -137,7 +142,7 @@ Top Level Definitions
  // --------------------------------------------------------
     rule #sizeNames(I:Int) => I
     rule #sizeNames(.LocalNames) => 0
-    rule #sizeNames(N , NAMES) => 1 +Int #sizeNames(NAMES)
+    rule #sizeNames(_ , NAMES) => 1 +Int #sizeNames(NAMES)
 
     syntax KItem ::= checkArgs(FunctionParameters)
                    | checkNameArgs(LocalNames)
@@ -268,12 +273,12 @@ Checking these instructions requires checking the types of local function calls 
          <well-formedness-schedule> SCHED </well-formedness-schedule>
       requires ints(#sizeRegs(ARGS)) ==K ARGTYPES andBool checkInit(NAME, SCHED)
 
-    rule <k> check ~> RETS = call % NAME ( ARGS ) => checkLVals(RETS) ~> checkOperands(ARGS) ... </k>
+    rule <k> check ~> RETS = call % _NAME ( ARGS ) => checkLVals(RETS) ~> checkOperands(ARGS) ... </k>
 
-    rule check ~> STATUS, RETS = call NAME at OP1 ( ARGS ) send OP2 , gaslimit OP3 => checkLVals(STATUS, RETS) ~> checkOperands(OP1 , OP2 , OP3 , ARGS)
-    rule check ~> STATUS, RETS = staticcall NAME at OP1 ( ARGS ) gaslimit OP2 => checkLVals(STATUS, RETS) ~> checkOperands(OP1 , OP2 , ARGS)
+    rule check ~> STATUS, RETS = call _NAME at OP1 ( ARGS ) send OP2 , gaslimit OP3 => checkLVals(STATUS, RETS) ~> checkOperands(OP1 , OP2 , OP3 , ARGS)
+    rule check ~> STATUS, RETS = staticcall _NAME at OP1 ( ARGS ) gaslimit OP2 => checkLVals(STATUS, RETS) ~> checkOperands(OP1 , OP2 , ARGS)
 
-    rule check ~> RET = calladdress NAME at OP => checkLVal(RET) ~> checkOperand(OP)
+    rule check ~> RET = calladdress _NAME at OP => checkLVal(RET) ~> checkOperand(OP)
 
     rule <k> check ~> ret OPS => checkOperands(OPS) ... </k>
          <functionName> NAME </functionName>
@@ -369,9 +374,9 @@ Checking Operands
     rule checkOperands(OP , OPS) => checkOperand(OP) ~> checkOperands(OPS)
     rule checkOperands(.Operands) => .
 
-    rule checkOperand(% NAME) => .
+    rule checkOperand(% _NAME) => .
     rule checkOperand(_:IntConstant) => .
-    rule checkOperand(@ NAME) => .
+    rule checkOperand(@ _NAME) => .
 ```
 
 Checking LValues
@@ -389,8 +394,6 @@ endmodule
 
 module IELE-WELL-FORMEDNESS-STANDALONE
     imports IELE-WELL-FORMEDNESS
-
-    configuration <k> $PGM:Contract </k> <well-formedness/> <exit-code exit=""> 1 </exit-code>
 
     rule <typeChecking> false => true </typeChecking>
     rule <k> . </k> <exit-code> 1 => 0 </exit-code>
