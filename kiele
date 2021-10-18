@@ -111,20 +111,20 @@ run_vm() {
     "${cmd[@]}"
 }
 
+run_coverage() {
+    notif "Generating coverage json from $run_file and client on port $kiele_port"
+    if ! nc -z "$kiele_host" "$kiele_port"; then
+        notif "No listener found on port $kiele_port, so there wont be any coverage data!"
+    fi
+    kiele-coverage.py "$run_file" --port "$kiele_port" > "$output_path"
+}
+
 run_generate_report() {
     if [[ -f $(dirname $(which kiele))/static-report.html ]]; then
         report_template=$(dirname $(which kiele))/static-report.html
     else
         report_template=$INSTALL_LIB/static-report.html
     fi
-    output_path=""
-    while [[ $# -gt 0 ]]; do
-        arg="$1"
-        case $arg in
-            -o|--output) output_path="$2" ; shift 2 ;;
-            *) shift ;;
-        esac
-    done 
     kiele-generate-report.py "$report_template" "$run_file" "$output_path" "$create_archive"
 }
 
@@ -153,7 +153,8 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
                $0 krun         [--backend (standalone|haskell|node|check)] <KIELE arg>* <pgm> <K arg>*
                $0 check                                                    <KIELE arg>* <pgm> <K arg>*
                $0 vm                                                       <KIELE arg>*
-               $0 generate-report [--create-archive]                       <Report json path> [-o|--output <Report output path>]
+               $0 coverage                                                 <combined.json path> [-o|--output <Report output path>]
+               $0 generate-report [--create-archive]                       <Report json path>   [-o|--output <Report output path>]
                $0 upload                                                   <Report json path>
 
                $0 [help|--help|version|--version]
@@ -175,6 +176,7 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
                  <K arg> is an argument you want to pass to K
                  <KIELE arg> is one of (--no-unparse|--debug|--host|--port|--mode|--coverage
                                        |--schedule|--module|--definition|--depth)
+                <combined.json path> is the path to the build artifacts from 'isolc --combined-json'
                 <Report json path> is the path to the report json file
                 <Report output path> is the output HTML report file path (default: \$uuid.html)
     "
@@ -202,6 +204,7 @@ depth=-1
 args=()
 create_archive='false'
 parser='cat'
+output_path='/dev/stdout'
 while [[ $# -gt 0 ]]; do
     arg="$1"
     case $arg in
@@ -216,6 +219,7 @@ while [[ $# -gt 0 ]]; do
         --coverage)        enablecoverage='true' ; shift   ;;
         --create-archive)  create_archive='true' ; shift   ;;
         --parser)          parser="$2"           ; shift 2 ;;
+        -o|--output)       output_path="$2"      ; shift 2 ;;
         -p|--port)         kiele_port="$2"       ; shift 2 ;;
         -h|--host)         kiele_host="$2"       ; shift 2 ;;
         *)                 args+=("$1")          ; shift   ;;
@@ -244,6 +248,7 @@ case "$run_command" in
     krun)              run_krun            "$@" ;;
     check)             run_check           "$@" ;;
     vm)                run_vm              "$@" ;;
+    coverage)          run_coverage        "$@" ;;
     generate-report)   run_generate_report "$@" ;;
     upload)            run_upload_report   "$@" ;;
     *) $0 help ; fatal "Unknown command: $run_command" ;;
