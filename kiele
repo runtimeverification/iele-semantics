@@ -116,7 +116,7 @@ run_coverage() {
     if ! nc -z "$kiele_host" "$kiele_port"; then
         notif "No listener found on port $kiele_port, so there wont be any coverage data!"
     fi
-    kiele-coverage.py "$run_file" --port "$kiele_port" > "$output_path"
+    kiele-coverage.py "$run_file" --port "$kiele_port" --output "$output_path"
 }
 
 run_generate_report() {
@@ -153,7 +153,7 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
                $0 krun         [--backend (standalone|haskell|node|check)] <KIELE arg>* <pgm> <K arg>*
                $0 check                                                    <KIELE arg>* <pgm> <K arg>*
                $0 vm                                                       <KIELE arg>*
-               $0 coverage                                                 <combined.json path> [-o|--output <Report output path>]
+               $0 coverage     <combined.json path> [-p|--port <client port>] [-o|--output <Report output path>]
                $0 generate-report [--create-archive]                       <Report json path>   [-o|--output <Report output path>]
                $0 upload                                                   <Report json path>
 
