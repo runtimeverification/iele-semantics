@@ -7,3 +7,4 @@ class config:
   gas_price = "0x0"
   gas_limit = "0x166f5777"
   sleep_time = 3
+  directory = "contract_artifacts"

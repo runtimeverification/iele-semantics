@@ -1,9 +1,11 @@
 #!/usr/bin/python3
 import json
 from .config import config
-from .rlpencoder import decode_response, encode_function
+from .rlp import decode_response, encode_function, encode_contract
 from .rpc import *
 from time import sleep
+from subprocess import run, PIPE
+from os import path
 
 def get_result(input):
     try:
@@ -23,7 +25,8 @@ def transaction_call_data(sender, data, to, gas_limit, gas_price):
     return ( "{" f""""from": "{sender}", "to":"{to}", "gasLimit":"{gas_limit}", "gasPrice":"{gas_price}", "data": "{data}" """ "}" )
 
 def deploy_contract(walletId, sender, bytecode):
-    tx_data = transaction_deploy_data(sender, bytecode, config.gas_limit, config.gas_price)
+    rlp = encode_contract(bytecode)
+    tx_data = transaction_deploy_data(sender, rlp, config.gas_limit, config.gas_price)
     private_key = send(wallet_getDefaultPrivateAddress(walletId))
     tx_hash = send(wallet_callContract(walletId, private_key, config.passphrase, tx_data))
     send(qa_mineBlocks(1, "true"))
@@ -48,3 +51,29 @@ def init_wallet():
         send(qa_mineBlocks(1, "true"))
         sleep(config.sleep_time)
     return walletId
+
+def get_bytecode_of(file_path, contract_name):
+    file_dict = json.loads(compile_file(file_path))
+    bin = file_dict['contracts']['erc20.sol:'+contract_name]['bin']
+    metadatabin=file_dict['contracts']['erc20.sol:'+contract_name]['metadata-bin']
+    if bin.endswith(metadatabin):
+        bin = bin[:-len(metadatabin)]
+    return bin
+
+def compile_file(file_path):
+    command = ["isolc", file_path, "--combined-json", "asm,bin,metadata-bin,srcmap"]
+    result = run(command, stdout=PIPE, stderr=PIPE, universal_newlines=True)
+    if( result.returncode == 0 ):
+        write_file(file_path, result.stdout)
+        return result.stdout
+    else:
+        print(result.stderr)
+        return
+
+def write_file(file_path, content):
+    if not path.exists(config.directory):
+        makedirs(config.directory)
+    base = path.basename(file_path)
+    file_name = path.splitext(base)[0] + ".json"
+    with open(config.directory + "/" + file_name, 'w') as f:
+        f.write(content)
