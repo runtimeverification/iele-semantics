@@ -77,3 +77,19 @@ def write_file(file_path, content):
     file_name = path.splitext(base)[0] + ".json"
     with open(config.directory + "/" + file_name, 'w') as f:
         f.write(content)
+    print(bcolors.BOLD, "Contracts compiled successfully at:", config.directory, bcolors.ENDC)
+
+def assert_result(test_result, expected_result, msg):
+    try:
+        assert test_result==expected_result, msg
+    except AssertionError as err:
+        print(err)
+        print(bcolors.SUCCESS, "    Expected:", expected_result, bcolors.ENDC)
+        print(bcolors.FAIL, "    Received:", test_result, bcolors.ENDC)
+
+class bcolors:
+    SUCCESS = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
