@@ -5,7 +5,7 @@ class config:
   passphrase = "walletNotSecure"
   spending_key = "m-test-shl-sk1fj335eanpmupaj9vx5879t7ljfnh7xct486rqgwxw8evwp2qkaksmcqu88"
   gas_price = "0x0"
-  gas_limit = "0x596f5777"
+  gas_limit = "0x166f5777"
   sleep_time = 3
   target_directory = "contract_artifacts"
   contracts_dir = "contracts"
