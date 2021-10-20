@@ -10,3 +10,4 @@ class config:
   target_directory = "contract_artifacts"
   contracts_dir = "contracts"
   tests_dir = "tests"
+  coverage_timeout = 30

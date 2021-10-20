@@ -8,7 +8,10 @@ def encode_function(f_signature, f_args=[]):
     '''RLP encodes a function call in the format [f_signature, [f_args]]'''
     args = []
     for elem in f_args:
-      args.append(elem.to_bytes((elem.bit_length() + 7) // 8, 'big'))
+      if(isinstance(elem, int)):
+          args.append(elem.to_bytes((elem.bit_length() + 7) // 8, 'big'))
+      elif (isinstance(elem, str)):
+          args.append(bytearray.fromhex(elem))
     return ("0x" + rlp.encode([bytearray(f_signature, "utf-8"), args]).hex())
 
 def encode_contract(bytecode, c_args=[]):
