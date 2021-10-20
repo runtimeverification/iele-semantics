@@ -125,7 +125,7 @@ class IeleInstruction:
 class CoverageMap:
     ieleSources: List[Source]
     """
-    Solidity files source code (or Iele files source code)
+    Source files
     """
 
     ieleCoverage: Coverages  # Dict[int, Dict[int, CoveredState]]
