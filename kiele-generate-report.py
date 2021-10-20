@@ -115,6 +115,11 @@ class IeleInstruction:
     Iele covered state
     """
 
+    level: int
+    """
+    Iele instruction coverage level
+    """
+
 
 @dataclass
 class CoverageMap:
@@ -175,7 +180,8 @@ def make_coverage_summaries(artifacts: List[ContractArtifact]) -> List[CoverageS
 
 
 def make_coverage_map(source_name: str, solsrc: str, ielesrc: str, file_id: int, sol_source_map: str, iele_source_map: str, coverage: str) -> Tuple[CoverageMap, int]:
-    states = get_states(coverage)
+    chunks: List[str] = wrap(coverage.replace("0x", "", 1), 2)
+    states = get_states(chunks)
     coverage_ = calculate_coverage(states)
     coverage_map: CoverageMap
     lines: List[int] = []
@@ -195,7 +201,7 @@ def make_coverage_map(source_name: str, solsrc: str, ielesrc: str, file_id: int,
             prev_line = line_from_pos(int(sol_line_str), solsrc or "")
             lines.append(prev_line)
         instructions.append(IeleInstruction(
-            line=int(iele_line_str) - 1, solLine=prev_line, state=states[i]))
+            line=int(iele_line_str) - 1, solLine=prev_line, state=states[i], level=int(chunks[i], 16)))
         i += 1
 
     map_: Dict[int, CoveredState] = {}
@@ -218,8 +224,7 @@ def make_coverage_map(source_name: str, solsrc: str, ielesrc: str, file_id: int,
     return (coverage_map, coverage_)
 
 
-def get_states(coverage: str) -> List[CoveredState]:
-    chunks: List[str] = wrap(coverage.replace("0x", "", 1), 2)
+def get_states(chunks: List[str]) -> List[CoveredState]:
     states: List[CoveredState] = []
     for chunk in chunks:
         if chunk == "00":
