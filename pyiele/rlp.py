@@ -18,7 +18,10 @@ def encode_contract(bytecode, c_args=[]):
     '''RLP encodes the bytecode of acontract in the format [bytecode, [c_args]]'''
     args = []
     for elem in c_args:
-      args.append(elem.to_bytes((elem.bit_length() + 7) // 8, 'big'))
+      if(isinstance(elem, int)):
+          args.append(elem.to_bytes((elem.bit_length() + 7) // 8, 'big'))
+      elif (isinstance(elem, str)):
+          args.append(bytearray.fromhex(elem))
     return ("0x" + rlp.encode([bytearray.fromhex(bytecode), args]).hex())
 
 def decode_response(input):

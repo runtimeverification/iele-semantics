@@ -89,14 +89,15 @@ def encode_random_value(value, type: str) -> str:
     return encoded_value
 
 def generate_cons_args(constructor_data: dict) -> (list, list):
-    in_list = constructor_data["input"]
+    in_list = constructor_data[0]["input"]
     printable_list = []
     result = []
     for in_obj in in_list:
         type = in_obj["type"]
         value = generate_random_value(type)
         printable_list.append(get_printable_func(type)(value))
-        result.append(value)
+        encoded_value = encode_random_value(value, type)
+        result.append(encoded_value)
     return (result, printable_list)
 
 def generate_tx(function_data: dict) -> (str, str, list):
