@@ -79,7 +79,7 @@ OPENSSL_ROOT     := $(shell brew --prefix openssl)
 MACOS_CMAKE_OPTS := -DOPENSSL_ROOT_DIR=$(OPENSSL_ROOT) -DWITH_PROCPS=off
 endif
 
-libff_out := $(IELE_LIB)/libff/libff.a
+libff_out := $(IELE_LIB)/libff/lib/libff.a
 
 libff: $(libff_out)
 
@@ -104,7 +104,10 @@ $(protobuf_out): $(PROTO)/proto/msg.proto
 ifndef SYSTEM_LIBSECP256K1
 
 ifeq ($(UNAME_S),Darwin)
-libsecp256k1_out := $(IELE_LIB)/libsecp256k1/libsecp256k1.a
+libsecp256k1_out := $(IELE_LIB)/libsecp256k1/lib/libsecp256k1.a
+libsecp256k1_rm := $(addprefix $(IELE_LIB)/libsecp256k1/lib/,libsecp256k1.0.dylib libsecp256k1.dylib libsecp256k1.la)
+libsecp256k1_destdir := $(abspath $(BUILD_DIR))
+SECP256K1_ROOT := $(abspath $(IELE_LIB)/libsecp256k1)
 endif
 
 secp256k1: $(libsecp256k1_out)
@@ -112,7 +115,8 @@ secp256k1: $(libsecp256k1_out)
 $(libsecp256k1_out): $(PLUGIN)/deps/secp256k1/Makefile
 	cd $(PLUGIN)/deps/secp256k1 \
 	   && make                  \
-	   && make install DESTDIR=../../../$(BUILD_DIR)
+	   && make install DESTDIR=$(libsecp256k1_destdir)
+	rm $(libsecp256k1_rm)
 
 $(PLUGIN)/deps/secp256k1/Makefile: $(PLUGIN)/deps/secp256k1/autogen.sh
 	cd $(PLUGIN)/deps/secp256k1 \
@@ -125,6 +129,7 @@ ifndef SYSTEM_LIBCRYPTOPP
 
 ifeq ($(UNAME_S),Darwin)
 libcryptopp_out := $(IELE_LIB)/libcryptopp
+CRYPTOPP_ROOT := $(abspath $(IELE_LIB)/libcryptopp)
 endif
 
 cryptopp: $(libcryptopp_out)
@@ -132,7 +137,7 @@ cryptopp: $(libcryptopp_out)
 $(libcryptopp_out): $(PLUGIN)/deps/cryptopp/GNUmakefile
 	cd $(PLUGIN)/deps/cryptopp \
 	   && make libcryptopp.a   \
-	   && make install PREFIX=$(INSTALL_LIB)/libcryptopp DEST_DIR=../../../$(BUILD_DIR)
+	   && make install PREFIX=$(INSTALL_LIB)/libcryptopp DESTDIR=../../../$(BUILD_DIR)
 
 endif # ifndef SYSTEM_LIBCRYPTOPP
 
@@ -307,8 +312,8 @@ endif
 LIB_PROCPS=-lprocps
 
 ifeq ($(UNAME_S),Darwin)
-MACOS_INCLUDE_OPTS := -I $(OPENSSL_ROOT)/include
-MACOS_LINK_OPTS    := -L $(OPENSSL_ROOT)/lib
+MACOS_INCLUDE_OPTS := -I $(OPENSSL_ROOT)/include -I $(SECP256K1_ROOT)/include -I $(CRYPTOPP_ROOT)/include
+MACOS_LINK_OPTS    := -L $(OPENSSL_ROOT)/lib -L $(SECP256K1_ROOT)/lib -L $(CRYPTOPP_ROOT)/lib
 LIB_PROCPS=
 endif
 
