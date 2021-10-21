@@ -293,7 +293,7 @@ def generate_static_report(report_template_path: str, reports_json_path: str, ou
         source_name = artifact.sourceName
         coverage_map = artifact.coverageMap
         write_json_file(os.path.join(report_base_path, quote(
-            source_name + "-" + hash + "-iele.json", safe=":")), json.dumps(asdict(coverage_map)))
+            source_name + "-" + hash + "-iele.json", safe="")), json.dumps(asdict(coverage_map)))
 
     # Copy original
     original_path = os.path.join(report_base_path, "./original")
