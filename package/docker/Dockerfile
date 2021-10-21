@@ -3,7 +3,7 @@ ARG DISTRO
 FROM runtimeverificationinc/kframework-k:ubuntu-${DISTRO}-${K_COMMIT}
 
 RUN    apt-get update        \
-    && apt-get upgrade       \
+    && apt-get upgrade --yes \
     && apt-get install --yes \
                 autoconf     \
                 libgmp-dev   \
