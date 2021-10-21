@@ -4,7 +4,6 @@ from .config import config
 from .rlp import decode_response, encode_function, encode_contract
 from .rpc import *
 from .utils import *
-from time import sleep
 from subprocess import run, PIPE
 from os import path, listdir, makedirs
 
@@ -29,14 +28,22 @@ def transaction_call_data(sender, data, to, gas_limit, gas_price):
     '''Template for a transaction which calls a contract function'''
     return ( "{" f""""from": "{sender}", "to":"{to}", "gasLimit":"{gas_limit}", "gasPrice":"{gas_price}", "data": "{data}" """ "}" )
 
+def mine_blocks(amount):
+    '''Mines `amount` blocks. The blocks are considered mined when `blockNumber` is incremented `amount` times.'''
+    wait = True
+    init_bn = int(send(eth_blockNumber()), 16)
+    send(qa_mineBlocks(amount, "true"))
+    while(wait):
+        bn = int(send(eth_blockNumber()), 16)
+        wait = bn != init_bn + amount
+
 def deploy_contract(walletId, sender, contract_bytecode, contract_args):
     '''RLP encodes the bytecode of a contract and sends a transaction to deploy the contract'''
     rlp = encode_contract(contract_bytecode, contract_args)
     tx_data = transaction_deploy_data(sender, rlp, config.gas_limit, config.gas_price)
     private_key = send(wallet_getDefaultPrivateAddress(walletId))
     tx_hash = send(wallet_callContract(walletId, private_key, config.passphrase, tx_data))
-    send(qa_mineBlocks(1, "true"))
-    sleep(config.sleep_time)
+    mine_blocks(1)
     contract_address = send(eth_getTransactionReceipt(tx_hash))["contractAddress"]
     return contract_address
 
@@ -46,8 +53,7 @@ def run_function(f_name, f_args, walletId, sender, to):
     tx_data = transaction_call_data(sender, rlp, to, config.gas_limit, config.gas_price)
     private_key = send(wallet_getDefaultPrivateAddress(walletId))
     tx_hash = send(wallet_callContract(walletId, private_key, config.passphrase, tx_data))
-    send(qa_mineBlocks(1, "true"))
-    sleep(config.sleep_time)
+    mine_blocks(1)
     receipt = send(eth_getTransactionReceipt(tx_hash))
     return_data = receipt["returnData"]
     return (decode_response(return_data))
@@ -57,8 +63,7 @@ def init_wallet():
     walletId = send(wallet_restore(config.passphrase, config.spending_key))
     send(wallet_unlock(walletId, config.passphrase))
     if(send(eth_blockNumber()) == "0x0"):
-        send(qa_mineBlocks(1, "true"))
-        sleep(config.sleep_time)
+        mine_blocks(1)
     return walletId
 
 def compile_file(file_path):

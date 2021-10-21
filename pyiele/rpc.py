@@ -19,6 +19,9 @@ def wallet_restore(passphrase, spending_key):
 def qa_mineBlocks(number, wait_confirm):
     return rpc_call("qa_mineBlocks", params=f"""{number}, {wait_confirm}""")
 
+def qa_getPendingTransactions():
+    return rpc_call("qa_getPendingTransactions")
+
 def wallet_unlock(walletId, passphrase):
     return rpc_call("wallet_unlock", params=f""""{walletId}" """, secrets="{" f""""passphrase":"{passphrase}" """ "}")
 

@@ -17,12 +17,10 @@ def make_parser():
     blackboxParser = subparsers.add_parser('blackbox', help = 'Blackbox testing.')
     blackboxParser.add_argument('-p', '--port', type=int, default=8342, metavar="<port>",
                         help="Port that Midnight client is listen on (default: %(default)s)")
-    blackboxParser.add_argument('-o', '--timeout', type=int, default=30, metavar="<coverage timeout>",
+    blackboxParser.add_argument('-o', '--timeout', type=int, default=15, metavar="<coverage timeout>",
                         help="Timeout for trying each function (default: %(default)s)")
     blackboxParser.add_argument('--build-dir', type=str, default="contract_artifacts", metavar="<build dir>",
                         help="Path to the JSON output of solc (default: %(default)s)")
-    blackboxParser.add_argument('-s', '--sleep-time', type=int, default=3, metavar="<sleep time>",
-                        help="Seconds to wait for blocks to mine (default: %(default)s)")
     blackboxParser.add_argument('--passphrase', type=str, default="walletNotSecure", metavar="<passphrase>",
                         help="Wallet passphrase (default: %(default)s)")
     blackboxParser.add_argument('--spending-key', type=str, default="m-test-shl-sk1fj335eanpmupaj9vx5879t7ljfnh7xct486rqgwxw8evwp2qkaksmcqu88", metavar="<spending key>",
@@ -35,8 +33,6 @@ def make_parser():
                         help="Transaction gas limit (default: %(default)s)")
     testrunnerParser.add_argument('-g', '--gas-price', type=str, default="0x0", metavar="<gas price>",
                         help="Gas price value (default: %(default)s)")
-    testrunnerParser.add_argument('-s', '--sleep-time', type=int, default=3, metavar="<sleep time>",
-                        help="Seconds to wait for blocks to mine (default: %(default)s)")
     testrunnerParser.add_argument('-f', '--file', type=str, metavar="<tests>",
                         help="Path of the test file/files to be executed (default: %(default)s)")
     testrunnerParser.add_argument('--build-dir', type=str, default="contract_artifacts", metavar="<build dir>",
@@ -72,7 +68,6 @@ if __name__ == '__main__':
         config.port = args.port
         config.gas_limit = args.gas_limit
         config.gas_price = args.gas_price
-        config.sleep_time = args.sleep_time
         config.tests_dir = args.tests_dir
         config.target_directory = args.build_dir
         config.spending_key = args.spending_key
@@ -99,7 +94,6 @@ if __name__ == '__main__':
     elif args.command == 'blackbox':
         config.port = args.port
         config.coverage = timeout=args.timeout
-        config.sleep_time = args.sleep_time
         config.spending_key = args.spending_key
         config.passphrase = args.passphrase
 

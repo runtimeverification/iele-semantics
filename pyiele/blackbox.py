@@ -8,7 +8,7 @@ import glob
 from .transactionGeneration import generate_tx, generate_cons_args
 from .config import config
 from .rpc import *
-from .testrunner import init_wallet, send, deploy_contract, transaction_call_data
+from .testrunner import init_wallet, send, deploy_contract, transaction_call_data, mine_blocks
 from .utils import *
 from Crypto.Hash import keccak
 
@@ -118,8 +118,7 @@ def blackbox_test_single_contract(contract, available_contract):
             tx_data = transaction_call_data(sender, rlp, contract_owner, config.gas_limit, config.gas_price)
             private_key = send(wallet_getDefaultPrivateAddress(walletId))
             tx_hash = send(wallet_callContract(walletId, private_key, config.passphrase, tx_data))
-            send(qa_mineBlocks(1, "true"))
-            time.sleep(config.sleep_time)
+            mine_blocks(1)
 
             # Get the new coverage percentage for this contract after the eth_call
             coverage_new = 0
