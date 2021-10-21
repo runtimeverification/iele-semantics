@@ -150,16 +150,17 @@ run_compile() {
 }
 
 run_testrunner() {
+    local run_file
     if ! nc -z "$kiele_host" "$kiele_port"; then
         fatal "No listener found on port $kiele_port"
     fi
-    if [[ $# -gt 0 ]] && [[ -f "$1" ]]; then
-      if [[ "$1" == *.sol ]]; then
-        pyielerunner test --file "$1" --port "$kiele_port" "$@"
-      else if [[ "$1" == *.py ]]; then
-        pyielerunner runpytest "$1"
+    if [[ $# -gt 0 ]]; then
+      run_file="$1"; shift
+      if [[ -f "$run_file" ]] || [[ -d "$run_file" ]]; then
+        if [[ "$run_file" == *.py ]]; then
+            pyielerunner runpytest "$run_file"
         else
-          fatal "Invalid file: $1"
+            pyielerunner test --file "$run_file" --port "$kiele_port" "$@"
         fi
       fi
     else

@@ -75,21 +75,22 @@ if __name__ == '__main__':
 
         if(args.file is None):
             if os.path.isdir(config.tests_dir):
-                for file_name in os.listdir(config.tests_dir):
-                    if file_name.endswith(".sol"):
-                        run_test_file(config.tests_dir + "/" + file_name)
+                for child_file in os.listdir(config.tests_dir):
+                    if child_file.endswith(".sol"):
+                        run_test_file(config.tests_dir + "/" + child_file)
             elif os.path.isfile(config.test_dir):
-                    if file_name.endswith(".sol"):
-                        run_test_file(file_name)
-        else: 
-            if (os.path.isdir(args.file)):
-                for file_name in os.listdir(args.file):
-                    if file_name.endswith(".sol"):
-                        run_test_file(args.file)
-            elif (os.path.isfile(args.file) and (args.file).endswith(".sol")):
-                run_test_file(args.file)
+                    if child_file.endswith(".sol"):
+                        run_test_file(child_file)
+        else:
+            file_path = args.file
+            if (os.path.isdir(file_path)):
+                for child_file in os.listdir(file_path):
+                    if child_file.endswith(".sol"):
+                        run_test_file(file_path + "/" + child_file)
+            elif (os.path.isfile(file_path) and (file_path).endswith(".sol")):
+                run_test_file(file_path)
             else:
-                fatal("Invalid file: "+ args.file)
+                fatal("Invalid file: "+ file_path)
 
     elif args.command == 'blackbox':
         config.port = args.port

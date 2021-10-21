@@ -11,11 +11,9 @@ class colors:
         orange = '\033[33m'
         cyan = '\033[36m'
 
-
 def notif(msg, color=colors.reset):
     sys.stderr.write(color + "== " + msg + '\n' + colors.reset)
     sys.stderr.flush()
-
 
 def fatal(msg, code=1):
     notif(msg)
