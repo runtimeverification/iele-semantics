@@ -141,6 +141,38 @@ run_upload_report() {
     rm report.zip
 }
 
+run_compile() {
+    if [[ $# -gt 0 ]] && [[ -f "$1" ]]; then
+      pyielerunner compile --file "$1" "$@"
+    else
+      pyielerunner compile "$@"
+    fi
+}
+
+run_testrunner() {
+    if ! nc -z "$kiele_host" "$kiele_port"; then
+        fatal "No listener found on port $kiele_port"
+    fi
+    if [[ $# -gt 0 ]] && [[ -f "$1" ]]; then
+      if [[ "$1" == *.sol ]]; then
+        pyielerunner test --file "$1" --port "$kiele_port" "$@"
+      else if [[ "$1" == *.py ]]; then
+        pyielerunner runpytest "$1"
+        else
+          fatal "Invalid file: $1"
+        fi
+      fi
+    else
+      pyielerunner test --port "$kiele_port" "$@"
+    fi
+}
+
+run_blackbox() {
+    if ! nc -z "$kiele_host" "$kiele_port"; then
+        fatal "No listener found on port $kiele_port"
+    fi
+    pyielerunner blackbox --port "$kiele_port" "$@"
+}
 # Main
 # ----
 
@@ -156,6 +188,9 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
                $0 coverage     <combined.json path> [-p|--port <client port>] [-o|--output <Report output path>]
                $0 generate-report [--create-archive]                       <Report json path>   [-o|--output <Report output path>]
                $0 upload                                                   <Report json path>
+               $0 compile      [contract.sol path]                         <COMPILE arg>*
+               $0 test         [test path]                                 <TEST arg>*
+               $0 blackbox                                                 <BLACKBOX arg>*
 
                $0 [help|--help|version|--version]
 
@@ -164,9 +199,12 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
            $0 krun             : Run given input <pgm> using 'krun'
            $0 check            : Run the IELE well-formedness checker on <pgm>
            $0 vm               : Run the KIELE VM server.
+           $0 coverage         : Generates a report file containing contract information and coverage data.
            $0 generate-report  : Generate the static HTML report.
            $0 upload           : Upload the HTML report to the fireflyblockchain.com website.
-
+           $0 compile          : Compile solidity contracts using isolc. If no path is provided, all the found .sol files will be compiled. For more information run kiele compile --help.
+           $0 test             : Runs either a python or a solidity test file. If no path is provided, will run all the tests found under the test folder. For more information run kiele test --help.
+           $0 blackbox         : Attempt to find new test inputs via blackbox random testing. For more information run kiele blackbox --help.
            $0 help    : Display this help message.
            $0 version : Display the versions of KIELE in use.
 
@@ -237,7 +275,7 @@ cmode='Lbl'$mode'{}()'
 cschedule='Lbl'$schedule'{}()'
 cenablecoverage='\dv{SortBool{}}("'$enablecoverage'")'
 
-if [[ "$run_command" != 'vm' ]]; then
+if [[ "$run_command" != 'vm' ]] && [[ "$run_command" != 'compile' ]] && [[ "$run_command" != 'test' ]] && [[ "$run_command" != 'blackbox' ]]; then
     run_file="$1" ; shift
     [[ -f "$run_file" ]] || [[ "$run_file" == '-' ]] || fatal "File does not exist: $run_file"
 fi
@@ -251,5 +289,8 @@ case "$run_command" in
     coverage)          run_coverage        "$@" ;;
     generate-report)   run_generate_report "$@" ;;
     upload)            run_upload_report   "$@" ;;
+    compile)           run_compile         "$@" ;;
+    blackbox)          run_blackbox        "$@" ;;
+    test)              run_testrunner      "$@" ;;
     *) $0 help ; fatal "Unknown command: $run_command" ;;
 esac

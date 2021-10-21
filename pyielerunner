@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+export PYTHONPATH="$(dirname "$0"):$PYTHONPATH"
+if [ "$1" = "runpytest" ]
+then
+  python3 "$2"
+else
+  python3 -m pyiele "$@"
+fi

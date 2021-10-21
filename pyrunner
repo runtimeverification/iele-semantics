@@ -1,3 +1,0 @@
-#!/usr/bin/env sh
-export PYTHONPATH="$(dirname "$0"):$PYTHONPATH"
-python3 -m pyiele "$@"
