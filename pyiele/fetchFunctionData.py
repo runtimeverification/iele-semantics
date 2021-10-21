@@ -7,10 +7,8 @@ import re
 from Crypto.Hash import keccak
 
 def generate_signature(name:str, inputs:dict) -> str:
-    signature = name + "("
-    for item in inputs:
-        signature = signature + item["type"] + ","
-    return signature[:-1] + ")"
+    args= "(" +','.join([x["type"] for x in inputs]) + ")"
+    return name+args
 
 def process_file(file: str) -> dict:
     result = []
@@ -18,7 +16,7 @@ def process_file(file: str) -> dict:
         in_dict = json.load(in_file)
         for (contract_key, contract_dict) in in_dict["contracts"].items():
             out_dict = {}
-            contract_name = contract_key#contract_key.split(":")[1]
+            contract_name = contract_key
             out_dict["contractName"] = contract_name
             out_dict["contractConstructor"] = [
                 {

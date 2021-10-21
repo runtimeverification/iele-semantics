@@ -4,8 +4,10 @@ from .config import config
 from .rlp import decode_response, encode_function, encode_contract
 from .rpc import *
 from .utils import *
+from .fetchFunctionData import generate_signature
 from subprocess import run, PIPE
 from os import path, listdir, makedirs
+import time
 
 def get_result(input):
     '''Parses the response of an rpc method and retrieves the contains of the `result` field.'''
@@ -34,6 +36,7 @@ def mine_blocks(amount):
     init_bn = int(send(eth_blockNumber()), 16)
     send(qa_mineBlocks(amount, "true"))
     while(wait):
+        time.sleep(0.5)
         bn = int(send(eth_blockNumber()), 16)
         wait = bn != init_bn + amount
 
@@ -55,8 +58,9 @@ def run_function(f_name, f_args, walletId, sender, to):
     tx_hash = send(wallet_callContract(walletId, private_key, config.passphrase, tx_data))
     mine_blocks(1)
     receipt = send(eth_getTransactionReceipt(tx_hash))
-    return_data = receipt["returnData"]
-    return (decode_response(return_data))
+    return_data = decode_response(receipt["returnData"])
+    status_code = int(receipt["statusCode"], 16)
+    return (status_code, return_data)
 
 def init_wallet():
     '''Retrieves the walletID and unlocks the wallet.'''
@@ -68,7 +72,7 @@ def init_wallet():
 
 def compile_file(file_path):
     '''Calls isolc on the provided file. Output is first written to a file and then returned'''
-    print(" > Compiling", file_path)
+    print("\n >  Compiling", file_path + "\n")
     command = ["isolc", file_path, "--combined-json", "asm,bin,metadata-bin,srcmap,abi", "--allow-paths", "."]
     result = run(command, stdout=PIPE, stderr=PIPE, universal_newlines=True)
     if( result.returncode == 0 ):
@@ -132,13 +136,18 @@ def run_test_file(file_path):
     contract_name = name[0].upper() + name[1:]
     contract_id = file_path + ":" + contract_name
     code = remove_metadata_bin(compiled_data["contracts"][contract_id])
-    test_functions = [x["name"] for x in compiled_data["contracts"][contract_id]["abi"] if x["name"].startswith(r"test") and x["type"] == "function"]
-
-    print("\nContract:", contract_name)
+    test_functions = [generate_signature(x["name"], x["inputs"]) for x in compiled_data["contracts"][contract_id]["abi"] if x["name"].startswith(r"test") and x["type"] == "function"]
+    notif("    Contract name: " + contract_name )
     walletId = init_wallet()
     sender = send(wallet_generateTransparentAccount(walletId))["address"]
     contract_address = deploy_contract(walletId, sender, code, [])
     for test in test_functions:
-        print("  Test: ", test)
-        result = run_function(test, [], walletId, sender, contract_address)
-        print("  Result:", result)
+        t_start = time.perf_counter()
+        (status_code, result) = run_function(test, [], walletId, sender, contract_address)
+        t_end = time.perf_counter()
+        if ( status_code == 0 ):
+            config.passing_tests += 1
+            notif("        " + u'\u2714' + "   " + test + "  (" +str(int(t_end-t_start))+ "s)", colors.fg.green)
+        else:
+            config.failing_tests += 1
+            notif("        " + u'\u2718' + "   " + test + "  (" +str(int(t_end-t_start))+ "s)", colors.fg.red)

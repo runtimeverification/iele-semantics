@@ -10,3 +10,5 @@ class config:
   contracts_dir = "contracts"
   tests_dir = "tests"
   coverage_timeout = 15
+  passing_tests = 0
+  failing_tests = 0
