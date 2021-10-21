@@ -16,6 +16,9 @@ def rpc_call(method, params="", secrets=None):
 def wallet_restore(passphrase, spending_key):
     return rpc_call("wallet_restore", secrets="{" f""""passphrase":"{passphrase}", "spendingKey":"{spending_key}" """ "}")
 
+def bech32_decodeTransparentAddress(address):
+    return rpc_call("bech32_decodeTransparentAddress", params=f""""{address}" """)
+
 def qa_mineBlocks(number, wait_confirm):
     return rpc_call("qa_mineBlocks", params=f"""{number}, {wait_confirm}""")
 

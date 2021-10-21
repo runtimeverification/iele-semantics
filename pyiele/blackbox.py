@@ -90,7 +90,6 @@ def blackbox_test_single_contract(contract, available_contract):
     #Generate midnight address
     walletId = init_wallet()
     sender = send(wallet_generateTransparentAccount(walletId))["address"]
-    print("Sender:", sender)
     
     #Deploy contract on network with possible args
     c_args = []

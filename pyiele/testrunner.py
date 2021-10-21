@@ -14,9 +14,10 @@ def get_result(input):
     try:
         return (json.loads(input.decode("utf8"))["result"])
     except KeyError:
-        fatal("ERROR: " + json.loads(input.decode("utf8"))["error"])
+        print("[ERROR]: ", json.loads(input.decode("utf8"))["error"]["message"])
     except:
-        fatal("ERROR: Could not decode response: " + input)
+        print("[FATAL]: Could not decode response: ", input)
+        exit()
 
 def send(rpc):
     '''Sends an rpc method call and returns the parsed response.'''
@@ -65,9 +66,9 @@ def run_function(f_name, f_args, walletId, sender, to):
 def init_wallet():
     '''Retrieves the walletID and unlocks the wallet.'''
     walletId = send(wallet_restore(config.passphrase, config.spending_key))
-    send(wallet_unlock(walletId, config.passphrase))
     if(send(eth_blockNumber()) == "0x0"):
         mine_blocks(1)
+    send(wallet_unlock(walletId, config.passphrase))
     return walletId
 
 def compile_file(file_path):

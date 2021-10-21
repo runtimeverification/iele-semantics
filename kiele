@@ -142,8 +142,12 @@ run_upload_report() {
 }
 
 run_compile() {
-    if [[ $# -gt 0 ]] && [[ -f "$1" ]]; then
-      pyielerunner compile --file "$1" "$@"
+    local run_file
+    if [[ $# -gt 0 ]]; then
+      run_file="$1"; shift
+      if [[ -f "$run_file" ]] || [[ -d "$run_file" ]]; then
+        pyielerunner compile --file "$run_file" "$@"
+      fi
     else
       pyielerunner compile "$@"
     fi
@@ -174,6 +178,7 @@ run_blackbox() {
     fi
     pyielerunner blackbox --port "$kiele_port" "$@"
 }
+
 # Main
 # ----
 
