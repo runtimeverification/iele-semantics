@@ -24,7 +24,7 @@ check_k_install() {
         || fatal "Must have K installed! See https://github.com/kframework/k/releases."
 }
 
-check_token() { [[ -v FIREFLY_TOKEN ]] || fatal "FIREFLY_TOKEN environment variable isn't set!" ; }
+check_token() { [ -v FIREFLY_TOKEN ] || fatal "FIREFLY_TOKEN environment variable isn't set!" ; }
 
 make_temp_trap() {
     local tmpdesc tmpfile
