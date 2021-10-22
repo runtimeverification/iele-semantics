@@ -94,7 +94,7 @@ if __name__ == '__main__':
 
     elif args.command == 'blackbox':
         config.port = args.port
-        config.coverage = timeout=args.timeout
+        config.coverage_timeout = timeout=args.timeout
         config.spending_key = args.spending_key
         config.passphrase = args.passphrase
 
