@@ -91,6 +91,8 @@ if __name__ == '__main__':
                 run_test_file(file_path)
             else:
                 fatal("Invalid file: "+ file_path)
+        print("==  Passing Tests:", config.passing_tests)
+        print("==  Failing Tests:", config.failing_tests)
 
     elif args.command == 'blackbox':
         config.port = args.port

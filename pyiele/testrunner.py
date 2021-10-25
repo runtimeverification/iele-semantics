@@ -73,7 +73,7 @@ def init_wallet():
 
 def compile_file(file_path):
     '''Calls isolc on the provided file. Output is first written to a file and then returned'''
-    print("\n >  Compiling", file_path + "\n")
+    print("\n==  Compiling", file_path)
     command = ["isolc", file_path, "--combined-json", "asm,bin,metadata-bin,srcmap,abi", "--allow-paths", "."]
     result = run(command, stdout=PIPE, stderr=PIPE, universal_newlines=True)
     if( result.returncode == 0 ):
@@ -138,7 +138,7 @@ def run_test_file(file_path):
     contract_id = file_path + ":" + contract_name
     code = remove_metadata_bin(compiled_data["contracts"][contract_id])
     test_functions = [generate_signature(x["name"], x["inputs"]) for x in compiled_data["contracts"][contract_id]["abi"] if x["name"].startswith(r"test") and x["type"] == "function"]
-    notif("    Contract name: " + contract_name )
+    print("\n==  Contract name: " + contract_name )
     walletId = init_wallet()
     sender = send(wallet_generateTransparentAccount(walletId))["address"]
     contract_address = deploy_contract(walletId, sender, code, [])
