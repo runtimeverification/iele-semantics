@@ -204,7 +204,8 @@ Index the Instructions
     rule #indexContract( ... ctx: ( .Instructions .LabeledBlocks => .K ) ~> _ )
     rule #indexContract( ... ctx: (               .LabeledBlocks => .K ) ~> _ )
 
-    rule #indexContract( ... ctx:           ( .Instructions LABEL : UNLABELEDBLOCK:Instructions LABELEDBLOCKS:LabeledBlocks => UNLABELEDBLOCK LABELEDBLOCKS ) ~> _,
+    rule #indexContract( ... ctx:           ( .Instructions LABEL : UNLABELEDBLOCK:Instructions LABELEDBLOCKS:LabeledBlocks => LABEL : UNLABELEDBLOCK LABELEDBLOCKS ) ~> _)
+    rule #indexContract( ... ctx:           (               LABEL : UNLABELEDBLOCK:Instructions LABELEDBLOCKS:LabeledBlocks => UNLABELEDBLOCK LABELEDBLOCKS ) ~> _,
                              currentInstrs: INSTRS => label ( LABEL ) INSTRS
                        )
     rule #indexContract( ... ctx:           ( INSTR:Instruction     UNLABELEDBLOCK:Instructions LABELEDBLOCKS:LabeledBlocks => UNLABELEDBLOCK LABELEDBLOCKS ) ~> _,
@@ -279,6 +280,7 @@ Helper Functions
     rule #sizeContract( ( .Instructions .LabeledBlocks => .K ) ~> _, _ )
     rule #sizeContract( (               .LabeledBlocks => .K ) ~> _, _ )
     rule #sizeContract( ( .Instructions _ : UNLABELEDBLOCK:Instructions LABELEDBLOCKS:LabeledBlocks => UNLABELEDBLOCK LABELEDBLOCKS ) ~> _, _ )
+    rule #sizeContract( (               _ : UNLABELEDBLOCK:Instructions LABELEDBLOCKS:LabeledBlocks => UNLABELEDBLOCK LABELEDBLOCKS ) ~> _, _ )
     rule #sizeContract( ( _INSTR UNLABELEDBLOCK:Instructions LABELEDBLOCKS:LabeledBlocks => UNLABELEDBLOCK LABELEDBLOCKS ) ~> _, I => I +Int 1 )
 
 endmodule
