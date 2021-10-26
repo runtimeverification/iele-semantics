@@ -32,7 +32,19 @@ class Report:
 @dataclass
 class IeleContract:
     name: str
-    sourceMap: str
+    """
+    Name of the contract
+    """
+
+    solmap: str
+    """
+    Source map generated from isolc 
+    """
+
+    ielemap: str
+    """
+    Source map generated from iele-assemble
+    """
     coverage: str
 
 
@@ -44,7 +56,15 @@ IeleContracts = Dict[str, IeleContract]
 
 @dataclass
 class IeleReport:
-    contents: str
+    solsrc: str
+    """
+    Solidity source code
+    """
+
+    ielesrc: str
+    """
+    Compiled Iele code
+    """
     contracts: IeleContracts
 
 
@@ -59,6 +79,13 @@ class Source:
     fileId: int
     filename: str
     sourceLines: List[str]
+    """
+    Usually the Solidity code lines
+    """
+    asmSourceLines: Optional[List[str]]
+    """
+    Usually the Iele code lines
+    """
 
 
 @dataclass
@@ -67,19 +94,49 @@ class CoveredState:
     contents: Optional[List[int]]  # (covered, total)
 
 
+# fileId => line number => state
 Coverages = List[Tuple[int, List[Tuple[int, CoveredState]]]]
 
 
 @dataclass
+class IeleInstruction:
+    line: int
+    """
+    Iele line
+    """
+
+    solLine: int
+    """
+    Mapped to Solidity line
+    """
+
+    state: CoveredState
+    """
+    Iele covered state
+    """
+
+    level: int
+    """
+    Iele instruction coverage level
+    """
+
+
+@dataclass
 class CoverageMap:
-    """
-    Solidity files source code
-    """
     ieleSources: List[Source]
+    """
+    Source files
+    """
+
+    ieleCoverage: Coverages  # Dict[int, Dict[int, CoveredState]]
     """
     Solidity coverage data
     """
-    ieleCoverage: Coverages  # Dict[int, Dict[int, CoveredState]]
+
+    ieleInstructions: Optional[List[IeleInstruction]]
+    """
+    Iele instructions data
+    """
 
 
 @dataclass
@@ -107,6 +164,13 @@ class CoverageSummary:
     mainContract: Optional[int]
 
 
+def line_from_pos(offset: int, text: str) -> int:
+    """
+    Given a text and an offset into the text, get the line number
+    """
+    return len(text[0:offset+1].splitlines()) - 1
+
+
 def make_coverage_summaries(artifacts: List[ContractArtifact]) -> List[CoverageSummary]:
     summaries: List[CoverageSummary] = []
     for artifact in artifacts:
@@ -115,21 +179,52 @@ def make_coverage_summaries(artifacts: List[ContractArtifact]) -> List[CoverageS
     return summaries
 
 
-def make_coverage_map(source_name: str, content: str, file_id: int, source_map: str, coverage: str) -> Tuple[CoverageMap, int]:
-    lines: List[int] = list(map(lambda s: int(
-        s.split(":")[0]) - 1, source_map.split(";")))
-    states = get_states(coverage)
+def make_coverage_map(source_name: str, solsrc: str, ielesrc: str, file_id: int, sol_source_map: str, iele_source_map: str, coverage: str) -> Tuple[CoverageMap, int]:
+    chunks: List[str] = wrap(coverage.replace("0x", "", 1), 2)
+    states = get_states(chunks)
     coverage_ = calculate_coverage(states)
-    coverage_map: CoverageMap = CoverageMap(
+    coverage_map: CoverageMap
+    lines: List[int] = []
+    prev_line = -1
+    instructions: List[IeleInstruction] = []
+    sol_source_map_entries = sol_source_map.split(";")
+    iele_source_map_entries = iele_source_map.split(";")
+    i = 0
+    while i < len(sol_source_map_entries):
+        sol_source_map_entry = sol_source_map_entries[i]
+        iele_source_map_entry = iele_source_map_entries[i]
+        sol_line_str = sol_source_map_entry.split(":")[0]
+        iele_line_str = iele_source_map_entry.split(":")[0]
+        if sol_line_str.strip() == "":
+            lines.append(prev_line)
+        else:
+            prev_line = line_from_pos(int(sol_line_str), solsrc or "")
+            lines.append(prev_line)
+        instructions.append(IeleInstruction(
+            line=int(iele_line_str) - 1, solLine=prev_line, state=states[i], level=int(chunks[i], 16)))
+        i += 1
+
+    map_: Dict[int, CoveredState] = {}
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        state = states[i]
+        if line in map_ and map_[line] != state:
+            map_[line] = CoveredState(tag="Weak", contents=[0, 0])
+        else:
+            map_[line] = state
+        i += 1
+
+    coverage_map = CoverageMap(
         ieleSources=[Source(
-            fileId=file_id, filename=source_name, sourceLines=content.splitlines())],
-        ieleCoverage=[(file_id, list(zip(lines, states)))]
+            fileId=file_id, filename=source_name, sourceLines=solsrc.splitlines(), asmSourceLines=ielesrc.splitlines())],
+        ieleCoverage=[(file_id, list(map_.items()))],
+        ieleInstructions=instructions
     )
     return (coverage_map, coverage_)
 
 
-def get_states(coverage: str) -> List[CoveredState]:
-    chunks: List[str] = wrap(coverage.replace("0x", "", 1), 2)
+def get_states(chunks: List[str]) -> List[CoveredState]:
     states: List[CoveredState] = []
     for chunk in chunks:
         if chunk == "00":
@@ -155,12 +250,11 @@ def convert_iele_reports_to_contract_artifacts(iele_reports: IeleReports) -> Lis
     for source_name in iele_reports:
         file_id += 1
         iele_report = iele_reports[source_name]
-        contents = iele_report.contents
         contracts = iele_report.contracts
         for hash in contracts:
             contract = contracts[hash]
             (coverage_map, coverage) = make_coverage_map(source_name,
-                                                         contents, file_id, contract.sourceMap, contract.coverage)
+                                                         iele_report.solsrc, iele_report.ielesrc, file_id, contract.solmap, contract.ielemap, contract.coverage)
             artifacts.append(ContractArtifact(contractName=contract.name, sourceName=source_name,
                                               coverageMap=coverage_map, coverage=coverage, fileId=file_id))
     return artifacts
@@ -169,6 +263,7 @@ def convert_iele_reports_to_contract_artifacts(iele_reports: IeleReports) -> Lis
 def write_json_file(file_path: str, json: str):
     with open(file_path, "w") as f:
         f.write(json)
+
 
 def generate_static_report(report_template_path: str, reports_json_path: str, output_report_path: str = "", create_report_archive: bool = False):
     report_id = str(uuid.uuid4())
@@ -215,14 +310,14 @@ def generate_static_report(report_template_path: str, reports_json_path: str, ou
         report: Report = Report(status="success", tag=None, hasFireflyLog=firefly_log_exists, created=datetime.today(
         ).strftime('%Y-%m-%dT%H:%M:%SZ'), reportId=report_id, token="(generated)", coverage="ParseSuccess", commit=None, type="iele")
         write_json_file(os.path.join(report_base_path, report_id +
-                                    ".json"), json.dumps(asdict(report)))
+                                     ".json"), json.dumps(asdict(report)))
 
         # Create JavaScript code
         js_code = "window.FIREFLY_REPORT_FILES = {}"
-        onlyfiles = [ f for f in os.listdir(report_base_path) 
-                            if os.path.isfile(os.path.join(report_base_path, f))
-                    ] + [ os.path.join("original", f) for f in os.listdir(os.path.join(report_base_path, "./original"))
-                                                        if not f.endswith(".zip") ]
+        onlyfiles = [f for f in os.listdir(report_base_path)
+                     if os.path.isfile(os.path.join(report_base_path, f))
+                     ] + [os.path.join("original", f) for f in os.listdir(os.path.join(report_base_path, "./original"))
+                          if not f.endswith(".zip")]
         for f in onlyfiles:
             with open(os.path.join(report_base_path, f), "r") as file:
                 content = file.read()
@@ -247,13 +342,14 @@ def generate_static_report(report_template_path: str, reports_json_path: str, ou
         if os.path.exists("report.zip"):
             os.remove("report.zip")
         make_archive("report", "zip", report_base_path)
-        
+
     # Clean up the report directory
     rmtree(report_base_path)
     if len(os.listdir("./reports")) == 0:
         rmtree("./reports")
 
     return output_report_path
+
 
 report_template_path = sys.argv[1]
 reports_json_path = sys.argv[2]
@@ -265,6 +361,7 @@ if len(sys.argv) > 4:
     create_report_archive = (sys.argv[4] == "true")
 if not create_report_archive:
     print("Generating report")
-output_report_path = generate_static_report(report_template_path, reports_json_path, output_report_path, create_report_archive)
+output_report_path = generate_static_report(
+    report_template_path, reports_json_path, output_report_path, create_report_archive)
 if not create_report_archive:
     print(output_report_path + " generated")
