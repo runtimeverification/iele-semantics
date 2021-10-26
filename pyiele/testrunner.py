@@ -25,11 +25,11 @@ def send(rpc):
 
 def transaction_deploy_data(sender, data, gas_limit, gas_price):
     '''Template for a transaction which deploys a contract'''
-    return ( "{" f""""from": "{sender}", "gasLimit":"{gas_limit}", "gasPrice":"{gas_price}", "data": "{data}" """ "}" )
+    return { "from": sender, "gasLimit": gas_limit, "gasPrice": gas_price, "data": data }
 
 def transaction_call_data(sender, data, to, gas_limit, gas_price):
     '''Template for a transaction which calls a contract function'''
-    return ( "{" f""""from": "{sender}", "to":"{to}", "gasLimit":"{gas_limit}", "gasPrice":"{gas_price}", "data": "{data}" """ "}" )
+    return { "from": sender, "to": to, "gasLimit": gas_limit, "gasPrice": gas_price, "data": data }
 
 def mine_blocks(amount):
     '''Mines `amount` blocks. The blocks are considered mined when `blockNumber` is incremented `amount` times.'''
