@@ -65,10 +65,10 @@ def run_function(f_name, f_args, walletId, sender, to):
 
 def init_wallet():
     '''Retrieves the walletID and unlocks the wallet.'''
-    walletId = send(wallet_restore(config.passphrase, config.spending_key))
+    walletId = send(wallet_restore(config.passphrase, config.master_key))
     if(send(eth_blockNumber()) == "0x0"):
         mine_blocks(1)
-    send(wallet_unlock(walletId, config.passphrase))
+    send(wallet_start(walletId))
     return walletId
 
 def compile_file(file_path):

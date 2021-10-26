@@ -23,8 +23,8 @@ def make_parser():
                         help="Path to the JSON output of solc (default: %(default)s)")
     blackboxParser.add_argument('--passphrase', type=str, default="walletNotSecure", metavar="<passphrase>",
                         help="Wallet passphrase (default: %(default)s)")
-    blackboxParser.add_argument('--spending-key', type=str, default="m-test-shl-sk1fj335eanpmupaj9vx5879t7ljfnh7xct486rqgwxw8evwp2qkaksmcqu88", metavar="<spending key>",
-                        help="Wallet spending key (default: %(default)s)")
+    blackboxParser.add_argument('--master-key', type=str, default="m-test-shl-mk1d32eztqfzu2qffa3png853374823yme8rjp9azkhsnj8fxaymx9q8dc45t", metavar="<master key>",
+                        help="Wallet master key (default: %(default)s)")
 
     testrunnerParser = subparsers.add_parser('test', help = "Test runner.")
     testrunnerParser.add_argument('-p', '--port', type=int, default=8342, metavar="<port>",
@@ -39,8 +39,8 @@ def make_parser():
                         help="Path to the JSON output of solc (default: %(default)s)")
     testrunnerParser.add_argument('--passphrase', type=str, default="walletNotSecure", metavar="<passphrase>",
                         help="Wallet passphrase (default: %(default)s)")
-    testrunnerParser.add_argument('--spending-key', type=str, default="m-test-shl-sk1fj335eanpmupaj9vx5879t7ljfnh7xct486rqgwxw8evwp2qkaksmcqu88", metavar="<spending key>",
-                        help="Wallet spending key (default: %(default)s)")
+    testrunnerParser.add_argument('--master-key', type=str, default="m-test-shl-mk1d32eztqfzu2qffa3png853374823yme8rjp9azkhsnj8fxaymx9q8dc45t", metavar="<master key>",
+                        help="Wallet master key (default: %(default)s)")
     testrunnerParser.add_argument('--tests-dir', type=str, default="tests", metavar="<tests-dir>",
                      help="Path to the default tests directory (default: %(default)s)")
 
@@ -70,7 +70,7 @@ if __name__ == '__main__':
         config.gas_price = args.gas_price
         config.tests_dir = args.tests_dir
         config.target_directory = args.build_dir
-        config.spending_key = args.spending_key
+        config.master_key = args.master_key
         config.passphrase = args.passphrase
 
         if(args.file is None):
@@ -97,7 +97,7 @@ if __name__ == '__main__':
     elif args.command == 'blackbox':
         config.port = args.port
         config.coverage_timeout = timeout=args.timeout
-        config.spending_key = args.spending_key
+        config.master_key = args.master_key
         config.passphrase = args.passphrase
 
         notif("Collecting data for blackbox random testing...")

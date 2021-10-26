@@ -13,8 +13,8 @@ def rpc_call(method, params="", secrets=None):
     else:
       return ( "{" f""""jsonrpc":"2.0","id":1,"method":"{method}", "params":[{params}]""" "}" )
 
-def wallet_restore(passphrase, spending_key):
-    return rpc_call("wallet_restore", secrets="{" f""""passphrase":"{passphrase}", "spendingKey":"{spending_key}" """ "}")
+def wallet_restore(passphrase, master_key):
+    return rpc_call("wallet_restore", secrets="{" f""""passphrase":"{passphrase}", "masterKey":"{master_key}" """ "}")
 
 def bech32_decodeTransparentAddress(address):
     return rpc_call("bech32_decodeTransparentAddress", params=f""""{address}" """)
@@ -25,8 +25,8 @@ def qa_mineBlocks(number, wait_confirm):
 def qa_getPendingTransactions():
     return rpc_call("qa_getPendingTransactions")
 
-def wallet_unlock(walletId, passphrase):
-    return rpc_call("wallet_unlock", params=f""""{walletId}" """, secrets="{" f""""passphrase":"{passphrase}" """ "}")
+def wallet_start(walletId):
+    return rpc_call("wallet_start", params=f""""{walletId}" """)
 
 def wallet_getDefaultPrivateAddress(walletId):
     return rpc_call("wallet_getDefaultPrivateAddress", params=f""""{walletId}" """)
