@@ -35,7 +35,7 @@ def mine_blocks(amount):
     '''Mines `amount` blocks. The blocks are considered mined when `blockNumber` is incremented `amount` times.'''
     wait = True
     init_bn = int(send(eth_blockNumber()), 16)
-    send(qa_mineBlocks(amount, "true"))
+    send(qa_mineBlocks(amount, True))
     while(wait):
         time.sleep(0.5)
         bn = int(send(eth_blockNumber()), 16)
