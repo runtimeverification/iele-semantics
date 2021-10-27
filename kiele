@@ -14,6 +14,7 @@ export PATH="${PATH}:${INSTALL_LIB}/standalone/iele-testing-kompiled"
 export PATH="${PATH}:${INSTALL_LIB}/check/well-formedness-kompiled"
 export PATH="${PATH}:${INSTALL_LIB}/node/iele-testing-kompiled"
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-}:/usr/local/lib
+export PYTHONPATH=${PYTHONPATH:-}:"$(dirname "$0")"
 
 check_k_install() {
     type -p kore-exec &> /dev/null \
@@ -45,6 +46,10 @@ make_temp_trap() {
 
 run_assemble() {
     iele-assemble "$run_file" "$@"
+}
+
+run_pyiele() {
+    python3 -m pyiele "$@"
 }
 
 run_interpret() {
@@ -116,7 +121,7 @@ run_coverage() {
     if ! nc -z "$kiele_host" "$kiele_port"; then
         notif "No listener found on port $kiele_port, so there wont be any coverage data!"
     fi
-    pyielerunner coverage "$run_file" --port "$kiele_port" --output "$output_path"
+    run_pyiele coverage "$run_file" --port "$kiele_port" --output "$output_path"
 }
 
 run_generate_report() {
@@ -146,10 +151,10 @@ run_compile() {
     if [[ $# -gt 0 ]]; then
       run_file="$1"; shift
       if [[ -f "$run_file" ]] || [[ -d "$run_file" ]]; then
-        pyielerunner compile --file "$run_file" "$@"
+        run_pyiele compile --file "$run_file" "$@"
       fi
     else
-      pyielerunner compile "$@"
+      run_pyiele compile "$@"
     fi
 }
 
@@ -162,13 +167,13 @@ run_testrunner() {
       run_file="$1"; shift
       if [[ -f "$run_file" ]] || [[ -d "$run_file" ]]; then
         if [[ "$run_file" == *.py ]]; then
-            pyielerunner runpytest "$run_file"
+            python3 "$run_file"
         else
-            pyielerunner test --file "$run_file" --port "$kiele_port" "$@"
+            run_pyiele test --file "$run_file" --port "$kiele_port" "$@"
         fi
       fi
     else
-      pyielerunner test --port "$kiele_port" "$@"
+      run_pyiele test --port "$kiele_port" "$@"
     fi
 }
 
@@ -176,7 +181,7 @@ run_blackbox() {
     if ! nc -z "$kiele_host" "$kiele_port"; then
         fatal "No listener found on port $kiele_port"
     fi
-    pyielerunner blackbox --port "$kiele_port" "$@"
+    run_pyiele blackbox --port "$kiele_port" "$@"
 }
 
 # Main
