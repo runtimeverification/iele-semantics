@@ -410,6 +410,7 @@ pyiele_files := pyiele/__init__.py              \
                 pyiele/blackbox.py              \
                 pyiele/config.py                \
                 pyiele/fetchFunctionData.py     \
+                pyiele/kieleCoverage.py         \
                 pyiele/rlp.py                   \
                 pyiele/rpc.py                   \
                 pyiele/testrunner.py            \
