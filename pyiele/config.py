@@ -3,7 +3,7 @@
 class config:
   port = 8342
   passphrase = "walletNotSecure"
-  master_key = "m-test-shl-mk1d32eztqfzu2qffa3png853374823yme8rjp9azkhsnj8fxaymx9q8dc45t"
+  master_key = "m-test-shl-mk1ypc6mjyustmuma5vf2kvxm2aml2clfewfmk7mvkuk8344vdxzgwseytxyg"
   gas_price = "0x0"
   gas_limit = "0x166f5777"
   target_directory = "contract_artifacts"

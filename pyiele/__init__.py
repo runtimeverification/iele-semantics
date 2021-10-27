@@ -8,3 +8,4 @@ from .testrunner import *
 from .utils import *
 from .transactionGeneration import *
 from .blackbox import *
+from .kieleCoverage import *

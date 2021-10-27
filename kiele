@@ -116,7 +116,7 @@ run_coverage() {
     if ! nc -z "$kiele_host" "$kiele_port"; then
         notif "No listener found on port $kiele_port, so there wont be any coverage data!"
     fi
-    kiele-coverage.py "$run_file" --port "$kiele_port" --output "$output_path"
+    pyielerunner coverage "$run_file" --port "$kiele_port" --output "$output_path"
 }
 
 run_generate_report() {
