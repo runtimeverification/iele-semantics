@@ -998,6 +998,9 @@ When execution of the callee reaches a `ret` instruction, control returns to the
     rule isIeleBuiltin(iele.ecadd) => true
     rule isIeleBuiltin(iele.ecmul) => true
     rule isIeleBuiltin(iele.ecpairing) => true
+    rule isIeleBuiltin(iele.bech32) => true
+    rule isIeleBuiltin(iele.vfyincl) => true
+    rule isIeleBuiltin(iele.vfypob) => true
     rule isIeleBuiltin( ... ) => false [owise]
 ```
 
@@ -1568,6 +1571,9 @@ module IELE-PRECOMPILED
              <function> <funcId> iele.ecadd     </funcId> <instructions> ECADD     .Instructions .LabeledBlocks </instructions> <nparams> 4 </nparams> ... </function>
              <function> <funcId> iele.ecmul     </funcId> <instructions> ECMUL     .Instructions .LabeledBlocks </instructions> <nparams> 3 </nparams> ... </function>
              <function> <funcId> iele.ecpairing </funcId> <instructions> ECPAIRING .Instructions .LabeledBlocks </instructions> <nparams> 3 </nparams> ... </function>
+             <function> <funcId> iele.bech32    </funcId> <instructions> BECH32    .Instructions .LabeledBlocks </instructions> <nparams> 2 </nparams> ... </function>
+             <function> <funcId> iele.vfyincl   </funcId> <instructions> VFYINCL   .Instructions .LabeledBlocks </instructions> <nparams> 4 </nparams> ... </function>
+             <function> <funcId> iele.vfypob    </funcId> <instructions> VFYPOB    .Instructions .LabeledBlocks </instructions> <nparams> 2 </nparams> ... </function>
            </functions>
            <funcIds>
              SetItem(iele.ecrec)
@@ -1577,6 +1583,9 @@ module IELE-PRECOMPILED
              SetItem(iele.ecadd)
              SetItem(iele.ecmul)
              SetItem(iele.ecpairing)
+             SetItem(iele.bech32)
+             SetItem(iele.vfyincl)
+             SetItem(iele.vfypob)
            </funcIds>
            <exported>
              SetItem(iele.ecrec)
@@ -1586,15 +1595,21 @@ module IELE-PRECOMPILED
              SetItem(iele.ecadd)
              SetItem(iele.ecmul)
              SetItem(iele.ecpairing)
+             SetItem(iele.bech32)
+             SetItem(iele.vfyincl)
+             SetItem(iele.vfypob)
            </exported>
            <funcLabels>
-             1 |-> iele.ecrec
-             2 |-> iele.sha256
-             3 |-> iele.rip160
-             4 |-> iele.id
-             5 |-> iele.ecadd
-             6 |-> iele.ecmul
-             7 |-> iele.ecpairing
+             1  |-> iele.ecrec
+             2  |-> iele.sha256
+             3  |-> iele.rip160
+             4  |-> iele.id
+             5  |-> iele.ecadd
+             6  |-> iele.ecmul
+             7  |-> iele.ecpairing
+             8  |-> iele.bech32
+             9  |-> iele.vfyincl
+             10 |-> iele.vfypob
            </funcLabels>
            ...
          </program>
@@ -1607,6 +1622,7 @@ module IELE-PRECOMPILED
 -   `@iele.ecadd` is the BN128 elliptic curve addition function.
 -   `@iele.ecmul` is the BN128 elliptic curve scalar multiplication function.
 -   `@iele.ecpairing` is the BN128 elliptic curve pairing check function.
+-   `@iele.bech32`, `@iele.vfyincl`, and `@iele.vfypob` are precompiled contracts required by the Midnight network.
 
 ```k
     syntax Instruction ::= PrecompiledOp
@@ -1702,6 +1718,48 @@ module IELE-PRECOMPILED
       requires isValidPoint(AK) andBool isValidPoint(BK)
     rule #checkPoint ~> #ecpairing(ListItem(AK::G1Point) _, ListItem(BK::G2Point) _, _, _, _) => #exception USER_ERROR
       requires notBool isValidPoint(AK) orBool notBool isValidPoint(BK)
+
+    syntax PrecompiledOp ::= "BECH32"
+ // ---------------------------------
+    rule <k> #exec BECH32 => #end ... </k>
+         <callData> LEN , DATA , .Ints </callData>
+         <output> _ => #bech32ToAddress(Bytes2String(Int2Bytes(LEN, DATA, BE))), .Ints </output>
+         requires LEN >=Int 0 andBool DATA >=Int 0
+
+    rule <k> #exec BECH32 => #exception USER_ERROR ... </k>
+         <callData> LEN , DATA , .Ints </callData>
+         requires notBool (LEN >=Int 0 andBool DATA >=Int 0)
+
+    syntax Int ::= #bech32ToAddress ( String ) [function, hook(BLOCKCHAIN.bech32ToAddress)]
+ // -----------------------------------
+
+    syntax PrecompiledOp ::= "VFYINCL"
+ // ---------------------------------
+    rule <k> #exec VFYINCL => #end ... </k>
+         <callData> ROOT , ADDR , LEN , DATA , .Ints </callData>
+         <output> _ => #verifyInclusionAndGetBalance(ROOT, ADDR, Bytes2String(Int2Bytes(LEN, DATA, BE))), .Ints </output>
+         requires ROOT >=Int 0 andBool ADDR >=Int 0 andBool LEN >=Int 0 andBool DATA >=Int 0
+
+    rule <k> #exec VFYINCL => #exception USER_ERROR ... </k>
+         <callData> ROOT , ADDR , LEN , DATA , .Ints </callData>
+         requires notBool (ROOT >=Int 0 andBool ADDR >=Int 0 andBool LEN >=Int 0 andBool DATA >=Int 0)
+
+    syntax Int ::= #verifyInclusionAndGetBalance ( Int , Int , String ) [function, hook(BLOCKCHAIN.verifyInclusionAndGetBalance)]
+ // -----------------------------------
+
+    syntax PrecompiledOp ::= "VFYPOB"
+ // ---------------------------------
+    rule <k> #exec VFYPOB => #end ... </k>
+         <callData> LEN , DATA , .Ints </callData>
+         <output> _ => #verifyPoB(Bytes2String(Int2Bytes(LEN, DATA, BE))), .Ints </output>
+         requires LEN >=Int 0 andBool DATA >=Int 0
+
+    rule <k> #exec VFYPOB => #exception USER_ERROR ... </k>
+         <callData> LEN , DATA , .Ints </callData>
+         requires notBool (LEN >=Int 0 andBool DATA >=Int 0)
+
+    syntax Int ::= #verifyPoB ( String ) [function, hook(BLOCKCHAIN.verifyPoB)]
+ // -----------------------------------
 endmodule
 ```
 

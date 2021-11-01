@@ -325,6 +325,9 @@ registers, but that is handled in `iele.md`.
     rule #memory [ ECADD ] => .
     rule #memory [ ECMUL ] => .
     rule #memory [ ECPAIRING ] => .
+    rule #memory [ BECH32 ] => .
+    rule #memory [ VFYINCL ] => .
+    rule #memory [ VFYPOB ] => .
 ```
 
 As the current amount of allocated memory can also decrease in IELE,
@@ -732,6 +735,10 @@ Each of the precompiled contracts pays a fixed cost per word of data passed to t
     rule #compute [ ECADD, SCHED ] => Gecadd < SCHED >
     rule #compute [ ECMUL, SCHED ] => Gecmul < SCHED >
     rule <k> #compute [ ECPAIRING, SCHED ] => Gecpairing < SCHED > +Int LEN *Int Gecpairingpair < SCHED > ... </k> <callData> LEN , _ </callData>
+
+    rule <k> #compute [ BECH32, SCHED ] => Gbech32 < SCHED > +Int Gbech32word < SCHED > *Int bytesInWords(maxInt(LEN, intSize(DATA))) ... </k> <callData> LEN , DATA , .Ints </callData>
+    rule <k> #compute [ VFYINCL, SCHED ] => Gvfyincl < SCHED > +Int Gvfyinclword < SCHED > *Int bytesInWords(maxInt(LEN, intSize(DATA))) ... </k> <callData> _, _, LEN , DATA , .Ints </callData>
+    rule <k> #compute [ VFYPOB, SCHED ] => Gvfypob < SCHED > +Int Gvfypobword < SCHED > *Int bytesInWords(maxInt(LEN, intSize(DATA))) ... </k> <callData> LEN , DATA , .Ints </callData>
 ```
 
 There are several helpers for calculating gas.
@@ -964,18 +971,18 @@ A `ScheduleConst` is a constant determined by the fee schedule; applying a `Sche
     syntax Int ::= ScheduleConst "<" Schedule ">" [function]
  // --------------------------------------------------------
  
-    syntax ScheduleConst ::= "Gmove"       | "Greadstate"  | "Gadd"        | "Gaddword"       | "Gmul"        | "Gmulword"     | "Gmulkara"
-                           | "Gdiv"        | "Gdivword"    | "Gdivkara"    | "Gexpkara"       | "Gexpword"    | "Gexp"         | "Gexpmodkara"    | "Gexpmodmod"
-                           | "Gexpmodexp"  | "Gexpmod"     | "Gnot"        | "Gnotword"       | "Gbitwise"    | "Gbitwiseword" | "Glogarithm"     | "Glogarithmword"
-                           | "Gbyte"       | "Gtwos"       | "Gtwosword"   | "Gsext"          | "Gsextword"   | "Gbswap"       | "Gbswapword"     | "Giszero"
-                           | "Gcmp"        | "Gcmpword"    | "Gbr"         | "Gbrcond"        | "Gblockhash"  | "Gsha3"        | "Gsha3word"      | "Gloadcell"
-                           | "Gload"       | "Gloadword"   | "Gstorecell"  | "Gstore"         | "Gstoreword"  | "Gbalance"     | "Gextcodesize"   | "Gcalladdress"
-                           | "Glog"        | "Glogdata"    | "Glogtopic"   | "Gsstore"        | "Gsstoreword" | "Gsstorekey"   | "Gsstoreset"     | "Gsstoresetkey"
-                           | "Gsload"      | "Gsloadkey"   | "Gsloadword"  | "Gselfdestruct"  | "Gcallmemory" | "Gcallreg"     | "Glocalcall"     | "Gcallstipend" 
-                           | "Gcall"       | "Gcallvalue"  | "Gnewaccount" | "Gcreate"        | "Gcopycreate" | "Gcodedeposit" | "Gecrec"         | "Gsha256word"
-                           | "Gsha256"     | "Grip160word" | "Grip160"     | "Gecadd"         | "Gecmul"      | "Gecpairing"   | "Gecpairingpair" | "Gtransaction"
-                           | "Gtxcreate"   | "Gmemory"     | "Gquadcoeff"  | "Gtxdatanonzero" | "Gtxdatazero" | "Rsstoreset"   | "Rselfdestruct"  | "Rb"
-                           | "Sgasdivisor" | "Smemallowance"
+    syntax ScheduleConst ::= "Gmove"      | "Greadstate"     | "Gadd"        | "Gaddword"      | "Gmul"          | "Gmulword"     | "Gmulkara"
+                           | "Gdiv"       | "Gdivword"       | "Gdivkara"    | "Gexpkara"      | "Gexpword"      | "Gexp"         | "Gexpmodkara"    | "Gexpmodmod"
+                           | "Gexpmodexp" | "Gexpmod"        | "Gnot"        | "Gnotword"      | "Gbitwise"      | "Gbitwiseword" | "Glogarithm"     | "Glogarithmword"
+                           | "Gbyte"      | "Gtwos"          | "Gtwosword"   | "Gsext"         | "Gsextword"     | "Gbswap"       | "Gbswapword"     | "Giszero"
+                           | "Gcmp"       | "Gcmpword"       | "Gbr"         | "Gbrcond"       | "Gblockhash"    | "Gsha3"        | "Gsha3word"      | "Gloadcell"
+                           | "Gload"      | "Gloadword"      | "Gstorecell"  | "Gstore"        | "Gstoreword"    | "Gbalance"     | "Gextcodesize"   | "Gcalladdress"
+                           | "Glog"       | "Glogdata"       | "Glogtopic"   | "Gsstore"       | "Gsstoreword"   | "Gsstorekey"   | "Gsstoreset"     | "Gsstoresetkey"
+                           | "Gsload"     | "Gsloadkey"      | "Gsloadword"  | "Gselfdestruct" | "Gcallmemory"   | "Gcallreg"     | "Glocalcall"     | "Gcallstipend"
+                           | "Gcall"      | "Gcallvalue"     | "Gnewaccount" | "Gcreate"       | "Gcopycreate"   | "Gcodedeposit" | "Gecrec"         | "Gsha256word"
+                           | "Gsha256"    | "Grip160word"    | "Grip160"     | "Gecadd"        | "Gecmul"        | "Gecpairing"   | "Gecpairingpair" | "Gbech32word"
+                           | "Gbech32"    | "Gvfyinclword"   | "Gvfyincl"    | "Gvfypobword"   | "Gvfypob"       | "Gtransaction" | "Gtxcreate"      | "Gmemory"
+                           | "Gquadcoeff" | "Gtxdatanonzero" | "Gtxdatazero" | "Rsstoreset"    | "Rselfdestruct" | "Rb"           | "Sgasdivisor"    | "Smemallowance"
  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------
 ```
 
@@ -1065,6 +1072,12 @@ This schedule is used to execute the EVM VM tests, and contains minor variations
     rule Gecmul         < DEFAULT > => 40000
     rule Gecpairing     < DEFAULT > => 100000
     rule Gecpairingpair < DEFAULT > => 80000
+    rule Gbech32        < DEFAULT > => 600
+    rule Gbech32word    < DEFAULT > => 30
+    rule Gvfyincl       < DEFAULT > => 600
+    rule Gvfyinclword   < DEFAULT > => 30
+    rule Gvfypob        < DEFAULT > => 600
+    rule Gvfypobword    < DEFAULT > => 30
     rule Gmemory        < DEFAULT > => 1
     rule Gquadcoeff     < DEFAULT > => 8192
     rule Gtransaction   < DEFAULT > => 21000
@@ -1184,6 +1197,12 @@ This is the first major revision of IELE.
     rule Gecmul         < DANSE > => 1700000
     rule Gecpairing     < DANSE > => 100000000
     rule Gecpairingpair < DANSE > => 26000000
+    rule Gbech32        < DANSE > => 25000
+    rule Gbech32word    < DANSE > => 30
+    rule Gvfyincl       < DANSE > => 25000
+    rule Gvfyinclword   < DANSE > => 30
+    rule Gvfypob        < DANSE > => 25000
+    rule Gvfypobword    < DANSE > => 30
     rule Gmemory        < DANSE > => 750
  
     rule Sgasdivisor < DANSE > => 1000

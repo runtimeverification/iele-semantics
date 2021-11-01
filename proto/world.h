@@ -12,6 +12,9 @@ public:
   static io::iohk::ethereum::extvm::StorageData* get_storage_data(std::string acct, std::string index);
   static io::iohk::ethereum::extvm::Code* get_code(std::string acct);
   static io::iohk::ethereum::extvm::Blockhash* get_blockhash(int offset);
+  static io::iohk::ethereum::extvm::Balance* verify_inclusion_and_get_balance(std::string stateTrieRoot, std::string ethAddress, std::string inclusionProof);
+  static io::iohk::ethereum::extvm::Address* bech_32_to_address(std::string addressStr);
+  static io::iohk::ethereum::extvm::AmountBurned* verify_pob(std::string proof);
 };
 
 #endif

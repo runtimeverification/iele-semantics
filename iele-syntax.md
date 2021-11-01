@@ -263,6 +263,9 @@ Precompiled contracts are also available as IELE builtins but they should be cal
   syntax IeleNameToken ::= "iele.ecadd"     [token]
   syntax IeleNameToken ::= "iele.ecmul"     [token]
   syntax IeleNameToken ::= "iele.ecpairing" [token]
+  syntax IeleNameToken ::= "iele.bech32"    [token]
+  syntax IeleNameToken ::= "iele.vfyincl"   [token]
+  syntax IeleNameToken ::= "iele.vfypob"    [token]
 ```
 
 #### Instruction Lists

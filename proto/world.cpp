@@ -101,3 +101,28 @@ Blockhash* World::get_blockhash(int offset) {
   return send_query(q, new Blockhash());
 }
 
+Balance* World::verify_inclusion_and_get_balance(std::string stateTrieRoot, std::string ethAddress, std::string inclusionProof) {
+  VerifyProofGetBalance get;
+  get.set_statetrieroot(stateTrieRoot);
+  get.set_ethaddress(ethAddress);
+  get.set_inclusionproof(inclusionProof);
+  VMQuery q;
+  *q.mutable_verifyproofgetbalance() = get;
+  return send_query(q, new Balance());
+}
+
+Address* World::bech_32_to_address(std::string bech32) {
+  Bech32ToAddress get;
+  get.set_bech32(bech32);
+  VMQuery q;
+  *q.mutable_bech32toaddress() = get;
+  return send_query(q, new Address());
+}
+
+AmountBurned* World::verify_pob(std::string proof) {
+  VerifyPoB get;
+  get.set_proof(proof);
+  VMQuery q;
+  *q.mutable_verifypob() = get;
+  return send_query(q, new AmountBurned());
+}

@@ -131,6 +131,32 @@ message LogEntry {
   bytes data = 3;
 }
 
+message VerifyProofGetBalance {
+  bytes stateTrieRoot = 1;
+  bytes ethAddress = 2;
+  bytes inclusionProof = 3;
+}
+
+message Balance {
+  bytes balance = 1;
+}
+
+message Bech32ToAddress {
+  bytes bech32 = 1;
+}
+
+message Address {
+  bytes address = 1;
+}
+
+message VerifyPoB {
+  bytes proof = 1;
+}
+
+message AmountBurned {
+  bytes amount = 1;
+}
+
 message VMQuery {
   oneof query {
     GetAccount getAccount = 1;
@@ -138,5 +164,8 @@ message VMQuery {
     GetCode getCode = 3;
     GetBlockhash getBlockhash = 4;
     CallResult callResult = 5;
+    VerifyProofGetBalance verifyProofGetBalance = 6;
+    Bech32ToAddress bech32ToAddress = 7;
+    VerifyPoB verifyPoB = 8;
   }
 }

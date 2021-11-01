@@ -98,4 +98,19 @@ bool hook_BLOCKCHAIN_accountExists(mpz_t acctID) {
   Account *acct = get_account(acctID);
   return acct->balance().size() != 0 || acct->nonce().size() != 0;
 }
+
+mpz_ptr hook_BLOCKCHAIN_verifyInclusionAndGetBalance(mpz_t stateTrieRoot, mpz_t ectAddress, string* inclusionProof) {
+  Balance *bal = World::verify_inclusion_and_get_balance(of_z_width(32, stateTrieRoot), of_z_width(20, ectAddress), std::string(inclusionProof->data));
+  return to_z_unsigned(bal->balance());
+}
+
+mpz_ptr hook_BLOCKCHAIN_bech32ToAddress(string* bech32) {
+  Address *addr = World::bech_32_to_address(std::string(bech32->data));
+  return to_z_unsigned(addr->address());
+}
+
+mpz_ptr hook_BLOCKCHAIN_verifyPoB(string* proof) {
+  AmountBurned *burned = World::verify_pob(std::string(proof->data));
+  return to_z_unsigned(burned->amount());
+}
 }
