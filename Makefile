@@ -427,9 +427,7 @@ build:                                               \
        $(IELE_TEST_VM)                               \
        $(IELE_VM)                                    \
        $(IELE_LIB)/kiele-generate-report.py          \
-       $(IELE_LIB)/kiele-coverage.py                 \
        $(IELE_LIB)/kore-json.py                      \
-       $(IELE_LIB)/pyielerunner                      \
        $(IELE_LIB)/static-report.html                \
        $(IELE_LIB)/version                           \
        $(patsubst %, $(IELE_LIB)/%, $(pyiele_files)) \
@@ -468,9 +466,7 @@ iele_check_libs := $(shell find $(IELE_LIB)/check -type f                       
                             | sed 's|^$(IELE_LIB)/||')
 
 kiele_files := kiele-generate-report.py \
-               kiele-coverage.py        \
                kore-json.py             \
-               pyielerunner             \
                static-report.html       \
                version
 
@@ -517,10 +513,6 @@ $(IELE_LIB)/%.py: %.py
 	$(INSTALL) $< $@
 
 $(IELE_LIB)/static-report.html: static-report.html
-	@mkdir -p $(dir $@)
-	$(INSTALL) $< $@
-
-$(IELE_LIB)/pyielerunner: pyielerunner
 	@mkdir -p $(dir $@)
 	$(INSTALL) $< $@
 
