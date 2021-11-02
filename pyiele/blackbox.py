@@ -130,7 +130,7 @@ def blackbox_test_single_contract(contract, available_contract):
                 notif("...Found a function call that increased coverage!:", colors.fg.cyan)
                 printable = func_name + "(" + ", ".join(func_args) + ")"
                 notif("called: " + printable)
-                notif("txdata: " + tx_data)
+                notif("txdata: " + json.dumps(tx_data))
                 coverage_curr = coverage_new
                 contract_calls.append({"contract": contract_name, "func_name": func_name, "func_args": func_args, "txdata": tx_data, "coverage": coverage_curr})
                 notif("Current contract coverage is at " + str(coverage_curr))

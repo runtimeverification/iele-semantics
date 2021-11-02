@@ -16,41 +16,41 @@ def make_parser():
     subparsers = parser.add_subparsers(dest='command')
 
     blackboxParser = subparsers.add_parser('blackbox', help = 'Blackbox testing.')
-    blackboxParser.add_argument('-p', '--port', type=int, default=8546, metavar="<port>",
+    blackboxParser.add_argument('-p', '--port', type=int, default=config.port, metavar="<port>",
                       help="Port that Midnight client is listen on (default: %(default)s)")
-    blackboxParser.add_argument('-o', '--timeout', type=int, default=15, metavar="<coverage timeout>",
+    blackboxParser.add_argument('-o', '--timeout', type=int, default=config.coverage_timeout, metavar="<coverage timeout>",
                       help="Timeout for trying each function (default: %(default)s)")
-    blackboxParser.add_argument('--build-dir', type=str, default="contract_artifacts", metavar="<build dir>",
+    blackboxParser.add_argument('--build-dir', type=str, default=config.target_directory, metavar="<build dir>",
                       help="Path to the JSON output of solc (default: %(default)s)")
-    blackboxParser.add_argument('--passphrase', type=str, default="walletNotSecure", metavar="<passphrase>",
+    blackboxParser.add_argument('--passphrase', type=str, default=config.passphrase, metavar="<passphrase>",
                       help="Wallet passphrase (default: %(default)s)")
-    blackboxParser.add_argument('--master-key', type=str, default="m-test-shl-mk1d32eztqfzu2qffa3png853374823yme8rjp9azkhsnj8fxaymx9q8dc45t", metavar="<master key>",
+    blackboxParser.add_argument('--master-key', type=str, default=config.master_key, metavar="<master key>",
                       help="Wallet master key (default: %(default)s)")
 
     testrunnerParser = subparsers.add_parser('test', help = "Test runner.")
-    testrunnerParser.add_argument('-p', '--port', type=int, default=8546, metavar="<port>",
+    testrunnerParser.add_argument('-p', '--port', type=int, default=config.port, metavar="<port>",
                         help="Port that Midnight client is listen on (default: %(default)s)")
-    testrunnerParser.add_argument('-l', '--gas-limit', type=str, default="0x166f5777", metavar="<gas limit>",
+    testrunnerParser.add_argument('-l', '--gas-limit', type=str, default=config.gas_limit, metavar="<gas limit>",
                         help="Transaction gas limit (default: %(default)s)")
-    testrunnerParser.add_argument('-g', '--gas-price', type=str, default="0x0", metavar="<gas price>",
+    testrunnerParser.add_argument('-g', '--gas-price', type=str, default=config.gas_price, metavar="<gas price>",
                         help="Gas price value (default: %(default)s)")
     testrunnerParser.add_argument('-f', '--file', type=str, metavar="<tests>",
-                        help="Path of the test file/files to be executed (default: %(default)s)")
-    testrunnerParser.add_argument('--build-dir', type=str, default="contract_artifacts", metavar="<build dir>",
+                        help="Path of the test file/files to be executed")
+    testrunnerParser.add_argument('--build-dir', type=str, default=config.target_directory, metavar="<build dir>",
                         help="Path to the JSON output of solc (default: %(default)s)")
-    testrunnerParser.add_argument('--passphrase', type=str, default="walletNotSecure", metavar="<passphrase>",
+    testrunnerParser.add_argument('--passphrase', type=str, default=config.passphrase, metavar="<passphrase>",
                         help="Wallet passphrase (default: %(default)s)")
-    testrunnerParser.add_argument('--master-key', type=str, default="m-test-shl-mk1d32eztqfzu2qffa3png853374823yme8rjp9azkhsnj8fxaymx9q8dc45t", metavar="<master key>",
+    testrunnerParser.add_argument('--master-key', type=str, default=config.master_key, metavar="<master key>",
                         help="Wallet master key (default: %(default)s)")
-    testrunnerParser.add_argument('--tests-dir', type=str, default="tests", metavar="<tests-dir>",
+    testrunnerParser.add_argument('--tests-dir', type=str, default=config.tests_dir, metavar="<tests-dir>",
                         help="Path to the default tests directory (default: %(default)s)")
 
     compileParser = subparsers.add_parser('compile', help='Compiling Solidity contracts using isolc.')
     compileParser.add_argument('-f', '--file', type=str, metavar="<solidity-file>",
                      help="Path to the Solidity file/dir to be compiled")
-    compileParser.add_argument('--contracts-dir', type=str, default="contracts", metavar="<contracts-dir>",
+    compileParser.add_argument('--contracts-dir', type=str, default=config.contracts_dir, metavar="<contracts-dir>",
                      help="Path to the default contracts directory (default: %(default)s)")
-    compileParser.add_argument('--build-dir', type=str, default="contract_artifacts", metavar="<build dir>",
+    compileParser.add_argument('--build-dir', type=str, default=config.target_directory, metavar="<build dir>",
                      help="Path to the JSON output of solc (default: %(default)s)")
 
     coverageParser = subparsers.add_parser('coverage', help='Generate report.json')
@@ -58,7 +58,7 @@ def make_parser():
                       help='combined.json file generated by isolc with asm,srcmap options')
     coverageParser.add_argument('-o', '--output', type=str, default='report.json', metavar='<output file>', dest='output',
                       help='Output file')
-    coverageParser.add_argument('-p', '--port', type=int, default=8546, metavar='<port>', dest='port',
+    coverageParser.add_argument('-p', '--port', type=int, default=config.port, metavar='<port>', dest='port',
                       help='Port number for RPC client')
 
     return parser
@@ -87,9 +87,8 @@ if __name__ == '__main__':
                 for child_file in os.listdir(config.tests_dir):
                     if child_file.endswith(".sol"):
                         run_test_file(config.tests_dir + "/" + child_file)
-            elif os.path.isfile(config.test_dir):
-                    if child_file.endswith(".sol"):
-                        run_test_file(child_file)
+            else:
+                fatal("Invalid path: "+ config.tests_dir)
         else:
             file_path = args.file
             if (os.path.isdir(file_path)):

@@ -147,30 +147,29 @@ run_upload_report() {
 }
 
 run_compile() {
-    local run_file
-    if [[ $# -gt 0 ]]; then
-      run_file="$1"; shift
-      if [[ -f "$run_file" ]] || [[ -d "$run_file" ]]; then
-        run_pyiele compile --file "$run_file" "$@"
-      fi
-    else
-      run_pyiele compile "$@"
-    fi
+    run_pyiele compile "$@"
+
 }
 
 run_testrunner() {
     local run_file
+    if [[ $# -gt 0 ]] && [ "$1" == "--help" ]; then
+      run_pyiele test --help
+      exit
+    fi
     if ! nc -z "$kiele_host" "$kiele_port"; then
         fatal "No listener found on port $kiele_port"
     fi
     if [[ $# -gt 0 ]]; then
-      run_file="$1"; shift
-      if [[ -f "$run_file" ]] || [[ -d "$run_file" ]]; then
+      if [[ -f "$1" ]] || [[ -d "$1" ]]; then
+        run_file="$1"; shift
         if [[ "$run_file" == *.py ]]; then
             python3 "$run_file"
         else
             run_pyiele test --file "$run_file" --port "$kiele_port" "$@"
         fi
+      else
+        run_pyiele test --port "$kiele_port" "$@"
       fi
     else
       run_pyiele test --port "$kiele_port" "$@"
@@ -199,8 +198,8 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
                $0 coverage     <combined.json path> [-p|--port <client port>] [-o|--output <Report output path>]
                $0 generate-report [--create-archive]                       <Report json path>   [-o|--output <Report output path>]
                $0 upload                                                   <Report json path>
-               $0 compile      [contract.sol path]                         <COMPILE arg>*
-               $0 test         [test path]                                 <TEST arg>*
+               $0 compile                                                  <COMPILE arg>*
+               $0 test                                                     <TEST arg>*
                $0 blackbox                                                 <BLACKBOX arg>*
 
                $0 [help|--help|version|--version]

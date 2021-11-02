@@ -73,7 +73,7 @@ def init_wallet():
 
 def compile_file(file_path):
     '''Calls isolc on the provided file. Output is first written to a file and then returned'''
-    print("\n==  Compiling", file_path)
+    print("==  Compiling", file_path)
     command = ["isolc", file_path, "--combined-json", "asm,bin,metadata-bin,srcmap,abi", "--allow-paths", "."]
     result = run(command, stdout=PIPE, stderr=PIPE, universal_newlines=True)
     if( result.returncode == 0 ):
@@ -114,7 +114,7 @@ def compile(file_path=None):
        - If no path is provided, compiles all solidity files from `config.contracts_dir` and `config.tests_dir`
     '''
     print("Compiling contracts ...")
-    print("=======================")
+    print("=======================\n")
     if(file_path != None):
         if path.isfile(file_path):
             compile_file(file_path)
