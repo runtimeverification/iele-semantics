@@ -69,8 +69,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.command == 'compile':
-        config.contracts_dir=args.contracts_dir
-        config.target_directory=args.build_dir
+        config.contracts_dir    = args.contracts_dir
+        config.target_directory = args.build_dir
         compile(args.file)
 
     elif args.command == 'test':
