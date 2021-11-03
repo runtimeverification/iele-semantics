@@ -124,18 +124,19 @@ if __name__ == '__main__':
         available_contract = dict(sorted(available_contract.items()))
         all_calls = []
         all_constructors = {}
-        for solidity_file in available_contract:
-            contract_json = config.target_directory + "/" + get_file_name(solidity_file) + ".json"
-            solidity_functions = fetch_function_data(contract_json)
-            for contract in solidity_functions:
-                if(not contract["contractName"] in list(available_contract.keys())):
+        for contract_id in available_contract:
+            compiled_json = config.target_directory + "/" + get_file_name(contract_id) + ".json"
+            contracts = fetch_function_data(compiled_json)
+            for contract in contracts:
+                if(contract["contractName"] != contract_id):
+                    print("Skipped", contract["contractName"])
                     continue
                 contract_calls, constructor_info = blackbox_test_single_contract(contract, available_contract)
                 all_calls.extend(contract_calls)
             if len(constructor_info) == 0:
-                all_constructors[solidity_file] = []
+                all_constructors[contract_id] = []
             else:
-                all_constructors[solidity_file] = constructor_info[0]["input"]
+                all_constructors[contract_id] = constructor_info[0]["input"]
 
         # Write founded tests to blackbox-random.json
         with open('blackbox-random.json', 'w') as outfile:

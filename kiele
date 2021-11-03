@@ -119,7 +119,7 @@ run_vm() {
 run_coverage() {
     notif "Generating coverage json from $run_file and client on port $kiele_port"
     if ! nc -z "$kiele_host" "$kiele_port"; then
-        notif "No listener found on port $kiele_port, so there wont be any coverage data!"
+        fatal "No listener found on port $kiele_port, so there wont be any coverage data!"
     fi
     run_pyiele coverage "$run_file" --port "$kiele_port" --output "$output_path"
 }
