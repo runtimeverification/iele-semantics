@@ -484,9 +484,9 @@ install-vm: $(patsubst $(IELE_LIB)/%, $(DESTDIR)$(INSTALL_LIB)/%, $(IELE_VM))
 
 install-check: $(patsubst %, $(DESTDIR)$(INSTALL_LIB)/%, $(iele_check_libs))
 
-install-kiele: $(patsubst $(IELE_BIN)/%, $(DESTDIR)$(INSTALL_BIN)/%, $(IELE_RUNNER))
-install-kiele: $(patsubst %, $(DESTDIR)$(INSTALL_LIB)/%, $(kiele_files))
-install-kiele: $(patsubst %, $(DESTDIR)$(INSTALL_LIB)/%, $(pyiele_files))
+install-kiele: $(patsubst $(IELE_BIN)/%, $(DESTDIR)$(INSTALL_BIN)/%, $(IELE_RUNNER)) \
+               $(patsubst %, $(DESTDIR)$(INSTALL_LIB)/%, $(kiele_files))             \
+               $(patsubst %, $(DESTDIR)$(INSTALL_LIB)/%, $(pyiele_files))
 
 install: $(patsubst %, $(DESTDIR)$(INSTALL_BIN)/%, $(all_bin_sources)) \
          $(patsubst %, $(DESTDIR)$(INSTALL_LIB)/%, $(all_lib_sources))
