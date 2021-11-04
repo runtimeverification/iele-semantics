@@ -43,9 +43,6 @@ let
       ];
     buildFlags = [ "build-${target}" ];
     installTargets = [ "install-${target}" ];
-    buildPhase = ''
-      K_OPTS=-Xmx6G make
-    '';
   });
 
   iele-interpreter = mkIELE "interpreter" (x: x);
