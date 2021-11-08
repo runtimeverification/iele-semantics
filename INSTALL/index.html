@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+<meta charset="utf-8" />
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+/>
+<meta
+  name="description"
+  content="Design and implement your programming language and software analysis tools with mathematical rigor."
+/>
+<meta name="keywords" content="runtime, verification, rv, k" />
+<meta name="author" content="IELE Semantics | Runtime Verification Inc" />
+<meta name="robots" content="index, follow" />
+
+<!--favicon icon-->
+<link rel="icon" type="image/png" href="../assets/img/favicon.ico" />
+
+<title>IELE Semantics | Runtime Verification Inc</title>
+
+<!-- <base href="/k/" /> -->
+
+<!--web fonts-->
+<link
+  href="https://fonts.googleapis.com/css?family=Nunito:300,400,600,700,800"
+  rel="stylesheet"
+/>
+<link
+  href="https://fonts.googleapis.com/css?family=Lora:400i"
+  rel="stylesheet"
+/>
+
+<link
+  href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.14.0/css/all.min.css"
+  rel="stylesheet"
+/>
+
+<link href="../assets/css/index.css" rel="stylesheet" />
+
+<!--[if (gt IE 9) |!(IE)]><!-->
+<!--<link rel="stylesheet" href="/assets/vendor/custom-nav/css/effects/fade-menu.css"/>-->
+<!-- <link rel="stylesheet" href="../assets/k/vl-nav/css/effects/slide-menu.css" /> -->
+<!--<![endif]-->
+
+  </head>
+
+  <body>
+<header
+  class="navbar navbar-expand navbar-dark flex-column flex-md-row bd-navbar"
+>
+  <a class="logo-link" href="../index.html"> IELE Semantics </a>
+  <ul class="navbar-nav ml-md-auto">
+    <li class="nav-item">
+      <a
+        class="nav-link pl-2 pr-1 mx-1 py-3 my-n2"
+        href="https://github.com/runtimeverification/iele-semantics"
+        target="_blank"
+        rel="noopener"
+        aria-label="GitHub"
+      >
+        <i class="fab fa-github"></i>
+      </a>
+    </li>
+  </ul>
+  <!--
+  <a
+    class="btn btn-rv-blue d-none d-lg-inline-block mb-3 mb-md-0 ml-md-3"
+    href="../downloads"
+    >Download</a
+  >
+  -->
+</header>
+
+
+    <div class="container-fluid">
+      <div class="row flex-xl-nowrap">
+<div class="col-12 col-md-3 col-xl-2 bd-sidebar mb-3">
+  <form
+    role="search"
+    class="bd-search d-flex align-items-center justify-content-between"
+  >
+    <input
+      type="search"
+      class="form-control"
+      placeholder="Search..."
+      aria-label="Search for..."
+      autocomplete="false"
+      id="search-box"
+    />
+    <button
+      class="btn bd-search-docs-toggle d-md-none p-0 ml-3 collapsed"
+      type="button"
+      aria-label="Toggle docs navigation"
+      style="font-size: 1.4rem"
+    >
+      <i class="fas fa-bars"></i>
+    </button>
+  </form>
+  <nav class="collapse bd-links" aria-label="Main navigation">
+    <div class="bd-toc-item">
+      <a class="bd-toc-link" href="../">Homepage</a>
+      <a class="bd-toc-link" href="../INSTALL">Install</a>
+      <a class="bd-toc-link" href="../Design">Design</a>
+    </div>
+  </nav>
+</div>
+
+        <main
+          class="col-12 col-md-6 col-xl-8 py-md-3 pl-md-5 bd-content"
+          role="main"
+        >
+          <div class="markdown-preview"><html><head></head><body><h1 id="installing-kiele">Installing KIELE</h1>
+<p>We support the following installation methods:</p>
+<ul>
+<li><a href="#ubuntu-package">Ubuntu package</a></li>
+<li><a href="#linux-binary-package">Linux binary package</a> (most other distributions)</li>
+<li><a href="#nix">Nix</a> (Linux and macOS)</li>
+<li><a href="#docker-images">Docker Images</a></li>
+<li><a href="#build-from-source">Build from source</a> (Linux and macOS)</li>
+</ul>
+<p>Our most up-to-date packages are available at <a href="https://github.com/runtimeverification/iele-semantics/releases" target="_blank" rel="noopener">https://github.com/runtimeverification/iele-semantics/releases</a>.</p>
+<p><strong>NOTE</strong>: We do not currently support running K on native Windows.
+To use K on Windows, you are encouraged to install <a href="https://docs.microsoft.com/en-us/windows/wsl/install-win10" target="_blank" rel="noopener">Windows Subsystem for Linux</a> and follow the instructions for Ubuntu Bionic.</p>
+<h2 id="ubuntu-package">Ubuntu Package</h2>
+<p>We provide both an Ubuntu Bionic (18.04) and Ubuntu Focal (20.04) package.</p>
+<p>First make sure you have the appropriate <code>kframework</code> package installed, see instructions here: <a href="https://github.com/kframework/k/releases" target="_blank" rel="noopener">https://github.com/kframework/k/releases</a>.</p>
+<p>Download the appropriate Ubuntu package from the GitHub, via the <a href="https://github.com/runtimeverification/iele-semantics/releases" target="_blank" rel="noopener">Releases</a> page.
+Releases are generated as often as possible from <code>master</code> build.
+Assuming you have downloaded KIELE version <code>X.Y.Z</code> for distro <code>DISTRO</code>, install the package with <code>apt</code>:</p>
+<pre class="language-text"><code>sudo apt install ./kiele_X.Y.Z_amd64_DISTRO.deb
+</code></pre>
+<h2 id="linux-binary-package">Linux binary package</h2>
+<p>Install the following runtime dependencies:</p>
+<pre class="language-text"><code>sudo apt-get install --yes libcrypto++-dev libjemalloc-dev libmpfr-dev libprotobuf-dev libsecp256k1-dev
+</code></pre>
+<p>Download the &quot;KIELE Linux Binary&quot; package from the GitHub, via the <a href="https://github.com/runtimeverification/iele-semantics/releases" target="_blank" rel="noopener">Releases</a> page.
+Releases are generated as often as possible from <code>master</code> build.</p>
+<p>Assuming you have downloaded KIELE version <code>X.Y.Z</code>, extract the tarball:</p>
+<pre class="language-text"><code>tar -xvf kiele-X.Y.Z-bin.tar.gz
+</code></pre>
+<p>Copy all the files in the tarball into place:</p>
+<pre class="language-text"><code>mkdir -p ~/.local/bin ~/.local/lib
+cp -r kiele-X.Y.Z-bin/bin/* ~/.local/bin/
+cp -r kiele-X.Y.Z-bin/lib/* ~/.local/lib/
+</code></pre>
+<p>And make sure it&apos;s on <code>PATH</code>:</p>
+<pre class="language-text"><code>export PATH=$HOME/local/bin:$PATH
+</code></pre>
+<h2 id="nix">Nix</h2>
+<p>A Nix expression is provided, with binary caching for Linux and macOS.</p>
+<h3 id="prerequisites">Prerequisites</h3>
+<p>It is safe to skip any of these dependencies that are already installed.</p>
+<p>Follow the instructions below.
+Perform all steps as your normal (non-root) user.
+You may find the same instructions and our public key at <a href="https://runtimeverification.cachix.org" target="_blank" rel="noopener">https://runtimeverification.cachix.org</a>.
+To follow this instructions, you will need <code>curl</code> installed on your system <a href="https://curl.haxx.se/download.html" target="_blank" rel="noopener">https://curl.haxx.se/download.html</a>.</p>
+<h4 id="nix-1">Nix</h4>
+<p>Please pay careful attention to any additional instructions printed by the installer.
+Install Nix:</p>
+<pre class="language-text"><code># Linux and macOS &lt; 10.15
+bash &lt;(curl -L https://nixos.org/nix/install)
+
+# macOS 10.15 (See note below)
+bash &lt;(curl -L https://nixos.org/nix/install) --darwin-use-unencrypted-nix-store-volume
+</code></pre>
+<p>For macOS 10.15, please refer to the <a href="https://nixos.org/manual/nix/stable/#sect-macos-installation" target="_blank" rel="noopener">Nix manual</a> for more information.</p>
+<h4 id="cachix">Cachix</h4>
+<p>Install Cachix and start using the binary cache:</p>
+<pre class="language-text"><code>nix-env -iA cachix -f https://cachix.org/api/v1/install
+cachix use runtimeverification
+</code></pre>
+<h3 id="install-with-nix">Install with Nix</h3>
+<p>With the <a href="#prerequisites">prerequisites</a> installed,
+we can install <code>kiele</code> from any clone of the repository:</p>
+<pre class="language-text"><code>git clone https://github.com/runtimeverification/iele-semantics
+cd iele-semantics
+git submodule update --init --recursive
+nix-env -f . -i kiele
+</code></pre>
+<h2 id="docker-images">Docker Images</h2>
+<p>Docker images with KIELE pre-installed are available at the
+<a href="https://hub.docker.com/repository/docker/runtimeverificationinc/runtimeverification-iele-semantics" target="_blank" rel="noopener">runtimeverificationinc/runtimeverification-iele-semantics Docker Hub repository</a>.</p>
+<p>Each release at <code>COMMIT_ID</code> for Ubuntu platform DISTRO has an image associated with it at
+<code>runtimeverificationinc/runtimeverification-iele-semantics:ubuntu-DISTRO-COMMIT_ID</code>.
+The latest <code>master</code> build Docker image can be accessed with <code>COMMIT_ID</code> set to
+<code>master</code>.</p>
+<p>To run the image directly:</p>
+<pre class="language-text"><code>docker run -it runtimeverificationinc/runtimeverification-iele-semantics:ubuntu-DISTRO-COMMIT_ID
+</code></pre>
+<p>and to make a Docker Image based on it, use the following line in your
+<code>Dockerfile</code>:</p>
+<pre class="language-text"><code>FROM runtimeverificationinc/runtimeverification-iele-semantics:ubuntu-DISTRO-COMMIT_ID
+</code></pre>
+<h1 id="build-from-source">Build from source</h1>
+<h2 id="installing-k">Installing K</h2>
+<p>First make sure you have the <code>kframework</code> package installed.</p>
+<p>Look in <code>deps/k_release</code> for the currently supported tag release of K, you will need to install that one.</p>
+<p>see instructions here: <a href="https://github.com/kframework/k/releases/tag/" target="_blank" rel="noopener">https://github.com/kframework/k/releases/tag/</a>&lt;k_release&gt;.</p>
+<h2 id="system-dependencies">System Dependencies</h2>
+<h3 id="z3">Z3</h3>
+<p>KIELE requires Z3 version 4.8.11, which you may need to install from a source
+build if your package manager supplies a different version. To do so, follow the
+instructions
+<a href="https://github.com/Z3Prover/z3#building-z3-using-make-and-gccclang" target="_blank" rel="noopener">here</a> after
+checking out the correct tag in the Z3 repository:</p>
+<pre class="language-text"><code>git clone https://github.com/Z3Prover/z3.git
+cd z3
+git checkout z3-4.8.11
+python scripts/mk_make.py
+cd build
+make
+sudo make install
+</code></pre>
+<h3 id="ubuntu-bionic">Ubuntu Bionic</h3>
+<p>The following packages are needed for running KIELE on Ubuntu:</p>
+<pre class="language-text"><code>sudo apt-get install --yes autoconf build-essential cmake curl flex gcc   \
+                           libcrypto++-dev libffi-dev libmpfr-dev         \
+                           libprocps-dev libprotobuf-dev libsecp256k1-dev \
+                           libssl-dev libtool make maven netcat opam      \
+                           openjdk-8-jdk pkg-config protobuf-compiler     \
+                           python3 zlib1g-dev
+</code></pre>
+<h3 id="macos">MacOS</h3>
+<pre class="language-text"><code>brew tap adoptopenjdk/openjdk
+brew install --cask adoptopenjdk8
+brew install maven opam pkg-config gmp mpfr automake libtool protobuf cmake openssl
+</code></pre>
+<p>On all systems, you need Haskell Stack:</p>
+<pre class="language-text"><code>curl -sSL https://get.haskellstack.org/ | sh
+</code></pre>
+<h2 id="build-kiele">Build KIELE</h2>
+<p>These commands build and install KIELE:</p>
+<pre class="language-text"><code>git clone https://github.com/runtimeverification/iele-semantics.git
+cd iele-semantics
+git submodule update --init --recursive
+k-configure-opam
+opam install --yes ocaml-protoc rlp yojson zarith hex uuidm cryptokit
+eval $(opam config env)
+make build -j4
+
+sudo make install
+</code></pre>
+</body></html></div>
+        </main>
+
+        <!-- Page ToC -->
+        <div class="col-12 col-md-3 col-xl-2 py-md-3 bd-sidebar page-toc mb-3">
+          
+<div>
+<details style="padding:0.25rem 0;;padding-left: 0px;" open>
+            <summary class="bd-toc-link-wrapper">
+              <a href="#installing-kiele" class="bd-toc-link">Installing KIELE</a>
+              </summary>
+            <div>
+              <div class="bd-toc-link-wrapper" style="padding:0.25rem 0;">
+              <a
+                href="#ubuntu-package"
+                class="bd-toc-link"
+                style="padding-left: 8px;;"
+              >
+                Ubuntu Package
+              </a></div><div class="bd-toc-link-wrapper" style="padding:0.25rem 0;">
+              <a
+                href="#linux-binary-package"
+                class="bd-toc-link"
+                style="padding-left: 8px;;"
+              >
+                Linux binary package
+              </a></div><details style="padding:0.25rem 0;;padding-left: 8px;" open>
+            <summary class="bd-toc-link-wrapper">
+              <a href="#nix" class="bd-toc-link">Nix</a>
+              </summary>
+            <div>
+              <details style="padding:0.25rem 0;;padding-left: 16px;" open>
+            <summary class="bd-toc-link-wrapper">
+              <a href="#prerequisites" class="bd-toc-link">Prerequisites</a>
+              </summary>
+            <div>
+              <div class="bd-toc-link-wrapper" style="padding:0.25rem 0;">
+              <a
+                href="#nix-1"
+                class="bd-toc-link"
+                style="padding-left: 24px;;"
+              >
+                Nix
+              </a></div><div class="bd-toc-link-wrapper" style="padding:0.25rem 0;">
+              <a
+                href="#cachix"
+                class="bd-toc-link"
+                style="padding-left: 24px;;"
+              >
+                Cachix
+              </a></div>
+            </div>
+          </details>
+        <div class="bd-toc-link-wrapper" style="padding:0.25rem 0;">
+              <a
+                href="#install-with-nix"
+                class="bd-toc-link"
+                style="padding-left: 16px;;"
+              >
+                Install with Nix
+              </a></div>
+            </div>
+          </details>
+        <div class="bd-toc-link-wrapper" style="padding:0.25rem 0;">
+              <a
+                href="#docker-images"
+                class="bd-toc-link"
+                style="padding-left: 8px;;"
+              >
+                Docker Images
+              </a></div>
+            </div>
+          </details>
+        <details style="padding:0.25rem 0;;padding-left: 0px;" open>
+            <summary class="bd-toc-link-wrapper">
+              <a href="#build-from-source" class="bd-toc-link">Build from source</a>
+              </summary>
+            <div>
+              <div class="bd-toc-link-wrapper" style="padding:0.25rem 0;">
+              <a
+                href="#installing-k"
+                class="bd-toc-link"
+                style="padding-left: 8px;;"
+              >
+                Installing K
+              </a></div><details style="padding:0.25rem 0;;padding-left: 8px;" open>
+            <summary class="bd-toc-link-wrapper">
+              <a href="#system-dependencies" class="bd-toc-link">System Dependencies</a>
+              </summary>
+            <div>
+              <div class="bd-toc-link-wrapper" style="padding:0.25rem 0;">
+              <a
+                href="#z3"
+                class="bd-toc-link"
+                style="padding-left: 16px;;"
+              >
+                Z3
+              </a></div><div class="bd-toc-link-wrapper" style="padding:0.25rem 0;">
+              <a
+                href="#ubuntu-bionic"
+                class="bd-toc-link"
+                style="padding-left: 16px;;"
+              >
+                Ubuntu Bionic
+              </a></div><div class="bd-toc-link-wrapper" style="padding:0.25rem 0;">
+              <a
+                href="#macos"
+                class="bd-toc-link"
+                style="padding-left: 16px;;"
+              >
+                MacOS
+              </a></div>
+            </div>
+          </details>
+        <div class="bd-toc-link-wrapper" style="padding:0.25rem 0;">
+              <a
+                href="#build-kiele"
+                class="bd-toc-link"
+                style="padding-left: 8px;;"
+              >
+                Build KIELE
+              </a></div>
+            </div>
+          </details>
+        
+</div>
+
+        </div>
+        <div class="btn btn-rv-blue page-toc-toggle-btn"></div>
+        <!-- End Page ToC -->
+      </div>
+    </div>
+<!-- The footer is now controlled by the k-web-theme git submodule -->
+<footer id="rvsite-footer" class="app-footer text-md-left text-center">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-4 mb-md-0 mb-4">
+        <a href="https://runtimeverification.com/" target="_blank">
+          <picture>
+            <source
+              srcset="
+                https://runtimeverification.com/assets/img/rv-logo-dark.png
+              "
+              media="(prefers-color-scheme: dark)"
+            />
+            <img
+              class="logo-dark"
+              src="https://runtimeverification.com/assets/img/rv-logo.png"
+              alt="Runtime Verification logo"
+              style="height: 32px"
+            /> </picture
+        ></a>
+        <p class="mt-2 text-md-left copyright">
+          <a href="https://goo.gl/maps/NYzr2iKpXMgEmQ2F6" target="_blank"
+            >102 E Main St #500, Urbana, IL 61801</a
+          >
+        </p>
+      </div>
+      <div class="col-md-4 text-md-center mb-md-0 mb-4"></div>
+      <div class="col-md-4 mb-md-0 mb-4 text-md-right">
+        <p class="copyright">2021 © all rights reserved</p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Typist/1.2/typist.min.js"></script>
+    <script src="../assets/js/index.js"></script>
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-QL0D8HRYFW"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+      gtag("config", "G-QL0D8HRYFW");
+    </script>
+  </body>
+</html>
