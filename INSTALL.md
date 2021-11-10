@@ -49,14 +49,14 @@ Copy all the files in the tarball into place:
 
 ```sh
 mkdir -p ~/.local/bin ~/.local/lib
-cp -r kiele-X.Y.Z-bin/bin/* ~/.local/bin/
-cp -r kiele-X.Y.Z-bin/lib/* ~/.local/lib/
+cp -r kiele-X.Y.Z-bin/usr/bin/* ~/.local/bin/
+cp -r kiele-X.Y.Z-bin/usr/lib/* ~/.local/lib/
 ```
 
 And make sure it's on `PATH`:
 
 ```sh
-export PATH=$HOME/local/bin:$PATH
+export PATH=$HOME/.local/bin:$PATH
 ```
 
 ## Nix
@@ -138,7 +138,8 @@ First make sure you have the `kframework` package installed.
 
 Look in `deps/k_release` for the currently supported tag release of K, you will need to install that one.
 
-see instructions here: https://github.com/kframework/k/releases/tag/<k_release>.
+see instructions here: <https://github.com/kframework/k/releases>.
+Releases are available for download here: <https://github.com/kframework/k/tags>.
 
 ## System Dependencies
 
@@ -195,7 +196,7 @@ These commands build and install KIELE:
 git clone https://github.com/runtimeverification/iele-semantics.git
 cd iele-semantics
 git submodule update --init --recursive
-k-configure-opam
+opam init --yes
 opam install --yes ocaml-protoc rlp yojson zarith hex uuidm cryptokit
 eval $(opam config env)
 make build -j4
