@@ -196,7 +196,7 @@ These commands build and install KIELE:
 git clone https://github.com/runtimeverification/iele-semantics.git
 cd iele-semantics
 git submodule update --init --recursive
-opam init --yes
+opam init
 opam install --yes ocaml-protoc rlp yojson zarith hex uuidm cryptokit
 eval $(opam config env)
 make build -j4
