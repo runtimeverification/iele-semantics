@@ -117,11 +117,12 @@ run_vm() {
 }
 
 run_coverage() {
-    notif "Generating coverage json from $run_file and client on port $kiele_port"
+
+    notif "Generating coverage json from and client on port $kiele_port"
     if ! nc -z "$kiele_host" "$kiele_port"; then
         fatal "No listener found on port $kiele_port, so there wont be any coverage data!"
     fi
-    run_pyiele coverage "$run_file" --port "$kiele_port" --output "$output_path"
+    run_pyiele coverage --port "$kiele_port" --output "$output_path" $@
 }
 
 run_generate_report() {
@@ -177,6 +178,10 @@ run_testrunner() {
 }
 
 run_blackbox() {
+    if [[ $# -gt 0 ]] && [ "$1" == "--help" ]; then
+      run_pyiele test --help
+      exit
+    fi
     if ! nc -z "$kiele_host" "$kiele_port"; then
         fatal "No listener found on port $kiele_port"
     fi
@@ -285,7 +290,7 @@ cmode='Lbl'$mode'{}()'
 cschedule='Lbl'$schedule'{}()'
 cenablecoverage='\dv{SortBool{}}("'$enablecoverage'")'
 
-if [[ "$run_command" != 'vm' ]] && [[ "$run_command" != 'compile' ]] && [[ "$run_command" != 'test' ]] && [[ "$run_command" != 'blackbox' ]]; then
+if [[ "$run_command" != 'vm' ]]  && [[ "$run_command" != 'coverage' ]]  && [[ "$run_command" != 'compile' ]] && [[ "$run_command" != 'test' ]] && [[ "$run_command" != 'blackbox' ]]; then
     run_file="$1" ; shift
     [[ -f "$run_file" ]] || [[ "$run_file" == '-' ]] || fatal "File does not exist: $run_file"
 fi

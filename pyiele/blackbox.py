@@ -11,8 +11,10 @@ from .rpc import *
 from .testrunner import init_wallet, send, deploy_contract, transaction_call_data, mine_blocks
 from .utils import *
 from Crypto.Hash import keccak
+from .rlp import *
 
 def calculate_coverage(input):
+    ''' Calculate the coverage percentage represented by the bytearray '''
     b_input = bytearray.fromhex(input[2:])
     count = 0
     for elem in b_input:
@@ -73,7 +75,8 @@ def print_cov_info(contract_name, coverage_init, coverage_curr):
 
 
 def blackbox_test_single_contract(contract, available_contract):
-
+    ''' Deploys a Solidity contract, extracts information about its functions.
+        For each function it will generate random input values and execute the transaction. '''
     # Init essential parameters
     contract_name = contract["contractName"]
     bytecode_hash = available_contract[contract_name]["bytecodeHash"]

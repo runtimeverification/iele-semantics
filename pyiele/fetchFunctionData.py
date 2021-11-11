@@ -7,10 +7,12 @@ import re
 from Crypto.Hash import keccak
 
 def generate_signature(name:str, inputs:dict) -> str:
+    ''' A function signature looks like `name(arg_type1,arg_type2)` '''
     args= "(" +','.join([x["type"] for x in inputs]) + ")"
     return name+args
 
 def process_file(file: str) -> dict:
+    ''' Creates a dict containing information about the names and inputs of the constructor and functions '''
     result = []
     with open(file, "r") as in_file:
         in_dict = json.load(in_file)
@@ -47,6 +49,7 @@ def process_file(file: str) -> dict:
 
 
 def process_folder(folder_path: str) -> list:
+    ''' Runs process_file on all files from a folder '''
     result = []
     for file_name in os.listdir(folder_path):
         if False == os.path.isfile(os.path.join(folder_path, file_name)):
@@ -56,6 +59,7 @@ def process_folder(folder_path: str) -> list:
 
 
 def fetch_function_data(arg: str) -> dict:
+    ''' Returns information about all the functions and constructors of Solidity Contracts '''
     if os.path.isdir(arg):
         result = process_folder(arg)
     elif os.path.isfile(arg):

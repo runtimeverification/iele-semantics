@@ -59,7 +59,7 @@ def create_local_data(combinedjson):
 
   return output
 
-def retrieve_coverage(report, port):
+def retrieve_coverage(report):
   """ Retrieve coverage from RPC client and update the report JSON """
   result = send(firefly_getCoverage())
   if result == None:
@@ -71,4 +71,17 @@ def retrieve_coverage(report, port):
       if codehash in data["contracts"]:
         data["contracts"][codehash]["coverage"] = coveragedata
 
-  return
+def process_file(filepath):
+  """ Opens a file and extracts in a dict all the necessary information """
+  with open(filepath) as f:
+    data = json.load(f)
+  try:
+    contract_data = create_local_data(data)
+  except KeyError as key:
+    if key.args[0] in ['asm','bin','metadata-bin','srcmap']:
+        print(f"""[ERROR] KeyError while reading "{args.combined}": {key} """)
+        print("[ERROR] Make sure you compiled with '--combined-json asm,bin,metadata-bin,srcmap'")
+        sys.exit(1)
+    else:
+        raise key
+  return contract_data

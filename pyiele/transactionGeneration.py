@@ -48,8 +48,7 @@ def generate_random_value(type: str):
             choices = range(2)
             value_length = 1
     except:
-        raise Exception("Type not defined")
-        sys.exit(2)
+        fatal("Type not defined")
 
     if is_dynamic_array:
         return [ bytes(random.choices(choices,k=value_length)) ]
@@ -71,8 +70,7 @@ def encode_random_value(value, type: str) -> str:
         elif type.startswith("bytes"):
             is_static_bytes = True
     except:
-        raise Exception("Type not defined")
-        sys.exit(2)
+        fatal("Type not defined")
 
     if is_dynamic_array:
         encoded_value += "1".zfill(64)
