@@ -160,8 +160,8 @@ In the comments next to each cell, we explain the purpose of the cell.
     syntax IELESimulation
     syntax Mode
     syntax Schedule
-    syntax Contract ::= "#emptyCode"
- // --------------------------------
+    syntax Contract ::= "#emptyCode" [macro]
+ // ----------------------------------------
 ```
 
 ### Uninitialized Accounts
@@ -178,7 +178,7 @@ Note that the syntax used in the following `#emptyCode` macro is desugared IELE 
                       | "iele.Wallet" [token]
     syntax ContractDefinition ::= "contract" IeleName "!" /* size in bytes */ Int /* byte string */ String "{" TopLevelDefinitions "}" /* when desugared to include the code size */
  // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    rule #emptyCode => contract iele.Wallet !0 "" { define public @deposit ( 0 ) { ret .NonEmptyOperands .Instructions .LabeledBlocks } } .Contract [macro]
+    rule #emptyCode => contract iele.Wallet !0 "" { define public @deposit ( 0 ) { ret .NonEmptyOperands .Instructions .LabeledBlocks } } .Contract
 
 endmodule
 ```
@@ -326,25 +326,25 @@ Simple commands controlling exceptions provide control-flow.
     rule <k> _:Exception ~> (_:Blocks => .)      ... </k>
     rule <k> _:Exception ~> (_:InternalOp => .)  ... </k>
 
-    syntax Int ::= "FUNC_NOT_FOUND"
-                 | "FUNC_WRONG_SIG"
-                 | "CONTRACT_NOT_FOUND"
-                 | "USER_ERROR"
-                 | "OUT_OF_GAS"
-                 | "ACCT_COLLISION"
-                 | "OUT_OF_FUNDS"
-                 | "CALL_STACK_OVERFLOW"
-                 | "CONTRACT_INVALID"
- // ------------------------------------
-    rule FUNC_NOT_FOUND      => 1 [macro]
-    rule FUNC_WRONG_SIG      => 2 [macro]
-    rule CONTRACT_NOT_FOUND  => 3 [macro]
-    rule USER_ERROR          => 4 [macro]
-    rule OUT_OF_GAS          => 5 [macro]
-    rule ACCT_COLLISION      => 6 [macro]
-    rule OUT_OF_FUNDS        => 7 [macro]
-    rule CALL_STACK_OVERFLOW => 8 [macro]
-    rule CONTRACT_INVALID    => 9 [macro]
+    syntax Int ::= "FUNC_NOT_FOUND"      [macro]
+                 | "FUNC_WRONG_SIG"      [macro]
+                 | "CONTRACT_NOT_FOUND"  [macro]
+                 | "USER_ERROR"          [macro]
+                 | "OUT_OF_GAS"          [macro]
+                 | "ACCT_COLLISION"      [macro]
+                 | "OUT_OF_FUNDS"        [macro]
+                 | "CALL_STACK_OVERFLOW" [macro]
+                 | "CONTRACT_INVALID"    [macro]
+ // --------------------------------------------
+    rule FUNC_NOT_FOUND      => 1
+    rule FUNC_WRONG_SIG      => 2
+    rule CONTRACT_NOT_FOUND  => 3
+    rule USER_ERROR          => 4
+    rule OUT_OF_GAS          => 5
+    rule ACCT_COLLISION      => 6
+    rule OUT_OF_FUNDS        => 7
+    rule CALL_STACK_OVERFLOW => 8
+    rule CONTRACT_INVALID    => 9
 ```
 
 Description of registers.

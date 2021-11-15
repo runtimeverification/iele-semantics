@@ -193,7 +193,7 @@ Instructions for conditional and unconditional jumps within the function's body.
 Instructions for local functions calls to other functions of the same contract, as well as contract function calls to public functions of contracts deployed in other accounts. For more details see [here](Design.md#function-callreturn).
 
 ```k
-  syntax LocalCallInst   ::= "call" Operand "(" Operands ")"
+  syntax LocalCallInst   ::= "call" Operand "(" Operands ")" [alias]
                            | LValues "=" "call" Operand "(" Operands ")" [hybrid, strict(2,3)]
   syntax AccountCallInst ::= LValues "=" "call" Operand "at" Operand "(" Operands ")" "send" Operand "," "gaslimit" Operand [hybrid, seqstrict(2,3,4,5,6)]
   syntax AccountCallInst ::= LValues "=" "staticcall" Operand "at" Operand "(" Operands ")" "gaslimit" Operand [hybrid, seqstrict(2,3,4,5)]
@@ -201,7 +201,7 @@ Instructions for local functions calls to other functions of the same contract, 
   syntax CallAddressInst ::= LValue "=" "calladdress" GlobalName "at" Operand [hybrid, strict(3)]
 
   syntax ReturnInst ::= "ret" NonEmptyOperands [hybrid, strict(1)]
-                      | "ret" "void"
+                      | "ret" "void" [alias]
   syntax RevertInst ::= "revert" Operand [hybrid, strict(1)]
 ```
 
@@ -397,8 +397,8 @@ The body of a function is a list of blocks, where each block is a list of IELE i
 Finally, following are macros for desugaring empty `LValues` and `Operands` lists in calls and returns.
 
 ```k
-  rule call NAME ( ARGS ) => .LValues = call NAME ( ARGS ) [alias]
-  rule ret void => ret .NonEmptyOperands [alias]
+  rule call NAME ( ARGS ) => .LValues = call NAME ( ARGS )
+  rule ret void => ret .NonEmptyOperands
 endmodule
 ```
 
