@@ -117,7 +117,7 @@ if __name__ == '__main__':
         # Extract contracts that are available for blackbox testing
         available_contract = get_available_contract(coverage_report, contract_map)
 
-        notif("Preparation finished, altogether " + str(len(available_contract)) + " contacts to test")
+        notif("Preparation finished, altogether " + str(len(available_contract)) + " contracts to test")
         notif("")
 
         # Process contracts in alphabetical order
