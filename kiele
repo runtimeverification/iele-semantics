@@ -14,7 +14,7 @@ export PATH="${PATH}:${INSTALL_LIB}/standalone/iele-testing-kompiled"
 export PATH="${PATH}:${INSTALL_LIB}/check/well-formedness-kompiled"
 export PATH="${PATH}:${INSTALL_LIB}/node/iele-testing-kompiled"
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-}:/usr/local/lib
-export PYTHONPATH=${PYTHONPATH:-}:"$(dirname "$0")"
+export PYTHONPATH=${PYTHONPATH:-}:"$(dirname $0)/../lib/kiele"
 
 check_k_install() {
     type -p kore-exec &> /dev/null \
