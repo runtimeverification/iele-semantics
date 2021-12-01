@@ -12,7 +12,7 @@
     package = {
       specVersion = "1.10";
       identifier = { name = "iele-assemble"; version = "0.0.1.0"; };
-      license = "LicenseRef-NCSA";
+      license = "BSD-3-Clause";
       copyright = "2017 Runtime Verification";
       maintainer = "virgil.serbanuta@runtimeverification.com";
       author = "Virgil Serbanuta";
