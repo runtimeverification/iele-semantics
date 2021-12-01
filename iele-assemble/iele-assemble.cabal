@@ -4,7 +4,7 @@ version:             0.0.1.0
 -- synopsis:
 -- description:
 homepage:            https://github.com/runtimeverification/iele-semantics#readme
-license:             NCSA
+license:             BSD3
 license-file:        LICENSE
 author:              Virgil Serbanuta
 maintainer:          virgil.serbanuta@runtimeverification.com
