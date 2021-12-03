@@ -1,8 +1,0 @@
-contract Test {
-  define public @test(%width, %val) {
-    %ret = bswap %width, %val
-    ret %ret
-  }
-
-  define @init () {}
-}
