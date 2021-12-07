@@ -123,7 +123,6 @@ run_vm() {
 }
 
 run_coverage() {
-
     notif "Generating coverage json from and client on port $kiele_port"
     check_listener
     run_pyiele coverage $@
@@ -157,10 +156,6 @@ run_compile() {
 
 run_testrunner() {
     local run_file
-    if [[ $# -gt 0 ]] && [ "$1" == "--help" ]; then
-      run_pyiele test --help
-      exit
-    fi
     check_listener
     if [[ $# -gt 0 ]]; then
       if [[ -f "$1" ]] || [[ -d "$1" ]]; then
@@ -179,10 +174,6 @@ run_testrunner() {
 }
 
 run_blackbox() {
-    if [[ $# -gt 0 ]] && [ "$1" == "--help" ]; then
-      run_pyiele blackbox --help
-      exit
-    fi
     check_listener
     run_pyiele blackbox "$@"
 }
@@ -216,9 +207,9 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
            $0 coverage         : Generates a report file containing contract information and coverage data.
            $0 generate-report  : Generate the static HTML report.
            $0 upload           : Upload the HTML report to the fireflyblockchain.com website.
-           $0 compile          : Compile solidity contracts using isolc. If no path is provided, all the found .sol files will be compiled. For more information run kiele compile --help.
-           $0 test             : Runs either a python or a solidity test file. If no path is provided, will run all the tests found under the test folder. For more information run kiele test --help.
-           $0 blackbox         : Attempt to find new test inputs via blackbox random testing. For more information run kiele blackbox --help.
+           $0 compile          : Compile solidity contracts using isolc. If no path is provided, all the found .sol files will be compiled. For more information run 'kiele compile --help'.
+           $0 test             : Runs either a python or a solidity test file. If no path is provided, will run all the tests found under the test folder. For more information run 'kiele test --help'.
+           $0 blackbox         : Attempt to find new test inputs via blackbox random testing. For more information run 'kiele blackbox --help'.
            $0 help    : Display this help message.
            $0 version : Display the versions of KIELE in use.
 
