@@ -405,19 +405,32 @@ coverage:
 # Install
 # -------
 
-build:                                      \
-       $(IELE_ASSEMBLE)                     \
-       $(IELE_CHECK)                        \
-       $(IELE_INTERPRETER)                  \
-       $(IELE_NODE)                         \
-       $(IELE_RUNNER)                       \
-       $(IELE_TEST_CLIENT)                  \
-       $(IELE_TEST_VM)                      \
-       $(IELE_VM)                           \
-       $(IELE_LIB)/kiele-generate-report.py \
-       $(IELE_LIB)/kore-json.py             \
-       $(IELE_LIB)/static-report.html       \
-       $(IELE_LIB)/version                  \
+pyiele_files := pyiele/__init__.py              \
+                pyiele/__main__.py              \
+                pyiele/blackbox.py              \
+                pyiele/config.py                \
+                pyiele/fetchFunctionData.py     \
+                pyiele/kieleCoverage.py         \
+                pyiele/rlp.py                   \
+                pyiele/rpc.py                   \
+                pyiele/testrunner.py            \
+                pyiele/transactionGeneration.py \
+                pyiele/utils.py
+
+build:                                               \
+       $(IELE_ASSEMBLE)                              \
+       $(IELE_CHECK)                                 \
+       $(IELE_INTERPRETER)                           \
+       $(IELE_NODE)                                  \
+       $(IELE_RUNNER)                                \
+       $(IELE_TEST_CLIENT)                           \
+       $(IELE_TEST_VM)                               \
+       $(IELE_VM)                                    \
+       $(IELE_LIB)/kiele-generate-report.py          \
+       $(IELE_LIB)/kore-json.py                      \
+       $(IELE_LIB)/static-report.html                \
+       $(IELE_LIB)/version                           \
+       $(patsubst %, $(IELE_LIB)/%, $(pyiele_files)) \
        $(haskell_kompiled)
 
 all_bin_sources := $(shell find $(IELE_BIN) -type f        \
@@ -471,8 +484,9 @@ install-vm: $(patsubst $(IELE_LIB)/%, $(DESTDIR)$(INSTALL_LIB)/%, $(IELE_VM))
 
 install-check: $(patsubst %, $(DESTDIR)$(INSTALL_LIB)/%, $(iele_check_libs))
 
-install-kiele: $(patsubst $(IELE_BIN)/%, $(DESTDIR)$(INSTALL_BIN)/%, $(IELE_RUNNER))
-install-kiele: $(patsubst %, $(DESTDIR)$(INSTALL_LIB)/%, $(kiele_files))
+install-kiele: $(patsubst $(IELE_BIN)/%, $(DESTDIR)$(INSTALL_BIN)/%, $(IELE_RUNNER)) \
+               $(patsubst %, $(DESTDIR)$(INSTALL_LIB)/%, $(kiele_files))             \
+               $(patsubst %, $(DESTDIR)$(INSTALL_LIB)/%, $(pyiele_files))
 
 install: $(patsubst %, $(DESTDIR)$(INSTALL_BIN)/%, $(all_bin_sources)) \
          $(patsubst %, $(DESTDIR)$(INSTALL_LIB)/%, $(all_lib_sources))

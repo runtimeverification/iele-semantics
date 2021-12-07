@@ -14,6 +14,7 @@ export PATH="${PATH}:${INSTALL_LIB}/standalone/iele-testing-kompiled"
 export PATH="${PATH}:${INSTALL_LIB}/check/well-formedness-kompiled"
 export PATH="${PATH}:${INSTALL_LIB}/node/iele-testing-kompiled"
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-}:/usr/local/lib
+export PYTHONPATH=${PYTHONPATH:-}:"$(dirname $0)/../lib/kiele"
 
 check_k_install() {
     type -p kore-exec &> /dev/null \
@@ -25,6 +26,12 @@ check_k_install() {
 }
 
 check_token() { [ -v FIREFLY_TOKEN ] || fatal "FIREFLY_TOKEN environment variable isn't set!" ; }
+
+check_listener() {
+    if ! nc -z "$kiele_host" "$kiele_port"; then
+        fatal "No listener found on port $kiele_port"
+    fi
+}
 
 make_temp_trap() {
     local tmpdesc tmpfile
@@ -45,6 +52,10 @@ make_temp_trap() {
 
 run_assemble() {
     iele-assemble "$run_file" "$@"
+}
+
+run_pyiele() {
+    python3 -m pyiele --host "$kiele_host" --port "$kiele_port" --output "$output_path" "$@"
 }
 
 run_interpret() {
@@ -111,20 +122,18 @@ run_vm() {
     "${cmd[@]}"
 }
 
+run_coverage() {
+    notif "Generating coverage json from and client on port $kiele_port"
+    check_listener
+    run_pyiele coverage $@
+}
+
 run_generate_report() {
     if [[ -f $(dirname $(which kiele))/static-report.html ]]; then
         report_template=$(dirname $(which kiele))/static-report.html
     else
         report_template=$INSTALL_LIB/static-report.html
     fi
-    output_path=""
-    while [[ $# -gt 0 ]]; do
-        arg="$1"
-        case $arg in
-            -o|--output) output_path="$2" ; shift 2 ;;
-            *) shift ;;
-        esac
-    done 
     kiele-generate-report.py "$report_template" "$run_file" "$output_path" "$create_archive"
 }
 
@@ -141,6 +150,30 @@ run_upload_report() {
     rm report.zip
 }
 
+run_compile() {
+    run_pyiele compile "$@"
+}
+
+run_testrunner() {
+    local run_file cmd
+    check_listener
+    cmd=(run_pyiele test)
+    if [[ $# -gt 0 ]] && ([[ -f "$1" ]] || [[ -d "$1" ]]); then
+      run_file="$1"; shift
+      if [[ "$run_file" == *.py ]]; then
+        cmd=(python3 "$run_file")
+      else
+        cmd+=(--file "$run_file")
+      fi
+    fi
+    "${cmd[@]}" "$@"
+}
+
+run_blackbox() {
+    check_listener
+    run_pyiele blackbox "$@"
+}
+
 # Main
 # ----
 
@@ -153,8 +186,12 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
                $0 krun         [--backend (standalone|haskell|node|check)] <KIELE arg>* <pgm> <K arg>*
                $0 check                                                    <KIELE arg>* <pgm> <K arg>*
                $0 vm                                                       <KIELE arg>*
-               $0 generate-report [--create-archive]                       <Report json path> [-o|--output <Report output path>]
+               $0 coverage     <combined.json path> [-p|--port <client port>] [-o|--output <Report output path>]
+               $0 generate-report [--create-archive]                       <Report json path>   [-o|--output <Report output path>]
                $0 upload                                                   <Report json path>
+               $0 compile                                                  <COMPILE arg>*
+               $0 test                                                     <TEST arg>*
+               $0 blackbox                                                 <BLACKBOX arg>*
 
                $0 [help|--help|version|--version]
 
@@ -163,9 +200,12 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
            $0 krun             : Run given input <pgm> using 'krun'
            $0 check            : Run the IELE well-formedness checker on <pgm>
            $0 vm               : Run the KIELE VM server.
+           $0 coverage         : Generates a report file containing contract information and coverage data.
            $0 generate-report  : Generate the static HTML report.
            $0 upload           : Upload the HTML report to the fireflyblockchain.com website.
-
+           $0 compile          : Compile solidity contracts using isolc. If no path is provided, all the found .sol files will be compiled. For more information run 'kiele compile --help'.
+           $0 test             : Runs either a python or a solidity test file. If no path is provided, will run all the tests found under the test folder. For more information run 'kiele test --help'.
+           $0 blackbox         : Attempt to find new test inputs via blackbox random testing. For more information run 'kiele blackbox --help'.
            $0 help    : Display this help message.
            $0 version : Display the versions of KIELE in use.
 
@@ -175,6 +215,7 @@ if [[ "$run_command" == 'help' ]] || [[ "$run_command" == '--help' ]] ; then
                  <K arg> is an argument you want to pass to K
                  <KIELE arg> is one of (--no-unparse|--debug|--host|--port|--mode|--coverage
                                        |--schedule|--module|--definition|--depth)
+                <combined.json path> is the path to the build artifacts from 'isolc --combined-json'
                 <Report json path> is the path to the report json file
                 <Report output path> is the output HTML report file path (default: \$uuid.html)
     "
@@ -202,6 +243,7 @@ depth=-1
 args=()
 create_archive='false'
 parser='cat'
+output_path='/dev/stdout'
 while [[ $# -gt 0 ]]; do
     arg="$1"
     case $arg in
@@ -216,6 +258,7 @@ while [[ $# -gt 0 ]]; do
         --coverage)        enablecoverage='true' ; shift   ;;
         --create-archive)  create_archive='true' ; shift   ;;
         --parser)          parser="$2"           ; shift 2 ;;
+        -o|--output)       output_path="$2"      ; shift 2 ;;
         -p|--port)         kiele_port="$2"       ; shift 2 ;;
         -h|--host)         kiele_host="$2"       ; shift 2 ;;
         *)                 args+=("$1")          ; shift   ;;
@@ -233,7 +276,7 @@ cmode='Lbl'$mode'{}()'
 cschedule='Lbl'$schedule'{}()'
 cenablecoverage='\dv{SortBool{}}("'$enablecoverage'")'
 
-if [[ "$run_command" != 'vm' ]]; then
+if [[ "$run_command" != 'vm' ]]  && [[ "$run_command" != 'coverage' ]]  && [[ "$run_command" != 'compile' ]] && [[ "$run_command" != 'test' ]] && [[ "$run_command" != 'blackbox' ]]; then
     run_file="$1" ; shift
     [[ -f "$run_file" ]] || [[ "$run_file" == '-' ]] || fatal "File does not exist: $run_file"
 fi
@@ -244,7 +287,11 @@ case "$run_command" in
     krun)              run_krun            "$@" ;;
     check)             run_check           "$@" ;;
     vm)                run_vm              "$@" ;;
+    coverage)          run_coverage        "$@" ;;
     generate-report)   run_generate_report "$@" ;;
     upload)            run_upload_report   "$@" ;;
+    compile)           run_compile         "$@" ;;
+    blackbox)          run_blackbox        "$@" ;;
+    test)              run_testrunner      "$@" ;;
     *) $0 help ; fatal "Unknown command: $run_command" ;;
 esac
