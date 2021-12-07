@@ -155,22 +155,18 @@ run_compile() {
 }
 
 run_testrunner() {
-    local run_file
+    local run_file cmd
     check_listener
-    if [[ $# -gt 0 ]]; then
-      if [[ -f "$1" ]] || [[ -d "$1" ]]; then
-        run_file="$1"; shift
-        if [[ "$run_file" == *.py ]]; then
-            python3 "$run_file"
-        else
-            run_pyiele test --file "$run_file" "$@"
-        fi
+    cmd=(run_pyiele test)
+    if [[ $# -gt 0 ]] && ([[ -f "$1" ]] || [[ -d "$1" ]]); then
+      run_file="$1"; shift
+      if [[ "$run_file" == *.py ]]; then
+        cmd=(python3 "$run_file")
       else
-        run_pyiele test "$@"
+        cmd+=(--file "$run_file")
       fi
-    else
-      run_pyiele test "$@"
     fi
+    "${cmd[@]}" "$@"
 }
 
 run_blackbox() {
