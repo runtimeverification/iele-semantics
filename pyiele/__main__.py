@@ -14,10 +14,14 @@ import os
 def make_parser():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest='command')
+    parser.add_argument('-p', '--port', type=int, default=config.port, metavar="<port>",
+                      help="Port that Midnight client is listen on (default: %(default)s)")
+    parser.add_argument('--host', type=str, default=config.host, metavar="<host>",
+                      help="Address of the Midnight client (default: %(default)s)")
+    parser.add_argument('-o', '--output', type=str, default='report.json', metavar='<output file>', dest='output',
+                      help='Output file')
 
     blackboxParser = subparsers.add_parser('blackbox', help = 'Blackbox testing.')
-    blackboxParser.add_argument('-p', '--port', type=int, default=config.port, metavar="<port>",
-                      help="Port that Midnight client is listen on (default: %(default)s)")
     blackboxParser.add_argument('-o', '--timeout', type=int, default=config.coverage_timeout, metavar="<coverage timeout>",
                       help="Timeout for trying each function (default: %(default)s)")
     blackboxParser.add_argument('--build-dir', type=str, default=config.target_directory, metavar="<build dir>",
@@ -28,8 +32,6 @@ def make_parser():
                       help="Wallet master key (default: %(default)s)")
 
     testrunnerParser = subparsers.add_parser('test', help = "Test runner.")
-    testrunnerParser.add_argument('-p', '--port', type=int, default=config.port, metavar="<port>",
-                        help="Port that Midnight client is listen on (default: %(default)s)")
     testrunnerParser.add_argument('-l', '--gas-limit', type=str, default=config.gas_limit, metavar="<gas limit>",
                         help="Transaction gas limit (default: %(default)s)")
     testrunnerParser.add_argument('-g', '--gas-price', type=str, default=config.gas_price, metavar="<gas price>",
@@ -56,17 +58,14 @@ def make_parser():
     coverageParser = subparsers.add_parser('coverage', help='Generate report.json')
     coverageParser.add_argument('-b', '--build-dir',type=str, default=config.target_directory, metavar='<isolc output>',
                       help='Path of the JSON output of isolc (default: %(default)s)')
-    coverageParser.add_argument('-o', '--output', type=str, default='report.json', metavar='<output file>', dest='output',
-                      help='Output file')
-    coverageParser.add_argument('-p', '--port', type=int, default=config.port, metavar='<port>', dest='port',
-                      help='Port number for RPC client')
-
     return parser
 
 
 if __name__ == '__main__':
     parser = make_parser()
     args = parser.parse_args()
+    config.port = args.port
+    config.host = args.host
 
     if args.command == 'compile':
         config.contracts_dir    = args.contracts_dir
@@ -74,7 +73,6 @@ if __name__ == '__main__':
         compile(args.file)
 
     elif args.command == 'test':
-        config.port = args.port
         config.gas_limit = args.gas_limit
         config.gas_price = args.gas_price
         config.tests_dir = args.tests_dir
@@ -103,7 +101,6 @@ if __name__ == '__main__':
         print("==  Failing Tests:", config.failing_tests)
 
     elif args.command == 'blackbox':
-        config.port = args.port
         config.coverage_timeout = timeout=args.timeout
         config.master_key = args.master_key
         config.passphrase = args.passphrase
@@ -144,7 +141,6 @@ if __name__ == '__main__':
 
     elif args.command == 'coverage':
         """ Parse command line arguments """
-        config.port = args.port
         config.target_directory = args.build_dir
         output = {}
 

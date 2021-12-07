@@ -3,8 +3,8 @@ from subprocess import Popen, PIPE
 import json
 ## RPC Call helpers
 
-def send_rpc(rpc, port):
-    process = Popen(['curl', '--silent', '-H', 'Content-Type: application/json', '--data', rpc, 'http://localhost:' + str(port)], stdout=PIPE, stderr=PIPE)
+def send_rpc(rpc, host, port):
+    process = Popen(['curl', '--silent', '-H', 'Content-Type: application/json', '--data', rpc, host + ':' + str(port)], stdout=PIPE, stderr=PIPE)
     stdout, stderr = process.communicate()
     return stdout
 

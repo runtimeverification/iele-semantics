@@ -21,7 +21,7 @@ def get_result(input):
 
 def send(rpc):
     '''Sends an rpc method call and returns the parsed response.'''
-    return get_result(send_rpc(rpc, config.port))
+    return get_result(send_rpc(rpc, config.host, config.port))
 
 def transaction_deploy_data(sender, data, gas_limit, gas_price):
     '''Template for a transaction which deploys a contract'''

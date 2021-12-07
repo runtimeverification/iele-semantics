@@ -55,7 +55,7 @@ run_assemble() {
 }
 
 run_pyiele() {
-    python3 -m pyiele "$@"
+    python3 -m pyiele --host "$kiele_host" --port "$kiele_port" --output "$output_path" "$@"
 }
 
 run_interpret() {
@@ -126,7 +126,7 @@ run_coverage() {
 
     notif "Generating coverage json from and client on port $kiele_port"
     check_listener
-    run_pyiele coverage --port "$kiele_port" --output "$output_path" $@
+    run_pyiele coverage $@
 }
 
 run_generate_report() {
@@ -168,23 +168,23 @@ run_testrunner() {
         if [[ "$run_file" == *.py ]]; then
             python3 "$run_file"
         else
-            run_pyiele test --file "$run_file" --port "$kiele_port" "$@"
+            run_pyiele test --file "$run_file" "$@"
         fi
       else
-        run_pyiele test --port "$kiele_port" "$@"
+        run_pyiele test "$@"
       fi
     else
-      run_pyiele test --port "$kiele_port" "$@"
+      run_pyiele test "$@"
     fi
 }
 
 run_blackbox() {
     if [[ $# -gt 0 ]] && [ "$1" == "--help" ]; then
-      run_pyiele test --help
+      run_pyiele blackbox --help
       exit
     fi
     check_listener
-    run_pyiele blackbox --port "$kiele_port" "$@"
+    run_pyiele blackbox "$@"
 }
 
 # Main

@@ -2,6 +2,7 @@
 
 class config:
   port = 8342
+  host = "127.0.0.1"
   passphrase = "walletNotSecure"
   master_key = "m-test-shl-mk1a3gmgp0jgxlxgnruasl2dl6xhr4m5hcfnqwlfqu22cgln9cg8q4s4keu08"
   gas_price = "0x0"
