@@ -20,6 +20,7 @@ let process_requests (_in,fd) =
       let params = request |> member "params" |> to_list in
       let response = match _method, params with
       | "eth_getCode", [`String address; `String number] -> eth_getCode address number
+      | "eth_getBlockhash", [`String offset] -> eth_getBlockhash offset
       | "eth_getBlockByNumber", [`String number; `Bool _] -> eth_getBlockByNumber number
       | "eth_getTransactionReceipt", [`String hash] -> eth_getTransactionReceipt hash
       | "iele_sendTransaction", [tx] -> iele_sendTransaction tx

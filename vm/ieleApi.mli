@@ -1,6 +1,7 @@
 open Yojson.Basic
 
 val eth_getCode : string -> string -> json
+val eth_getBlockhash : string -> json
 val eth_getBlockByNumber : string -> json
 val eth_getTransactionReceipt : string -> json
 val iele_sendTransaction : json -> json
