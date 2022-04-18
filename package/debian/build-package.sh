@@ -11,7 +11,7 @@ case ${UBUNTU_RELEASE} in
     focal)  ubuntu_release_descriptor='Focal (20.04)'  ;;
 esac
 
-K_RELEASE_URL=$(curl -s 'https://api.github.com/repositories/50041690/releases' | jq --raw-output '. | map(select(.tag_name == "'${K_RELEASE}'")) | map(.assets)[0] | map(select(.label == "Ubuntu '"${ubuntu_release_descriptor}"' Package"))[0] | .browser_download_url')
+K_RELEASE_URL=$(curl -s 'https://api.github.com/repositories/50041690/releases?per_page=100' | jq --raw-output '. | map(select(.tag_name == "'${K_RELEASE}'")) | map(.assets)[0] | map(select(.label == "Ubuntu '"${ubuntu_release_descriptor}"' Package"))[0] | .browser_download_url')
 curl --fail --location "${K_RELEASE_URL}" --output kframework-${UBUNTU_RELEASE}.deb
 sudo apt-get update && sudo apt-get upgrade --yes
 sudo apt-get install --yes ./kframework-${UBUNTU_RELEASE}.deb
