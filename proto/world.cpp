@@ -1,19 +1,22 @@
+#include "world.h"
+
+#include <arpa/inet.h>
+#include <gmp.h>
+
 #include <cstdint>
 #include <iostream>
-#include <gmp.h>
-#include <arpa/inet.h>
+
 #include "proto/msg.pb.h"
-#include "world.h"
 #include "runtime/header.h"
 
 using namespace io::iohk::ethereum::extvm;
 
 extern "C" {
-  string* hook_BYTES_int2bytes(mpz_t, mpz_t, uint64_t);
-  mpz_ptr hook_BYTES_bytes2int(string*, uint64_t, uint64_t);
-  uint64_t tag_big_endian();
-  uint64_t tag_unsigned();
-  string* makeString(const char*, ssize_t);
+string* hook_BYTES_int2bytes(mpz_t, mpz_t, uint64_t);
+mpz_ptr hook_BYTES_bytes2int(string*, uint64_t, uint64_t);
+uint64_t tag_big_endian();
+uint64_t tag_unsigned();
+string* makeString(const char*, ssize_t);
 }
 
 std::string of_z_width(unsigned width, mpz_ptr i) {
@@ -47,22 +50,22 @@ mpz_ptr to_z(std::string str) {
   return hook_BYTES_bytes2int(token, tag_big_endian(), 0);
 }
 
-FILE *vm_out_chan;
-FILE *vm_in_chan;
+FILE* vm_out_chan;
+FILE* vm_in_chan;
 
-template<typename Cls>
+template <typename Cls>
 Cls* send_query(VMQuery q, Cls* output) {
   std::cerr << q.DebugString() << std::endl;
   std::string buf;
   q.SerializeToString(&buf);
   uint32_t len = htonl(buf.size());
-  fwrite((char *)&len, 4, 1, vm_out_chan);
+  fwrite((char*)&len, 4, 1, vm_out_chan);
   fwrite(buf.c_str(), 1, buf.length(), vm_out_chan);
   fflush(vm_out_chan);
-  fread((char *)&len, 4, 1, vm_in_chan);
+  (void)fread((char*)&len, 4, 1, vm_in_chan);
   len = ntohl(len);
   std::string buf2(len, '\000');
-  fread(&buf2[0], 1, len, vm_in_chan);
+  (void)fread(&buf2[0], 1, len, vm_in_chan);
   output->ParseFromString(buf2);
   std::cerr << output->DebugString() << std::endl;
   return output;
@@ -76,7 +79,7 @@ Account* World::get_account(std::string acct) {
   return send_query(q, new Account());
 }
 
-StorageData *World::get_storage_data(std::string acct, std::string index) {
+StorageData* World::get_storage_data(std::string acct, std::string index) {
   GetStorageData get;
   get.set_address(acct);
   get.set_offset(index);
