@@ -5,6 +5,8 @@
 
 #include <string>
 
+#include "proto/msg.pb.h"
+
 std::string of_z_width(unsigned width, mpz_ptr);
 std::string of_z(mpz_ptr);
 mpz_ptr to_z_unsigned(std::string);
