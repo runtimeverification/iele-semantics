@@ -30,7 +30,7 @@ module IELE-SYNTAX
                    | "log2" [token] | "bswap"  [token] | "calladdress" [token]
   syntax IeleNameToken ::= Keyword [token]
 
-  syntax NumericIeleName ::= r"[0-9]+" [token]
+  syntax NumericIeleName ::= r"[0-9]+" [token, prec(2)]
 
   syntax StringIeleName ::= r"\\\"(([^\\\"\\\\])|(\\\\[0-9a-fA-F]{2}))*\\\"" [token]
 endmodule
