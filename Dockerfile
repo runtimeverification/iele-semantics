@@ -40,7 +40,7 @@ RUN    git clone 'https://github.com/z3prover/z3' --branch=z3-4.8.11 \
 
 RUN curl -sSL https://get.haskellstack.org/ | sh
 
-RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
+RUN curl -sL https://deb.nodesource.com/setup_16.x | bash -
 RUN    apt-get update               \
     && apt-get upgrade --yes        \
     && apt-get install --yes nodejs
