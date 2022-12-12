@@ -25,6 +25,7 @@ jobs:
       uses: cachix/cachix-action@v10
       with:
         name: runtimeverification
+        authToken: '${{ secrets.CACHIX_PUBLIC_TOKEN }}' 
         extraPullNames: kore
         skipPush: true
 
@@ -56,6 +57,7 @@ jobs:
       uses: cachix/cachix-action@v10
       with:
         name: runtimeverification
+        authToken: '${{ secrets.CACHIX_PUBLIC_TOKEN }}'
         extraPullNames: kore
         signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
 
