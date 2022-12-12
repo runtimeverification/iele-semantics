@@ -7,7 +7,7 @@ on:
 jobs:
   nix:
     name: 'Nix'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - id: config
         run: |
@@ -22,18 +22,18 @@ jobs:
           git config --global user.email github-actions@github.com
 
       - name: Check out code
-        uses: actions/checkout@v2.3.4
+        uses: actions/checkout@v3
         with:
           ref: ${{ steps.config.outputs.ref }}
           submodules: recursive
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v14.1
+        uses: cachix/install-nix-action@v15
         with:
           extra_nix_config: |
             substituters = http://cache.nixos.org https://hydra.iohk.io
             trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
-          install_url: "https://releases.nixos.org/nix/nix-2.3.16/install"
+          install_url: https://releases.nixos.org/nix/nix-2.7.0/install
 
       - name: Materialize
         run: ./nix/rematerialize.sh
