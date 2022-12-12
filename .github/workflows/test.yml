@@ -6,15 +6,15 @@ jobs:
   # Run ./nix/rematerialize.sh from iele-assemble if this job fails.
   test-nix-material:
     name: 'Nix materialization'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
     - name: Check out code
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v3
       with:
         submodules: recursive
 
     - name: Install Nix
-      uses: cachix/install-nix-action@v14.1
+      uses: cachix/install-nix-action@v15
       with:
         extra_nix_config: |
           substituters = http://cache.nixos.org https://hydra.iohk.io
@@ -22,7 +22,7 @@ jobs:
         install_url: "https://releases.nixos.org/nix/nix-2.3.16/install"
 
     - name: Install Cachix
-      uses: cachix/cachix-action@v10
+      uses: cachix/cachix-action@v15
       with:
         name: runtimeverification
         extraPullNames: kore
@@ -36,16 +36,16 @@ jobs:
     needs: test-nix-material
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-20.04, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
     - name: Check out code
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v3
       with:
         submodules: recursive
 
     - name: Install Nix
-      uses: cachix/install-nix-action@v14.1
+      uses: cachix/install-nix-action@v15
       with:
         extra_nix_config: |
           substituters = http://cache.nixos.org https://hydra.iohk.io
