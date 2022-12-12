@@ -60,6 +60,7 @@ jobs:
         authToken: '${{ secrets.CACHIX_PUBLIC_TOKEN }}'
         extraPullNames: kore
         signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
+        skipPush: true
 
     - name: Build
       run: K_OPTS=-Xmx6G nix-build --cores 1
