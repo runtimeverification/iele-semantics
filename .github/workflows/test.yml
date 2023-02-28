@@ -16,14 +16,10 @@ jobs:
     - name: Install Nix
       uses: cachix/install-nix-action@v19
       with:
-        install_url: https://releases.nixos.org/nix/nix-2.13.3/install
-        extra_nix_config: |
-          substituters = http://cache.nixos.org https://hydra.iohk.io
-          trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
-      
+        install_url: https://releases.nixos.org/nix/nix-2.13.3/install      
 
     - name: Install Cachix
-      uses: cachix/cachix-action@v10
+      uses: cachix/cachix-action@v12
       with:
           name: k-framework
           signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
@@ -49,12 +45,9 @@ jobs:
       uses: cachix/install-nix-action@v19
       with:
         install_url: https://releases.nixos.org/nix/nix-2.13.3/install
-        extra_nix_config: |
-          substituters = http://cache.nixos.org https://hydra.iohk.io
-          trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
 
     - name: Install Cachix
-      uses: cachix/cachix-action@v10
+      uses: cachix/cachix-action@v12
       with:
           name: k-framework
           signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
