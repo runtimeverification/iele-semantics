@@ -17,6 +17,9 @@ jobs:
         uses: cachix/install-nix-action@v19
         with:
           install_url: https://releases.nixos.org/nix/nix-2.13.3/install
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+            
 
       - name: Upload release.nix
         uses: ttuegel/upload-release.nix@v1.0
